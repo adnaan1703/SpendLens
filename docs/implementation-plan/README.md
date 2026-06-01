@@ -1,0 +1,71 @@
+# PocketMoney Implementation Plan
+
+This folder is the durable planning context for building PocketMoney across multiple Codex sessions.
+
+Read these documents in order at the start of every new implementation thread:
+
+1. [Architecture](ARCHITECTURE.md)
+2. [Data Model](DATA_MODEL.md)
+3. [Ingestion Design](INGESTION.md)
+4. [Milestones](MILESTONES.md)
+5. [External Setup Checklist](EXTERNAL_SETUP.md)
+6. [Session Handoff](SESSION_HANDOFF.md)
+
+## Product Summary
+
+PocketMoney is a personal and household expense intelligence app for web, Android, and iOS. The first implementation should use Flutter for all clients and Supabase as the serverless backend.
+
+The app imports historical credit-card analysis from `docs/Credit Card Spend Analysis - FY 2025-26.xlsx`, then moves to ongoing ingestion from Gmail transaction emails for credit cards and UPI. It presents spend by category, monthly category caps, transaction details, merchant review workflows, trends, and manual piggy-bank ledgers for future goals.
+
+## Architecture Decision
+
+Use a serverless-first backend:
+
+- Flutter app for web, Android, and iOS.
+- Supabase Auth for user identity.
+- Supabase Postgres for relational finance data.
+- Supabase Row Level Security for household-level data isolation.
+- Supabase Edge Functions for privileged backend operations.
+- Supabase Queues or job tables for async work.
+- Google Gmail API plus Cloud Pub/Sub for mailbox push notifications.
+- Dedicated worker service only when AI or ingestion workloads outgrow Edge Functions.
+
+This is not a "no backend" architecture. It is a backend without a permanently running custom API server in v1.
+
+## Scope Defaults
+
+- Usage model: personal plus household.
+- Currency: INR.
+- Category caps: monthly.
+- Piggy banks: manual ledger accounts in v1.
+- Merchant corrections: apply to matching past and future transactions.
+- Email retention: store minimal parsed data only; do not retain raw email bodies by default.
+- AI: not part of the first product release, but the data model and job boundaries must be AI-ready.
+
+## Workbook Source Contract
+
+The existing workbook is the seed data source and source-of-truth for initial semantics:
+
+- `Transactions`: canonical historical transaction rows.
+- `Category Summary`: initial category spend summaries.
+- `Merchant Summary`: initial merchant/category mapping data.
+- `Monthly`: initial monthly spend trend validation.
+- `Cardholders`: household/cardholder seed data.
+- `Needs Review`: initial low-confidence review queue.
+- `Validation`: reconciliation checks for import correctness.
+- `Sources & Notes`: import notes and merchant source URLs.
+
+The workbook currently contains 475 FY 2025-26 transactions. Card bill payments are excluded from spend. Merchant refunds reduce net expense.
+
+## New Session Guidance
+
+When starting a new implementation thread:
+
+1. Read this `README.md`.
+2. Read [Architecture](ARCHITECTURE.md) and [Data Model](DATA_MODEL.md).
+3. Read the active milestone in [Milestones](MILESTONES.md).
+4. Check [Session Handoff](SESSION_HANDOFF.md) for current status.
+5. Do only that milestone unless the user explicitly expands scope.
+6. Preserve documented invariants, especially idempotency, RLS isolation, and no raw email retention.
+7. Update milestone notes when an implementation decision changes the plan.
+

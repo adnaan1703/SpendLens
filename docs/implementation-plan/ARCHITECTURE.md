@@ -1,0 +1,221 @@
+# PocketMoney Architecture
+
+## Goal
+
+Build a Flutter app backed by Supabase that can reliably collect, classify, review, and present personal and household expense data. The architecture must support web, Android, and iOS clients now, and LLM-based expense Q&A and merchant enrichment later.
+
+## High-Level System
+
+```text
+Flutter Web / Android / iOS
+        |
+        | Supabase client SDK, authenticated user JWT
+        v
+Supabase Auth + Postgres + RLS
+        |
+        | privileged operations only
+        v
+Supabase Edge Functions
+        |
+        +--> Gmail API / Google Pub/Sub
+        +--> Import parsers
+        +--> Merchant reclassification
+        +--> AI provider later
+        +--> External worker later, if needed
+```
+
+## Core Components
+
+### Flutter Client
+
+The Flutter app owns presentation and user workflows:
+
+- Sign in and session handling.
+- Dashboard, transaction list, trends, merchant review, budgets, and piggy banks.
+- Direct reads and safe writes through Supabase SDK where RLS is sufficient.
+- Calls to Edge Functions for privileged operations such as Gmail OAuth, import execution, reclassification, and future AI.
+
+The client must not:
+
+- Store service-role keys.
+- Call LLM providers directly.
+- Read raw Gmail message bodies.
+- Bypass backend validation for imported or classified transactions.
+
+### Supabase Auth
+
+Use Google sign-in for app authentication in v1. Gmail read access is requested during connector setup, not assumed merely because the user signed in.
+
+Auth identities map to application profiles and household membership. Every user-visible finance row must be scoped through `household_id` and protected by RLS.
+
+### Supabase Postgres
+
+Postgres is the source of truth for:
+
+- Transactions.
+- Categories and monthly caps.
+- Merchants, aliases, and mapping rules.
+- Import batches and source records.
+- Review queue.
+- Piggy-bank accounts and ledger entries.
+- AI usage and enrichment jobs later.
+
+Use SQL views or RPCs for summary reads instead of duplicating summary state in the app.
+
+### Row Level Security
+
+RLS is mandatory for all app-accessible tables.
+
+Baseline rule:
+
+- A user may select/insert/update/delete rows only when they are an active member of the row's `household_id`.
+
+Privileged ingestion and maintenance operations run from Edge Functions using server-side credentials. Those functions must still validate the target household explicitly.
+
+### Edge Functions
+
+Edge Functions are the v1 backend execution layer. Use them for:
+
+- Gmail OAuth callback and token exchange.
+- Gmail Pub/Sub webhook.
+- Gmail history sync orchestration.
+- Workbook import.
+- Merchant rule application and reclassification.
+- Scheduled watch renewal and backfill.
+- Future lightweight AI calls.
+
+Edge Functions should stay short, idempotent, and request-oriented. They should enqueue work when the operation may be slow or retried.
+
+### Queues and Jobs
+
+Use Supabase Queues if available in the project, otherwise use a normal `jobs` table with status fields.
+
+Use queued jobs for:
+
+- Email sync from Gmail history IDs.
+- Workbook import batches.
+- Merchant reclassification across historical transactions.
+- Future merchant research.
+- Future expense Q&A audit logging and async answers.
+
+### Dedicated Worker Escape Hatch
+
+Do not start with a full backend server. Add a dedicated worker only when needed for:
+
+- Long-running LLM jobs.
+- Heavy web-search based merchant enrichment.
+- Large batch embedding generation.
+- High-volume email parsing.
+- Workflows that exceed Edge Function runtime or memory limits.
+
+The worker should consume jobs from Supabase and write results back to Postgres. The Flutter app should continue calling the same app-level functions/RPCs so the worker can be introduced without changing product workflows.
+
+## Data Flows
+
+### Historical Workbook Import
+
+1. User triggers an import or an admin import script runs.
+2. Importer reads `docs/Credit Card Spend Analysis - FY 2025-26.xlsx`.
+3. Importer creates an `import_batches` row.
+4. Workbook rows are transformed into normalized transactions, merchants, categories, and review items.
+5. Importer validates totals against workbook summary and validation sheets.
+6. Import batch is marked `completed` only if validation passes.
+
+### Gmail Transaction Ingestion
+
+1. User connects Gmail and grants read-only transaction email access.
+2. Backend stores OAuth refresh token securely.
+3. Backend calls Gmail `watch` for the mailbox and stores the returned `history_id` and expiration.
+4. Gmail sends mailbox-change notifications to Google Cloud Pub/Sub.
+5. Pub/Sub calls a Supabase webhook.
+6. Webhook validates the request, records the latest history ID, and enqueues a sync job.
+7. Sync job calls Gmail `history.list`, fetches candidate messages, parses supported templates, and upserts transactions idempotently.
+8. Low-confidence or unknown merchant/category mappings create `review_items`.
+
+### Merchant Review
+
+1. User opens the review queue.
+2. User corrects merchant group, category, and subcategory.
+3. Backend creates or updates a merchant mapping rule.
+4. Matching past transactions are reclassified.
+5. Future imports apply the same rule automatically.
+6. Reclassified rows preserve audit metadata.
+
+### Category Caps
+
+1. User sets monthly cap per category.
+2. Dashboard reads budget progress from a SQL view.
+3. Refunds reduce net spend.
+4. Card bill payments are excluded from spend.
+5. Over-budget state is derived from net spend greater than cap.
+
+### Piggy Banks
+
+1. User creates a piggy bank with target amount and optional target date.
+2. User records deposits, withdrawals, or adjustments.
+3. Balance is ledger-derived, not editable directly.
+4. Entries may optionally link to real transactions.
+
+### Future LLM Q&A
+
+1. User asks a question in the app.
+2. Client calls an Edge Function.
+3. Function validates membership and creates an `ai_usage_events` row.
+4. Function retrieves only scoped, relevant finance data through safe SQL views.
+5. Function calls the LLM provider.
+6. Answer, citations/queries, token usage, and cost estimate are stored.
+7. Client displays the answer.
+
+For heavier work, the Edge Function creates an `ai_jobs` row and returns job status. A worker processes the job asynchronously.
+
+## Security Invariants
+
+- Never put service-role keys in Flutter.
+- Never let the client call Gmail or LLM provider secrets directly.
+- Never retain raw email bodies by default.
+- Store Gmail tokens encrypted or in a protected secrets mechanism.
+- Enforce RLS on every exposed table.
+- Use `household_id` on every finance row.
+- Record import and AI usage audit events.
+- Deduplicate incoming transactions before inserting.
+- Treat all email parser output as untrusted until validated.
+
+## Financial Semantics
+
+- `amount` is the signed source amount when available.
+- `gross_spend` is positive purchase/debit amount.
+- `refund_amount` is positive refund/reversal amount.
+- `net_expense = gross_spend - refund_amount`.
+- Card bill payments and account credits are not expenses and have `net_expense = 0`.
+- Category summaries, budgets, and trends use `net_expense`.
+
+## Web and Mobile Deployment
+
+- Flutter web output is static and should be hosted outside Supabase, preferably Cloudflare Pages in v1.
+- Android and iOS builds use the same Supabase project, with platform-specific OAuth client IDs.
+- Use separate Supabase projects for staging and production once production data exists.
+
+## Cost Controls
+
+Edge Function invocations are expected to be low for personal/household usage. The larger future cost risk is AI token usage and web search.
+
+Required controls:
+
+- Log every Edge Function category in operational logs.
+- Log every AI call in `ai_usage_events`.
+- Add monthly AI budget caps before AI features become user-facing.
+- Cache merchant research by normalized merchant name.
+- Use deterministic merchant rules before LLM enrichment.
+- Only run web search on unknown or low-confidence merchants.
+- Keep Gmail sync idempotent to avoid retry loops and duplicate work.
+
+## Architecture References
+
+- Supabase Edge Functions: https://supabase.com/docs/guides/functions
+- Supabase Edge Function pricing: https://supabase.com/docs/guides/functions/pricing
+- Supabase RLS: https://supabase.com/docs/learn/auth-deep-dive/auth-row-level-security
+- Supabase Vault: https://supabase.com/docs/guides/database/vault/
+- Supabase Queues: https://supabase.com/docs/guides/queues/quickstart
+- Gmail push notifications: https://developers.google.com/workspace/gmail/api/guides/push
+- Google Pub/Sub pricing: https://cloud.google.com/pubsub/pricing
+
