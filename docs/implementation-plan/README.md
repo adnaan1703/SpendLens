@@ -69,3 +69,15 @@ When starting a new implementation thread:
 6. Preserve documented invariants, especially idempotency, RLS isolation, and no raw email retention.
 7. Update milestone notes when an implementation decision changes the plan.
 
+## Clarification Rule
+
+Codex must not silently choose product, architecture, schema, package naming, deployment, billing, or external-service values that are not already documented here or explicitly confirmed by the user.
+
+When a decision is needed:
+
+- Ask the user before proceeding.
+- Suggest a recommended value or option when useful.
+- Wait for explicit confirmation before implementing that choice.
+- Do not treat a recommendation in these docs as approval if the concrete value is still missing.
+
+Codex may still inspect the repository and use discovered facts, such as existing file names, current code structure, package versions, and committed configuration. The clarification rule applies to undecided choices, not discoverable repo facts.

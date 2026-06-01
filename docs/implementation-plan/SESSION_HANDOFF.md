@@ -32,6 +32,14 @@ At the start of a new implementation thread, read:
 - Raw email bodies are not retained by default.
 - LLM features are future milestones and must be backend-mediated.
 
+## Clarification Policy
+
+Future Codex sessions must ask the user before making any undocumented product, architecture, schema, naming, deployment, billing, or external-service decision.
+
+The session may recommend a default, but it must wait for explicit user confirmation before implementing that choice. Examples that require confirmation include app package name, bundle ID, production domain, Supabase project details, OAuth client choices, billing plan, AI provider, and monthly AI budget cap.
+
+Facts that can be read from the repository should be discovered directly. Do not ask the user for information that is already present in files or configuration.
+
 ## External Setup Timeline
 
 Do not ask the user to perform all setup at once. Ask only when the relevant milestone begins.
@@ -77,4 +85,3 @@ When an architecture decision changes:
 
 - Update `ARCHITECTURE.md` or `DATA_MODEL.md`.
 - Add a short note here explaining why the change was made.
-

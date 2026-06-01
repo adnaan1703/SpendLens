@@ -516,6 +516,7 @@ Add controlled LLM features without changing the app's core architecture.
 
 ## Cross-Milestone Consistency Rules
 
+- Ask the user before proceeding on any undocumented decision. Codex may recommend a default, but must wait for confirmation.
 - Keep all finance rows scoped to `household_id`.
 - Use RLS for app-accessible tables.
 - Do not store raw email bodies by default.
@@ -526,4 +527,3 @@ Add controlled LLM features without changing the app's core architecture.
 - Prefer deterministic rules before AI.
 - Keep client code free of service credentials.
 - Update these docs when architecture decisions change.
-
