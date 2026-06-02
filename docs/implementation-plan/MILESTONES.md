@@ -6,11 +6,11 @@ Each milestone is intended to be executable in a separate thread. A new thread s
 
 ### Objective
 
-Create the initial Flutter and Supabase project structure with local development conventions, environment handling, testing scaffolds, and documentation references.
+Create the initial Flutter Android and Supabase project structure with local development conventions, environment handling, testing scaffolds, and documentation references.
 
 ### Tasks
 
-- Create Flutter app scaffold for web, Android, and iOS.
+- Create Flutter app scaffold for Android.
 - Choose package name and app name consistently across platforms.
 - Add core Flutter packages:
   - Supabase Flutter SDK.
@@ -40,7 +40,7 @@ Create the initial Flutter and Supabase project structure with local development
 
 - `flutter test` passes.
 - `flutter analyze` passes.
-- Flutter web can run locally and show a placeholder authenticated-app shell.
+- Flutter app can run locally on an Android emulator and show a placeholder authenticated-app shell.
 - Supabase folder structure exists, but no production project is required yet.
 - No secrets are committed.
 
@@ -133,7 +133,7 @@ Build the usable Flutter shell with sign-in, household loading, navigation, and 
 ### Tasks
 
 - Implement Supabase Auth integration.
-- Add Google sign-in for web and mobile.
+- Add Google sign-in for Android.
 - Create profile on first login.
 - Create default household for first-time user.
 - Implement household context provider.
@@ -157,13 +157,13 @@ Build the usable Flutter shell with sign-in, household loading, navigation, and 
 ### External Work
 
 - User configures Google Auth provider in Supabase dev.
-- User configures OAuth redirect URLs for local web and mobile development.
+- User configures OAuth redirect URLs for local Android development.
 
 ### Acceptance Criteria
 
 - User can sign in and sign out.
 - App creates/loads profile and household.
-- Navigation works on desktop web and mobile viewport.
+- Navigation works on supported Android screen sizes.
 - Unauthenticated users cannot access app routes.
 - No finance feature makes privileged calls from the client.
 
@@ -330,7 +330,7 @@ Build the trend analysis screens that replace the workbook's monthly and summary
 
 - Monthly trends match imported workbook monthly totals.
 - Category and merchant summaries match imported workbook summaries.
-- Charts remain legible on web and mobile.
+- Charts remain legible on supported Android screen sizes.
 
 ## Milestone 9: Gmail Connector and Credit-Card Email Ingestion
 
@@ -428,8 +428,7 @@ Prepare the system for real personal finance data and everyday use.
 - Apply migrations to production.
 - Configure production Google OAuth and Pub/Sub.
 - Deploy Edge Functions.
-- Deploy Flutter web to Cloudflare Pages or chosen static host.
-- Configure Android and iOS builds.
+- Configure Android builds.
 - Add logging and monitoring:
   - Edge Function errors.
   - Ingestion failures.
@@ -450,13 +449,12 @@ Prepare the system for real personal finance data and everyday use.
 ### External Work
 
 - User creates production Supabase project.
-- User configures Cloudflare Pages or preferred hosting.
 - User configures Google Cloud production OAuth details.
-- User creates Apple Developer and Google Play Console accounts if mobile distribution is required.
+- User creates Google Play Console account if Android distribution is required.
 
 ### Acceptance Criteria
 
-- Web app is deployed and usable.
+- Android production or internal-test build is usable.
 - Production Supabase has RLS and migrations applied.
 - Gmail connector works in production.
 - Monitoring can identify failed ingestion.
@@ -527,3 +525,63 @@ Add controlled LLM features without changing the app's core architecture.
 - Prefer deterministic rules before AI.
 - Keep client code free of service credentials.
 - Update these docs when architecture decisions change.
+
+## Deferred Future Milestone: iOS App
+
+This milestone is intentionally outside the current implementation plan. Do not start it unless the user explicitly resumes iOS work.
+
+### Objective
+
+Add an iOS app that reuses the existing Flutter codebase and Supabase backend.
+
+### Tasks
+
+- Confirm iOS bundle identifier.
+- Install and configure Xcode only when iOS work resumes.
+- Install CocoaPods only when iOS plugin builds require it.
+- Add iOS platform scaffold and signing configuration.
+- Add iOS OAuth client and redirect URLs.
+- Verify Supabase Auth and Gmail connector deep-link behavior on iOS.
+- Run iOS simulator tests and a physical-device smoke test if available.
+- Prepare TestFlight distribution only when the user wants external testing.
+
+### External Work
+
+- User installs Xcode.
+- User enrolls in Apple Developer Program if TestFlight/App Store distribution is needed.
+- User configures iOS bundle identifier and OAuth client.
+
+### Acceptance Criteria
+
+- iOS build runs on simulator.
+- Auth and connector redirects return to the app correctly.
+- iOS client does not introduce privileged secrets or bypass RLS.
+
+## Deferred Future Milestone: Web Interface
+
+This milestone is intentionally outside the current implementation plan. Do not start it unless the user explicitly resumes web work.
+
+### Objective
+
+Add a web interface that reuses the existing Supabase backend, RLS policies, summary views, Edge Functions, and ingestion pipeline.
+
+### Tasks
+
+- Confirm whether the web interface should be Flutter web or a separate web stack.
+- Confirm target hosting provider and production domain.
+- Add web-specific OAuth redirect URLs and frontend configuration.
+- Implement responsive layouts for dashboard, transactions, trends, merchant review, budgets, and piggy banks.
+- Reuse existing data repositories and backend functions where possible.
+- Add web-specific build, deployment, and smoke tests.
+
+### External Work
+
+- User chooses web stack and hosting provider.
+- User configures web domain and hosting account.
+- User configures web OAuth redirect URLs.
+
+### Acceptance Criteria
+
+- Web interface is deployed and usable.
+- Web views match mobile financial semantics.
+- Web client does not introduce any privileged secrets or bypass RLS.

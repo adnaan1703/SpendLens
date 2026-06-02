@@ -22,7 +22,9 @@ At the start of a new implementation thread, read:
 
 ## Current Assumptions
 
-- Flutter will be used for web, Android, and iOS.
+- Flutter will be used for Android first.
+- iOS app work is deferred and not part of the current implementation plan.
+- Web interface work is deferred and not part of the current implementation plan.
 - Supabase is the v1 backend platform.
 - Architecture is serverless-first, not backend-less.
 - Gmail ingestion starts with Gmail API watch plus Pub/Sub.
@@ -48,7 +50,7 @@ Do not ask the user to perform all setup at once. Ask only when the relevant mil
 - Milestone 4: Supabase Google Auth configuration.
 - Milestone 9: Google Cloud project, Gmail API, Pub/Sub, OAuth consent, OAuth clients.
 - Milestone 10: Anonymized UPI email samples.
-- Milestone 11: Production Supabase project, web hosting, mobile store accounts if release is needed.
+- Milestone 11: Production Supabase project and Google Play Console account if Android release is needed.
 - Milestone 12: LLM provider account, API key, and monthly AI budget cap.
 
 ## Milestone Status

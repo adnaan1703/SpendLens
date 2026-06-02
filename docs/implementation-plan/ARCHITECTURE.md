@@ -2,12 +2,12 @@
 
 ## Goal
 
-Build a Flutter app backed by Supabase that can reliably collect, classify, review, and present personal and household expense data. The architecture must support web, Android, and iOS clients now, and LLM-based expense Q&A and merchant enrichment later.
+Build a Flutter Android app backed by Supabase that can reliably collect, classify, review, and present personal and household expense data. The current client target is Android only. The architecture should leave room for later iOS, web, LLM-based expense Q&A, and merchant enrichment.
 
 ## High-Level System
 
 ```text
-Flutter Web / Android / iOS
+Flutter Android
         |
         | Supabase client SDK, authenticated user JWT
         v
@@ -28,7 +28,7 @@ Supabase Edge Functions
 
 ### Flutter Client
 
-The Flutter app owns presentation and user workflows:
+The Flutter Android app owns presentation and user workflows:
 
 - Sign in and session handling.
 - Dashboard, transaction list, trends, merchant review, budgets, and piggy banks.
@@ -189,11 +189,18 @@ For heavier work, the Edge Function creates an `ai_jobs` row and returns job sta
 - Card bill payments and account credits are not expenses and have `net_expense = 0`.
 - Category summaries, budgets, and trends use `net_expense`.
 
-## Web and Mobile Deployment
+## Mobile Deployment
 
-- Flutter web output is static and should be hosted outside Supabase, preferably Cloudflare Pages in v1.
-- Android and iOS builds use the same Supabase project, with platform-specific OAuth client IDs.
+- Android builds use the Supabase project with Android-specific OAuth client IDs.
 - Use separate Supabase projects for staging and production once production data exists.
+
+## Deferred iOS App
+
+The iOS app is not part of the current implementation plan. When it is resumed later, it should reuse the same Supabase backend, RLS policies, summary views, Edge Functions, merchant rules, and ingestion pipeline. Do not add Xcode, CocoaPods, Apple Developer, iOS bundle identifier, iOS OAuth client, or iOS build requirements to current milestones unless the user explicitly reactivates iOS work.
+
+## Deferred Web Interface
+
+The web interface is not part of the current implementation plan. When it is resumed later, it should reuse the same Supabase backend, RLS policies, summary views, Edge Functions, merchant rules, and ingestion pipeline. Do not add web hosting, web OAuth clients, or web-specific UI requirements to current milestones unless the user explicitly reactivates web work.
 
 ## Cost Controls
 
@@ -218,4 +225,3 @@ Required controls:
 - Supabase Queues: https://supabase.com/docs/guides/queues/quickstart
 - Gmail push notifications: https://developers.google.com/workspace/gmail/api/guides/push
 - Google Pub/Sub pricing: https://cloud.google.com/pubsub/pricing
-

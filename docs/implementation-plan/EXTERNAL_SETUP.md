@@ -34,39 +34,20 @@ User actions:
 - Enable Cloud Pub/Sub API.
 - Configure OAuth consent screen.
 - Create OAuth client IDs for:
-  - Web app.
+  - Server-side web application OAuth callback for Supabase/Edge Functions, not a frontend web app.
   - Android app.
-  - iOS app.
 - Create a Pub/Sub topic for Gmail notifications.
 - Create a push subscription targeting the Supabase Gmail webhook URL.
 - Grant `gmail-api-push@system.gserviceaccount.com` publish permission on the Pub/Sub topic.
 - Add authorized redirect URIs for Supabase/Edge Function OAuth callback.
 
-### Cloudflare Pages or Similar Static Hosting
+### Web Hosting
 
-Needed by web deployment milestone.
+Deferred. Do not set up Cloudflare Pages or another web host during the current Android-first implementation plan. Revisit this only when the user explicitly resumes web interface work.
 
-Default v1 choice:
+### iOS Setup
 
-- Cloudflare Pages for Flutter web static hosting.
-
-User actions:
-
-- Create Cloudflare account if not available.
-- Connect the repository when ready.
-- Configure environment variables for the web build.
-- Add custom domain later if desired.
-
-### Apple Developer Program
-
-Needed before TestFlight/App Store distribution.
-
-User actions:
-
-- Enroll in Apple Developer Program.
-- Create iOS bundle identifier.
-- Configure iOS OAuth client ID in Google Cloud.
-- Configure app signing and capabilities.
+Deferred. Do not install Xcode, CocoaPods, configure an iOS bundle identifier, create an iOS OAuth client, or enroll in the Apple Developer Program during the current Android-first implementation plan. Revisit this only when the user explicitly resumes iOS app work.
 
 ### Google Play Console
 
@@ -84,7 +65,7 @@ User actions:
 Required configuration:
 
 - Enable Google Auth provider for app sign-in.
-- Add redirect URLs for web and mobile auth flows.
+- Add redirect URLs for Android auth flows.
 - Enable required Postgres extensions:
   - `pgcrypto` or UUID generation support.
   - Supabase Vault if storing encrypted connector secrets there.
@@ -137,8 +118,7 @@ Do not ask for these upfront. Ask only when the relevant milestone begins:
 - Google OAuth callback URL.
 - Pub/Sub topic and subscription names.
 - Android package name.
-- iOS bundle identifier.
-- Preferred production domain.
+- iOS bundle identifier, only when iOS app work resumes.
+- Preferred web production domain, only when web interface work resumes.
 
 Secrets should be entered into local `.env` files or platform secret stores, not pasted into source-controlled documents.
-
