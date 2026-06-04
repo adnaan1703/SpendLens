@@ -5,9 +5,9 @@ Use this file to coordinate work across multiple implementation sessions. Update
 ## Current Status
 
 - Current milestone: Not started.
-- Last completed milestone: Documentation planning only.
-- Current implementation state: No app/backend code exists yet. Repository contains the source workbook and implementation plan docs.
-- Next recommended milestone: Milestone 1, Project Foundation.
+- Last completed milestone: Milestone 1, Project Foundation.
+- Current implementation state: Flutter Android app scaffold exists in `apps/mobile` with SpendLens app shell, package `com.olympus.spendlens`, core packages, environment templates, tests, and Supabase folder structure. Repository also contains the source workbook and implementation plan docs.
+- Next recommended milestone: Milestone 2, Supabase Schema, RLS, and Local Backend.
 
 ## Required Reading for New Threads
 
@@ -55,7 +55,7 @@ Do not ask the user to perform all setup at once. Ask only when the relevant mil
 
 ## Milestone Status
 
-- Milestone 1, Project Foundation: pending.
+- Milestone 1, Project Foundation: completed.
 - Milestone 2, Supabase Schema, RLS, and Local Backend: pending.
 - Milestone 3, Workbook Import and Historical Seed Data: pending.
 - Milestone 4, App Shell, Authentication, and Household Context: pending.
@@ -87,3 +87,17 @@ When an architecture decision changes:
 
 - Update `ARCHITECTURE.md` or `DATA_MODEL.md`.
 - Add a short note here explaining why the change was made.
+
+## Milestone 1 Completion Notes
+
+- Completed on 2026-06-04.
+- User-confirmed app display name: `SpendLens`.
+- User-confirmed Android package name: `com.olympus.spendlens`.
+- User-confirmed package choices: `go_router`, `flutter_riverpod`, `fl_chart`, plus `supabase_flutter`.
+- CI was skipped by user request.
+- Added local/staging/production Flutter env templates under `apps/mobile/env`.
+- Added Supabase backend folder documentation; Supabase CLI was not installed locally during this milestone.
+- Verification run:
+  - `flutter analyze`
+  - `flutter test`
+  - `flutter build apk --debug --no-pub`
