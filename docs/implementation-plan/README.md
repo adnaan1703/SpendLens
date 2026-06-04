@@ -1,6 +1,6 @@
-# PocketMoney Implementation Plan
+# SpendLens Implementation Plan
 
-This folder is the durable planning context for building PocketMoney across multiple Codex sessions.
+This folder is the durable planning context for building SpendLens across multiple Codex sessions.
 
 Read these documents in order at the start of every new implementation thread:
 
@@ -13,7 +13,7 @@ Read these documents in order at the start of every new implementation thread:
 
 ## Product Summary
 
-PocketMoney is a personal and household expense intelligence app. The current implementation plan is Android-first: build the Flutter Android app first and defer iOS and web until later.
+SpendLens is a personal and household expense intelligence app. The current implementation plan is Android-first: build the Flutter Android app first and defer iOS and web until later.
 
 The app imports historical credit-card analysis from `docs/Credit Card Spend Analysis - FY 2025-26.xlsx`, then moves to ongoing ingestion from Gmail transaction emails for credit cards and UPI. It presents spend by category, monthly category caps, transaction details, merchant review workflows, trends, and manual piggy-bank ledgers for future goals.
 

@@ -1,4 +1,4 @@
-# PocketMoney Architecture
+# SpendLens Architecture
 
 ## Goal
 

@@ -1,4 +1,4 @@
-# PocketMoney Data Model
+# SpendLens Data Model
 
 ## Principles
 

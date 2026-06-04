@@ -1,4 +1,4 @@
-# PocketMoney Milestones
+# SpendLens Milestones
 
 Each milestone is intended to be executable in a separate thread. A new thread should read `README.md`, `ARCHITECTURE.md`, `DATA_MODEL.md`, `INGESTION.md`, and the active milestone before making changes.
 

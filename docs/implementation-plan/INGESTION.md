@@ -1,4 +1,4 @@
-# PocketMoney Ingestion Design
+# SpendLens Ingestion Design
 
 ## Goals
 
