@@ -5,9 +5,9 @@ Use this file to coordinate work across multiple implementation sessions. Update
 ## Current Status
 
 - Current milestone: Not started.
-- Last completed milestone: Milestone 2, Supabase Schema, RLS, and Local Backend.
-- Current implementation state: Flutter Android app scaffold exists in `apps/mobile` with SpendLens app shell, package `com.olympus.spendlens`, core packages, environment templates, tests, and Supabase folder structure. Supabase local config now applies the M2 migrations for schema, RLS, views, workbook-derived default categories, and pgTAP database tests.
-- Next recommended milestone: Milestone 3, Workbook Import and Historical Seed Data.
+- Last completed milestone: Milestone 3, Workbook Import and Historical Seed Data.
+- Current implementation state: Flutter Android app scaffold exists in `apps/mobile` with SpendLens app shell, package `com.olympus.spendlens`, core packages, environment templates, tests, and Supabase folder structure. Supabase local config applies the M2 migrations for schema, RLS, views, workbook-derived default categories, and pgTAP database tests. Milestone 3 adds a local workbook importer under `tools/workbook-import`, fixture tests, and rerun documentation in `docs/implementation-plan/WORKBOOK_IMPORT.md`.
+- Next recommended milestone: Milestone 4, App Shell, Authentication, and Household Context.
 
 ## Required Reading for New Threads
 
@@ -57,7 +57,7 @@ Do not ask the user to perform all setup at once. Ask only when the relevant mil
 
 - Milestone 1, Project Foundation: completed.
 - Milestone 2, Supabase Schema, RLS, and Local Backend: completed.
-- Milestone 3, Workbook Import and Historical Seed Data: pending.
+- Milestone 3, Workbook Import and Historical Seed Data: completed.
 - Milestone 4, App Shell, Authentication, and Household Context: pending.
 - Milestone 5, Expense Dashboard, Transactions, and Monthly Caps: pending.
 - Milestone 6, Merchant Mapping and Review Workflow: pending.
@@ -119,4 +119,38 @@ When an architecture decision changes:
   - Supabase MCP remote security and performance advisors
 - Known gaps:
   - The Supabase CLI project is not linked locally, so migrations were not pushed to the remote project from this session.
-  - Full workbook transaction import remains Milestone 3.
+  - Full workbook transaction import was deferred to Milestone 3 and is now complete.
+
+## Milestone 3 Completion Notes
+
+- Completed on 2026-06-05.
+- Added a pinned local Node importer in `tools/workbook-import` for `docs/Credit Card Spend Analysis - FY 2025-26.xlsx`.
+- The importer creates a deterministic local seed auth user/profile/household, one deterministic workbook import batch, source accounts for the three cardholders, household categories/subcategories, merchants, merchant aliases, transactions, transaction source metadata, and review items.
+- Stable fingerprints are derived from workbook source facts; running the import twice leaves 475 workbook transactions and reuses the same import batch.
+- Imported workbook totals observed:
+  - Transactions: 475.
+  - Gross spend: 1,548,630.69.
+  - Refunds: 26,242.46.
+  - Net expense: 1,522,388.23.
+  - Card bill payments: 1,349,006.00.
+  - Review items: 29 open items.
+- Local database counts after the second import: one import batch, 3 source accounts, 21 categories, 34 subcategories, 44 merchants, 171 merchant aliases, 475 transaction source rows, and 29 review items.
+- Added `docs/implementation-plan/WORKBOOK_IMPORT.md` with safe local rerun steps and admin/credential boundaries.
+- Verification run:
+  - `npm --prefix tools/workbook-import install`
+  - `npm --prefix tools/workbook-import audit --audit-level=moderate`
+  - `npm --prefix tools/workbook-import test`
+  - `npm --prefix tools/workbook-import run validate`
+  - `supabase db reset --local`
+  - `npm --prefix tools/workbook-import run import`
+  - `npm --prefix tools/workbook-import run import`
+  - `supabase db query --local -o json "<validation count query>"`
+  - `supabase test db --local supabase/tests`
+  - `supabase db lint --local --schema public --fail-on error`
+  - `supabase db lint --local --schema app_private,public --fail-on error`
+  - `supabase db advisors --local --type security --level warn --fail-on none`
+  - `supabase db advisors --local --type performance --level warn --fail-on none`
+  - `npm --prefix tools/workbook-import ci`
+- Known gaps:
+  - No remote Supabase import or remote advisors were run; Milestone 3 was verified locally only.
+  - `supabase db lint --local --fail-on error` across all schemas fails on pgTAP helper functions in the Supabase `extensions` schema after database tests install pgTAP. Targeted app schemas (`app_private,public`) pass with no schema errors.

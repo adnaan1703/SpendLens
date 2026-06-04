@@ -1,0 +1,18 @@
+{
+  "name": "@spendlens/workbook-import",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "import": "node src/workbook-importer.mjs",
+    "validate": "node src/workbook-importer.mjs --dry-run",
+    "test": "node --test test/*.test.mjs"
+  },
+  "dependencies": {
+    "@e965/xlsx": "0.20.3",
+    "pg": "8.21.0"
+  }
+}
