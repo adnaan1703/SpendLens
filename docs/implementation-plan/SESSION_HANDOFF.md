@@ -5,9 +5,9 @@ Use this file to coordinate work across multiple implementation sessions. Update
 ## Current Status
 
 - Current milestone: Not started.
-- Last completed milestone: Milestone 1, Project Foundation.
-- Current implementation state: Flutter Android app scaffold exists in `apps/mobile` with SpendLens app shell, package `com.olympus.spendlens`, core packages, environment templates, tests, and Supabase folder structure. Repository also contains the source workbook and implementation plan docs.
-- Next recommended milestone: Milestone 2, Supabase Schema, RLS, and Local Backend.
+- Last completed milestone: Milestone 2, Supabase Schema, RLS, and Local Backend.
+- Current implementation state: Flutter Android app scaffold exists in `apps/mobile` with SpendLens app shell, package `com.olympus.spendlens`, core packages, environment templates, tests, and Supabase folder structure. Supabase local config now applies the M2 migrations for schema, RLS, views, workbook-derived default categories, and pgTAP database tests.
+- Next recommended milestone: Milestone 3, Workbook Import and Historical Seed Data.
 
 ## Required Reading for New Threads
 
@@ -56,7 +56,7 @@ Do not ask the user to perform all setup at once. Ask only when the relevant mil
 ## Milestone Status
 
 - Milestone 1, Project Foundation: completed.
-- Milestone 2, Supabase Schema, RLS, and Local Backend: pending.
+- Milestone 2, Supabase Schema, RLS, and Local Backend: completed.
 - Milestone 3, Workbook Import and Historical Seed Data: pending.
 - Milestone 4, App Shell, Authentication, and Household Context: pending.
 - Milestone 5, Expense Dashboard, Transactions, and Monthly Caps: pending.
@@ -101,3 +101,22 @@ When an architecture decision changes:
   - `flutter analyze`
   - `flutter test`
   - `flutter build apk --debug --no-pub`
+
+## Milestone 2 Completion Notes
+
+- Completed on 2026-06-05.
+- Added Supabase migrations for app identity, households, source accounts/mailboxes, imports, categories/caps, merchants/rules, transactions/sources, review queue, piggy banks, enums, constraints, indexes, RLS policies, grants, and summary views.
+- Added workbook-derived default category and subcategory seed migration from `docs/Credit Card Spend Analysis - FY 2025-26.xlsx`.
+- Added pgTAP database tests for household RLS isolation, RLS/security-invoker posture, and key summary view calculations.
+- Local Supabase stack was started; no duplicate sleep guard was started.
+- Verification run:
+  - `supabase db reset --local`
+  - `supabase test db --local supabase/tests`
+  - `supabase db lint --local --schema public --fail-on error`
+  - `supabase db lint --local --fail-on error`
+  - `supabase db advisors --local --type security --level warn --fail-on none`
+  - `supabase db advisors --local --type performance --level warn --fail-on none`
+  - Supabase MCP remote security and performance advisors
+- Known gaps:
+  - The Supabase CLI project is not linked locally, so migrations were not pushed to the remote project from this session.
+  - Full workbook transaction import remains Milestone 3.
