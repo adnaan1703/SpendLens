@@ -36,7 +36,13 @@ class MetricCard extends StatelessWidget {
                 ],
               ),
               const SizedBox(height: 16),
-              Text(value, style: theme.textTheme.headlineSmall),
+              Align(
+                alignment: Alignment.centerLeft,
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Text(value, style: theme.textTheme.headlineSmall),
+                ),
+              ),
               if (supportingText != null) ...[
                 const SizedBox(height: 8),
                 Text(supportingText!, style: theme.textTheme.bodySmall),

@@ -5,9 +5,9 @@ Use this file to coordinate work across multiple implementation sessions. Update
 ## Current Status
 
 - Current milestone: Not started.
-- Last completed milestone: Milestone 4, App Shell, Authentication, and Household Context.
-- Current implementation state: Flutter Android app scaffold exists in `apps/mobile` with SpendLens Google sign-in, route protection, authenticated shell, RLS-safe profile/default-household bootstrap, household loading/error states, sign-out, package `com.olympus.spendlens`, core packages, environment templates, tests, and Supabase folder structure. Supabase local config applies the M2 migrations for schema, RLS, views, workbook-derived default categories, pgTAP database tests, and the Android auth redirect URL. Milestone 3 adds a local workbook importer under `tools/workbook-import`, fixture tests, and rerun documentation in `docs/implementation-plan/WORKBOOK_IMPORT.md`.
-- Next recommended milestone: Milestone 5, Expense Dashboard, Transactions, and Monthly Caps.
+- Last completed milestone: Milestone 5, Expense Dashboard, Transactions, and Monthly Caps.
+- Current implementation state: Flutter Android app scaffold exists in `apps/mobile` with SpendLens Google sign-in, route protection, authenticated shell, RLS-safe profile/default-household bootstrap, household loading/error states, sign-out, package `com.olympus.spendlens`, core packages, environment templates, tests, and Supabase folder structure. Supabase local config applies the M2 migrations for schema, RLS, views, workbook-derived default categories, pgTAP database tests, and the Android auth redirect URL. Milestone 3 adds a local workbook importer under `tools/workbook-import`, fixture tests, and rerun documentation in `docs/implementation-plan/WORKBOOK_IMPORT.md`. Milestone 5 adds Supabase-backed finance repository reads/writes, dashboard KPIs, reporting-month selection, monthly category cap setup/editing, category and merchant summaries, transaction search/filter pagination, and transaction detail panels.
+- Next recommended milestone: Milestone 6, Merchant Mapping and Review Workflow.
 
 ## Required Reading for New Threads
 
@@ -59,7 +59,7 @@ Do not ask the user to perform all setup at once. Ask only when the relevant mil
 - Milestone 2, Supabase Schema, RLS, and Local Backend: completed.
 - Milestone 3, Workbook Import and Historical Seed Data: completed.
 - Milestone 4, App Shell, Authentication, and Household Context: completed.
-- Milestone 5, Expense Dashboard, Transactions, and Monthly Caps: pending.
+- Milestone 5, Expense Dashboard, Transactions, and Monthly Caps: completed.
 - Milestone 6, Merchant Mapping and Review Workflow: pending.
 - Milestone 7, Piggy Banks: pending.
 - Milestone 8, Trends and Reports: pending.
@@ -177,3 +177,19 @@ When an architecture decision changes:
 - Known gaps:
   - Google Auth provider and Android OAuth client still require external Supabase/Google Console setup before live sign-in can be tested.
   - `flutter test integration_test` could not run because no supported Android device/emulator was connected.
+
+## Milestone 5 Completion Notes
+
+- Completed on 2026-06-05.
+- Replaced the placeholder finance repository with Supabase-backed models/providers for monthly spend, category spend, budget progress, categories, source accounts, paginated transactions, and category cap upserts through authenticated RLS-protected client calls.
+- Dashboard now shows the selected reporting month's net spend, month-over-month change, review count, cap count, top categories, top merchants, budget progress, uncapped categories, and cap add/edit dialog.
+- Transactions now support merchant search, category filter, source-account filter, date-range filter, pagination, clear filters, and a detail bottom sheet with gross spend, refunds, net expense, source amount, category, type, confidence, cardholder, and notes.
+- Added widget tests with a fake finance repository for dashboard KPI/cap behavior and transaction search/category filter behavior.
+- Verification run:
+  - `dart format apps/mobile/lib/src/data/repositories/finance_repository.dart apps/mobile/lib/src/features/dashboard/dashboard_screen.dart apps/mobile/lib/src/features/transactions/transactions_screen.dart apps/mobile/lib/src/shared/widgets/metric_card.dart apps/mobile/test/finance_features_test.dart`
+  - `flutter analyze`
+  - `flutter test`
+  - `flutter build apk --debug --no-pub`
+- Known gaps:
+  - No schema migration was needed for this milestone; existing M2 summary views and RLS/grants are used.
+  - Live authenticated Supabase data and Android-device integration coverage were not exercised in this session.
