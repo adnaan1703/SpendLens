@@ -5,9 +5,9 @@ Use this file to coordinate work across multiple implementation sessions. Update
 ## Current Status
 
 - Current milestone: Not started.
-- Last completed milestone: Milestone 6, Merchant Mapping and Review Workflow.
-- Current implementation state: Flutter Android app scaffold exists in `apps/mobile` with SpendLens Google sign-in, route protection, authenticated shell, RLS-safe profile/default-household bootstrap, household loading/error states, sign-out, package `com.olympus.spendlens`, core packages, environment templates, tests, and Supabase folder structure. Supabase local config applies migrations for schema, RLS, views, workbook-derived default categories, merchant review corrections, pgTAP database tests, and the Android auth redirect URL. Milestone 3 adds a local workbook importer under `tools/workbook-import`, fixture tests, and rerun documentation in `docs/implementation-plan/WORKBOOK_IMPORT.md`. Milestone 5 adds Supabase-backed finance repository reads/writes, dashboard KPIs, reporting-month selection, monthly category cap setup/editing, category and merchant summaries, transaction search/filter pagination, and transaction detail panels. Milestone 6 adds merchant review queue UI, correction RPC/rule persistence, historical reclassification, review resolution, transaction classification audit metadata, and future-import rule application.
-- Next recommended milestone: Milestone 7, Piggy Banks.
+- Last completed milestone: Milestone 7, Piggy Banks.
+- Current implementation state: Flutter Android app scaffold exists in `apps/mobile` with SpendLens Google sign-in, route protection, authenticated shell, RLS-safe profile/default-household bootstrap, household loading/error states, sign-out, package `com.olympus.spendlens`, core packages, environment templates, tests, and Supabase folder structure. Supabase local config applies migrations for schema, RLS, views, workbook-derived default categories, merchant review corrections, piggy-bank entry validation, pgTAP database tests, and the Android auth redirect URL. Milestone 3 adds a local workbook importer under `tools/workbook-import`, fixture tests, and rerun documentation in `docs/implementation-plan/WORKBOOK_IMPORT.md`. Milestone 5 adds Supabase-backed finance repository reads/writes, dashboard KPIs, reporting-month selection, monthly category cap setup/editing, category and merchant summaries, transaction search/filter pagination, and transaction detail panels. Milestone 6 adds merchant review queue UI, correction RPC/rule persistence, historical reclassification, review resolution, transaction classification audit metadata, and future-import rule application. Milestone 7 adds Supabase-backed piggy-bank list/detail UI, create/edit forms, ledger entry creation, ledger-derived balance/progress reads, no-overdraft withdrawal validation, and regression tests.
+- Next recommended milestone: Milestone 8, Trends and Reports.
 
 ## Required Reading for New Threads
 
@@ -61,7 +61,7 @@ Do not ask the user to perform all setup at once. Ask only when the relevant mil
 - Milestone 4, App Shell, Authentication, and Household Context: completed.
 - Milestone 5, Expense Dashboard, Transactions, and Monthly Caps: completed.
 - Milestone 6, Merchant Mapping and Review Workflow: completed.
-- Milestone 7, Piggy Banks: pending.
+- Milestone 7, Piggy Banks: completed.
 - Milestone 8, Trends and Reports: pending.
 - Milestone 9, Gmail Connector and Credit-Card Email Ingestion: pending.
 - Milestone 10, UPI Ingestion and Parser Expansion: pending.
@@ -228,3 +228,31 @@ When an architecture decision changes:
 - Known gaps:
   - No Supabase remote migration push or remote advisors were run; verification was local only.
   - Live authenticated Android-device review workflow coverage was not exercised in this session.
+
+## Milestone 7 Completion Notes
+
+- Completed on 2026-06-05.
+- Added a Supabase migration for `create_piggy_bank_entry`, an authenticated security-invoker RPC that inserts ledger entries, records the signed-in profile, supports optional linked transactions, serializes per-piggy-bank writes, and rejects withdrawals that exceed the current ledger-derived balance.
+- Added pgTAP coverage for empty balances, target progress, deposits, withdrawals, adjustments, linked transactions, no-overdraft validation, and positive-amount validation.
+- Expanded the Flutter finance repository with piggy-bank summaries, entry timelines, create/edit piggy-bank writes, and entry creation through the RPC.
+- Replaced the placeholder Piggy Banks screen with active ledger cards, current balance/target progress detail, create/edit forms, deposit/withdrawal/adjustment entry dialogs, notes, and optional linked transaction selection.
+- Added widget coverage for creating a piggy bank, adding deposit/withdrawal entries, and verifying balance plus target-progress updates.
+- Verification run:
+  - `curl -L --max-time 20 https://supabase.com/changelog.md | sed -n '1,220p'`
+  - Supabase MCP docs search for RLS/RPC/security-invoker guidance
+  - `supabase migration --help`
+  - `supabase db --help`
+  - `supabase migration new piggy_bank_entry_validation`
+  - `supabase db reset --local`
+  - `supabase test db --local supabase/tests`
+  - `supabase db lint --local --schema app_private,public --fail-on error`
+  - `supabase db advisors --local --type security --level warn --fail-on none`
+  - `supabase db advisors --local --type performance --level warn --fail-on none`
+  - `dart format lib/src/data/repositories/finance_repository.dart lib/src/features/piggy_banks/piggy_banks_screen.dart test/finance_features_test.dart`
+  - `flutter test test/finance_features_test.dart`
+  - `flutter analyze`
+  - `flutter test`
+  - `flutter build apk --debug --no-pub`
+- Known gaps:
+  - No Supabase remote migration push or remote advisors were run; verification was local only.
+  - Live authenticated Android-device piggy-bank workflow coverage was not exercised in this session.

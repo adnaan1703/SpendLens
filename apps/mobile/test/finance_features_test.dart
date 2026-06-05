@@ -6,6 +6,7 @@ import 'package:spendlens/src/data/repositories/finance_repository.dart';
 import 'package:spendlens/src/data/repositories/household_repository.dart';
 import 'package:spendlens/src/features/dashboard/dashboard_screen.dart';
 import 'package:spendlens/src/features/merchant_review/merchant_review_screen.dart';
+import 'package:spendlens/src/features/piggy_banks/piggy_banks_screen.dart';
 import 'package:spendlens/src/features/transactions/transactions_screen.dart';
 
 void main() {
@@ -101,6 +102,58 @@ void main() {
     expect(find.text('No review items'), findsOneWidget);
     expect(find.text('Resolved 1 review items'), findsOneWidget);
   });
+
+  testWidgets('piggy banks create entries and update target progress', (
+    tester,
+  ) async {
+    final repository = _FakeFinanceRepository();
+
+    await tester.pumpWidget(
+      _financeTestApp(repository: repository, child: const PiggyBanksScreen()),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('No piggy banks'), findsOneWidget);
+
+    await tester.tap(find.text('Create piggy bank'));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byType(TextFormField).at(0), 'Vacation');
+    await tester.enterText(find.byType(TextFormField).at(1), 'Flights');
+    await tester.enterText(find.byType(TextFormField).at(2), '1000');
+    await tester.tap(find.text('Save'));
+    await tester.pumpAndSettle();
+
+    expect(repository.piggyBanks, hasLength(1));
+    expect(find.text('Vacation'), findsWidgets);
+    expect(find.text('Target INR 1,000'), findsWidgets);
+
+    await tester.ensureVisible(find.text('Deposit').first);
+    await tester.tap(find.text('Deposit').first);
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byType(TextFormField).first, '400');
+    await tester.enterText(find.byType(TextFormField).last, 'Initial deposit');
+    await tester.tap(find.text('Save'));
+    await tester.pumpAndSettle();
+
+    expect(repository.piggyEntries, hasLength(1));
+    expect(repository.currentPiggyBalance('piggy-1'), 400);
+    expect(find.text('INR 400'), findsWidgets);
+    expect(find.text('40%'), findsOneWidget);
+    expect(find.text('+INR 400'), findsOneWidget);
+
+    await tester.ensureVisible(find.text('Withdraw').first);
+    await tester.tap(find.text('Withdraw').first);
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byType(TextFormField).first, '125');
+    await tester.tap(find.text('Save'));
+    await tester.pumpAndSettle();
+
+    expect(repository.piggyEntries, hasLength(2));
+    expect(repository.currentPiggyBalance('piggy-1'), 275);
+    expect(find.text('INR 275'), findsWidgets);
+    expect(find.text('28%'), findsOneWidget);
+    expect(find.text('-INR 125'), findsOneWidget);
+  });
 }
 
 Widget _financeTestApp({
@@ -144,6 +197,8 @@ final class _SavedCap {
 final class _FakeFinanceRepository implements FinanceRepository {
   final savedCaps = <_SavedCap>[];
   final corrections = <MerchantCorrectionRequest>[];
+  final piggyBanks = <PiggyBankSummary>[];
+  final piggyEntries = <PiggyBankEntry>[];
   TransactionQuery? lastQuery;
 
   final categories = const [
@@ -322,6 +377,107 @@ final class _FakeFinanceRepository implements FinanceRepository {
   }
 
   @override
+  Future<List<PiggyBankSummary>> fetchPiggyBanks({
+    required String householdId,
+  }) async {
+    return piggyBanks
+        .where((piggyBank) => piggyBank.householdId == householdId)
+        .map(_summaryWithCurrentBalance)
+        .toList();
+  }
+
+  @override
+  Future<PiggyBankSummary> savePiggyBank(PiggyBankSaveRequest request) async {
+    final now = DateTime(2026, 3, 20, 12);
+    final id = request.id ?? 'piggy-${piggyBanks.length + 1}';
+    final existing = piggyBanks
+        .where((piggyBank) => piggyBank.id == id)
+        .firstOrNull;
+    final summary = PiggyBankSummary(
+      id: id,
+      householdId: request.householdId,
+      name: request.name,
+      description: request.description,
+      targetAmount: request.targetAmount,
+      targetDate: request.targetDate,
+      currencyCode: request.currencyCode,
+      isArchived: false,
+      createdBy: request.profileId,
+      createdAt: existing?.createdAt ?? now,
+      updatedAt: now,
+      balanceAmount: currentPiggyBalance(id),
+      targetProgress: _targetProgress(
+        balance: currentPiggyBalance(id),
+        targetAmount: request.targetAmount,
+      ),
+    );
+
+    if (existing == null) {
+      piggyBanks.add(summary);
+    } else {
+      final index = piggyBanks.indexWhere((piggyBank) => piggyBank.id == id);
+      piggyBanks[index] = summary;
+    }
+
+    return summary;
+  }
+
+  @override
+  Future<List<PiggyBankEntry>> fetchPiggyBankEntries({
+    required String householdId,
+    required String piggyBankId,
+  }) async {
+    return piggyEntries
+        .where(
+          (entry) =>
+              entry.householdId == householdId &&
+              entry.piggyBankId == piggyBankId,
+        )
+        .toList()
+      ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
+  }
+
+  @override
+  Future<PiggyBankEntry> createPiggyBankEntry(
+    PiggyBankEntryRequest request,
+  ) async {
+    if (request.entryType != 'adjustment' && request.amount <= 0) {
+      throw StateError('Amount must be positive');
+    }
+
+    if (request.entryType == 'adjustment' && request.amount == 0) {
+      throw StateError('Adjustment amount cannot be zero');
+    }
+
+    if (request.entryType == 'withdrawal' &&
+        request.amount > currentPiggyBalance(request.piggyBankId)) {
+      throw StateError('Withdrawal cannot exceed current balance');
+    }
+
+    final entry = PiggyBankEntry(
+      id: 'entry-${piggyEntries.length + 1}',
+      householdId: request.householdId,
+      piggyBankId: request.piggyBankId,
+      entryType: request.entryType,
+      amount: request.amount,
+      entryDate: request.entryDate,
+      note: request.note,
+      linkedTransactionId: request.linkedTransactionId,
+      createdBy: _householdContext.profile.id,
+      createdAt: DateTime(2026, 3, 20, 12, piggyEntries.length),
+    );
+    piggyEntries.add(entry);
+
+    return entry;
+  }
+
+  double currentPiggyBalance(String piggyBankId) {
+    return piggyEntries
+        .where((entry) => entry.piggyBankId == piggyBankId)
+        .fold<double>(0, (total, entry) => total + entry.signedAmount);
+  }
+
+  @override
   Future<PagedTransactions> fetchTransactions(TransactionQuery query) async {
     lastQuery = query;
     final search = query.searchText.trim().toLowerCase();
@@ -367,5 +523,46 @@ final class _FakeFinanceRepository implements FinanceRepository {
     required double capAmount,
   }) async {
     savedCaps.add(_SavedCap(categoryId: categoryId, capAmount: capAmount));
+  }
+
+  PiggyBankSummary _summaryWithCurrentBalance(PiggyBankSummary piggyBank) {
+    final balance = currentPiggyBalance(piggyBank.id);
+
+    return PiggyBankSummary(
+      id: piggyBank.id,
+      householdId: piggyBank.householdId,
+      name: piggyBank.name,
+      description: piggyBank.description,
+      targetAmount: piggyBank.targetAmount,
+      targetDate: piggyBank.targetDate,
+      currencyCode: piggyBank.currencyCode,
+      isArchived: piggyBank.isArchived,
+      createdBy: piggyBank.createdBy,
+      createdAt: piggyBank.createdAt,
+      updatedAt: piggyBank.updatedAt,
+      balanceAmount: balance,
+      targetProgress: _targetProgress(
+        balance: balance,
+        targetAmount: piggyBank.targetAmount,
+      ),
+    );
+  }
+
+  double? _targetProgress({
+    required double balance,
+    required double? targetAmount,
+  }) {
+    if (targetAmount == null || targetAmount <= 0) return null;
+
+    return double.parse((balance / targetAmount).toStringAsFixed(4));
+  }
+}
+
+extension _FirstOrNull<T> on Iterable<T> {
+  T? get firstOrNull {
+    final iterator = this.iterator;
+    if (iterator.moveNext()) return iterator.current;
+
+    return null;
   }
 }

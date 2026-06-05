@@ -64,6 +64,26 @@ final merchantOptionsProvider =
           .fetchMerchants(householdId: householdId);
     });
 
+final piggyBanksProvider =
+    FutureProvider.family<List<PiggyBankSummary>, String>((ref, householdId) {
+      return ref
+          .watch(financeRepositoryProvider)
+          .fetchPiggyBanks(householdId: householdId);
+    });
+
+final piggyBankEntriesProvider =
+    FutureProvider.family<List<PiggyBankEntry>, PiggyBankEntriesRequest>((
+      ref,
+      request,
+    ) {
+      return ref
+          .watch(financeRepositoryProvider)
+          .fetchPiggyBankEntries(
+            householdId: request.householdId,
+            piggyBankId: request.piggyBankId,
+          );
+    });
+
 final transactionsProvider =
     FutureProvider.family<PagedTransactions, TransactionQuery>((ref, query) {
       return ref.watch(financeRepositoryProvider).fetchTransactions(query);
@@ -157,6 +177,26 @@ final class TransactionQuery {
     page,
     pageSize,
   );
+}
+
+final class PiggyBankEntriesRequest {
+  const PiggyBankEntriesRequest({
+    required this.householdId,
+    required this.piggyBankId,
+  });
+
+  final String householdId;
+  final String piggyBankId;
+
+  @override
+  bool operator ==(Object other) {
+    return other is PiggyBankEntriesRequest &&
+        other.householdId == householdId &&
+        other.piggyBankId == piggyBankId;
+  }
+
+  @override
+  int get hashCode => Object.hash(householdId, piggyBankId);
 }
 
 final class DashboardSnapshot {
@@ -596,6 +636,167 @@ final class FinanceTransaction {
   }
 }
 
+final class PiggyBankSummary {
+  const PiggyBankSummary({
+    required this.id,
+    required this.householdId,
+    required this.name,
+    this.description,
+    this.targetAmount,
+    this.targetDate,
+    required this.currencyCode,
+    required this.isArchived,
+    this.createdBy,
+    required this.createdAt,
+    required this.updatedAt,
+    required this.balanceAmount,
+    this.targetProgress,
+  });
+
+  final String id;
+  final String householdId;
+  final String name;
+  final String? description;
+  final double? targetAmount;
+  final DateTime? targetDate;
+  final String currencyCode;
+  final bool isArchived;
+  final String? createdBy;
+  final DateTime createdAt;
+  final DateTime updatedAt;
+  final double balanceAmount;
+  final double? targetProgress;
+
+  double? get remainingToTarget {
+    final target = targetAmount;
+    if (target == null) return null;
+
+    return target - balanceAmount;
+  }
+
+  factory PiggyBankSummary.fromJson(Map<String, dynamic> json) {
+    return PiggyBankSummary(
+      id: json['id'] as String,
+      householdId: json['household_id'] as String,
+      name: json['name'] as String,
+      description: json['description'] as String?,
+      targetAmount: json['target_amount'] == null
+          ? null
+          : _asDouble(json['target_amount']),
+      targetDate: json['target_date'] == null
+          ? null
+          : _parseDate(json['target_date'] as String),
+      currencyCode: json['currency_code'] as String? ?? 'INR',
+      isArchived: json['is_archived'] as bool? ?? false,
+      createdBy: json['created_by'] as String?,
+      createdAt: DateTime.parse(json['created_at'] as String),
+      updatedAt: DateTime.parse(json['updated_at'] as String),
+      balanceAmount: _asDouble(json['balance_amount']),
+      targetProgress: json['target_progress'] == null
+          ? null
+          : _asDouble(json['target_progress']),
+    );
+  }
+}
+
+final class PiggyBankEntry {
+  const PiggyBankEntry({
+    required this.id,
+    required this.householdId,
+    required this.piggyBankId,
+    required this.entryType,
+    required this.amount,
+    required this.entryDate,
+    this.note,
+    this.linkedTransactionId,
+    this.createdBy,
+    required this.createdAt,
+  });
+
+  final String id;
+  final String householdId;
+  final String piggyBankId;
+  final String entryType;
+  final double amount;
+  final DateTime entryDate;
+  final String? note;
+  final String? linkedTransactionId;
+  final String? createdBy;
+  final DateTime createdAt;
+
+  double get signedAmount {
+    return switch (entryType) {
+      'deposit' => amount,
+      'withdrawal' => -amount,
+      'adjustment' => amount,
+      _ => amount,
+    };
+  }
+
+  String get typeLabel {
+    return entryType.replaceAll('_', ' ');
+  }
+
+  factory PiggyBankEntry.fromJson(Map<String, dynamic> json) {
+    return PiggyBankEntry(
+      id: json['id'] as String,
+      householdId: json['household_id'] as String,
+      piggyBankId: json['piggy_bank_id'] as String,
+      entryType: json['entry_type'] as String,
+      amount: _asDouble(json['amount']),
+      entryDate: _parseDate(json['entry_date'] as String),
+      note: json['note'] as String?,
+      linkedTransactionId: json['linked_transaction_id'] as String?,
+      createdBy: json['created_by'] as String?,
+      createdAt: DateTime.parse(json['created_at'] as String),
+    );
+  }
+}
+
+final class PiggyBankSaveRequest {
+  const PiggyBankSaveRequest({
+    this.id,
+    required this.householdId,
+    required this.profileId,
+    required this.name,
+    this.description,
+    this.targetAmount,
+    this.targetDate,
+    this.currencyCode = 'INR',
+  });
+
+  final String? id;
+  final String householdId;
+  final String profileId;
+  final String name;
+  final String? description;
+  final double? targetAmount;
+  final DateTime? targetDate;
+  final String currencyCode;
+
+  bool get isCreate => id == null;
+}
+
+final class PiggyBankEntryRequest {
+  const PiggyBankEntryRequest({
+    required this.householdId,
+    required this.piggyBankId,
+    required this.entryType,
+    required this.amount,
+    required this.entryDate,
+    this.note,
+    this.linkedTransactionId,
+  });
+
+  final String householdId;
+  final String piggyBankId;
+  final String entryType;
+  final double amount;
+  final DateTime entryDate;
+  final String? note;
+  final String? linkedTransactionId;
+}
+
 abstract interface class FinanceRepository {
   Future<DashboardSnapshot> fetchDashboardSnapshot({
     required String householdId,
@@ -617,6 +818,17 @@ abstract interface class FinanceRepository {
   Future<List<MerchantReviewItem>> fetchMerchantReviewQueue({
     required String householdId,
   });
+
+  Future<List<PiggyBankSummary>> fetchPiggyBanks({required String householdId});
+
+  Future<PiggyBankSummary> savePiggyBank(PiggyBankSaveRequest request);
+
+  Future<List<PiggyBankEntry>> fetchPiggyBankEntries({
+    required String householdId,
+    required String piggyBankId,
+  });
+
+  Future<PiggyBankEntry> createPiggyBankEntry(PiggyBankEntryRequest request);
 
   Future<PagedTransactions> fetchTransactions(TransactionQuery query);
 
@@ -765,6 +977,123 @@ final class SupabaseFinanceRepository implements FinanceRepository {
         .order('created_at');
 
     return rows.map(MerchantReviewItem.fromJson).toList(growable: false);
+  }
+
+  @override
+  Future<List<PiggyBankSummary>> fetchPiggyBanks({
+    required String householdId,
+  }) async {
+    final rows = await _client
+        .from('v_piggy_bank_balances')
+        .select(
+          'id, household_id, name, description, target_amount, target_date, '
+          'currency_code, is_archived, created_by, created_at, updated_at, '
+          'balance_amount, target_progress',
+        )
+        .eq('household_id', householdId)
+        .eq('is_archived', false)
+        .order('created_at', ascending: false);
+
+    return rows.map(PiggyBankSummary.fromJson).toList(growable: false);
+  }
+
+  @override
+  Future<PiggyBankSummary> savePiggyBank(PiggyBankSaveRequest request) async {
+    final name = request.name.trim();
+    final description = request.description?.trim();
+
+    if (name.isEmpty) {
+      throw ArgumentError.value(request.name, 'name', 'Name is required.');
+    }
+
+    final targetAmount = request.targetAmount;
+    if (targetAmount != null && targetAmount < 0) {
+      throw ArgumentError.value(
+        targetAmount,
+        'targetAmount',
+        'Target amount cannot be negative.',
+      );
+    }
+
+    final payload = <String, Object?>{
+      'household_id': request.householdId,
+      'name': name,
+      'description': description == null || description.isEmpty
+          ? null
+          : description,
+      'target_amount': targetAmount,
+      'target_date': request.targetDate == null
+          ? null
+          : dateString(request.targetDate!),
+      'currency_code': request.currencyCode,
+    };
+
+    final String piggyBankId;
+    if (request.id == null) {
+      final row = await _client
+          .from('piggy_banks')
+          .insert({...payload, 'created_by': request.profileId})
+          .select('id')
+          .single();
+      piggyBankId = row['id'] as String;
+    } else {
+      final row = await _client
+          .from('piggy_banks')
+          .update(payload)
+          .eq('household_id', request.householdId)
+          .eq('id', request.id!)
+          .select('id')
+          .single();
+      piggyBankId = row['id'] as String;
+    }
+
+    return _fetchPiggyBank(
+      householdId: request.householdId,
+      piggyBankId: piggyBankId,
+    );
+  }
+
+  @override
+  Future<List<PiggyBankEntry>> fetchPiggyBankEntries({
+    required String householdId,
+    required String piggyBankId,
+  }) async {
+    final rows = await _client
+        .from('piggy_bank_entries')
+        .select(
+          'id, household_id, piggy_bank_id, entry_type, amount, entry_date, '
+          'note, linked_transaction_id, created_by, created_at',
+        )
+        .eq('household_id', householdId)
+        .eq('piggy_bank_id', piggyBankId)
+        .order('entry_date', ascending: false)
+        .order('created_at', ascending: false);
+
+    return rows.map(PiggyBankEntry.fromJson).toList(growable: false);
+  }
+
+  @override
+  Future<PiggyBankEntry> createPiggyBankEntry(
+    PiggyBankEntryRequest request,
+  ) async {
+    final rows = await _client.rpc<List<dynamic>>(
+      'create_piggy_bank_entry',
+      params: {
+        'p_household_id': request.householdId,
+        'p_piggy_bank_id': request.piggyBankId,
+        'p_entry_type': request.entryType,
+        'p_amount': request.amount,
+        'p_entry_date': dateString(request.entryDate),
+        'p_note': request.note,
+        'p_linked_transaction_id': request.linkedTransactionId,
+      },
+    );
+
+    if (rows.isEmpty) {
+      throw StateError('Piggy-bank entry was not created.');
+    }
+
+    return PiggyBankEntry.fromJson(rows.first as Map<String, dynamic>);
   }
 
   @override
@@ -976,6 +1305,24 @@ final class SupabaseFinanceRepository implements FinanceRepository {
     return rows.length;
   }
 
+  Future<PiggyBankSummary> _fetchPiggyBank({
+    required String householdId,
+    required String piggyBankId,
+  }) async {
+    final row = await _client
+        .from('v_piggy_bank_balances')
+        .select(
+          'id, household_id, name, description, target_amount, target_date, '
+          'currency_code, is_archived, created_by, created_at, updated_at, '
+          'balance_amount, target_progress',
+        )
+        .eq('household_id', householdId)
+        .eq('id', piggyBankId)
+        .single();
+
+    return PiggyBankSummary.fromJson(row);
+  }
+
   DateTime _selectReportingMonth({
     required List<MonthlySpend> monthlySpend,
     required DateTime? requestedMonth,
@@ -1033,6 +1380,31 @@ final class DisabledFinanceRepository implements FinanceRepository {
   Future<List<MerchantReviewItem>> fetchMerchantReviewQueue({
     required String householdId,
   }) {
+    throw const SupabaseNotConfiguredException();
+  }
+
+  @override
+  Future<List<PiggyBankSummary>> fetchPiggyBanks({
+    required String householdId,
+  }) {
+    throw const SupabaseNotConfiguredException();
+  }
+
+  @override
+  Future<PiggyBankSummary> savePiggyBank(PiggyBankSaveRequest request) {
+    throw const SupabaseNotConfiguredException();
+  }
+
+  @override
+  Future<List<PiggyBankEntry>> fetchPiggyBankEntries({
+    required String householdId,
+    required String piggyBankId,
+  }) {
+    throw const SupabaseNotConfiguredException();
+  }
+
+  @override
+  Future<PiggyBankEntry> createPiggyBankEntry(PiggyBankEntryRequest request) {
     throw const SupabaseNotConfiguredException();
   }
 
