@@ -5,9 +5,9 @@ Use this file to coordinate work across multiple implementation sessions. Update
 ## Current Status
 
 - Current milestone: Not started.
-- Last completed milestone: Milestone 5, Expense Dashboard, Transactions, and Monthly Caps.
-- Current implementation state: Flutter Android app scaffold exists in `apps/mobile` with SpendLens Google sign-in, route protection, authenticated shell, RLS-safe profile/default-household bootstrap, household loading/error states, sign-out, package `com.olympus.spendlens`, core packages, environment templates, tests, and Supabase folder structure. Supabase local config applies the M2 migrations for schema, RLS, views, workbook-derived default categories, pgTAP database tests, and the Android auth redirect URL. Milestone 3 adds a local workbook importer under `tools/workbook-import`, fixture tests, and rerun documentation in `docs/implementation-plan/WORKBOOK_IMPORT.md`. Milestone 5 adds Supabase-backed finance repository reads/writes, dashboard KPIs, reporting-month selection, monthly category cap setup/editing, category and merchant summaries, transaction search/filter pagination, and transaction detail panels.
-- Next recommended milestone: Milestone 6, Merchant Mapping and Review Workflow.
+- Last completed milestone: Milestone 6, Merchant Mapping and Review Workflow.
+- Current implementation state: Flutter Android app scaffold exists in `apps/mobile` with SpendLens Google sign-in, route protection, authenticated shell, RLS-safe profile/default-household bootstrap, household loading/error states, sign-out, package `com.olympus.spendlens`, core packages, environment templates, tests, and Supabase folder structure. Supabase local config applies migrations for schema, RLS, views, workbook-derived default categories, merchant review corrections, pgTAP database tests, and the Android auth redirect URL. Milestone 3 adds a local workbook importer under `tools/workbook-import`, fixture tests, and rerun documentation in `docs/implementation-plan/WORKBOOK_IMPORT.md`. Milestone 5 adds Supabase-backed finance repository reads/writes, dashboard KPIs, reporting-month selection, monthly category cap setup/editing, category and merchant summaries, transaction search/filter pagination, and transaction detail panels. Milestone 6 adds merchant review queue UI, correction RPC/rule persistence, historical reclassification, review resolution, transaction classification audit metadata, and future-import rule application.
+- Next recommended milestone: Milestone 7, Piggy Banks.
 
 ## Required Reading for New Threads
 
@@ -60,7 +60,7 @@ Do not ask the user to perform all setup at once. Ask only when the relevant mil
 - Milestone 3, Workbook Import and Historical Seed Data: completed.
 - Milestone 4, App Shell, Authentication, and Household Context: completed.
 - Milestone 5, Expense Dashboard, Transactions, and Monthly Caps: completed.
-- Milestone 6, Merchant Mapping and Review Workflow: pending.
+- Milestone 6, Merchant Mapping and Review Workflow: completed.
 - Milestone 7, Piggy Banks: pending.
 - Milestone 8, Trends and Reports: pending.
 - Milestone 9, Gmail Connector and Credit-Card Email Ingestion: pending.
@@ -193,3 +193,38 @@ When an architecture decision changes:
 - Known gaps:
   - No schema migration was needed for this milestone; existing M2 summary views and RLS/grants are used.
   - Live authenticated Supabase data and Android-device integration coverage were not exercised in this session.
+
+## Milestone 6 Completion Notes
+
+- Completed on 2026-06-05.
+- Added a Supabase migration for merchant correction workflow support:
+  - Transaction classification audit columns for applied rule, review item, correcting profile, correction timestamp, and note.
+  - Manual mapping-rule notes, exact-match uniqueness, merchant display-name uniqueness, and helper indexes.
+  - `normalize_merchant_name`, `merchant_rule_matches`, `match_merchant_mapping_rule`, and authenticated `apply_merchant_review_correction` RPC.
+  - Expanded `v_review_queue` with current merchant/category/subcategory context.
+- The correction RPC validates household write membership through existing app-private helpers, creates or updates a manual exact mapping rule, upserts the corrected merchant alias, reclassifies matching historical transactions, resolves related review items, and records audit metadata on changed transactions/review rows.
+- The workbook importer now loads active durable mapping rules, applies them to matching future parsed rows, keeps non-matching rows unchanged, writes rule audit metadata, and validates database summaries against post-rule classifications while preserving workbook money reconciliation.
+- The Flutter merchant review screen now shows open review items with date, amount, statement merchant, current mapping, confidence, and reason; users can submit merchant group/category/subcategory/notes corrections through the Supabase RPC.
+- Added pgTAP coverage for historical reclassification, future rule matching, non-matching merchant preservation, durable rule creation, alias update, audit metadata, and queue-count decrease.
+- Added importer fixture coverage for future parsed transaction rule application and widget coverage for resolving a review item.
+- Verification run:
+  - `curl -L --max-time 20 https://supabase.com/changelog.md | sed -n '1,220p'`
+  - Supabase MCP docs search for RPC/RLS/security-invoker guidance
+  - `supabase migration --help`
+  - `supabase db --help`
+  - `supabase db reset --local`
+  - `supabase test db --local supabase/tests`
+  - `supabase db lint --local --schema app_private,public --fail-on error`
+  - `supabase db advisors --local --type security --level warn --fail-on none`
+  - `supabase db advisors --local --type performance --level warn --fail-on none`
+  - `pnpm --dir tools/workbook-import test`
+  - `pnpm --dir tools/workbook-import run validate`
+  - `pnpm --dir tools/workbook-import run import`
+  - `pnpm --dir tools/workbook-import run import`
+  - `dart format lib/src/data/repositories/finance_repository.dart lib/src/features/merchant_review/merchant_review_screen.dart test/finance_features_test.dart`
+  - `flutter analyze`
+  - `flutter test`
+  - `flutter build apk --debug --no-pub`
+- Known gaps:
+  - No Supabase remote migration push or remote advisors were run; verification was local only.
+  - Live authenticated Android-device review workflow coverage was not exercised in this session.

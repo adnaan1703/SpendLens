@@ -43,6 +43,27 @@ final transactionSourceAccountsProvider =
           .fetchSourceAccounts(householdId: householdId);
     });
 
+final merchantReviewQueueProvider =
+    FutureProvider.family<List<MerchantReviewItem>, String>((ref, householdId) {
+      return ref
+          .watch(financeRepositoryProvider)
+          .fetchMerchantReviewQueue(householdId: householdId);
+    });
+
+final merchantSubcategoriesProvider =
+    FutureProvider.family<List<SubcategoryOption>, String>((ref, householdId) {
+      return ref
+          .watch(financeRepositoryProvider)
+          .fetchSubcategories(householdId: householdId);
+    });
+
+final merchantOptionsProvider =
+    FutureProvider.family<List<MerchantOption>, String>((ref, householdId) {
+      return ref
+          .watch(financeRepositoryProvider)
+          .fetchMerchants(householdId: householdId);
+    });
+
 final transactionsProvider =
     FutureProvider.family<PagedTransactions, TransactionQuery>((ref, query) {
       return ref.watch(financeRepositoryProvider).fetchTransactions(query);
@@ -330,6 +351,168 @@ final class SourceAccountOption {
   }
 }
 
+final class SubcategoryOption {
+  const SubcategoryOption({
+    required this.id,
+    required this.categoryId,
+    required this.name,
+  });
+
+  final String id;
+  final String categoryId;
+  final String name;
+
+  factory SubcategoryOption.fromJson(Map<String, dynamic> json) {
+    return SubcategoryOption(
+      id: json['id'] as String,
+      categoryId: json['category_id'] as String,
+      name: json['name'] as String,
+    );
+  }
+}
+
+final class MerchantOption {
+  const MerchantOption({required this.id, required this.displayName});
+
+  final String id;
+  final String displayName;
+
+  factory MerchantOption.fromJson(Map<String, dynamic> json) {
+    return MerchantOption(
+      id: json['id'] as String,
+      displayName: json['display_name'] as String,
+    );
+  }
+}
+
+final class MerchantReviewItem {
+  const MerchantReviewItem({
+    required this.id,
+    required this.householdId,
+    required this.transactionId,
+    required this.reason,
+    required this.createdAt,
+    required this.transactionDate,
+    required this.statementMerchant,
+    required this.amount,
+    required this.netExpense,
+    required this.confidence,
+    this.currentMerchantId,
+    this.currentMerchantName,
+    this.currentCategoryId,
+    this.currentCategoryName,
+    this.currentSubcategoryId,
+    this.currentSubcategoryName,
+    this.suggestedMerchantId,
+    this.suggestedMerchantName,
+    this.suggestedCategoryId,
+    this.suggestedCategoryName,
+    this.suggestedSubcategoryId,
+    this.suggestedSubcategoryName,
+  });
+
+  final String id;
+  final String householdId;
+  final String transactionId;
+  final String reason;
+  final DateTime createdAt;
+  final DateTime transactionDate;
+  final String statementMerchant;
+  final double amount;
+  final double netExpense;
+  final String confidence;
+  final String? currentMerchantId;
+  final String? currentMerchantName;
+  final String? currentCategoryId;
+  final String? currentCategoryName;
+  final String? currentSubcategoryId;
+  final String? currentSubcategoryName;
+  final String? suggestedMerchantId;
+  final String? suggestedMerchantName;
+  final String? suggestedCategoryId;
+  final String? suggestedCategoryName;
+  final String? suggestedSubcategoryId;
+  final String? suggestedSubcategoryName;
+
+  String get correctionMerchantName {
+    return currentMerchantName ?? suggestedMerchantName ?? statementMerchant;
+  }
+
+  String? get correctionCategoryId => currentCategoryId ?? suggestedCategoryId;
+
+  String? get correctionSubcategoryId {
+    return currentSubcategoryId ?? suggestedSubcategoryId;
+  }
+
+  factory MerchantReviewItem.fromJson(Map<String, dynamic> json) {
+    return MerchantReviewItem(
+      id: json['id'] as String,
+      householdId: json['household_id'] as String,
+      transactionId: json['transaction_id'] as String,
+      reason: json['reason'] as String,
+      createdAt: DateTime.parse(json['created_at'] as String),
+      transactionDate: _parseDate(json['transaction_date'] as String),
+      statementMerchant: json['statement_merchant'] as String,
+      amount: _asDouble(json['amount']),
+      netExpense: _asDouble(json['net_expense']),
+      confidence: json['transaction_confidence'] as String? ?? 'medium',
+      currentMerchantId: json['current_merchant_id'] as String?,
+      currentMerchantName: json['current_merchant_name'] as String?,
+      currentCategoryId: json['current_category_id'] as String?,
+      currentCategoryName: json['current_category_name'] as String?,
+      currentSubcategoryId: json['current_subcategory_id'] as String?,
+      currentSubcategoryName: json['current_subcategory_name'] as String?,
+      suggestedMerchantId: json['suggested_merchant_id'] as String?,
+      suggestedMerchantName: json['suggested_merchant_name'] as String?,
+      suggestedCategoryId: json['suggested_category_id'] as String?,
+      suggestedCategoryName: json['suggested_category_name'] as String?,
+      suggestedSubcategoryId: json['suggested_subcategory_id'] as String?,
+      suggestedSubcategoryName: json['suggested_subcategory_name'] as String?,
+    );
+  }
+}
+
+final class MerchantCorrectionRequest {
+  const MerchantCorrectionRequest({
+    required this.householdId,
+    required this.reviewItemId,
+    required this.merchantGroup,
+    required this.categoryId,
+    required this.subcategoryId,
+    this.notes,
+  });
+
+  final String householdId;
+  final String reviewItemId;
+  final String merchantGroup;
+  final String categoryId;
+  final String subcategoryId;
+  final String? notes;
+}
+
+final class MerchantCorrectionResult {
+  const MerchantCorrectionResult({
+    required this.ruleId,
+    required this.merchantId,
+    required this.updatedTransactionCount,
+    required this.resolvedReviewItemCount,
+  });
+
+  final String ruleId;
+  final String merchantId;
+  final int updatedTransactionCount;
+  final int resolvedReviewItemCount;
+
+  factory MerchantCorrectionResult.fromJson(Map<String, dynamic> json) {
+    return MerchantCorrectionResult(
+      ruleId: json['rule_id'] as String,
+      merchantId: json['merchant_id'] as String,
+      updatedTransactionCount: _asInt(json['updated_transaction_count']),
+      resolvedReviewItemCount: _asInt(json['resolved_review_item_count']),
+    );
+  }
+}
+
 final class PagedTransactions {
   const PagedTransactions({
     required this.items,
@@ -425,7 +608,21 @@ abstract interface class FinanceRepository {
     required String householdId,
   });
 
+  Future<List<SubcategoryOption>> fetchSubcategories({
+    required String householdId,
+  });
+
+  Future<List<MerchantOption>> fetchMerchants({required String householdId});
+
+  Future<List<MerchantReviewItem>> fetchMerchantReviewQueue({
+    required String householdId,
+  });
+
   Future<PagedTransactions> fetchTransactions(TransactionQuery query);
+
+  Future<MerchantCorrectionResult> applyMerchantReviewCorrection(
+    MerchantCorrectionRequest request,
+  );
 
   Future<void> saveCategoryCap({
     required String householdId,
@@ -522,6 +719,55 @@ final class SupabaseFinanceRepository implements FinanceRepository {
   }
 
   @override
+  Future<List<SubcategoryOption>> fetchSubcategories({
+    required String householdId,
+  }) async {
+    final rows = await _client
+        .from('subcategories')
+        .select('id, category_id, name')
+        .eq('household_id', householdId)
+        .order('sort_order')
+        .order('name');
+
+    return rows.map(SubcategoryOption.fromJson).toList(growable: false);
+  }
+
+  @override
+  Future<List<MerchantOption>> fetchMerchants({
+    required String householdId,
+  }) async {
+    final rows = await _client
+        .from('merchants')
+        .select('id, display_name')
+        .eq('household_id', householdId)
+        .order('display_name');
+
+    return rows.map(MerchantOption.fromJson).toList(growable: false);
+  }
+
+  @override
+  Future<List<MerchantReviewItem>> fetchMerchantReviewQueue({
+    required String householdId,
+  }) async {
+    final rows = await _client
+        .from('v_review_queue')
+        .select(
+          'id, household_id, transaction_id, reason, created_at, '
+          'transaction_date, statement_merchant, amount, net_expense, '
+          'transaction_confidence, current_merchant_id, '
+          'current_merchant_name, current_category_id, current_category_name, '
+          'current_subcategory_id, current_subcategory_name, '
+          'suggested_merchant_id, suggested_merchant_name, '
+          'suggested_category_id, suggested_category_name, '
+          'suggested_subcategory_id, suggested_subcategory_name',
+        )
+        .eq('household_id', householdId)
+        .order('created_at');
+
+    return rows.map(MerchantReviewItem.fromJson).toList(growable: false);
+  }
+
+  @override
   Future<PagedTransactions> fetchTransactions(TransactionQuery query) async {
     final categories = await fetchCategories(householdId: query.householdId);
     final categoryNamesById = {
@@ -577,6 +823,31 @@ final class SupabaseFinanceRepository implements FinanceRepository {
           .toList(growable: false),
       page: query.page,
       pageSize: query.pageSize,
+    );
+  }
+
+  @override
+  Future<MerchantCorrectionResult> applyMerchantReviewCorrection(
+    MerchantCorrectionRequest request,
+  ) async {
+    final rows = await _client.rpc<List<dynamic>>(
+      'apply_merchant_review_correction',
+      params: {
+        'p_household_id': request.householdId,
+        'p_review_item_id': request.reviewItemId,
+        'p_merchant_group': request.merchantGroup,
+        'p_category_id': request.categoryId,
+        'p_subcategory_id': request.subcategoryId,
+        'p_notes': request.notes,
+      },
+    );
+
+    if (rows.isEmpty) {
+      throw StateError('Correction did not return a result.');
+    }
+
+    return MerchantCorrectionResult.fromJson(
+      rows.first as Map<String, dynamic>,
     );
   }
 
@@ -699,7 +970,7 @@ final class SupabaseFinanceRepository implements FinanceRepository {
   Future<int> _fetchOpenReviewCount({required String householdId}) async {
     final rows = await _client
         .from('v_review_queue')
-        .select('review_item_id')
+        .select('id')
         .eq('household_id', householdId);
 
     return rows.length;
@@ -747,7 +1018,33 @@ final class DisabledFinanceRepository implements FinanceRepository {
   }
 
   @override
+  Future<List<SubcategoryOption>> fetchSubcategories({
+    required String householdId,
+  }) {
+    throw const SupabaseNotConfiguredException();
+  }
+
+  @override
+  Future<List<MerchantOption>> fetchMerchants({required String householdId}) {
+    throw const SupabaseNotConfiguredException();
+  }
+
+  @override
+  Future<List<MerchantReviewItem>> fetchMerchantReviewQueue({
+    required String householdId,
+  }) {
+    throw const SupabaseNotConfiguredException();
+  }
+
+  @override
   Future<PagedTransactions> fetchTransactions(TransactionQuery query) {
+    throw const SupabaseNotConfiguredException();
+  }
+
+  @override
+  Future<MerchantCorrectionResult> applyMerchantReviewCorrection(
+    MerchantCorrectionRequest request,
+  ) {
     throw const SupabaseNotConfiguredException();
   }
 

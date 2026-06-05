@@ -160,6 +160,90 @@ export function createSourceFingerprint(transaction) {
   return `workbook:fy2025-26:${digest}`;
 }
 
+export function merchantRuleMatches(rule, statementMerchant) {
+  const normalizedName = normalizeName(statementMerchant);
+  const pattern = normalizeName(rule.pattern);
+  if (!pattern || !normalizedName) return false;
+
+  switch (rule.matchType) {
+    case 'exact':
+      return normalizedName === pattern;
+    case 'contains':
+      return normalizedName.includes(pattern);
+    case 'prefix':
+      return normalizedName.startsWith(pattern);
+    case 'suffix':
+      return normalizedName.endsWith(pattern);
+    case 'regex':
+      try {
+        return new RegExp(rule.pattern).test(normalizedName);
+      } catch {
+        return false;
+      }
+    default:
+      return false;
+  }
+}
+
+function ruleMatchRank(matchType) {
+  switch (matchType) {
+    case 'exact':
+      return 0;
+    case 'prefix':
+      return 1;
+    case 'suffix':
+      return 2;
+    case 'contains':
+      return 3;
+    default:
+      return 4;
+  }
+}
+
+function sortMerchantRules(rules) {
+  return [...rules].sort((a, b) => {
+    const rankDifference = ruleMatchRank(a.matchType) - ruleMatchRank(b.matchType);
+    if (rankDifference !== 0) return rankDifference;
+
+    const priorityDifference = (a.priority ?? 100) - (b.priority ?? 100);
+    if (priorityDifference !== 0) return priorityDifference;
+
+    return String(b.createdAt ?? '').localeCompare(String(a.createdAt ?? ''));
+  });
+}
+
+export function findMerchantMappingRule(rules, statementMerchant) {
+  return sortMerchantRules(rules).find((rule) => merchantRuleMatches(rule, statementMerchant)) ?? null;
+}
+
+export function classifyTransactionsWithRules(transactions, rules) {
+  return transactions.map((transaction) => {
+    const rule = findMerchantMappingRule(rules, transaction.statementMerchant);
+    if (!rule) {
+      return {
+        ...transaction,
+        mappingRuleId: null,
+        mappingRuleCreatedBy: null,
+        mappingRuleNotes: null,
+      };
+    }
+
+    return {
+      ...transaction,
+      merchantGroup: rule.merchantGroup,
+      category: rule.category,
+      subcategory: rule.subcategory,
+      confidence: rule.confidence ?? 'manual',
+      mappingRuleId: rule.id,
+      mappingRuleCreatedBy: rule.createdBy ?? null,
+      mappingRuleNotes: rule.notes ?? null,
+      mappingRuleMerchantId: rule.merchantId,
+      mappingRuleCategoryId: rule.categoryId,
+      mappingRuleSubcategoryId: rule.subcategoryId,
+    };
+  });
+}
+
 export function deterministicUuid(scope, input) {
   const bytes = createHash('sha1').update(`${scope}:${input}`).digest().subarray(0, 16);
   bytes[6] = (bytes[6] & 0x0f) | 0x50;
@@ -629,6 +713,60 @@ async function upsertSourceAccounts(client, data, options) {
   return accounts;
 }
 
+async function fetchMerchantMappingRules(client, options) {
+  const result = await client.query(
+    `select
+       mmr.id,
+       mmr.pattern,
+       mmr.match_type,
+       mmr.priority,
+       mmr.confidence,
+       mmr.created_by,
+       mmr.created_at,
+       mmr.notes,
+       mmr.merchant_id,
+       m.display_name as merchant_group,
+       mmr.category_id,
+       c.name as category,
+       mmr.subcategory_id,
+       sc.name as subcategory
+     from public.merchant_mapping_rules mmr
+     join public.merchants m on m.id = mmr.merchant_id and m.household_id = mmr.household_id
+     join public.categories c on c.id = mmr.category_id and c.household_id = mmr.household_id
+     join public.subcategories sc on sc.id = mmr.subcategory_id and sc.household_id = mmr.household_id
+     where mmr.household_id = $1
+       and mmr.apply_to_future
+     order by
+       case mmr.match_type
+         when 'exact' then 0
+         when 'prefix' then 1
+         when 'suffix' then 2
+         when 'contains' then 3
+         else 4
+       end,
+       mmr.priority,
+       mmr.created_at desc`,
+    [options.householdId],
+  );
+
+  return result.rows.map((row) => ({
+    id: row.id,
+    pattern: row.pattern,
+    matchType: row.match_type,
+    priority: integerValue(row.priority),
+    confidence: row.confidence,
+    createdBy: row.created_by,
+    createdAt: row.created_at,
+    notes: row.notes,
+    merchantId: row.merchant_id,
+    merchantGroup: row.merchant_group,
+    categoryId: row.category_id,
+    category: row.category,
+    subcategoryId: row.subcategory_id,
+    subcategory: row.subcategory,
+  }));
+}
+
 async function upsertMerchants(client, data, options, categories, subcategories) {
   const merchants = new Map();
   for (const row of merchantRows(data)) {
@@ -669,12 +807,19 @@ async function upsertMerchantAliases(client, data, options, merchants) {
   const aliases = new Map();
   for (const transaction of data.transactions) {
     const normalizedName = normalizeName(transaction.statementMerchant);
+    const merchantId = transaction.mappingRuleMerchantId ?? merchants.get(transaction.merchantGroup);
+    assert.ok(merchantId, `Missing merchant id for alias ${transaction.statementMerchant}`);
     const existing = aliases.get(normalizedName) ?? {
       rawName: transaction.statementMerchant,
-      merchantId: merchants.get(transaction.merchantGroup),
+      merchantId,
+      sourceType: transaction.mappingRuleId ? 'manual' : 'workbook',
       firstSeenAt: `${transaction.transactionDate}T00:00:00+05:30`,
       lastSeenAt: `${transaction.transactionDate}T00:00:00+05:30`,
     };
+    if (transaction.mappingRuleId) {
+      existing.merchantId = merchantId;
+      existing.sourceType = 'manual';
+    }
     const currentSeenAt = `${transaction.transactionDate}T00:00:00+05:30`;
     if (currentSeenAt < existing.firstSeenAt) existing.firstSeenAt = currentSeenAt;
     if (currentSeenAt > existing.lastSeenAt) existing.lastSeenAt = currentSeenAt;
@@ -687,19 +832,28 @@ async function upsertMerchantAliases(client, data, options, merchants) {
       `insert into public.merchant_aliases (
          id, household_id, merchant_id, raw_name, normalized_name, source_type, first_seen_at, last_seen_at
        )
-       values ($1, $2, $3, $4, $5, 'workbook', $6, $7)
+       values ($1, $2, $3, $4, $5, $6, $7, $8)
        on conflict (household_id, normalized_name) do update
          set merchant_id = excluded.merchant_id,
              raw_name = excluded.raw_name,
              source_type = excluded.source_type,
-             first_seen_at = least(public.merchant_aliases.first_seen_at, excluded.first_seen_at),
-             last_seen_at = greatest(public.merchant_aliases.last_seen_at, excluded.last_seen_at)`,
+             first_seen_at = coalesce(
+               least(public.merchant_aliases.first_seen_at, excluded.first_seen_at),
+               public.merchant_aliases.first_seen_at,
+               excluded.first_seen_at
+             ),
+             last_seen_at = coalesce(
+               greatest(public.merchant_aliases.last_seen_at, excluded.last_seen_at),
+               public.merchant_aliases.last_seen_at,
+               excluded.last_seen_at
+             )`,
       [
         id,
         options.householdId,
         alias.merchantId,
         alias.rawName,
         normalizedName,
+        alias.sourceType,
         alias.firstSeenAt,
         alias.lastSeenAt,
       ],
@@ -728,15 +882,22 @@ async function existingFingerprints(client, options) {
   return new Set(result.rows.map((row) => row.source_fingerprint));
 }
 
+function transactionClassificationIds(transaction, lookups) {
+  const categoryId = transaction.mappingRuleCategoryId ?? lookups.categories.get(transaction.category);
+  const subcategoryId = transaction.mappingRuleSubcategoryId
+    ?? lookups.subcategories.get(`${transaction.category}|${transaction.subcategory}`);
+  const merchantId = transaction.mappingRuleMerchantId ?? lookups.merchants.get(transaction.merchantGroup);
+
+  return { categoryId, subcategoryId, merchantId };
+}
+
 async function upsertTransactions(client, data, options, lookups) {
   const existing = await existingFingerprints(client, options);
   let insertedCount = 0;
   let updatedCount = 0;
 
   for (const transaction of data.transactions) {
-    const categoryId = lookups.categories.get(transaction.category);
-    const subcategoryId = lookups.subcategories.get(`${transaction.category}|${transaction.subcategory}`);
-    const merchantId = lookups.merchants.get(transaction.merchantGroup);
+    const { categoryId, subcategoryId, merchantId } = transactionClassificationIds(transaction, lookups);
     const sourceAccountId = lookups.sourceAccounts.get(transaction.cardholderName);
     assert.ok(categoryId, `Missing category id for ${transaction.category}`);
     assert.ok(subcategoryId, `Missing subcategory id for ${transaction.subcategory}`);
@@ -767,11 +928,16 @@ async function upsertTransactions(client, data, options, lookups) {
          currency_code,
          confidence,
          notes,
-         source_fingerprint
+         source_fingerprint,
+         classification_rule_id,
+         classification_updated_by,
+         classification_updated_at,
+         classification_note
        )
        values (
          $1, $2, $3, 'workbook', $4, $5, $6, $7, $8, $9, $10, $11,
-         $12, $13, $14, $15, $16, $17, $18, 'INR', $19, $20, $21
+         $12, $13, $14, $15, $16, $17, $18, 'INR', $19, $20, $21,
+         $22, $23, case when $22::uuid is null then null else now() end, $24
        )
        on conflict (household_id, source_fingerprint) do update
          set source_account_id = excluded.source_account_id,
@@ -792,7 +958,11 @@ async function upsertTransactions(client, data, options, lookups) {
              net_expense = excluded.net_expense,
              currency_code = excluded.currency_code,
              confidence = excluded.confidence,
-             notes = excluded.notes`,
+             notes = excluded.notes,
+             classification_rule_id = excluded.classification_rule_id,
+             classification_updated_by = excluded.classification_updated_by,
+             classification_updated_at = excluded.classification_updated_at,
+             classification_note = excluded.classification_note`,
       [
         transactionId(options, transaction),
         options.householdId,
@@ -815,6 +985,9 @@ async function upsertTransactions(client, data, options, lookups) {
         transaction.confidence,
         transaction.notes,
         transaction.sourceFingerprint,
+        transaction.mappingRuleId,
+        transaction.mappingRuleId ? (transaction.mappingRuleCreatedBy ?? options.profileId) : null,
+        transaction.mappingRuleId ? transaction.mappingRuleNotes : null,
       ],
     );
 
@@ -919,9 +1092,9 @@ async function upsertReviewItems(client, data, options, lookups) {
         options.householdId,
         transactionId(options, transaction),
         reason,
-        lookups.merchants.get(transaction.merchantGroup),
-        lookups.categories.get(transaction.category),
-        lookups.subcategories.get(`${transaction.category}|${transaction.subcategory}`),
+        transactionClassificationIds(transaction, lookups).merchantId,
+        transactionClassificationIds(transaction, lookups).categoryId,
+        transactionClassificationIds(transaction, lookups).subcategoryId,
       ],
     );
   }
@@ -1099,6 +1272,7 @@ async function databaseMetadataCounts(client, options, batchId, reviewItemIds) {
 }
 
 async function validateDatabaseImport(client, data, options, batchId, reviewItemIds) {
+  const expectedSummary = summarizeTransactions(data.transactions);
   const totals = await databaseTotals(client, options);
   assert.equal(totals.transactionCount, EXPECTED_FIXTURE.transactionCount, 'database transaction count');
   assert.equal(totals.grossSpendPaise, EXPECTED_FIXTURE.grossSpendPaise, 'database gross spend');
@@ -1108,14 +1282,14 @@ async function validateDatabaseImport(client, data, options, batchId, reviewItem
 
   compareRows(
     'database monthly summary',
-    data.monthlySummaries,
+    expectedSummary.monthly,
     await databaseMonthlyRows(client, options),
     ['month'],
     ['grossSpendPaise', 'refundsPaise', 'netSpendPaise', 'cardBillPaymentsPaise'],
   );
   compareRows(
     'database category summary',
-    data.categorySummaries,
+    expectedSummary.categories,
     await databaseCategoryRows(client, options),
     ['category'],
     ['grossSpendPaise', 'refundsPaise', 'netSpendPaise'],
@@ -1123,7 +1297,7 @@ async function validateDatabaseImport(client, data, options, batchId, reviewItem
   );
   compareRows(
     'database merchant summary',
-    data.merchantSummaries,
+    expectedSummary.merchants,
     await databaseMerchantRows(client, options),
     ['merchantGroup', 'category', 'subcategory'],
     ['grossSpendPaise', 'refundsPaise', 'netSpendPaise'],
@@ -1131,7 +1305,7 @@ async function validateDatabaseImport(client, data, options, batchId, reviewItem
   );
   compareRows(
     'database cardholder summary',
-    data.cardholderSummaries,
+    expectedSummary.cardholders,
     await databaseCardholderRows(client, options),
     ['cardholderName'],
     ['grossSpendPaise', 'refundsPaise', 'netSpendPaise', 'cardBillPaymentsPaise'],
@@ -1141,7 +1315,7 @@ async function validateDatabaseImport(client, data, options, batchId, reviewItem
   assert.equal(metadata.importBatches, 1, 'one deterministic import batch exists');
   assert.equal(metadata.sourceAccounts, data.cardholderSummaries.length, 'source account count');
   assert.equal(metadata.transactionSources, data.transactions.length, 'transaction source metadata count');
-  assert.equal(metadata.reviewItems, EXPECTED_FIXTURE.reviewItemCount, 'review item count');
+  assert.equal(metadata.reviewItems, reviewItemIds.length, 'review item count');
 
   return { totals, metadata };
 }
@@ -1240,22 +1414,27 @@ export async function runImport(options = {}) {
     const subcategories = await upsertSubcategories(client, data, resolvedOptions, categories);
     const sourceAccounts = await upsertSourceAccounts(client, data, resolvedOptions);
     const merchants = await upsertMerchants(client, data, resolvedOptions, categories, subcategories);
-    await upsertMerchantAliases(client, data, resolvedOptions, merchants);
-    const importCounts = await upsertTransactions(client, data, resolvedOptions, {
+    const merchantMappingRules = await fetchMerchantMappingRules(client, resolvedOptions);
+    const importData = {
+      ...data,
+      transactions: classifyTransactionsWithRules(data.transactions, merchantMappingRules),
+    };
+    await upsertMerchantAliases(client, importData, resolvedOptions, merchants);
+    const importCounts = await upsertTransactions(client, importData, resolvedOptions, {
       categories,
       subcategories,
       sourceAccounts,
       merchants,
     });
     await upsertTransactionSources(client, data, resolvedOptions, batchId);
-    const reviewResult = await upsertReviewItems(client, data, resolvedOptions, {
+    const reviewResult = await upsertReviewItems(client, importData, resolvedOptions, {
       categories,
       subcategories,
       merchants,
     });
     const databaseSummary = await validateDatabaseImport(
       client,
-      data,
+      importData,
       resolvedOptions,
       batchId,
       reviewResult.reviewItemIds,

@@ -3,6 +3,7 @@ import test from 'node:test';
 import {
   DEFAULT_WORKBOOK_PATH,
   EXPECTED_FIXTURE,
+  classifyTransactionsWithRules,
   formatMoney,
   readWorkbook,
   summarizeTransactions,
@@ -43,4 +44,53 @@ test('source fingerprints are unique and Needs Review matches non-high confidenc
   assert.equal(fingerprints.size, EXPECTED_FIXTURE.transactionCount);
   assert.equal(reviewFingerprints.size, EXPECTED_FIXTURE.reviewItemCount);
   assert.deepEqual([...reviewFingerprints].sort(), [...nonHighFingerprints].sort());
+});
+
+test('manual merchant mapping rules classify future parsed transactions', () => {
+  const transactions = [
+    {
+      statementMerchant: 'AMZN MKTP IN',
+      merchantGroup: 'Unknown Amazon',
+      category: 'Unclear',
+      subcategory: 'Needs Review',
+      confidence: 'low',
+    },
+    {
+      statementMerchant: 'AMAZON PRIME',
+      merchantGroup: 'Unknown Amazon',
+      category: 'Unclear',
+      subcategory: 'Needs Review',
+      confidence: 'low',
+    },
+  ];
+
+  const classified = classifyTransactionsWithRules(transactions, [
+    {
+      id: 'rule-1',
+      pattern: 'amzn mktp in',
+      matchType: 'exact',
+      priority: 10,
+      confidence: 'manual',
+      createdBy: 'profile-1',
+      notes: 'Prefer marketplace category',
+      merchantId: 'merchant-shopping',
+      merchantGroup: 'Amazon Shopping',
+      categoryId: 'category-shopping',
+      category: 'Shopping',
+      subcategoryId: 'subcategory-marketplace',
+      subcategory: 'Marketplace',
+    },
+  ]);
+
+  assert.equal(classified[0].merchantGroup, 'Amazon Shopping');
+  assert.equal(classified[0].category, 'Shopping');
+  assert.equal(classified[0].subcategory, 'Marketplace');
+  assert.equal(classified[0].confidence, 'manual');
+  assert.equal(classified[0].mappingRuleId, 'rule-1');
+  assert.equal(classified[0].mappingRuleCreatedBy, 'profile-1');
+  assert.equal(classified[0].mappingRuleNotes, 'Prefer marketplace category');
+
+  assert.equal(classified[1].merchantGroup, 'Unknown Amazon');
+  assert.equal(classified[1].category, 'Unclear');
+  assert.equal(classified[1].mappingRuleId, null);
 });
