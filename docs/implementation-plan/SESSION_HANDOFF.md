@@ -170,7 +170,10 @@ When an architecture decision changes:
   - `flutter analyze`
   - `flutter test`
   - `flutter build apk --debug --no-pub`
+  - `supabase db lint --local --schema app_private,public --fail-on error`
+  - `supabase test db --local supabase/tests`
+  - `supabase db advisors --local --type security --level warn --fail-on none`
+  - `supabase db advisors --local --type performance --level warn --fail-on none`
 - Known gaps:
   - Google Auth provider and Android OAuth client still require external Supabase/Google Console setup before live sign-in can be tested.
-  - Local Supabase lint could not run because Docker Desktop was not running; `supabase start` failed to connect to the Docker daemon.
   - `flutter test integration_test` could not run because no supported Android device/emulator was connected.
