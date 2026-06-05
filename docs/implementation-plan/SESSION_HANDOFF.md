@@ -137,20 +137,20 @@ When an architecture decision changes:
 - Local database counts after the second import: one import batch, 3 source accounts, 21 categories, 34 subcategories, 44 merchants, 171 merchant aliases, 475 transaction source rows, and 29 review items.
 - Added `docs/implementation-plan/WORKBOOK_IMPORT.md` with safe local rerun steps and admin/credential boundaries.
 - Verification run:
-  - `npm --prefix tools/workbook-import install`
-  - `npm --prefix tools/workbook-import audit --audit-level=moderate`
-  - `npm --prefix tools/workbook-import test`
-  - `npm --prefix tools/workbook-import run validate`
+  - `pnpm --dir tools/workbook-import install --frozen-lockfile`
+  - `pnpm --dir tools/workbook-import audit --audit-level=moderate`
+  - `pnpm --dir tools/workbook-import test`
+  - `pnpm --dir tools/workbook-import run validate`
   - `supabase db reset --local`
-  - `npm --prefix tools/workbook-import run import`
-  - `npm --prefix tools/workbook-import run import`
+  - `pnpm --dir tools/workbook-import run import`
+  - `pnpm --dir tools/workbook-import run import`
   - `supabase db query --local -o json "<validation count query>"`
   - `supabase test db --local supabase/tests`
   - `supabase db lint --local --schema public --fail-on error`
   - `supabase db lint --local --schema app_private,public --fail-on error`
   - `supabase db advisors --local --type security --level warn --fail-on none`
   - `supabase db advisors --local --type performance --level warn --fail-on none`
-  - `npm --prefix tools/workbook-import ci`
+  - `pnpm --dir tools/workbook-import install --frozen-lockfile`
 - Known gaps:
   - No remote Supabase import or remote advisors were run; Milestone 3 was verified locally only.
   - `supabase db lint --local --fail-on error` across all schemas fails on pgTAP helper functions in the Supabase `extensions` schema after database tests install pgTAP. Targeted app schemas (`app_private,public`) pass with no schema errors.

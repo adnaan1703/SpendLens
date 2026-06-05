@@ -14,19 +14,19 @@ supabase db reset --local
 Install the pinned importer dependencies once:
 
 ```sh
-npm --prefix tools/workbook-import ci
+pnpm --dir tools/workbook-import install --frozen-lockfile
 ```
 
 Validate the workbook without writing to Postgres:
 
 ```sh
-npm --prefix tools/workbook-import run validate
+pnpm --dir tools/workbook-import run validate
 ```
 
 Run the local import:
 
 ```sh
-npm --prefix tools/workbook-import run import
+pnpm --dir tools/workbook-import run import
 ```
 
 The script defaults to `postgresql://postgres:postgres@127.0.0.1:54322/postgres` and creates a deterministic local seed auth user, profile, household, and owner membership. It uses direct Postgres access for a local/admin import only; do not move this DB URL or any privileged credentials into Flutter client code.

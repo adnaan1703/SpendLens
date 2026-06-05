@@ -29,10 +29,9 @@ local.properties
 
 # Logs
 *.log
-npm-debug.log*
+pnpm-debug.log*
 yarn-debug.log*
 yarn-error.log*
-pnpm-debug.log*
 
 # Dart and Flutter
 .dart_tool/
@@ -78,7 +77,7 @@ gradle-app.setting
 
 # JavaScript tooling, if added for web tooling or scripts
 node_modules/
-.npm/
+.pnpm-store/
 .yarn/cache/
 .yarn/unplugged/
 .yarn/build-state.yml

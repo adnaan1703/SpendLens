@@ -1298,7 +1298,7 @@ export async function runImport(options = {}) {
 }
 
 function printHelp() {
-  console.log(`Usage: npm run import -- [options]
+  console.log(`Usage: pnpm run import -- [options]
 
 Options:
   --workbook <path>      Workbook path. Defaults to docs/Credit Card Spend Analysis - FY 2025-26.xlsx.
