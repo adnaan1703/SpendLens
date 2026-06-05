@@ -8,8 +8,90 @@ import 'package:spendlens/src/features/dashboard/dashboard_screen.dart';
 import 'package:spendlens/src/features/merchant_review/merchant_review_screen.dart';
 import 'package:spendlens/src/features/piggy_banks/piggy_banks_screen.dart';
 import 'package:spendlens/src/features/transactions/transactions_screen.dart';
+import 'package:spendlens/src/features/trends/trends_screen.dart';
 
 void main() {
+  test('trend report aggregates monthly category and merchant totals', () {
+    final report = TrendReport.fromTransactions([
+      _trendTransaction(
+        id: 'trend-1',
+        transactionDate: DateTime(2026, 1, 5),
+        statementMerchant: 'SWIGGY BANGALORE',
+        merchantGroup: 'Swiggy/Zomato/Food delivery',
+        categoryId: 'cat-food',
+        categoryName: 'Food & Dining',
+        subcategoryId: 'sub-delivery',
+        subcategoryName: 'Delivery',
+        grossSpend: 1000,
+        netExpense: 1000,
+      ),
+      _trendTransaction(
+        id: 'trend-2',
+        transactionDate: DateTime(2026, 1, 14),
+        statementMerchant: 'ZOMATO REFUND',
+        merchantGroup: 'Swiggy/Zomato/Food delivery',
+        categoryId: 'cat-food',
+        categoryName: 'Food & Dining',
+        subcategoryId: 'sub-delivery',
+        subcategoryName: 'Delivery',
+        transactionType: 'refund_reversal',
+        amount: -100,
+        refundAmount: 100,
+        netExpense: -100,
+      ),
+      _trendTransaction(
+        id: 'trend-3',
+        transactionDate: DateTime(2026, 1, 25),
+        statementMerchant: 'TELE TRANSFER CREDIT',
+        merchantGroup: 'tele transfer credit',
+        transactionType: 'bill_payment_credit',
+        amount: -5000,
+      ),
+      _trendTransaction(
+        id: 'trend-4',
+        transactionDate: DateTime(2026, 2, 3),
+        statementMerchant: 'HDFC SMARTBUY FLIGHT',
+        merchantGroup: 'HDFC SmartBuy, Flights',
+        categoryId: 'cat-travel',
+        categoryName: 'Travel & Visa',
+        subcategoryId: 'sub-flights',
+        subcategoryName: 'Flights',
+        grossSpend: 300,
+        netExpense: 300,
+      ),
+    ]);
+
+    expect(report.monthlySpend, hasLength(2));
+    expect(report.monthlySpend.first.transactionCount, 3);
+    expect(report.monthlySpend.first.grossSpend, 1000);
+    expect(report.monthlySpend.first.refundAmount, 100);
+    expect(report.monthlySpend.first.netSpend, 900);
+    expect(report.monthlySpend.first.billPayments, 5000);
+
+    expect(report.categoryTrends.first.categoryName, 'Food & Dining');
+    expect(report.categoryTrends.first.transactionCount, 2);
+    expect(report.categoryTrends.first.netSpend, 900);
+    expect(report.categoryTrends.first.months.first.netSpend, 900);
+    expect(report.categoryTrends.first.months.last.netSpend, 0);
+
+    expect(
+      report.merchantSummaries.first.merchantGroup,
+      'Swiggy/Zomato/Food delivery',
+    );
+    expect(report.merchantSummaries.first.transactionCount, 2);
+    expect(report.merchantSummaries.first.refundAmount, 100);
+    expect(
+      report.merchantSummaries.any(
+        (merchant) => merchant.merchantGroup == 'tele transfer credit',
+      ),
+      isFalse,
+    );
+
+    final csv = report.toTransactionsCsv();
+    expect(csv, contains('Date,Cardholder,Source,Statement merchant'));
+    expect(csv, contains('"HDFC SmartBuy, Flights"'));
+  });
+
   testWidgets('dashboard shows net spend and saves category caps', (
     tester,
   ) async {
@@ -67,6 +149,43 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(repository.lastQuery?.categoryId, 'cat-food');
+  });
+
+  testWidgets('trends render reports and refresh shared filters', (
+    tester,
+  ) async {
+    final repository = _FakeFinanceRepository();
+
+    await tester.pumpWidget(
+      _financeTestApp(repository: repository, child: const TrendsScreen()),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Monthly Net Spend'), findsOneWidget);
+    expect(find.text('Gross, Refunds, Net'), findsOneWidget);
+    expect(find.text('Category Trend'), findsOneWidget);
+    expect(find.text('Merchant Summary'), findsOneWidget);
+    expect(find.text('Swiggy Instamart'), findsWidgets);
+    expect(repository.lastTrendQuery?.categoryId, isNull);
+
+    await tester.tap(find.byType(DropdownButtonFormField<String>).first);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Food').last);
+    await tester.pumpAndSettle();
+
+    expect(repository.lastTrendQuery?.categoryId, 'cat-food');
+    expect(find.text('Amazon Pay'), findsNothing);
+
+    await tester.tap(find.byType(DropdownButtonFormField<String>).last);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('HDFC Credit Card - Ada').last);
+    await tester.pumpAndSettle();
+
+    expect(repository.lastTrendQuery?.sourceAccountId, 'source-1');
+    final copyButton = tester.widget<FilledButton>(
+      find.widgetWithText(FilledButton, 'Copy CSV'),
+    );
+    expect(copyButton.onPressed, isNotNull);
   });
 
   testWidgets('merchant review resolves an open item', (tester) async {
@@ -200,6 +319,7 @@ final class _FakeFinanceRepository implements FinanceRepository {
   final piggyBanks = <PiggyBankSummary>[];
   final piggyEntries = <PiggyBankEntry>[];
   TransactionQuery? lastQuery;
+  TrendQuery? lastTrendQuery;
 
   final categories = const [
     CategoryOption(id: 'cat-food', name: 'Food'),
@@ -252,6 +372,37 @@ final class _FakeFinanceRepository implements FinanceRepository {
       currencyCode: 'INR',
       confidence: 'medium',
       cardholderName: 'Ada',
+    ),
+  ];
+
+  final trendTransactions = [
+    _trendTransaction(
+      id: 'trend-fake-1',
+      transactionDate: DateTime(2026, 3, 12),
+      statementMerchant: 'Swiggy Instamart',
+      merchantGroup: 'Swiggy Instamart',
+      categoryId: 'cat-food',
+      categoryName: 'Food',
+      subcategoryId: 'sub-food-delivery',
+      subcategoryName: 'Delivery',
+      sourceAccountId: 'source-1',
+      sourceLabel: 'HDFC Credit Card - Ada',
+      grossSpend: 1200,
+      netExpense: 1200,
+    ),
+    _trendTransaction(
+      id: 'trend-fake-2',
+      transactionDate: DateTime(2026, 3, 8),
+      statementMerchant: 'Amazon Pay',
+      merchantGroup: 'Amazon Shopping',
+      categoryId: 'cat-shopping',
+      categoryName: 'Shopping',
+      subcategoryId: 'sub-marketplace',
+      subcategoryName: 'Marketplace',
+      sourceAccountId: 'source-2',
+      sourceLabel: 'ICICI Credit Card - Ada',
+      grossSpend: 2400,
+      netExpense: 2400,
     ),
   ];
 
@@ -500,6 +651,29 @@ final class _FakeFinanceRepository implements FinanceRepository {
   }
 
   @override
+  Future<TrendReport> fetchTrendReport(TrendQuery query) async {
+    lastTrendQuery = query;
+    final filtered = trendTransactions.where((transaction) {
+      final matchesCategory =
+          query.categoryId == null ||
+          transaction.categoryId == query.categoryId;
+      final matchesSource =
+          query.sourceAccountId == null ||
+          transaction.sourceAccountId == query.sourceAccountId;
+      final matchesStart =
+          query.startDate == null ||
+          !transaction.transactionDate.isBefore(query.startDate!);
+      final matchesEnd =
+          query.endDate == null ||
+          !transaction.transactionDate.isAfter(query.endDate!);
+
+      return matchesCategory && matchesSource && matchesStart && matchesEnd;
+    }).toList();
+
+    return TrendReport.fromTransactions(filtered);
+  }
+
+  @override
   Future<MerchantCorrectionResult> applyMerchantReviewCorrection(
     MerchantCorrectionRequest request,
   ) async {
@@ -565,4 +739,46 @@ extension _FirstOrNull<T> on Iterable<T> {
 
     return null;
   }
+}
+
+TrendReportTransaction _trendTransaction({
+  required String id,
+  required DateTime transactionDate,
+  required String statementMerchant,
+  required String merchantGroup,
+  String? merchantId,
+  String? categoryId,
+  String? categoryName,
+  String? subcategoryId,
+  String? subcategoryName,
+  String? sourceAccountId,
+  String? sourceLabel,
+  String transactionType = 'debit_spend',
+  double amount = 0,
+  double grossSpend = 0,
+  double refundAmount = 0,
+  double netExpense = 0,
+  String currencyCode = 'INR',
+  String? cardholderName = 'Ada',
+}) {
+  return TrendReportTransaction(
+    id: id,
+    transactionDate: transactionDate,
+    statementMerchant: statementMerchant,
+    merchantGroup: merchantGroup,
+    merchantId: merchantId,
+    categoryId: categoryId,
+    categoryName: categoryName,
+    subcategoryId: subcategoryId,
+    subcategoryName: subcategoryName,
+    sourceAccountId: sourceAccountId,
+    sourceLabel: sourceLabel,
+    transactionType: transactionType,
+    amount: amount == 0 && grossSpend != 0 ? grossSpend : amount,
+    grossSpend: grossSpend,
+    refundAmount: refundAmount,
+    netExpense: netExpense,
+    currencyCode: currencyCode,
+    cardholderName: cardholderName,
+  );
 }

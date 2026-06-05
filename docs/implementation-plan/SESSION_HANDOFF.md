@@ -5,9 +5,9 @@ Use this file to coordinate work across multiple implementation sessions. Update
 ## Current Status
 
 - Current milestone: Not started.
-- Last completed milestone: Milestone 7, Piggy Banks.
-- Current implementation state: Flutter Android app scaffold exists in `apps/mobile` with SpendLens Google sign-in, route protection, authenticated shell, RLS-safe profile/default-household bootstrap, household loading/error states, sign-out, package `com.olympus.spendlens`, core packages, environment templates, tests, and Supabase folder structure. Supabase local config applies migrations for schema, RLS, views, workbook-derived default categories, merchant review corrections, piggy-bank entry validation, pgTAP database tests, and the Android auth redirect URL. Milestone 3 adds a local workbook importer under `tools/workbook-import`, fixture tests, and rerun documentation in `docs/implementation-plan/WORKBOOK_IMPORT.md`. Milestone 5 adds Supabase-backed finance repository reads/writes, dashboard KPIs, reporting-month selection, monthly category cap setup/editing, category and merchant summaries, transaction search/filter pagination, and transaction detail panels. Milestone 6 adds merchant review queue UI, correction RPC/rule persistence, historical reclassification, review resolution, transaction classification audit metadata, and future-import rule application. Milestone 7 adds Supabase-backed piggy-bank list/detail UI, create/edit forms, ledger entry creation, ledger-derived balance/progress reads, no-overdraft withdrawal validation, and regression tests.
-- Next recommended milestone: Milestone 8, Trends and Reports.
+- Last completed milestone: Milestone 8, Trends and Reports.
+- Current implementation state: Flutter Android app scaffold exists in `apps/mobile` with SpendLens Google sign-in, route protection, authenticated shell, RLS-safe profile/default-household bootstrap, household loading/error states, sign-out, package `com.olympus.spendlens`, core packages, environment templates, tests, and Supabase folder structure. Supabase local config applies migrations for schema, RLS, views, workbook-derived default categories, merchant review corrections, piggy-bank entry validation, pgTAP database tests, and the Android auth redirect URL. Milestone 3 adds a local workbook importer under `tools/workbook-import`, fixture tests, and rerun documentation in `docs/implementation-plan/WORKBOOK_IMPORT.md`. Milestone 5 adds Supabase-backed finance repository reads/writes, dashboard KPIs, reporting-month selection, monthly category cap setup/editing, category and merchant summaries, transaction search/filter pagination, and transaction detail panels. Milestone 6 adds merchant review queue UI, correction RPC/rule persistence, historical reclassification, review resolution, transaction classification audit metadata, and future-import rule application. Milestone 7 adds Supabase-backed piggy-bank list/detail UI, create/edit forms, ledger entry creation, ledger-derived balance/progress reads, no-overdraft withdrawal validation, and regression tests. Milestone 8 adds filtered monthly trend reports, gross/refund/net reporting, category trend tables, merchant summary tables, and filtered transaction CSV copy from the Trends screen.
+- Next recommended milestone: Milestone 9, Gmail Connector and Credit-Card Email Ingestion.
 
 ## Required Reading for New Threads
 
@@ -62,7 +62,7 @@ Do not ask the user to perform all setup at once. Ask only when the relevant mil
 - Milestone 5, Expense Dashboard, Transactions, and Monthly Caps: completed.
 - Milestone 6, Merchant Mapping and Review Workflow: completed.
 - Milestone 7, Piggy Banks: completed.
-- Milestone 8, Trends and Reports: pending.
+- Milestone 8, Trends and Reports: completed.
 - Milestone 9, Gmail Connector and Credit-Card Email Ingestion: pending.
 - Milestone 10, UPI Ingestion and Parser Expansion: pending.
 - Milestone 11, Deployment, Security, and Production Readiness: pending.
@@ -256,3 +256,45 @@ When an architecture decision changes:
 - Known gaps:
   - No Supabase remote migration push or remote advisors were run; verification was local only.
   - Live authenticated Android-device piggy-bank workflow coverage was not exercised in this session.
+
+## Milestone 8 Completion Notes
+
+- Completed on 2026-06-05.
+- Expanded the Flutter finance repository with `TrendQuery`, `TrendReport`, filtered transaction aggregation, category trend rows, merchant summaries, and CSV generation for filtered transactions.
+- Replaced the Trends placeholder with an interactive report screen:
+  - Monthly net spend line chart.
+  - Gross, refunds, net, and bill-payment monthly table.
+  - Category trend table across report months.
+  - Merchant summary table with merchant group, category, subcategory, transaction count, gross spend, refunds, and net spend.
+  - Shared transaction-style filters for date range, category, and source/cardholder.
+  - Filtered transaction CSV copy action using the current Flutter stack without adding native file/share dependencies.
+- Added model and widget coverage for trend aggregation, CSV escaping, report rendering, and category/source filter query refresh.
+- Local imported workbook report check after reset/import:
+  - Transactions: 475.
+  - Gross spend: 1,548,630.69.
+  - Refunds: 26,242.46.
+  - Net expense: 1,522,388.23.
+  - Monthly rows: 12, monthly net total: 1,522,388.23.
+  - Category rows: 20, category net total: 1,522,388.23.
+  - Merchant rows: 43, merchant net total: 1,522,388.23.
+- Verification run:
+  - Supabase changelog check via `curl https://supabase.com/changelog.md`.
+  - Supabase MCP docs search for current filter/query guidance.
+  - `dart format lib/src/data/repositories/finance_repository.dart lib/src/features/trends/trends_screen.dart test/finance_features_test.dart`
+  - `flutter test test/finance_features_test.dart`
+  - `flutter analyze`
+  - `flutter test`
+  - `flutter build apk --debug --no-pub`
+  - `pnpm --dir tools/workbook-import test`
+  - `pnpm --dir tools/workbook-import run validate`
+  - `supabase test db --local supabase/tests`
+  - `supabase db lint --local --schema app_private,public --fail-on error`
+  - `supabase db reset --local`
+  - `pnpm --dir tools/workbook-import run import`
+  - `supabase db query --local -o json "<Milestone 8 imported reporting totals query>"`
+  - `supabase db advisors --local --type security --level warn --fail-on none`
+  - `supabase db advisors --local --type performance --level warn --fail-on none`
+- Known gaps:
+  - No schema migration was needed for this milestone; existing RLS-protected transaction reads and summary semantics are used.
+  - No Supabase remote migration push or remote advisors were run; verification was local only.
+  - Live authenticated Android-device trends workflow coverage was not exercised in this session.

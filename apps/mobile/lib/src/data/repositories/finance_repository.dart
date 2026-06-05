@@ -43,6 +43,13 @@ final transactionSourceAccountsProvider =
           .fetchSourceAccounts(householdId: householdId);
     });
 
+final trendReportProvider = FutureProvider.family<TrendReport, TrendQuery>((
+  ref,
+  query,
+) {
+  return ref.watch(financeRepositoryProvider).fetchTrendReport(query);
+});
+
 final merchantReviewQueueProvider =
     FutureProvider.family<List<MerchantReviewItem>, String>((ref, householdId) {
       return ref
@@ -179,6 +186,62 @@ final class TransactionQuery {
   );
 }
 
+final class TrendQuery {
+  const TrendQuery({
+    required this.householdId,
+    this.categoryId,
+    this.sourceAccountId,
+    this.startDate,
+    this.endDate,
+  });
+
+  final String householdId;
+  final String? categoryId;
+  final String? sourceAccountId;
+  final DateTime? startDate;
+  final DateTime? endDate;
+
+  TrendQuery copyWith({
+    String? categoryId,
+    bool clearCategory = false,
+    String? sourceAccountId,
+    bool clearSourceAccount = false,
+    DateTime? startDate,
+    bool clearStartDate = false,
+    DateTime? endDate,
+    bool clearEndDate = false,
+  }) {
+    return TrendQuery(
+      householdId: householdId,
+      categoryId: clearCategory ? null : categoryId ?? this.categoryId,
+      sourceAccountId: clearSourceAccount
+          ? null
+          : sourceAccountId ?? this.sourceAccountId,
+      startDate: clearStartDate ? null : startDate ?? this.startDate,
+      endDate: clearEndDate ? null : endDate ?? this.endDate,
+    );
+  }
+
+  @override
+  bool operator ==(Object other) {
+    return other is TrendQuery &&
+        other.householdId == householdId &&
+        other.categoryId == categoryId &&
+        other.sourceAccountId == sourceAccountId &&
+        _dateKey(other.startDate) == _dateKey(startDate) &&
+        _dateKey(other.endDate) == _dateKey(endDate);
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    householdId,
+    categoryId,
+    sourceAccountId,
+    _dateKey(startDate),
+    _dateKey(endDate),
+  );
+}
+
 final class PiggyBankEntriesRequest {
   const PiggyBankEntriesRequest({
     required this.householdId,
@@ -274,6 +337,314 @@ final class MonthlySpend {
       billPayments: _asDouble(json['bill_payments']),
     );
   }
+}
+
+final class TrendReport {
+  const TrendReport({
+    required this.transactions,
+    required this.monthlySpend,
+    required this.categoryTrends,
+    required this.merchantSummaries,
+  });
+
+  final List<TrendReportTransaction> transactions;
+  final List<MonthlySpend> monthlySpend;
+  final List<CategoryTrend> categoryTrends;
+  final List<MerchantSummary> merchantSummaries;
+
+  bool get isEmpty => transactions.isEmpty;
+
+  int get transactionCount => transactions.length;
+
+  double get grossSpend {
+    return transactions.fold<double>(0, (total, row) => total + row.grossSpend);
+  }
+
+  double get refundAmount {
+    return transactions.fold<double>(
+      0,
+      (total, row) => total + row.refundAmount,
+    );
+  }
+
+  double get netSpend {
+    return transactions.fold<double>(0, (total, row) => total + row.netExpense);
+  }
+
+  String toTransactionsCsv() {
+    final rows = <List<Object?>>[
+      [
+        'Date',
+        'Cardholder',
+        'Source',
+        'Statement merchant',
+        'Merchant group',
+        'Category',
+        'Subcategory',
+        'Transaction type',
+        'Gross spend',
+        'Refunds',
+        'Net expense',
+        'Amount',
+        'Currency',
+      ],
+      for (final transaction in transactions)
+        [
+          dateString(transaction.transactionDate),
+          transaction.cardholderName,
+          transaction.sourceLabel,
+          transaction.statementMerchant,
+          transaction.merchantGroup,
+          transaction.categoryName,
+          transaction.subcategoryName,
+          transaction.transactionType,
+          transaction.grossSpend.toStringAsFixed(2),
+          transaction.refundAmount.toStringAsFixed(2),
+          transaction.netExpense.toStringAsFixed(2),
+          transaction.amount.toStringAsFixed(2),
+          transaction.currencyCode,
+        ],
+    ];
+
+    return rows.map(_csvRow).join('\n');
+  }
+
+  factory TrendReport.fromTransactions(
+    List<TrendReportTransaction> transactions,
+  ) {
+    final sortedTransactions = [...transactions]
+      ..sort((a, b) {
+        final dateComparison = a.transactionDate.compareTo(b.transactionDate);
+        if (dateComparison != 0) return dateComparison;
+
+        return a.statementMerchant.compareTo(b.statementMerchant);
+      });
+
+    final monthlyTotals = <String, _MonthlyTrendAccumulator>{};
+    final categoryTotals = <String, _CategoryTrendAccumulator>{};
+    final merchantTotals = <String, _MerchantSummaryAccumulator>{};
+
+    for (final transaction in sortedTransactions) {
+      final month = firstDayOfMonth(transaction.transactionDate);
+      final monthKey = dateString(month);
+      monthlyTotals
+          .putIfAbsent(monthKey, () => _MonthlyTrendAccumulator(month))
+          .add(transaction);
+
+      if (transaction.isBillPayment) continue;
+
+      final categoryId = transaction.categoryId;
+      if (categoryId != null) {
+        categoryTotals
+            .putIfAbsent(
+              categoryId,
+              () => _CategoryTrendAccumulator(
+                categoryId: categoryId,
+                categoryName: transaction.categoryName ?? 'Uncategorized',
+              ),
+            )
+            .add(transaction, month);
+      }
+
+      final merchantKey = [
+        transaction.merchantId ?? transaction.merchantGroup,
+        transaction.categoryId ?? '',
+        transaction.subcategoryId ?? '',
+      ].join('|');
+      merchantTotals
+          .putIfAbsent(
+            merchantKey,
+            () => _MerchantSummaryAccumulator(
+              merchantGroup: transaction.merchantGroup,
+              categoryName: transaction.categoryName,
+              subcategoryName: transaction.subcategoryName,
+            ),
+          )
+          .add(transaction);
+    }
+
+    final monthlySpend =
+        monthlyTotals.values.map((total) => total.toMonthlySpend()).toList()
+          ..sort((a, b) => a.periodMonth.compareTo(b.periodMonth));
+    final monthKeys = monthlySpend
+        .map((month) => dateString(month.periodMonth))
+        .toList(growable: false);
+
+    final categoryTrends =
+        categoryTotals.values
+            .map((total) => total.toCategoryTrend(monthKeys))
+            .toList()
+          ..sort((a, b) {
+            final spendComparison = b.netSpend.compareTo(a.netSpend);
+            if (spendComparison != 0) return spendComparison;
+
+            return a.categoryName.compareTo(b.categoryName);
+          });
+
+    final merchantSummaries =
+        merchantTotals.values.map((total) => total.toMerchantSummary()).toList()
+          ..sort((a, b) {
+            final spendComparison = b.netSpend.compareTo(a.netSpend);
+            if (spendComparison != 0) return spendComparison;
+
+            return a.merchantGroup.compareTo(b.merchantGroup);
+          });
+
+    return TrendReport(
+      transactions: sortedTransactions,
+      monthlySpend: monthlySpend,
+      categoryTrends: categoryTrends,
+      merchantSummaries: merchantSummaries,
+    );
+  }
+}
+
+final class TrendReportTransaction {
+  const TrendReportTransaction({
+    required this.id,
+    required this.transactionDate,
+    required this.statementMerchant,
+    required this.merchantGroup,
+    this.merchantId,
+    this.categoryId,
+    this.categoryName,
+    this.subcategoryId,
+    this.subcategoryName,
+    this.sourceAccountId,
+    this.sourceLabel,
+    required this.transactionType,
+    required this.amount,
+    required this.grossSpend,
+    required this.refundAmount,
+    required this.netExpense,
+    required this.currencyCode,
+    this.cardholderName,
+  });
+
+  final String id;
+  final DateTime transactionDate;
+  final String statementMerchant;
+  final String merchantGroup;
+  final String? merchantId;
+  final String? categoryId;
+  final String? categoryName;
+  final String? subcategoryId;
+  final String? subcategoryName;
+  final String? sourceAccountId;
+  final String? sourceLabel;
+  final String transactionType;
+  final double amount;
+  final double grossSpend;
+  final double refundAmount;
+  final double netExpense;
+  final String currencyCode;
+  final String? cardholderName;
+
+  bool get isBillPayment => transactionType == 'bill_payment_credit';
+
+  factory TrendReportTransaction.fromJson(
+    Map<String, dynamic> json, {
+    required Map<String, String> categoryNamesById,
+    required Map<String, String> subcategoryNamesById,
+    required Map<String, String> merchantNamesById,
+    required Map<String, String> sourceLabelsById,
+  }) {
+    final merchantId = json['merchant_id'] as String?;
+    final categoryId = json['category_id'] as String?;
+    final subcategoryId = json['subcategory_id'] as String?;
+    final sourceAccountId = json['source_account_id'] as String?;
+    final merchantName = merchantId == null
+        ? null
+        : merchantNamesById[merchantId];
+    final normalizedMerchant =
+        (json['normalized_statement_merchant'] as String?)?.trim();
+    final statementMerchant = json['statement_merchant'] as String;
+
+    return TrendReportTransaction(
+      id: json['id'] as String,
+      transactionDate: _parseDate(json['transaction_date'] as String),
+      statementMerchant: statementMerchant,
+      merchantGroup:
+          merchantName ??
+          (normalizedMerchant == null || normalizedMerchant.isEmpty
+              ? statementMerchant
+              : normalizedMerchant),
+      merchantId: merchantId,
+      categoryId: categoryId,
+      categoryName: categoryId == null ? null : categoryNamesById[categoryId],
+      subcategoryId: subcategoryId,
+      subcategoryName: subcategoryId == null
+          ? null
+          : subcategoryNamesById[subcategoryId],
+      sourceAccountId: sourceAccountId,
+      sourceLabel: sourceAccountId == null
+          ? null
+          : sourceLabelsById[sourceAccountId],
+      transactionType: json['transaction_type'] as String,
+      amount: _asDouble(json['amount']),
+      grossSpend: _asDouble(json['gross_spend']),
+      refundAmount: _asDouble(json['refund_amount']),
+      netExpense: _asDouble(json['net_expense']),
+      currencyCode: json['currency_code'] as String? ?? 'INR',
+      cardholderName: json['cardholder_name'] as String?,
+    );
+  }
+}
+
+final class CategoryTrend {
+  const CategoryTrend({
+    required this.categoryId,
+    required this.categoryName,
+    required this.transactionCount,
+    required this.grossSpend,
+    required this.refundAmount,
+    required this.netSpend,
+    required this.months,
+  });
+
+  final String categoryId;
+  final String categoryName;
+  final int transactionCount;
+  final double grossSpend;
+  final double refundAmount;
+  final double netSpend;
+  final List<CategoryTrendMonth> months;
+}
+
+final class CategoryTrendMonth {
+  const CategoryTrendMonth({
+    required this.periodMonth,
+    required this.transactionCount,
+    required this.grossSpend,
+    required this.refundAmount,
+    required this.netSpend,
+  });
+
+  final DateTime periodMonth;
+  final int transactionCount;
+  final double grossSpend;
+  final double refundAmount;
+  final double netSpend;
+}
+
+final class MerchantSummary {
+  const MerchantSummary({
+    required this.merchantGroup,
+    this.categoryName,
+    this.subcategoryName,
+    required this.transactionCount,
+    required this.grossSpend,
+    required this.refundAmount,
+    required this.netSpend,
+  });
+
+  final String merchantGroup;
+  final String? categoryName;
+  final String? subcategoryName;
+  final int transactionCount;
+  final double grossSpend;
+  final double refundAmount;
+  final double netSpend;
 }
 
 final class CategorySpend {
@@ -832,6 +1203,8 @@ abstract interface class FinanceRepository {
 
   Future<PagedTransactions> fetchTransactions(TransactionQuery query);
 
+  Future<TrendReport> fetchTrendReport(TrendQuery query);
+
   Future<MerchantCorrectionResult> applyMerchantReviewCorrection(
     MerchantCorrectionRequest request,
   );
@@ -1156,6 +1529,49 @@ final class SupabaseFinanceRepository implements FinanceRepository {
   }
 
   @override
+  Future<TrendReport> fetchTrendReport(TrendQuery query) async {
+    final results = await Future.wait<Object>([
+      fetchCategories(householdId: query.householdId),
+      fetchSubcategories(householdId: query.householdId),
+      fetchMerchants(householdId: query.householdId),
+      fetchSourceAccounts(householdId: query.householdId),
+      _fetchTrendTransactions(query),
+    ]);
+
+    final categories = results[0] as List<CategoryOption>;
+    final subcategories = results[1] as List<SubcategoryOption>;
+    final merchants = results[2] as List<MerchantOption>;
+    final sourceAccounts = results[3] as List<SourceAccountOption>;
+    final rows = results[4] as List<Map<String, dynamic>>;
+    final categoryNamesById = {
+      for (final category in categories) category.id: category.name,
+    };
+    final subcategoryNamesById = {
+      for (final subcategory in subcategories) subcategory.id: subcategory.name,
+    };
+    final merchantNamesById = {
+      for (final merchant in merchants) merchant.id: merchant.displayName,
+    };
+    final sourceLabelsById = {
+      for (final source in sourceAccounts) source.id: source.label,
+    };
+
+    return TrendReport.fromTransactions(
+      rows
+          .map(
+            (row) => TrendReportTransaction.fromJson(
+              row,
+              categoryNamesById: categoryNamesById,
+              subcategoryNamesById: subcategoryNamesById,
+              merchantNamesById: merchantNamesById,
+              sourceLabelsById: sourceLabelsById,
+            ),
+          )
+          .toList(growable: false),
+    );
+  }
+
+  @override
   Future<MerchantCorrectionResult> applyMerchantReviewCorrection(
     MerchantCorrectionRequest request,
   ) async {
@@ -1296,6 +1712,44 @@ final class SupabaseFinanceRepository implements FinanceRepository {
     return merchants.take(5).toList(growable: false);
   }
 
+  Future<List<Map<String, dynamic>>> _fetchTrendTransactions(
+    TrendQuery query,
+  ) async {
+    var request = _client
+        .from('transactions')
+        .select(
+          'id, transaction_date, statement_merchant, '
+          'normalized_statement_merchant, merchant_id, category_id, '
+          'subcategory_id, source_account_id, transaction_type, amount, '
+          'gross_spend, refund_amount, net_expense, currency_code, '
+          'cardholder_name',
+        )
+        .eq('household_id', query.householdId);
+
+    if (query.categoryId != null) {
+      request = request.eq('category_id', query.categoryId!);
+    }
+
+    if (query.sourceAccountId != null) {
+      request = request.eq('source_account_id', query.sourceAccountId!);
+    }
+
+    if (query.startDate != null) {
+      request = request.gte('transaction_date', dateString(query.startDate!));
+    }
+
+    if (query.endDate != null) {
+      request = request.lte('transaction_date', dateString(query.endDate!));
+    }
+
+    final rows = await request
+        .order('transaction_date')
+        .order('created_at')
+        .limit(5000);
+
+    return rows.cast<Map<String, dynamic>>();
+  }
+
   Future<int> _fetchOpenReviewCount({required String householdId}) async {
     final rows = await _client
         .from('v_review_queue')
@@ -1414,6 +1868,11 @@ final class DisabledFinanceRepository implements FinanceRepository {
   }
 
   @override
+  Future<TrendReport> fetchTrendReport(TrendQuery query) {
+    throw const SupabaseNotConfiguredException();
+  }
+
+  @override
   Future<MerchantCorrectionResult> applyMerchantReviewCorrection(
     MerchantCorrectionRequest request,
   ) {
@@ -1439,6 +1898,150 @@ final class _MerchantAccumulator {
   int count = 0;
   double netSpend = 0;
   double refundAmount = 0;
+}
+
+final class _MonthlyTrendAccumulator {
+  _MonthlyTrendAccumulator(this.periodMonth);
+
+  final DateTime periodMonth;
+  int transactionCount = 0;
+  double grossSpend = 0;
+  double refundAmount = 0;
+  double netSpend = 0;
+  double billPayments = 0;
+
+  void add(TrendReportTransaction transaction) {
+    transactionCount += 1;
+    grossSpend += transaction.grossSpend;
+    refundAmount += transaction.refundAmount;
+    netSpend += transaction.netExpense;
+    if (transaction.isBillPayment) {
+      billPayments += transaction.amount.abs();
+    }
+  }
+
+  MonthlySpend toMonthlySpend() {
+    return MonthlySpend(
+      periodMonth: periodMonth,
+      transactionCount: transactionCount,
+      grossSpend: grossSpend,
+      refundAmount: refundAmount,
+      netSpend: netSpend,
+      billPayments: billPayments,
+    );
+  }
+}
+
+final class _CategoryTrendAccumulator {
+  _CategoryTrendAccumulator({
+    required this.categoryId,
+    required this.categoryName,
+  });
+
+  final String categoryId;
+  final String categoryName;
+  int transactionCount = 0;
+  double grossSpend = 0;
+  double refundAmount = 0;
+  double netSpend = 0;
+  final monthTotals = <String, _CategoryTrendMonthAccumulator>{};
+
+  void add(TrendReportTransaction transaction, DateTime month) {
+    transactionCount += 1;
+    grossSpend += transaction.grossSpend;
+    refundAmount += transaction.refundAmount;
+    netSpend += transaction.netExpense;
+    monthTotals
+        .putIfAbsent(
+          dateString(month),
+          () => _CategoryTrendMonthAccumulator(month),
+        )
+        .add(transaction);
+  }
+
+  CategoryTrend toCategoryTrend(List<String> monthKeys) {
+    return CategoryTrend(
+      categoryId: categoryId,
+      categoryName: categoryName,
+      transactionCount: transactionCount,
+      grossSpend: grossSpend,
+      refundAmount: refundAmount,
+      netSpend: netSpend,
+      months: [
+        for (final monthKey in monthKeys)
+          monthTotals[monthKey]?.toCategoryTrendMonth() ??
+              CategoryTrendMonth(
+                periodMonth: _parseDate(monthKey),
+                transactionCount: 0,
+                grossSpend: 0,
+                refundAmount: 0,
+                netSpend: 0,
+              ),
+      ],
+    );
+  }
+}
+
+final class _CategoryTrendMonthAccumulator {
+  _CategoryTrendMonthAccumulator(this.periodMonth);
+
+  final DateTime periodMonth;
+  int transactionCount = 0;
+  double grossSpend = 0;
+  double refundAmount = 0;
+  double netSpend = 0;
+
+  void add(TrendReportTransaction transaction) {
+    transactionCount += 1;
+    grossSpend += transaction.grossSpend;
+    refundAmount += transaction.refundAmount;
+    netSpend += transaction.netExpense;
+  }
+
+  CategoryTrendMonth toCategoryTrendMonth() {
+    return CategoryTrendMonth(
+      periodMonth: periodMonth,
+      transactionCount: transactionCount,
+      grossSpend: grossSpend,
+      refundAmount: refundAmount,
+      netSpend: netSpend,
+    );
+  }
+}
+
+final class _MerchantSummaryAccumulator {
+  _MerchantSummaryAccumulator({
+    required this.merchantGroup,
+    required this.categoryName,
+    required this.subcategoryName,
+  });
+
+  final String merchantGroup;
+  final String? categoryName;
+  final String? subcategoryName;
+  int transactionCount = 0;
+  double grossSpend = 0;
+  double refundAmount = 0;
+  double netSpend = 0;
+
+  void add(TrendReportTransaction transaction) {
+    transactionCount += 1;
+    grossSpend += transaction.grossSpend;
+    refundAmount += transaction.refundAmount;
+    netSpend += transaction.netExpense;
+  }
+
+  MerchantSummary toMerchantSummary() {
+    return MerchantSummary(
+      merchantGroup: merchantGroup,
+      categoryName: categoryName,
+      subcategoryName: subcategoryName,
+      transactionCount: transactionCount,
+      grossSpend: grossSpend,
+      refundAmount: refundAmount,
+      netSpend: netSpend,
+    );
+  }
 }
 
 DateTime firstDayOfMonth(DateTime date) {
@@ -1544,6 +2147,19 @@ String? _monthKey(DateTime? date) {
 
 String? _dateKey(DateTime? date) {
   return date == null ? null : dateString(date);
+}
+
+String _csvRow(List<Object?> cells) {
+  return cells.map(_csvCell).join(',');
+}
+
+String _csvCell(Object? value) {
+  final text = value?.toString() ?? '';
+  final needsQuotes =
+      text.contains(',') || text.contains('"') || text.contains('\n');
+  if (!needsQuotes) return text;
+
+  return '"${text.replaceAll('"', '""')}"';
 }
 
 extension _IterableFirstOrNull<T> on Iterable<T> {
