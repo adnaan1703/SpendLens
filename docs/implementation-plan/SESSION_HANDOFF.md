@@ -5,9 +5,9 @@ Use this file to coordinate work across multiple implementation sessions. Update
 ## Current Status
 
 - Current milestone: Not started.
-- Last completed milestone: Milestone 3, Workbook Import and Historical Seed Data.
-- Current implementation state: Flutter Android app scaffold exists in `apps/mobile` with SpendLens app shell, package `com.olympus.spendlens`, core packages, environment templates, tests, and Supabase folder structure. Supabase local config applies the M2 migrations for schema, RLS, views, workbook-derived default categories, and pgTAP database tests. Milestone 3 adds a local workbook importer under `tools/workbook-import`, fixture tests, and rerun documentation in `docs/implementation-plan/WORKBOOK_IMPORT.md`.
-- Next recommended milestone: Milestone 4, App Shell, Authentication, and Household Context.
+- Last completed milestone: Milestone 4, App Shell, Authentication, and Household Context.
+- Current implementation state: Flutter Android app scaffold exists in `apps/mobile` with SpendLens Google sign-in, route protection, authenticated shell, RLS-safe profile/default-household bootstrap, household loading/error states, sign-out, package `com.olympus.spendlens`, core packages, environment templates, tests, and Supabase folder structure. Supabase local config applies the M2 migrations for schema, RLS, views, workbook-derived default categories, pgTAP database tests, and the Android auth redirect URL. Milestone 3 adds a local workbook importer under `tools/workbook-import`, fixture tests, and rerun documentation in `docs/implementation-plan/WORKBOOK_IMPORT.md`.
+- Next recommended milestone: Milestone 5, Expense Dashboard, Transactions, and Monthly Caps.
 
 ## Required Reading for New Threads
 
@@ -58,7 +58,7 @@ Do not ask the user to perform all setup at once. Ask only when the relevant mil
 - Milestone 1, Project Foundation: completed.
 - Milestone 2, Supabase Schema, RLS, and Local Backend: completed.
 - Milestone 3, Workbook Import and Historical Seed Data: completed.
-- Milestone 4, App Shell, Authentication, and Household Context: pending.
+- Milestone 4, App Shell, Authentication, and Household Context: completed.
 - Milestone 5, Expense Dashboard, Transactions, and Monthly Caps: pending.
 - Milestone 6, Merchant Mapping and Review Workflow: pending.
 - Milestone 7, Piggy Banks: pending.
@@ -154,3 +154,23 @@ When an architecture decision changes:
 - Known gaps:
   - No remote Supabase import or remote advisors were run; Milestone 3 was verified locally only.
   - `supabase db lint --local --fail-on error` across all schemas fails on pgTAP helper functions in the Supabase `extensions` schema after database tests install pgTAP. Targeted app schemas (`app_private,public`) pass with no schema errors.
+
+## Milestone 4 Completion Notes
+
+- Completed on 2026-06-05.
+- Added Supabase Auth session providers, Google OAuth sign-in, and Android callback handling with `com.olympus.spendlens://login-callback/`.
+- Added route guards so unauthenticated users land on `/sign-in` and authenticated users are routed into the existing shell.
+- Added RLS-safe app bootstrap that creates/loads the signed-in profile, creates a default household for first-time users, and inserts the first owner membership without service-role credentials in Flutter.
+- Added household loading and error states around authenticated routes.
+- Added account/household runtime details and sign-out flow in Settings.
+- Updated environment templates, mobile setup docs, Supabase local redirect config, and external setup notes for Google Auth.
+- Verification run:
+  - `flutter pub get`
+  - `dart format <Milestone 4 Dart files>`
+  - `flutter analyze`
+  - `flutter test`
+  - `flutter build apk --debug --no-pub`
+- Known gaps:
+  - Google Auth provider and Android OAuth client still require external Supabase/Google Console setup before live sign-in can be tested.
+  - Local Supabase lint could not run because Docker Desktop was not running; `supabase start` failed to connect to the Docker daemon.
+  - `flutter test integration_test` could not run because no supported Android device/emulator was connected.

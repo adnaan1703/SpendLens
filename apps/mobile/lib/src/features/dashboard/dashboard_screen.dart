@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/bootstrap/app_bootstrap.dart';
+import '../../data/repositories/household_repository.dart';
 import '../../shared/widgets/app_page.dart';
 import '../../shared/widgets/empty_state.dart';
 import '../../shared/widgets/metric_card.dart';
@@ -14,6 +15,7 @@ class DashboardScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final bootstrap = ref.watch(appBootstrapProvider);
+    final householdContext = ref.watch(householdContextProvider).value;
     final backendLabel = switch (bootstrap.supabaseStatus) {
       SupabaseStatus.ready => 'Ready',
       SupabaseStatus.failed => 'Error',
@@ -22,7 +24,7 @@ class DashboardScreen extends ConsumerWidget {
 
     return AppPage(
       title: 'Dashboard',
-      subtitle: 'Current household',
+      subtitle: householdContext?.household.name ?? 'Current household',
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -61,8 +63,9 @@ class DashboardScreen extends ConsumerWidget {
           const SizedBox(height: 20),
           const EmptyState(
             icon: Icons.insights_outlined,
-            title: 'Historical workbook pending',
-            message: 'Dashboard summaries will appear after the import milestone.',
+            title: 'Dashboard data pending',
+            message:
+                'Spend summaries will appear after dashboard reads are wired.',
           ),
         ],
       ),

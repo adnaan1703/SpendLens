@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
+import '../data/repositories/household_repository.dart';
 import '../features/dashboard/dashboard_screen.dart';
 import '../features/merchant_review/merchant_review_screen.dart';
 import '../features/piggy_banks/piggy_banks_screen.dart';
@@ -65,10 +66,12 @@ class AppShell extends StatelessWidget {
   const AppShell({
     super.key,
     required this.location,
+    required this.householdContext,
     required this.child,
   });
 
   final String location;
+  final HouseholdContext householdContext;
   final Widget child;
 
   @override
@@ -86,6 +89,12 @@ class AppShell extends StatelessWidget {
                     onDestinationSelected: (index) {
                       context.go(appDestinations[index].path);
                     },
+                    leading: Padding(
+                      padding: const EdgeInsets.fromLTRB(8, 12, 8, 20),
+                      child: _HouseholdBadge(
+                        householdName: householdContext.household.name,
+                      ),
+                    ),
                     labelType: NavigationRailLabelType.all,
                     destinations: [
                       for (final destination in appDestinations)
@@ -123,9 +132,30 @@ class AppShell extends StatelessWidget {
 
   int _selectedIndexFor(String path) {
     final index = appDestinations.indexWhere((destination) {
-      return path == destination.path || path.startsWith('${destination.path}/');
+      return path == destination.path ||
+          path.startsWith('${destination.path}/');
     });
 
     return index == -1 ? 0 : index;
+  }
+}
+
+class _HouseholdBadge extends StatelessWidget {
+  const _HouseholdBadge({required this.householdName});
+
+  final String householdName;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return Tooltip(
+      message: householdName,
+      child: CircleAvatar(
+        backgroundColor: theme.colorScheme.primaryContainer,
+        foregroundColor: theme.colorScheme.onPrimaryContainer,
+        child: const Icon(Icons.home_outlined),
+      ),
+    );
   }
 }

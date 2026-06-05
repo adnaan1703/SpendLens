@@ -14,6 +14,7 @@ void main() {
               environment: AppEnvironment.local,
               supabaseUrl: null,
               supabasePublishableKey: null,
+              authRedirectUrl: AppConfig.defaultAuthRedirectUrl,
             ),
           ),
           appBootstrapProvider.overrideWithValue(
@@ -26,13 +27,13 @@ void main() {
 
     await tester.pumpAndSettle();
 
-    expect(find.text('Dashboard'), findsWidgets);
-    expect(find.text('Current month net'), findsOneWidget);
-    expect(find.text('Transactions'), findsWidgets);
-    expect(find.text('Settings'), findsWidgets);
+    expect(find.text('SpendLens'), findsOneWidget);
+    expect(find.text('Continue with Google'), findsOneWidget);
+    expect(find.text('Supabase setup required'), findsOneWidget);
+    expect(find.text('Dashboard'), findsNothing);
   });
 
-  testWidgets('navigates between shell destinations', (tester) async {
+  testWidgets('blocks protected routes when unauthenticated', (tester) async {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
@@ -41,6 +42,7 @@ void main() {
               environment: AppEnvironment.local,
               supabaseUrl: null,
               supabasePublishableKey: null,
+              authRedirectUrl: AppConfig.defaultAuthRedirectUrl,
             ),
           ),
           appBootstrapProvider.overrideWithValue(
@@ -52,10 +54,8 @@ void main() {
     );
 
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Settings').last);
-    await tester.pumpAndSettle();
 
-    expect(find.text('Runtime'), findsOneWidget);
-    expect(find.text(AppConfig.androidPackageName), findsOneWidget);
+    expect(find.text('Continue with Google'), findsOneWidget);
+    expect(find.text('Transactions'), findsNothing);
   });
 }

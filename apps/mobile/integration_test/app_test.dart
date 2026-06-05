@@ -17,6 +17,7 @@ void main() {
               environment: AppEnvironment.local,
               supabaseUrl: null,
               supabasePublishableKey: null,
+              authRedirectUrl: AppConfig.defaultAuthRedirectUrl,
             ),
           ),
           appBootstrapProvider.overrideWithValue(
@@ -29,6 +30,6 @@ void main() {
 
     await tester.pumpAndSettle();
 
-    expect(find.text('Dashboard'), findsWidgets);
+    expect(find.text('Continue with Google'), findsOneWidget);
   });
 }

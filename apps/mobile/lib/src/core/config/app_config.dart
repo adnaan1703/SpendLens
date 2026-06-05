@@ -9,14 +9,17 @@ class AppConfig {
     required this.environment,
     required this.supabaseUrl,
     required this.supabasePublishableKey,
+    required this.authRedirectUrl,
   });
 
   static const appName = 'SpendLens';
   static const androidPackageName = 'com.olympus.spendlens';
+  static const defaultAuthRedirectUrl = '$androidPackageName://login-callback/';
 
   final AppEnvironment environment;
   final String? supabaseUrl;
   final String? supabasePublishableKey;
+  final String authRedirectUrl;
 
   bool get hasSupabaseConfig {
     return supabaseUrl != null &&
@@ -31,15 +34,20 @@ class AppConfig {
       defaultValue: 'local',
     );
     const rawSupabaseUrl = String.fromEnvironment('SUPABASE_URL');
-    const rawSupabasePublishableKey =
-        String.fromEnvironment('SUPABASE_PUBLISHABLE_KEY');
+    const rawSupabasePublishableKey = String.fromEnvironment(
+      'SUPABASE_PUBLISHABLE_KEY',
+    );
     const rawSupabaseAnonKey = String.fromEnvironment('SUPABASE_ANON_KEY');
+    const rawAuthRedirectUrl = String.fromEnvironment('AUTH_REDIRECT_URL');
 
     return AppConfig(
       environment: AppEnvironment.fromName(environmentName),
       supabaseUrl: _cleanValue(rawSupabaseUrl),
-      supabasePublishableKey: _cleanValue(rawSupabasePublishableKey) ??
+      supabasePublishableKey:
+          _cleanValue(rawSupabasePublishableKey) ??
           _cleanValue(rawSupabaseAnonKey),
+      authRedirectUrl:
+          _cleanValue(rawAuthRedirectUrl) ?? defaultAuthRedirectUrl,
     );
   }
 

@@ -65,7 +65,8 @@ User actions:
 Required configuration:
 
 - Enable Google Auth provider for app sign-in.
-- Add redirect URLs for Android auth flows.
+- Add redirect URLs for Android auth flows:
+  - `com.olympus.spendlens://login-callback/`
 - Enable required Postgres extensions:
   - `pgcrypto` or UUID generation support.
   - Supabase Vault if storing encrypted connector secrets there.
