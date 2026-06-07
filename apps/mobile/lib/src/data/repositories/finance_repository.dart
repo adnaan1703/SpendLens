@@ -57,6 +57,16 @@ final merchantReviewQueueProvider =
           .fetchMerchantReviewQueue(householdId: householdId);
     });
 
+final gmailConnectorStatusProvider =
+    FutureProvider.family<List<GmailConnectorStatus>, String>((
+      ref,
+      householdId,
+    ) {
+      return ref
+          .watch(financeRepositoryProvider)
+          .fetchGmailConnectorStatus(householdId: householdId);
+    });
+
 final merchantSubcategoriesProvider =
     FutureProvider.family<List<SubcategoryOption>, String>((ref, householdId) {
       return ref
@@ -118,6 +128,7 @@ final class TransactionQuery {
     required this.householdId,
     this.searchText = '',
     this.categoryId,
+    this.sourceAccountType,
     this.sourceAccountId,
     this.startDate,
     this.endDate,
@@ -128,6 +139,7 @@ final class TransactionQuery {
   final String householdId;
   final String searchText;
   final String? categoryId;
+  final String? sourceAccountType;
   final String? sourceAccountId;
   final DateTime? startDate;
   final DateTime? endDate;
@@ -138,6 +150,8 @@ final class TransactionQuery {
     String? searchText,
     String? categoryId,
     bool clearCategory = false,
+    String? sourceAccountType,
+    bool clearSourceAccountType = false,
     String? sourceAccountId,
     bool clearSourceAccount = false,
     DateTime? startDate,
@@ -150,6 +164,9 @@ final class TransactionQuery {
       householdId: householdId,
       searchText: searchText ?? this.searchText,
       categoryId: clearCategory ? null : categoryId ?? this.categoryId,
+      sourceAccountType: clearSourceAccountType
+          ? null
+          : sourceAccountType ?? this.sourceAccountType,
       sourceAccountId: clearSourceAccount
           ? null
           : sourceAccountId ?? this.sourceAccountId,
@@ -166,6 +183,7 @@ final class TransactionQuery {
         other.householdId == householdId &&
         other.searchText == searchText &&
         other.categoryId == categoryId &&
+        other.sourceAccountType == sourceAccountType &&
         other.sourceAccountId == sourceAccountId &&
         _dateKey(other.startDate) == _dateKey(startDate) &&
         _dateKey(other.endDate) == _dateKey(endDate) &&
@@ -178,6 +196,7 @@ final class TransactionQuery {
     householdId,
     searchText,
     categoryId,
+    sourceAccountType,
     sourceAccountId,
     _dateKey(startDate),
     _dateKey(endDate),
@@ -190,6 +209,7 @@ final class TrendQuery {
   const TrendQuery({
     required this.householdId,
     this.categoryId,
+    this.sourceAccountType,
     this.sourceAccountId,
     this.startDate,
     this.endDate,
@@ -197,6 +217,7 @@ final class TrendQuery {
 
   final String householdId;
   final String? categoryId;
+  final String? sourceAccountType;
   final String? sourceAccountId;
   final DateTime? startDate;
   final DateTime? endDate;
@@ -204,6 +225,8 @@ final class TrendQuery {
   TrendQuery copyWith({
     String? categoryId,
     bool clearCategory = false,
+    String? sourceAccountType,
+    bool clearSourceAccountType = false,
     String? sourceAccountId,
     bool clearSourceAccount = false,
     DateTime? startDate,
@@ -214,6 +237,9 @@ final class TrendQuery {
     return TrendQuery(
       householdId: householdId,
       categoryId: clearCategory ? null : categoryId ?? this.categoryId,
+      sourceAccountType: clearSourceAccountType
+          ? null
+          : sourceAccountType ?? this.sourceAccountType,
       sourceAccountId: clearSourceAccount
           ? null
           : sourceAccountId ?? this.sourceAccountId,
@@ -227,6 +253,7 @@ final class TrendQuery {
     return other is TrendQuery &&
         other.householdId == householdId &&
         other.categoryId == categoryId &&
+        other.sourceAccountType == sourceAccountType &&
         other.sourceAccountId == sourceAccountId &&
         _dateKey(other.startDate) == _dateKey(startDate) &&
         _dateKey(other.endDate) == _dateKey(endDate);
@@ -236,6 +263,7 @@ final class TrendQuery {
   int get hashCode => Object.hash(
     householdId,
     categoryId,
+    sourceAccountType,
     sourceAccountId,
     _dateKey(startDate),
     _dateKey(endDate),
@@ -738,11 +766,13 @@ final class CategoryOption {
 final class SourceAccountOption {
   const SourceAccountOption({
     required this.id,
+    required this.type,
     required this.displayName,
     this.cardholderName,
   });
 
   final String id;
+  final String type;
   final String displayName;
   final String? cardholderName;
 
@@ -756,6 +786,7 @@ final class SourceAccountOption {
   factory SourceAccountOption.fromJson(Map<String, dynamic> json) {
     return SourceAccountOption(
       id: json['id'] as String,
+      type: json['type'] as String? ?? 'other',
       displayName: json['display_name'] as String,
       cardholderName: json['cardholder_name'] as String?,
     );
@@ -1168,6 +1199,59 @@ final class PiggyBankEntryRequest {
   final String? linkedTransactionId;
 }
 
+final class GmailConnectorStatus {
+  const GmailConnectorStatus({
+    required this.id,
+    required this.householdId,
+    required this.email,
+    required this.connectorStatus,
+    required this.isActive,
+    required this.queuedJobCount,
+    this.watchExpiresAt,
+    this.lastSyncAt,
+    this.lastError,
+    this.latestJobError,
+  });
+
+  final String id;
+  final String householdId;
+  final String email;
+  final String connectorStatus;
+  final bool isActive;
+  final int queuedJobCount;
+  final DateTime? watchExpiresAt;
+  final DateTime? lastSyncAt;
+  final String? lastError;
+  final String? latestJobError;
+
+  String get displayStatus {
+    return switch (connectorStatus) {
+      'connected' => 'Connected',
+      'watch_pending' => 'Watch pending',
+      'watch_expired' => 'Watch expired',
+      'needs_reconnect' => 'Needs reconnect',
+      'error' => 'Error',
+      'disconnected' => 'Disconnected',
+      _ => connectorStatus,
+    };
+  }
+
+  factory GmailConnectorStatus.fromJson(Map<String, dynamic> json) {
+    return GmailConnectorStatus(
+      id: json['id'] as String,
+      householdId: json['household_id'] as String,
+      email: json['email'] as String,
+      connectorStatus: json['connector_status'] as String? ?? 'disconnected',
+      isActive: json['is_active'] as bool? ?? false,
+      queuedJobCount: (json['queued_job_count'] as num?)?.toInt() ?? 0,
+      watchExpiresAt: parseOptionalDateTime(json['watch_expires_at']),
+      lastSyncAt: parseOptionalDateTime(json['last_sync_at']),
+      lastError: json['last_error'] as String?,
+      latestJobError: json['latest_job_error'] as String?,
+    );
+  }
+}
+
 abstract interface class FinanceRepository {
   Future<DashboardSnapshot> fetchDashboardSnapshot({
     required String householdId,
@@ -1189,6 +1273,14 @@ abstract interface class FinanceRepository {
   Future<List<MerchantReviewItem>> fetchMerchantReviewQueue({
     required String householdId,
   });
+
+  Future<List<GmailConnectorStatus>> fetchGmailConnectorStatus({
+    required String householdId,
+  });
+
+  Future<String> startGmailConnector({required String householdId});
+
+  Future<void> disconnectGmailMailbox({required String mailboxId});
 
   Future<List<PiggyBankSummary>> fetchPiggyBanks({required String householdId});
 
@@ -1295,7 +1387,7 @@ final class SupabaseFinanceRepository implements FinanceRepository {
   }) async {
     final rows = await _client
         .from('source_accounts')
-        .select('id, display_name, cardholder_name')
+        .select('id, type, display_name, cardholder_name')
         .eq('household_id', householdId)
         .eq('is_active', true)
         .order('display_name');
@@ -1350,6 +1442,46 @@ final class SupabaseFinanceRepository implements FinanceRepository {
         .order('created_at');
 
     return rows.map(MerchantReviewItem.fromJson).toList(growable: false);
+  }
+
+  @override
+  Future<List<GmailConnectorStatus>> fetchGmailConnectorStatus({
+    required String householdId,
+  }) async {
+    final response = await _client.functions.invoke(
+      'gmail-connector-status',
+      body: {'household_id': householdId},
+    );
+    final data = response.data as Map<String, dynamic>;
+    final rows = data['mailboxes'] as List<dynamic>? ?? const [];
+    return rows
+        .cast<Map<String, dynamic>>()
+        .map(GmailConnectorStatus.fromJson)
+        .toList(growable: false);
+  }
+
+  @override
+  Future<String> startGmailConnector({required String householdId}) async {
+    final response = await _client.functions.invoke(
+      'gmail-oauth-start',
+      body: {'household_id': householdId},
+    );
+    final data = response.data as Map<String, dynamic>;
+    final authorizationUrl = data['authorizationUrl'] as String?;
+    if (authorizationUrl == null || authorizationUrl.isEmpty) {
+      throw StateError(
+        'Gmail OAuth start did not return an authorization URL.',
+      );
+    }
+    return authorizationUrl;
+  }
+
+  @override
+  Future<void> disconnectGmailMailbox({required String mailboxId}) async {
+    await _client.functions.invoke(
+      'gmail-disconnect',
+      body: {'mailbox_id': mailboxId},
+    );
   }
 
   @override
@@ -1475,6 +1607,21 @@ final class SupabaseFinanceRepository implements FinanceRepository {
     final categoryNamesById = {
       for (final category in categories) category.id: category.name,
     };
+    final sourceAccountIds = await _sourceAccountIdsForType(
+      householdId: query.householdId,
+      sourceAccountType: query.sourceAccountType,
+    );
+
+    if (query.sourceAccountType != null &&
+        (sourceAccountIds.isEmpty ||
+            (query.sourceAccountId != null &&
+                !sourceAccountIds.contains(query.sourceAccountId)))) {
+      return PagedTransactions(
+        items: const [],
+        page: query.page,
+        pageSize: query.pageSize,
+      );
+    }
 
     var request = _client
         .from('transactions')
@@ -1497,6 +1644,8 @@ final class SupabaseFinanceRepository implements FinanceRepository {
 
     if (query.sourceAccountId != null) {
       request = request.eq('source_account_id', query.sourceAccountId!);
+    } else if (sourceAccountIds.isNotEmpty) {
+      request = request.inFilter('source_account_id', sourceAccountIds);
     }
 
     if (query.startDate != null) {
@@ -1715,6 +1864,18 @@ final class SupabaseFinanceRepository implements FinanceRepository {
   Future<List<Map<String, dynamic>>> _fetchTrendTransactions(
     TrendQuery query,
   ) async {
+    final sourceAccountIds = await _sourceAccountIdsForType(
+      householdId: query.householdId,
+      sourceAccountType: query.sourceAccountType,
+    );
+
+    if (query.sourceAccountType != null &&
+        (sourceAccountIds.isEmpty ||
+            (query.sourceAccountId != null &&
+                !sourceAccountIds.contains(query.sourceAccountId)))) {
+      return const [];
+    }
+
     var request = _client
         .from('transactions')
         .select(
@@ -1732,6 +1893,8 @@ final class SupabaseFinanceRepository implements FinanceRepository {
 
     if (query.sourceAccountId != null) {
       request = request.eq('source_account_id', query.sourceAccountId!);
+    } else if (sourceAccountIds.isNotEmpty) {
+      request = request.inFilter('source_account_id', sourceAccountIds);
     }
 
     if (query.startDate != null) {
@@ -1748,6 +1911,19 @@ final class SupabaseFinanceRepository implements FinanceRepository {
         .limit(5000);
 
     return rows.cast<Map<String, dynamic>>();
+  }
+
+  Future<List<String>> _sourceAccountIdsForType({
+    required String householdId,
+    required String? sourceAccountType,
+  }) async {
+    if (sourceAccountType == null) return const [];
+
+    final sourceAccounts = await fetchSourceAccounts(householdId: householdId);
+    return sourceAccounts
+        .where((source) => source.type == sourceAccountType)
+        .map((source) => source.id)
+        .toList(growable: false);
   }
 
   Future<int> _fetchOpenReviewCount({required String householdId}) async {
@@ -1834,6 +2010,23 @@ final class DisabledFinanceRepository implements FinanceRepository {
   Future<List<MerchantReviewItem>> fetchMerchantReviewQueue({
     required String householdId,
   }) {
+    throw const SupabaseNotConfiguredException();
+  }
+
+  @override
+  Future<List<GmailConnectorStatus>> fetchGmailConnectorStatus({
+    required String householdId,
+  }) {
+    throw const SupabaseNotConfiguredException();
+  }
+
+  @override
+  Future<String> startGmailConnector({required String householdId}) {
+    throw const SupabaseNotConfiguredException();
+  }
+
+  @override
+  Future<void> disconnectGmailMailbox({required String mailboxId}) {
     throw const SupabaseNotConfiguredException();
   }
 
@@ -2119,6 +2312,12 @@ String _withThousands(int value) {
 
 DateTime _parseDate(String value) {
   return DateTime.parse(value);
+}
+
+DateTime? parseOptionalDateTime(Object? value) {
+  if (value == null) return null;
+  final text = value.toString();
+  return text.isEmpty ? null : DateTime.parse(text);
 }
 
 double _asDouble(Object? value) {

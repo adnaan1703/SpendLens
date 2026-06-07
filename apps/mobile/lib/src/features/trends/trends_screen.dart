@@ -22,6 +22,7 @@ class TrendsScreen extends ConsumerStatefulWidget {
 
 class _TrendsScreenState extends ConsumerState<TrendsScreen> {
   String? _categoryId;
+  String? _sourceAccountType;
   String? _sourceAccountId;
   DateTimeRange? _dateRange;
 
@@ -40,6 +41,7 @@ class _TrendsScreenState extends ConsumerState<TrendsScreen> {
         : TrendQuery(
             householdId: householdId,
             categoryId: _categoryId,
+            sourceAccountType: _sourceAccountType,
             sourceAccountId: _sourceAccountId,
             startDate: _dateRange?.start,
             endDate: _dateRange?.end,
@@ -58,12 +60,26 @@ class _TrendsScreenState extends ConsumerState<TrendsScreen> {
             categories: categories.value ?? const [],
             selectedCategoryId: _categoryId,
             sourceAccounts: sourceAccounts.value ?? const [],
+            selectedSourceAccountType: _sourceAccountType,
             selectedSourceAccountId: _sourceAccountId,
             dateRange: _dateRange,
             report: report.value,
             onCategoryChanged: (value) {
               setState(() {
                 _categoryId = value;
+              });
+            },
+            onSourceAccountTypeChanged: (value) {
+              setState(() {
+                _sourceAccountType = value;
+                if (value != null &&
+                    _sourceAccountId != null &&
+                    !(sourceAccounts.value ?? const []).any(
+                      (source) =>
+                          source.id == _sourceAccountId && source.type == value,
+                    )) {
+                  _sourceAccountId = null;
+                }
               });
             },
             onSourceAccountChanged: (value) {
@@ -109,6 +125,7 @@ class _TrendsScreenState extends ConsumerState<TrendsScreen> {
   void _clearFilters() {
     setState(() {
       _categoryId = null;
+      _sourceAccountType = null;
       _sourceAccountId = null;
       _dateRange = null;
     });
@@ -131,10 +148,12 @@ class _TrendFilters extends StatelessWidget {
     required this.categories,
     required this.selectedCategoryId,
     required this.sourceAccounts,
+    required this.selectedSourceAccountType,
     required this.selectedSourceAccountId,
     required this.dateRange,
     required this.report,
     required this.onCategoryChanged,
+    required this.onSourceAccountTypeChanged,
     required this.onSourceAccountChanged,
     required this.onPickDateRange,
     required this.onClear,
@@ -144,10 +163,12 @@ class _TrendFilters extends StatelessWidget {
   final List<CategoryOption> categories;
   final String? selectedCategoryId;
   final List<SourceAccountOption> sourceAccounts;
+  final String? selectedSourceAccountType;
   final String? selectedSourceAccountId;
   final DateTimeRange? dateRange;
   final TrendReport? report;
   final ValueChanged<String?> onCategoryChanged;
+  final ValueChanged<String?> onSourceAccountTypeChanged;
   final ValueChanged<String?> onSourceAccountChanged;
   final VoidCallback onPickDateRange;
   final VoidCallback onClear;
@@ -157,9 +178,15 @@ class _TrendFilters extends StatelessWidget {
   Widget build(BuildContext context) {
     final hasFilters =
         selectedCategoryId != null ||
+        selectedSourceAccountType != null ||
         selectedSourceAccountId != null ||
         dateRange != null;
     final loadedReport = report;
+    final filteredSourceAccounts = selectedSourceAccountType == null
+        ? sourceAccounts
+        : sourceAccounts
+              .where((source) => source.type == selectedSourceAccountType)
+              .toList(growable: false);
 
     return Wrap(
       spacing: 12,
@@ -190,6 +217,26 @@ class _TrendFilters extends StatelessWidget {
           ),
         ),
         SizedBox(
+          width: 220,
+          child: DropdownButtonFormField<String>(
+            isExpanded: true,
+            initialValue: selectedSourceAccountType,
+            decoration: const InputDecoration(
+              labelText: 'Source type',
+              prefixIcon: Icon(Icons.account_balance_outlined),
+            ),
+            items: const [
+              DropdownMenuItem(value: null, child: Text('All types')),
+              DropdownMenuItem(
+                value: 'credit_card',
+                child: Text('Credit card'),
+              ),
+              DropdownMenuItem(value: 'upi', child: Text('UPI')),
+            ],
+            onChanged: onSourceAccountTypeChanged,
+          ),
+        ),
+        SizedBox(
           width: 340,
           child: DropdownButtonFormField<String>(
             isExpanded: true,
@@ -200,7 +247,7 @@ class _TrendFilters extends StatelessWidget {
             ),
             items: [
               const DropdownMenuItem(value: null, child: Text('All sources')),
-              for (final source in sourceAccounts)
+              for (final source in filteredSourceAccounts)
                 DropdownMenuItem(value: source.id, child: Text(source.label)),
             ],
             onChanged: onSourceAccountChanged,

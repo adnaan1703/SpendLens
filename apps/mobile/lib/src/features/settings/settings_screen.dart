@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/bootstrap/app_bootstrap.dart';
 import '../../core/config/app_config.dart';
+import '../../data/repositories/finance_repository.dart';
 import '../../data/repositories/household_repository.dart';
 import '../../shared/widgets/app_page.dart';
 import '../auth/data/auth_repository.dart';
@@ -86,6 +88,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               ),
             ),
           ),
+          if (householdContext != null) ...[
+            const SizedBox(height: 16),
+            _GmailConnectorCard(householdId: householdContext.household.id),
+          ],
           const SizedBox(height: 16),
           Card(
             child: Padding(
@@ -125,6 +131,228 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   }
 }
 
+class _GmailConnectorCard extends ConsumerStatefulWidget {
+  const _GmailConnectorCard({required this.householdId});
+
+  final String householdId;
+
+  @override
+  ConsumerState<_GmailConnectorCard> createState() =>
+      _GmailConnectorCardState();
+}
+
+class _GmailConnectorCardState extends ConsumerState<_GmailConnectorCard> {
+  bool _isConnecting = false;
+  String? _disconnectingMailboxId;
+
+  Future<void> _connect() async {
+    setState(() {
+      _isConnecting = true;
+    });
+
+    try {
+      final authorizationUrl = await ref
+          .read(financeRepositoryProvider)
+          .startGmailConnector(householdId: widget.householdId);
+      final launched = await launchUrl(
+        Uri.parse(authorizationUrl),
+        mode: LaunchMode.externalApplication,
+      );
+      if (!launched) {
+        throw StateError('Could not open Google authorization.');
+      }
+    } catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(error.toString())));
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isConnecting = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _disconnect(String mailboxId) async {
+    setState(() {
+      _disconnectingMailboxId = mailboxId;
+    });
+
+    try {
+      await ref
+          .read(financeRepositoryProvider)
+          .disconnectGmailMailbox(mailboxId: mailboxId);
+      ref.invalidate(gmailConnectorStatusProvider(widget.householdId));
+    } catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(error.toString())));
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _disconnectingMailboxId = null;
+        });
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final textTheme = Theme.of(context).textTheme;
+    final status = ref.watch(gmailConnectorStatusProvider(widget.householdId));
+
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: status.when(
+          loading: () => const Center(child: CircularProgressIndicator()),
+          error: (error, _) => Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              _SettingsSectionHeader(
+                icon: Icons.mark_email_unread_outlined,
+                title: 'Gmail connector',
+                action: IconButton(
+                  tooltip: 'Refresh',
+                  onPressed: () => ref.invalidate(
+                    gmailConnectorStatusProvider(widget.householdId),
+                  ),
+                  icon: const Icon(Icons.refresh),
+                ),
+              ),
+              const SizedBox(height: 12),
+              Text('Connector status unavailable', style: textTheme.titleSmall),
+              const SizedBox(height: 6),
+              Text(error.toString(), style: textTheme.bodySmall),
+            ],
+          ),
+          data: (mailboxes) {
+            final activeMailboxes = mailboxes
+                .where((mailbox) => mailbox.isActive)
+                .toList();
+            final mailbox = activeMailboxes.firstOrNull;
+
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                _SettingsSectionHeader(
+                  icon: Icons.mark_email_read_outlined,
+                  title: 'Gmail connector',
+                  action: IconButton(
+                    tooltip: 'Refresh',
+                    onPressed: () => ref.invalidate(
+                      gmailConnectorStatusProvider(widget.householdId),
+                    ),
+                    icon: const Icon(Icons.refresh),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                if (mailbox == null)
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: FilledButton.icon(
+                      onPressed: _isConnecting ? null : _connect,
+                      icon: _isConnecting
+                          ? const SizedBox.square(
+                              dimension: 16,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : const Icon(Icons.add_link),
+                      label: Text(
+                        _isConnecting ? 'Opening...' : 'Connect Gmail',
+                      ),
+                    ),
+                  )
+                else ...[
+                  _SettingsRow(label: 'Mailbox', value: mailbox.email),
+                  const Divider(height: 28),
+                  _SettingsRow(label: 'Status', value: mailbox.displayStatus),
+                  const Divider(height: 28),
+                  _SettingsRow(
+                    label: 'Watch expires',
+                    value: _formatDateTime(mailbox.watchExpiresAt),
+                  ),
+                  const Divider(height: 28),
+                  _SettingsRow(
+                    label: 'Last sync',
+                    value: _formatDateTime(mailbox.lastSyncAt),
+                  ),
+                  if (mailbox.queuedJobCount > 0) ...[
+                    const Divider(height: 28),
+                    _SettingsRow(
+                      label: 'Queued jobs',
+                      value: mailbox.queuedJobCount.toString(),
+                    ),
+                  ],
+                  if ((mailbox.lastError ?? mailbox.latestJobError) !=
+                      null) ...[
+                    const Divider(height: 28),
+                    _SettingsRow(
+                      label: 'Last error',
+                      value: mailbox.lastError ?? mailbox.latestJobError!,
+                    ),
+                  ],
+                  const SizedBox(height: 16),
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: OutlinedButton.icon(
+                      onPressed: _disconnectingMailboxId == mailbox.id
+                          ? null
+                          : () => _disconnect(mailbox.id),
+                      icon: _disconnectingMailboxId == mailbox.id
+                          ? const SizedBox.square(
+                              dimension: 16,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : const Icon(Icons.link_off),
+                      label: Text(
+                        _disconnectingMailboxId == mailbox.id
+                            ? 'Disconnecting...'
+                            : 'Disconnect',
+                      ),
+                    ),
+                  ),
+                ],
+              ],
+            );
+          },
+        ),
+      ),
+    );
+  }
+}
+
+class _SettingsSectionHeader extends StatelessWidget {
+  const _SettingsSectionHeader({
+    required this.icon,
+    required this.title,
+    this.action,
+  });
+
+  final IconData icon;
+  final String title;
+  final Widget? action;
+
+  @override
+  Widget build(BuildContext context) {
+    final textTheme = Theme.of(context).textTheme;
+
+    return Row(
+      children: [
+        Icon(icon),
+        const SizedBox(width: 10),
+        Expanded(child: Text(title, style: textTheme.titleMedium)),
+        ?action,
+      ],
+    );
+  }
+}
+
 class _SettingsRow extends StatelessWidget {
   const _SettingsRow({required this.label, required this.value});
 
@@ -148,4 +376,14 @@ class _SettingsRow extends StatelessWidget {
       ],
     );
   }
+}
+
+String _formatDateTime(DateTime? value) {
+  if (value == null) return 'None';
+  final local = value.toLocal();
+  final month = local.month.toString().padLeft(2, '0');
+  final day = local.day.toString().padLeft(2, '0');
+  final hour = local.hour.toString().padLeft(2, '0');
+  final minute = local.minute.toString().padLeft(2, '0');
+  return '${local.year}-$month-$day $hour:$minute';
 }

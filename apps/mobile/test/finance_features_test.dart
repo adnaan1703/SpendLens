@@ -7,6 +7,7 @@ import 'package:spendlens/src/data/repositories/household_repository.dart';
 import 'package:spendlens/src/features/dashboard/dashboard_screen.dart';
 import 'package:spendlens/src/features/merchant_review/merchant_review_screen.dart';
 import 'package:spendlens/src/features/piggy_banks/piggy_banks_screen.dart';
+import 'package:spendlens/src/features/settings/settings_screen.dart';
 import 'package:spendlens/src/features/transactions/transactions_screen.dart';
 import 'package:spendlens/src/features/trends/trends_screen.dart';
 
@@ -151,6 +152,32 @@ void main() {
     expect(repository.lastQuery?.categoryId, 'cat-food');
   });
 
+  testWidgets('transactions source type filter separates UPI from cards', (
+    tester,
+  ) async {
+    final repository = _FakeFinanceRepository();
+
+    await tester.pumpWidget(
+      _financeTestApp(
+        repository: repository,
+        child: const TransactionsScreen(),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('CRED Club'), findsOneWidget);
+    expect(find.text('Swiggy Instamart'), findsOneWidget);
+
+    await tester.tap(find.byType(DropdownButtonFormField<String>).at(1));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('UPI').last);
+    await tester.pumpAndSettle();
+
+    expect(repository.lastQuery?.sourceAccountType, 'upi');
+    expect(find.text('CRED Club'), findsOneWidget);
+    expect(find.text('Swiggy Instamart'), findsNothing);
+  });
+
   testWidgets('trends render reports and refresh shared filters', (
     tester,
   ) async {
@@ -188,6 +215,26 @@ void main() {
     expect(copyButton.onPressed, isNotNull);
   });
 
+  testWidgets('trends source type filter separates UPI reporting', (
+    tester,
+  ) async {
+    final repository = _FakeFinanceRepository();
+
+    await tester.pumpWidget(
+      _financeTestApp(repository: repository, child: const TrendsScreen()),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byType(DropdownButtonFormField<String>).at(1));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('UPI').last);
+    await tester.pumpAndSettle();
+
+    expect(repository.lastTrendQuery?.sourceAccountType, 'upi');
+    expect(find.text('CRED Club'), findsWidgets);
+    expect(find.text('Swiggy Instamart'), findsNothing);
+  });
+
   testWidgets('merchant review resolves an open item', (tester) async {
     final repository = _FakeFinanceRepository();
 
@@ -220,6 +267,20 @@ void main() {
     expect(repository.corrections.single.subcategoryId, 'sub-marketplace');
     expect(find.text('No review items'), findsOneWidget);
     expect(find.text('Resolved 1 review items'), findsOneWidget);
+  });
+
+  testWidgets('settings shows Gmail connector status', (tester) async {
+    final repository = _FakeFinanceRepository();
+
+    await tester.pumpWidget(
+      _financeTestApp(repository: repository, child: const SettingsScreen()),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Gmail connector'), findsOneWidget);
+    expect(find.text('spendlens.hdfc@example.test'), findsOneWidget);
+    expect(find.text('Connected'), findsOneWidget);
+    expect(find.text('Queued jobs'), findsOneWidget);
   });
 
   testWidgets('piggy banks create entries and update target progress', (
@@ -318,6 +379,20 @@ final class _FakeFinanceRepository implements FinanceRepository {
   final corrections = <MerchantCorrectionRequest>[];
   final piggyBanks = <PiggyBankSummary>[];
   final piggyEntries = <PiggyBankEntry>[];
+  final gmailStatuses = <GmailConnectorStatus>[
+    GmailConnectorStatus(
+      id: 'mailbox-1',
+      householdId: 'household-1',
+      email: 'spendlens.hdfc@example.test',
+      connectorStatus: 'connected',
+      isActive: true,
+      queuedJobCount: 1,
+      watchExpiresAt: DateTime(2026, 6, 14),
+      lastSyncAt: DateTime(2026, 6, 7, 9),
+    ),
+  ];
+  var startedGmailConnector = false;
+  String? disconnectedMailboxId;
   TransactionQuery? lastQuery;
   TrendQuery? lastTrendQuery;
 
@@ -373,6 +448,21 @@ final class _FakeFinanceRepository implements FinanceRepository {
       confidence: 'medium',
       cardholderName: 'Ada',
     ),
+    FinanceTransaction(
+      id: 'txn-3',
+      transactionDate: DateTime(2026, 6, 5),
+      statementMerchant: 'CRED Club',
+      categoryId: 'cat-shopping',
+      categoryName: 'Shopping',
+      sourceAccountId: 'source-upi',
+      transactionType: 'debit_spend',
+      amount: 112937,
+      grossSpend: 112937,
+      refundAmount: 0,
+      netExpense: 112937,
+      currencyCode: 'INR',
+      confidence: 'high',
+    ),
   ];
 
   final trendTransactions = [
@@ -403,6 +493,19 @@ final class _FakeFinanceRepository implements FinanceRepository {
       sourceLabel: 'ICICI Credit Card - Ada',
       grossSpend: 2400,
       netExpense: 2400,
+    ),
+    _trendTransaction(
+      id: 'trend-fake-3',
+      transactionDate: DateTime(2026, 6, 5),
+      statementMerchant: 'CRED Club',
+      merchantGroup: 'CRED Club',
+      categoryId: 'cat-shopping',
+      categoryName: 'Shopping',
+      sourceAccountId: 'source-upi',
+      sourceLabel: 'HDFC Bank UPI account ending 0932',
+      grossSpend: 112937,
+      netExpense: 112937,
+      cardholderName: null,
     ),
   ];
 
@@ -497,8 +600,20 @@ final class _FakeFinanceRepository implements FinanceRepository {
     return const [
       SourceAccountOption(
         id: 'source-1',
+        type: 'credit_card',
         displayName: 'HDFC Credit Card',
         cardholderName: 'Ada',
+      ),
+      SourceAccountOption(
+        id: 'source-2',
+        type: 'credit_card',
+        displayName: 'ICICI Credit Card',
+        cardholderName: 'Ada',
+      ),
+      SourceAccountOption(
+        id: 'source-upi',
+        type: 'upi',
+        displayName: 'HDFC Bank UPI account ending 0932',
       ),
     ];
   }
@@ -525,6 +640,27 @@ final class _FakeFinanceRepository implements FinanceRepository {
     required String householdId,
   }) async {
     return reviewItems;
+  }
+
+  @override
+  Future<List<GmailConnectorStatus>> fetchGmailConnectorStatus({
+    required String householdId,
+  }) async {
+    return gmailStatuses
+        .where((status) => status.householdId == householdId)
+        .toList();
+  }
+
+  @override
+  Future<String> startGmailConnector({required String householdId}) async {
+    startedGmailConnector = true;
+    return 'https://accounts.google.com/o/oauth2/v2/auth?state=test';
+  }
+
+  @override
+  Future<void> disconnectGmailMailbox({required String mailboxId}) async {
+    disconnectedMailboxId = mailboxId;
+    gmailStatuses.removeWhere((status) => status.id == mailboxId);
   }
 
   @override
@@ -639,8 +775,17 @@ final class _FakeFinanceRepository implements FinanceRepository {
       final matchesCategory =
           query.categoryId == null ||
           transaction.categoryId == query.categoryId;
+      final matchesSourceType =
+          query.sourceAccountType == null ||
+          sourceTypeFor(transaction.sourceAccountId) == query.sourceAccountType;
+      final matchesSource =
+          query.sourceAccountId == null ||
+          transaction.sourceAccountId == query.sourceAccountId;
 
-      return matchesSearch && matchesCategory;
+      return matchesSearch &&
+          matchesCategory &&
+          matchesSourceType &&
+          matchesSource;
     }).toList();
 
     return PagedTransactions(
@@ -660,6 +805,9 @@ final class _FakeFinanceRepository implements FinanceRepository {
       final matchesSource =
           query.sourceAccountId == null ||
           transaction.sourceAccountId == query.sourceAccountId;
+      final matchesSourceType =
+          query.sourceAccountType == null ||
+          sourceTypeFor(transaction.sourceAccountId) == query.sourceAccountType;
       final matchesStart =
           query.startDate == null ||
           !transaction.transactionDate.isBefore(query.startDate!);
@@ -667,10 +815,22 @@ final class _FakeFinanceRepository implements FinanceRepository {
           query.endDate == null ||
           !transaction.transactionDate.isAfter(query.endDate!);
 
-      return matchesCategory && matchesSource && matchesStart && matchesEnd;
+      return matchesCategory &&
+          matchesSource &&
+          matchesSourceType &&
+          matchesStart &&
+          matchesEnd;
     }).toList();
 
     return TrendReport.fromTransactions(filtered);
+  }
+
+  String? sourceTypeFor(String? sourceAccountId) {
+    return switch (sourceAccountId) {
+      'source-1' || 'source-2' => 'credit_card',
+      'source-upi' => 'upi',
+      _ => null,
+    };
   }
 
   @override

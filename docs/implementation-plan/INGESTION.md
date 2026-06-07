@@ -183,10 +183,10 @@ Parser rules:
 
 Implement parsers in this order:
 
-1. HDFC credit-card transaction email parser.
-2. HDFC credit-card refund/reversal parser.
-3. UPI debit parser from user-provided anonymized samples.
-4. UPI credit/refund parser from user-provided anonymized samples.
+1. HDFC credit-card transaction email parser. Implemented for debit alerts.
+2. HDFC credit-card refund/reversal parser. Pending matching fixtures.
+3. UPI debit parser from user-provided anonymized samples. Implemented for HDFC Bank UPI debit alerts.
+4. UPI credit/refund parser from user-provided anonymized samples. Pending matching fixtures.
 5. Other banks/cards only after fixtures are provided.
 
 ## Deduplication
@@ -262,4 +262,3 @@ Non-retryable failures:
 - Missing household membership.
 
 Failed jobs should keep enough diagnostics for debugging but not raw message content.
-

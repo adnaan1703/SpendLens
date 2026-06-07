@@ -9,7 +9,8 @@ Read these documents in order at the start of every new implementation thread:
 3. [Ingestion Design](INGESTION.md)
 4. [Milestones](MILESTONES.md)
 5. [External Setup Checklist](EXTERNAL_SETUP.md)
-6. [Session Handoff](SESSION_HANDOFF.md)
+6. [Gmail Connector](GMAIL_CONNECTOR.md)
+7. [Session Handoff](SESSION_HANDOFF.md)
 
 ## Product Summary
 

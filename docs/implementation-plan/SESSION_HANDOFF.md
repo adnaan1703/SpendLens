@@ -5,9 +5,9 @@ Use this file to coordinate work across multiple implementation sessions. Update
 ## Current Status
 
 - Current milestone: Not started.
-- Last completed milestone: Milestone 8, Trends and Reports.
-- Current implementation state: Flutter Android app scaffold exists in `apps/mobile` with SpendLens Google sign-in, route protection, authenticated shell, RLS-safe profile/default-household bootstrap, household loading/error states, sign-out, package `com.olympus.spendlens`, core packages, environment templates, tests, and Supabase folder structure. Supabase local config applies migrations for schema, RLS, views, workbook-derived default categories, merchant review corrections, piggy-bank entry validation, pgTAP database tests, and the Android auth redirect URL. Milestone 3 adds a local workbook importer under `tools/workbook-import`, fixture tests, and rerun documentation in `docs/implementation-plan/WORKBOOK_IMPORT.md`. Milestone 5 adds Supabase-backed finance repository reads/writes, dashboard KPIs, reporting-month selection, monthly category cap setup/editing, category and merchant summaries, transaction search/filter pagination, and transaction detail panels. Milestone 6 adds merchant review queue UI, correction RPC/rule persistence, historical reclassification, review resolution, transaction classification audit metadata, and future-import rule application. Milestone 7 adds Supabase-backed piggy-bank list/detail UI, create/edit forms, ledger entry creation, ledger-derived balance/progress reads, no-overdraft withdrawal validation, and regression tests. Milestone 8 adds filtered monthly trend reports, gross/refund/net reporting, category trend tables, merchant summary tables, and filtered transaction CSV copy from the Trends screen.
-- Next recommended milestone: Milestone 9, Gmail Connector and Credit-Card Email Ingestion.
+- Last completed milestone: Milestone 10, UPI Ingestion and Parser Expansion.
+- Current implementation state: Flutter Android app scaffold exists in `apps/mobile` with SpendLens Google sign-in, route protection, authenticated shell, RLS-safe profile/default-household bootstrap, household loading/error states, sign-out, package `com.olympus.spendlens`, core packages, environment templates, tests, and Supabase folder structure. Supabase local config applies migrations for schema, RLS, views, workbook-derived default categories, merchant review corrections, piggy-bank entry validation, Gmail connector ingestion, pgTAP database tests, and the Android auth redirect URL. Milestone 3 adds a local workbook importer under `tools/workbook-import`, fixture tests, and rerun documentation in `docs/implementation-plan/WORKBOOK_IMPORT.md`. Milestone 5 adds Supabase-backed finance repository reads/writes, dashboard KPIs, reporting-month selection, monthly category cap setup/editing, category and merchant summaries, transaction search/filter pagination, and transaction detail panels. Milestone 6 adds merchant review queue UI, correction RPC/rule persistence, historical reclassification, review resolution, transaction classification audit metadata, and future-import rule application. Milestone 7 adds Supabase-backed piggy-bank list/detail UI, create/edit forms, ledger entry creation, ledger-derived balance/progress reads, no-overdraft withdrawal validation, and regression tests. Milestone 8 adds filtered monthly trend reports, gross/refund/net reporting, category trend tables, merchant summary tables, and filtered transaction CSV copy from the Trends screen. Milestone 9 adds Vault-backed Gmail OAuth connector state, Pub/Sub webhook job dedupe, Gmail sync/backfill/watch-renewal Edge Functions, HDFC credit-card debit parsing from anonymized fixtures, SQL ingestion RPCs, and Settings connector status/connect/disconnect UI. Milestone 10 adds HDFC Bank UPI debit parsing from anonymized fixtures, UPI-aware Gmail backfill search and fingerprinting, UPI ingestion pgTAP coverage, and source-type filters for credit card vs UPI on transaction/trend screens.
+- Next recommended milestone: Milestone 11, Deployment, Security, and Production Readiness.
 
 ## Required Reading for New Threads
 
@@ -63,8 +63,8 @@ Do not ask the user to perform all setup at once. Ask only when the relevant mil
 - Milestone 6, Merchant Mapping and Review Workflow: completed.
 - Milestone 7, Piggy Banks: completed.
 - Milestone 8, Trends and Reports: completed.
-- Milestone 9, Gmail Connector and Credit-Card Email Ingestion: pending.
-- Milestone 10, UPI Ingestion and Parser Expansion: pending.
+- Milestone 9, Gmail Connector and Credit-Card Email Ingestion: completed.
+- Milestone 10, UPI Ingestion and Parser Expansion: completed.
 - Milestone 11, Deployment, Security, and Production Readiness: pending.
 - Milestone 12, AI-Ready Layer and LLM Features: pending.
 
@@ -298,3 +298,102 @@ When an architecture decision changes:
   - No schema migration was needed for this milestone; existing RLS-protected transaction reads and summary semantics are used.
   - No Supabase remote migration push or remote advisors were run; verification was local only.
   - Live authenticated Android-device trends workflow coverage was not exercised in this session.
+
+## Milestone 9 Completion Notes
+
+- Completed on 2026-06-07.
+- Added a Supabase migration for Gmail connector ingestion:
+  - Supabase Vault refresh-token references through `linked_mailboxes.oauth_secret_ref`.
+  - Service-only OAuth state and ingestion job tables with RLS enabled and no authenticated direct grants.
+  - Non-secret `v_linked_mailbox_status` security-invoker view for Flutter.
+  - Service-only RPCs for mailbox upsert/disconnect, Vault token retrieval, Pub/Sub notification dedupe, mailbox error recording, and parsed Gmail transaction ingestion.
+  - Idempotent Gmail transaction/source upserts and review-item creation for unknown or non-high-confidence classifications.
+- Added Edge Functions:
+  - `gmail-oauth-start`
+  - `gmail-oauth-callback`
+  - `gmail-connector-status`
+  - `gmail-disconnect`
+  - `gmail-pubsub-webhook`
+  - `gmail-sync`
+  - `gmail-watch-renewal`
+  - `gmail-backfill-check`
+- Added shared Gmail helpers for Google OAuth/token refresh, Gmail `watch`, history sync, bounded backfill, message text extraction, fingerprinting, and HDFC credit-card debit parsing.
+- Added parser tests using the anonymized HDFC debit samples provided for Milestone 9.
+- Added Settings connector UI for Gmail status, connect, refresh, queued job count, last sync/error, watch expiry, and disconnect.
+- Added `docs/implementation-plan/GMAIL_CONNECTOR.md` with deploy order, secrets, push endpoint verification, schedule notes, and privacy boundaries.
+- Verification run:
+  - `curl -L --max-time 20 https://supabase.com/changelog.md | sed -n '1,220p'`
+  - Supabase MCP docs search for Edge Function secrets/auth, Vault, and Edge Function testing guidance
+  - Google primary docs lookup for Gmail push notifications, Gmail sync, and Pub/Sub push message shape
+  - `supabase --version`
+  - `supabase migration --help`
+  - `supabase db --help`
+  - `supabase functions --help`
+  - `supabase migration new gmail_connector_ingestion`
+  - `supabase db reset --local`
+  - `supabase test db --local supabase/tests`
+  - `node --test supabase/functions/tests/gmail_parsers.test.mjs`
+  - `flutter pub get`
+  - `dart format apps/mobile/lib/src/data/repositories/finance_repository.dart apps/mobile/lib/src/features/settings/settings_screen.dart apps/mobile/test/finance_features_test.dart`
+  - `flutter test test/finance_features_test.dart`
+  - `flutter analyze`
+  - `flutter test`
+  - `supabase db lint --local --schema app_private,public --fail-on error`
+  - `supabase db advisors --local --type security --level warn --fail-on none`
+  - `supabase db advisors --local --type performance --level warn --fail-on none`
+  - `supabase functions serve --no-verify-jwt` with dummy local Google/PubSub secrets
+  - Edge Function local `OPTIONS` smoke for all Milestone 9 functions
+  - Dummy Pub/Sub webhook POST with `PUBSUB_VERIFICATION_SECRET`
+  - Local service-key smoke for `gmail-sync`, `gmail-backfill-check`, and `gmail-watch-renewal`
+  - `flutter build apk --debug --no-pub`
+- Known gaps:
+  - No remote Supabase migration push, function deployment, hosted secret setup, or remote advisors were run.
+  - Final live OAuth testing still requires adding/requesting `https://www.googleapis.com/auth/gmail.readonly` on the Google consent screen and adding the Edge Function callback URL to the Web OAuth client.
+  - Final live Pub/Sub testing still requires deploying `gmail-pubsub-webhook`, setting `PUBSUB_VERIFICATION_SECRET`, and creating the push subscription. For the shared-secret path, use the endpoint with `?token=<PUBSUB_VERIFICATION_SECRET>` or provide the same value through a trusted proxy header.
+  - Scheduled production invocation of `gmail-sync`, `gmail-watch-renewal`, and `gmail-backfill-check` is documented but not configured against the hosted project because the hosted secret key was not provided to this session.
+  - Live authenticated Android-device connector coverage was not exercised in this session.
+
+## Milestone 10 Completion Notes
+
+- Completed on 2026-06-07.
+- Added HDFC Bank UPI debit parser support from the anonymized samples provided for Milestone 10:
+  - Parses amount, date, account-ending hint, payee label, UPI reference number, and source-account metadata.
+  - Creates `source_account_hint.type = 'upi'` with the HDFC Bank account-ending identifier.
+  - Avoids storing raw message bodies or full payee VPA values in parser diagnostics.
+- Expanded Gmail bounded-backfill search to include HDFC UPI alert wording.
+- Updated Gmail sync fingerprinting so UPI alerts with the same reference number dedupe across parser/template variants.
+- Added Deno-local verification for Edge Functions after Deno was installed, including `fmt`, `lint`, `check`, and parser tests.
+- Kept the shared Supabase Edge Function client on a temporary loose database type until generated Supabase database types are added.
+- Added pgTAP coverage for UPI ingestion through `ingest_gmail_transaction`, including one UPI source account, fingerprint idempotency, and review-item creation for unknown UPI payees.
+- Added mobile source-type filters for `credit_card` vs `upi` on Transactions and Trends while preserving specific source-account filters.
+- Updated ingestion/Gmail connector docs with current parser coverage and the remaining sample-gated credit/refund templates.
+- Verification run:
+  - `curl -L --max-time 20 https://supabase.com/changelog.md | sed -n '1,220p'`
+  - Supabase MCP docs search for Edge Function testing/local development guidance
+  - `supabase --version`
+  - `supabase test db --help`
+  - `supabase db lint --help`
+  - `node --test supabase/functions/tests/gmail_parsers.test.mjs`
+  - `node --check supabase/functions/_shared/parsers/gmail_parsers.mjs`
+  - `deno --version`
+  - `deno fmt supabase/functions`
+  - `deno lint supabase/functions`
+  - `deno check supabase/functions/_shared/*.ts supabase/functions/*/index.ts`
+  - `deno test supabase/functions/tests/gmail_parsers.test.mjs`
+  - `dart format apps/mobile/lib/src/data/repositories/finance_repository.dart apps/mobile/lib/src/features/transactions/transactions_screen.dart apps/mobile/lib/src/features/trends/trends_screen.dart apps/mobile/test/finance_features_test.dart`
+  - `flutter analyze`
+  - `flutter test test/finance_features_test.dart`
+  - `supabase db reset --local`
+  - `supabase test db --local supabase/tests/gmail_ingestion.sql`
+  - `supabase test db --local supabase/tests`
+  - `supabase db lint --local --schema app_private,public --fail-on error`
+  - `supabase db advisors --local --type security --level warn --fail-on none`
+  - `supabase db advisors --local --type performance --level warn --fail-on none`
+  - `supabase functions serve gmail-sync --no-verify-jwt` with dummy local Google/PubSub env values
+  - `curl -i -X OPTIONS http://127.0.0.1:54321/functions/v1/gmail-sync`
+  - `flutter test`
+  - `flutter build apk --debug --no-pub`
+- Known gaps:
+  - UPI credit/refund parsing remains deferred until anonymized matching samples are provided.
+  - No remote Supabase migration push, function deployment, hosted secret setup, or remote advisors were run.
+  - Live authenticated Android-device UPI ingestion/filter coverage was not exercised in this session.

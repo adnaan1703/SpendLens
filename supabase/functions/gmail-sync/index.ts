@@ -1,0 +1,371 @@
+import { sha256Hex } from "../_shared/crypto.ts";
+import {
+  fetchGmailMessage,
+  GoogleApiError,
+  listGmailHistory,
+  listRecentGmailMessages,
+  refreshAccessToken,
+} from "../_shared/google.ts";
+import { extractPlainText, messageMetadata } from "../_shared/gmail_message.ts";
+import {
+  errorResponse,
+  handleOptions,
+  jsonResponse,
+  readJsonBody,
+} from "../_shared/http.ts";
+import {
+  createServiceClient,
+  requireServiceRequest,
+} from "../_shared/supabase.ts";
+import {
+  normalizeFingerprintText,
+  parseGmailTransaction,
+} from "../_shared/parsers/gmail_parsers.mjs";
+
+type JobRow = {
+  id: string;
+  household_id: string;
+  linked_mailbox_id: string;
+  job_type: "gmail_sync" | "gmail_backfill";
+  attempts: number;
+  payload: Record<string, unknown>;
+};
+
+type MailboxRow = {
+  id: string;
+  household_id: string;
+  email: string;
+  gmail_history_id?: string | null;
+};
+
+type ProcessCounts = {
+  fetched: number;
+  parsed: number;
+  unsupported: number;
+  inserted: number;
+  updated: number;
+  reviewItems: number;
+};
+
+function emptyCounts(): ProcessCounts {
+  return {
+    fetched: 0,
+    parsed: 0,
+    unsupported: 0,
+    inserted: 0,
+    updated: 0,
+    reviewItems: 0,
+  };
+}
+
+function mergeCounts(
+  target: ProcessCounts,
+  next: Partial<ProcessCounts>,
+): void {
+  for (const key of Object.keys(next) as Array<keyof ProcessCounts>) {
+    target[key] += next[key] ?? 0;
+  }
+}
+
+async function collectHistoryMessageIds(
+  accessToken: string,
+  startHistoryId: string,
+): Promise<{
+  messageIds: string[];
+  latestHistoryId?: string;
+}> {
+  const ids = new Set<string>();
+  let pageToken: string | undefined;
+  let latestHistoryId: string | undefined;
+
+  do {
+    const page = await listGmailHistory(accessToken, startHistoryId, pageToken);
+    latestHistoryId = page.historyId ?? latestHistoryId;
+    for (const history of page.history ?? []) {
+      for (const added of history.messagesAdded ?? []) {
+        if (added.message?.id) {
+          ids.add(added.message.id);
+        }
+      }
+    }
+    pageToken = page.nextPageToken;
+  } while (pageToken && ids.size < 50);
+
+  return { messageIds: [...ids].slice(0, 50), latestHistoryId };
+}
+
+async function collectBackfillMessageIds(
+  accessToken: string,
+): Promise<string[]> {
+  const ids = new Set<string>();
+  let pageToken: string | undefined;
+
+  do {
+    const page = await listRecentGmailMessages(accessToken, pageToken);
+    for (const message of page.messages ?? []) {
+      ids.add(message.id);
+    }
+    pageToken = page.nextPageToken;
+  } while (pageToken && ids.size < 50);
+
+  return [...ids].slice(0, 50);
+}
+
+function sourceFingerprint(
+  householdId: string,
+  mailboxId: string,
+  messageId: string,
+  parsed: Record<string, unknown>,
+): Promise<string> {
+  const sourceHint = parsed.source_account_hint as
+    | Record<string, unknown>
+    | undefined;
+  const sourceReference = String(parsed.source_reference ?? "").trim();
+
+  if (sourceHint?.type === "upi" && sourceReference) {
+    return sha256Hex([
+      householdId,
+      mailboxId,
+      "upi",
+      String(sourceHint.masked_identifier ?? ""),
+      sourceReference,
+    ].join("|"));
+  }
+
+  const amount = Number(parsed.amount ?? 0).toFixed(2);
+  return sha256Hex([
+    householdId,
+    mailboxId,
+    String(parsed.transaction_date ?? ""),
+    String(parsed.transaction_time ?? ""),
+    amount,
+    normalizeFingerprintText(parsed.statement_merchant),
+    String(parsed.source_reference ?? messageId),
+  ].join("|"));
+}
+
+async function processMessage(
+  serviceClient: ReturnType<typeof createServiceClient>,
+  mailbox: MailboxRow,
+  accessToken: string,
+  messageId: string,
+): Promise<Partial<ProcessCounts>> {
+  const message = await fetchGmailMessage(accessToken, messageId);
+  const metadata = messageMetadata(message);
+  const bodyText = extractPlainText(message);
+  const parsed = parseGmailTransaction(metadata, bodyText);
+
+  if (!parsed.ok) {
+    return { fetched: 1, unsupported: 1 };
+  }
+
+  const fingerprint = await sourceFingerprint(
+    mailbox.household_id,
+    mailbox.id,
+    messageId,
+    parsed,
+  );
+  const { data, error } = await serviceClient.rpc("ingest_gmail_transaction", {
+    p_mailbox_id: mailbox.id,
+    p_message_metadata: metadata,
+    p_parsed_transaction: parsed,
+    p_source_fingerprint: fingerprint,
+  });
+
+  if (error) {
+    throw error;
+  }
+
+  const result = Array.isArray(data) ? data[0] : data;
+  return {
+    fetched: 1,
+    parsed: 1,
+    inserted: result?.inserted ? 1 : 0,
+    updated: result?.inserted ? 0 : 1,
+    reviewItems: result?.review_item_id ? 1 : 0,
+  };
+}
+
+async function processJob(
+  serviceClient: ReturnType<typeof createServiceClient>,
+  job: JobRow,
+): Promise<
+  { jobId: string; counts: ProcessCounts; fallbackBackfill: boolean }
+> {
+  const { data: mailbox, error: mailboxError } = await serviceClient
+    .from("linked_mailboxes")
+    .select("id, household_id, email, gmail_history_id")
+    .eq("id", job.linked_mailbox_id)
+    .eq("is_active", true)
+    .maybeSingle();
+
+  if (mailboxError || !mailbox) {
+    throw new Error("Active mailbox for Gmail job was not found.");
+  }
+
+  const { data: refreshToken, error: tokenError } = await serviceClient.rpc(
+    "get_gmail_refresh_token",
+    { p_mailbox_id: mailbox.id },
+  );
+  if (tokenError || !refreshToken) {
+    throw tokenError ?? new Error("Gmail refresh token unavailable.");
+  }
+
+  const token = await refreshAccessToken(String(refreshToken));
+  const counts = emptyCounts();
+  const startHistoryId = String(
+    job.payload?.startHistoryId ?? mailbox.gmail_history_id ?? "",
+  );
+  const notificationHistoryId = String(
+    job.payload?.notificationHistoryId ?? "",
+  );
+  let latestHistoryId: string | undefined;
+  let fallbackBackfill = false;
+  let messageIds: string[] = [];
+
+  try {
+    if (job.job_type === "gmail_sync" && startHistoryId) {
+      const history = await collectHistoryMessageIds(
+        token.access_token,
+        startHistoryId,
+      );
+      messageIds = history.messageIds;
+      latestHistoryId = notificationHistoryId || history.latestHistoryId;
+    } else {
+      messageIds = await collectBackfillMessageIds(token.access_token);
+    }
+  } catch (error) {
+    if (error instanceof GoogleApiError && error.status === 404) {
+      fallbackBackfill = true;
+      messageIds = await collectBackfillMessageIds(token.access_token);
+    } else {
+      throw error;
+    }
+  }
+
+  for (const messageId of messageIds) {
+    mergeCounts(
+      counts,
+      await processMessage(
+        serviceClient,
+        mailbox,
+        token.access_token,
+        messageId,
+      ),
+    );
+  }
+
+  const mailboxPatch: Record<string, unknown> = {
+    last_sync_at: new Date().toISOString(),
+    last_sync_status: "completed",
+    last_error: null,
+  };
+
+  if (latestHistoryId) {
+    mailboxPatch.gmail_history_id = latestHistoryId;
+  }
+
+  await serviceClient
+    .from("linked_mailboxes")
+    .update(mailboxPatch)
+    .eq("id", mailbox.id);
+
+  return { jobId: job.id, counts, fallbackBackfill };
+}
+
+Deno.serve(async (req: Request) => {
+  const options = handleOptions(req);
+  if (options) return options;
+
+  try {
+    requireServiceRequest(req);
+    const body = await readJsonBody(req);
+    const limit = Math.min(Math.max(Number(body.limit ?? 5), 1), 20);
+    const serviceClient = createServiceClient();
+
+    const { data: jobs, error: jobsError } = await serviceClient
+      .from("ingestion_jobs")
+      .select(
+        "id, household_id, linked_mailbox_id, job_type, attempts, payload",
+      )
+      .in("job_type", ["gmail_sync", "gmail_backfill"])
+      .eq("status", "queued")
+      .lte("run_after", new Date().toISOString())
+      .order("priority", { ascending: true })
+      .order("created_at", { ascending: true })
+      .limit(limit);
+
+    if (jobsError) {
+      throw jobsError;
+    }
+
+    const completed: unknown[] = [];
+    const failed: unknown[] = [];
+
+    for (const job of (jobs ?? []) as JobRow[]) {
+      const startedAt = new Date().toISOString();
+      await serviceClient
+        .from("ingestion_jobs")
+        .update({
+          status: "processing",
+          attempts: job.attempts + 1,
+          started_at: startedAt,
+          error_message: null,
+        })
+        .eq("id", job.id);
+
+      await serviceClient
+        .from("linked_mailboxes")
+        .update({
+          last_sync_started_at: startedAt,
+          last_sync_status: "processing",
+          last_error: null,
+        })
+        .eq("id", job.linked_mailbox_id);
+
+      try {
+        const result = await processJob(serviceClient, job);
+        completed.push(result);
+        await serviceClient
+          .from("ingestion_jobs")
+          .update({
+            status: "completed",
+            completed_at: new Date().toISOString(),
+            payload: {
+              ...job.payload,
+              result,
+            },
+          })
+          .eq("id", job.id);
+      } catch (error) {
+        const message = error instanceof Error
+          ? error.message
+          : "Unknown Gmail sync error.";
+        failed.push({ jobId: job.id, error: message });
+        await serviceClient
+          .from("ingestion_jobs")
+          .update({
+            status: job.attempts + 1 >= 5 ? "failed" : "queued",
+            completed_at: job.attempts + 1 >= 5
+              ? new Date().toISOString()
+              : null,
+            error_message: message,
+            run_after: new Date(Date.now() + 15 * 60 * 1000).toISOString(),
+          })
+          .eq("id", job.id);
+        await serviceClient.rpc("mark_gmail_mailbox_error", {
+          p_mailbox_id: job.linked_mailbox_id,
+          p_error: message,
+          p_status: "failed",
+        });
+      }
+    }
+
+    return jsonResponse({ completed, failed });
+  } catch (error) {
+    return errorResponse(
+      error instanceof Error ? error.message : "Unable to run Gmail sync.",
+      400,
+    );
+  }
+});

@@ -41,6 +41,35 @@ User actions:
 - Grant `gmail-api-push@system.gserviceaccount.com` publish permission on the Pub/Sub topic.
 - Add authorized redirect URIs for Supabase/Edge Function OAuth callback.
 
+Milestone 9 dev setup values confirmed on 2026-06-07:
+
+- Gmail API enabled.
+- Cloud Pub/Sub API enabled.
+- OAuth consent configured for SpendLens external/testing.
+- Web OAuth client ID:
+  `583318923554-43inqfbgrpsk8lc2ntitr2b50ladofg4.apps.googleusercontent.com`
+- Gmail OAuth callback URL:
+  `https://bslsitzdvrdosubbdxpd.supabase.co/functions/v1/gmail-oauth-callback`
+- Pub/Sub topic:
+  `projects/spendlens-498416/topics/gmail-notifications`
+- Push subscription name:
+  `gmail-notifications-push`
+- Push endpoint:
+  `https://bslsitzdvrdosubbdxpd.supabase.co/functions/v1/gmail-pubsub-webhook`
+
+Remaining before final live OAuth/Pub/Sub testing:
+
+- Add/request Gmail scope:
+  `https://www.googleapis.com/auth/gmail.readonly`
+- Add the Edge Function callback URL to the Web OAuth client.
+- Deploy the Gmail Edge Functions.
+- Set hosted Edge Function secrets:
+  - `GOOGLE_OAUTH_CLIENT_SECRET`
+  - `PUBSUB_VERIFICATION_SECRET`
+- Create the push subscription after the webhook is deployed. For the shared-secret
+  path implemented in Milestone 9, include `?token=<PUBSUB_VERIFICATION_SECRET>`
+  on the push endpoint or provide the same value through a trusted proxy header.
+
 ### Web Hosting
 
 Deferred. Do not set up Cloudflare Pages or another web host during the current Android-first implementation plan. Revisit this only when the user explicitly resumes web interface work.

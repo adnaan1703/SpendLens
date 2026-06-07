@@ -50,7 +50,8 @@ select is(
         'v_budget_progress',
         'v_merchant_summary',
         'v_review_queue',
-        'v_piggy_bank_balances'
+        'v_piggy_bank_balances',
+        'v_linked_mailbox_status'
       ])
       and not (coalesce(c.reloptions, array[]::text[]) @> array['security_invoker=true'])
   ),
