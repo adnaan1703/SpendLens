@@ -35,6 +35,51 @@ Thank you for banking with us.
 Warm Regards,
 HDFC Bank`;
 
+const refreshedCreditCardSamples = [
+  {
+    id: "msg-thread-cc-1",
+    expectedAmount: 2832.24,
+    expectedDate: "2026-05-10",
+    expectedTime: "18:18:27",
+    expectedMerchant: "PTM*TATA 1MG HEALTHCAR",
+    body: `Dear Customer,
+
+Greetings from HDFC Bank.
+
+We would like to inform you that Rs. 2832.24 has been debited from your HDFC Bank Credit Card ending 3604 towards PTM*TATA 1MG HEALTHCAR on 10 May, 2026 at 18:18:27.
+To check your available balance, outstanding amount, or view recent transactions, you may use:
+Mycards:https://mycards.hdfc.bank.in
+WhatsApp Banking:https://hdfcbk.io/HDFCBK/K/DUvfZ20acT6
+
+Smart Spend Tip:\tAll your recent HDFC Bank Credit Card spends may be eligible for conversion into SmartEMI, allowing you to pay in smaller monthly amounts.Check here
+
+Thank you for banking with us.
+
+Warm Regards,
+HDFC Bank`,
+  },
+  {
+    id: "msg-thread-cc-2",
+    expectedAmount: 59,
+    expectedDate: "2026-05-10",
+    expectedTime: "22:40:22",
+    expectedMerchant: "RAZ*Plazza",
+    body: `Dear Customer,
+
+Greetings from HDFC Bank.
+
+We would like to inform you that Rs. 59.00 has been debited from your HDFC Bank Credit Card ending 3604 towards RAZ*Plazza on 10 May, 2026 at 22:40:22.
+To check your available balance, outstanding amount, or view recent transactions, you may use:
+Mycards:https://mycards.hdfc.bank.in
+WhatsApp Banking:https://hdfcbk.io/HDFCBK/K/DUvfZ20acT6
+
+Thank you for banking with us.
+
+Warm Regards,
+HDFC Bank`,
+  },
+];
+
 const upiDebitSample = `Dear Customer,
 
 Greetings from HDFC Bank!
@@ -52,6 +97,34 @@ We're here to support you in every step of the way.
 
 Warm regards,
 HDFC Bank`;
+
+const threadedUpiSamples = [
+  {
+    id: "msg-thread-upi-1",
+    expectedAmount: 4049.25,
+    expectedDate: "2026-05-28",
+    expectedMerchant: "S V M FUEL STATION",
+    expectedReference: "123809697002",
+    body: upiDebitSample,
+  },
+  {
+    id: "msg-thread-upi-2",
+    expectedAmount: 112937,
+    expectedDate: "2026-06-05",
+    expectedMerchant: "CRED Club",
+    expectedReference: "652216925085",
+    body: `Dear Customer,
+
+Greetings from HDFC Bank!
+
+Rs.112937.00 is debited from your account ending 0932 towards VPA cred.club@axisb (CRED Club) on 05-06-26.
+
+UPI transaction reference no.: 652216925085.
+
+Warm regards,
+HDFC Bank`,
+  },
+];
 
 test("HDFC debit parser extracts amount merchant card and timestamp", () => {
   const parsed = hdfcCreditCardDebitParser.parse({ id: "msg-1" }, sampleOne);
@@ -81,6 +154,27 @@ test("parser registry handles HDFC SmartEMI footer without changing merchant", (
     parsed.source_account_hint.display_name,
     "HDFC Credit Card ending 3604",
   );
+});
+
+test("thread-expanded HDFC credit-card messages parse independently", () => {
+  for (const fixture of refreshedCreditCardSamples) {
+    const parsed = parseGmailTransaction(
+      {
+        id: fixture.id,
+        threadId: "gmail-credit-card-thread-1",
+        from: "HDFC Bank InstaAlerts <alerts@hdfcbank.bank.in>",
+        subject: "A payment was made using your Credit Card",
+      },
+      fixture.body,
+    );
+
+    assert.equal(parsed.ok, true);
+    assert.equal(parsed.amount, fixture.expectedAmount);
+    assert.equal(parsed.transaction_date, fixture.expectedDate);
+    assert.equal(parsed.transaction_time, fixture.expectedTime);
+    assert.equal(parsed.statement_merchant, fixture.expectedMerchant);
+    assert.equal(parsed.source_reference, fixture.id);
+  }
 });
 
 test("HDFC UPI debit parser extracts amount payee account and reference", () => {
@@ -137,6 +231,27 @@ HDFC Bank`,
   assert.equal(parsed.transaction_date, "2026-06-05");
   assert.equal(parsed.statement_merchant, "CRED Club");
   assert.equal(parsed.source_reference, "652216925085");
+});
+
+test("thread-expanded HDFC UPI debit messages parse independently", () => {
+  for (const fixture of threadedUpiSamples) {
+    const parsed = parseGmailTransaction(
+      {
+        id: fixture.id,
+        threadId: "gmail-upi-thread-1",
+        from: "HDFC Bank InstaAlerts <alerts@hdfcbank.bank.in>",
+        subject: "You have done a UPI txn. Check details!",
+      },
+      fixture.body,
+    );
+
+    assert.equal(parsed.ok, true);
+    assert.equal(parsed.parser_name, "hdfc_upi_debit");
+    assert.equal(parsed.amount, fixture.expectedAmount);
+    assert.equal(parsed.transaction_date, fixture.expectedDate);
+    assert.equal(parsed.statement_merchant, fixture.expectedMerchant);
+    assert.equal(parsed.source_reference, fixture.expectedReference);
+  }
 });
 
 test("unsupported messages do not produce transactions", () => {

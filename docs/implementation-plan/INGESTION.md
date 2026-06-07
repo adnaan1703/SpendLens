@@ -128,7 +128,7 @@ Sync job responsibilities:
 
 1. Load mailbox connector and stored Gmail history ID.
 2. Call Gmail `history.list`.
-3. Fetch candidate messages.
+3. Fetch candidate message metadata and expand each candidate Gmail thread.
 4. Filter by supported senders, labels, and transaction-like content.
 5. Run parser registry.
 6. Generate a transaction fingerprint.

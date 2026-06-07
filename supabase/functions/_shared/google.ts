@@ -11,6 +11,11 @@ type GoogleTokenResponse = {
   token_type?: string;
 };
 
+export type GmailMessageSummary = {
+  id: string;
+  threadId?: string;
+};
+
 export class GoogleApiError extends Error {
   constructor(message: string, readonly status: number, readonly body: string) {
     super(message);
@@ -168,7 +173,7 @@ export async function listGmailHistory(
   pageToken?: string,
 ): Promise<{
   history?: Array<
-    { messagesAdded?: Array<{ message?: { id?: string; threadId?: string } }> }
+    { messagesAdded?: Array<{ message?: GmailMessageSummary }> }
   >;
   nextPageToken?: string;
   historyId?: string;
@@ -192,7 +197,7 @@ export async function listRecentGmailMessages(
   pageToken?: string,
 ): Promise<
   {
-    messages?: Array<{ id: string; threadId?: string }>;
+    messages?: GmailMessageSummary[];
     nextPageToken?: string;
   }
 > {
@@ -238,6 +243,22 @@ export async function fetchGmailMessage(
     response,
     "Gmail message fetch",
   );
+}
+
+export async function fetchGmailThread(
+  accessToken: string,
+  id: string,
+): Promise<{ id?: string; messages?: Array<Record<string, unknown>> }> {
+  const url = new URL(
+    `https://gmail.googleapis.com/gmail/v1/users/me/threads/${id}`,
+  );
+  url.searchParams.set("format", "full");
+
+  const response = await fetch(url, {
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
+
+  return checkedGoogleJson(response, "Gmail thread fetch");
 }
 
 export function tokenExpiryTimestamp(expiresIn?: number): string | null {

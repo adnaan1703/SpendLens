@@ -1,6 +1,8 @@
 import { sha256Hex } from "../_shared/crypto.ts";
 import {
   fetchGmailMessage,
+  fetchGmailThread,
+  type GmailMessageSummary,
   GoogleApiError,
   listGmailHistory,
   listRecentGmailMessages,
@@ -47,6 +49,11 @@ type ProcessCounts = {
   reviewItems: number;
 };
 
+type GmailMessageCandidate = {
+  messageId: string;
+  threadId: string | null;
+};
+
 function emptyCounts(): ProcessCounts {
   return {
     fetched: 0,
@@ -67,14 +74,31 @@ function mergeCounts(
   }
 }
 
-async function collectHistoryMessageIds(
+function addCandidate(
+  candidates: Map<string, GmailMessageCandidate>,
+  message: GmailMessageSummary | undefined,
+): void {
+  const messageId = message?.id?.trim();
+  if (!messageId) {
+    return;
+  }
+
+  const threadId = message?.threadId?.trim() || null;
+  const existing = candidates.get(messageId);
+  candidates.set(messageId, {
+    messageId,
+    threadId: existing?.threadId ?? threadId,
+  });
+}
+
+async function collectHistoryMessageCandidates(
   accessToken: string,
   startHistoryId: string,
 ): Promise<{
-  messageIds: string[];
+  candidates: GmailMessageCandidate[];
   latestHistoryId?: string;
 }> {
-  const ids = new Set<string>();
+  const candidates = new Map<string, GmailMessageCandidate>();
   let pageToken: string | undefined;
   let latestHistoryId: string | undefined;
 
@@ -83,32 +107,30 @@ async function collectHistoryMessageIds(
     latestHistoryId = page.historyId ?? latestHistoryId;
     for (const history of page.history ?? []) {
       for (const added of history.messagesAdded ?? []) {
-        if (added.message?.id) {
-          ids.add(added.message.id);
-        }
+        addCandidate(candidates, added.message);
       }
     }
     pageToken = page.nextPageToken;
-  } while (pageToken && ids.size < 50);
+  } while (pageToken && candidates.size < 50);
 
-  return { messageIds: [...ids].slice(0, 50), latestHistoryId };
+  return { candidates: [...candidates.values()].slice(0, 50), latestHistoryId };
 }
 
-async function collectBackfillMessageIds(
+async function collectBackfillMessageCandidates(
   accessToken: string,
-): Promise<string[]> {
-  const ids = new Set<string>();
+): Promise<GmailMessageCandidate[]> {
+  const candidates = new Map<string, GmailMessageCandidate>();
   let pageToken: string | undefined;
 
   do {
     const page = await listRecentGmailMessages(accessToken, pageToken);
     for (const message of page.messages ?? []) {
-      ids.add(message.id);
+      addCandidate(candidates, message);
     }
     pageToken = page.nextPageToken;
-  } while (pageToken && ids.size < 50);
+  } while (pageToken && candidates.size < 50);
 
-  return [...ids].slice(0, 50);
+  return [...candidates.values()].slice(0, 50);
 }
 
 function sourceFingerprint(
@@ -147,10 +169,9 @@ function sourceFingerprint(
 async function processMessage(
   serviceClient: ReturnType<typeof createServiceClient>,
   mailbox: MailboxRow,
-  accessToken: string,
+  message: Record<string, unknown>,
   messageId: string,
 ): Promise<Partial<ProcessCounts>> {
-  const message = await fetchGmailMessage(accessToken, messageId);
   const metadata = messageMetadata(message);
   const bodyText = extractPlainText(message);
   const parsed = parseGmailTransaction(metadata, bodyText);
@@ -184,6 +205,51 @@ async function processMessage(
     updated: result?.inserted ? 0 : 1,
     reviewItems: result?.review_item_id ? 1 : 0,
   };
+}
+
+async function processMessageById(
+  serviceClient: ReturnType<typeof createServiceClient>,
+  mailbox: MailboxRow,
+  accessToken: string,
+  messageId: string,
+  processedMessageIds: Set<string>,
+): Promise<Partial<ProcessCounts>> {
+  if (processedMessageIds.has(messageId)) {
+    return {};
+  }
+
+  const message = await fetchGmailMessage(accessToken, messageId);
+  const metadata = messageMetadata(message);
+  const fetchedMessageId = String(metadata.id ?? messageId);
+  processedMessageIds.add(fetchedMessageId);
+
+  return processMessage(serviceClient, mailbox, message, fetchedMessageId);
+}
+
+async function processThread(
+  serviceClient: ReturnType<typeof createServiceClient>,
+  mailbox: MailboxRow,
+  accessToken: string,
+  threadId: string,
+  processedMessageIds: Set<string>,
+): Promise<Partial<ProcessCounts>> {
+  const thread = await fetchGmailThread(accessToken, threadId);
+  const counts = emptyCounts();
+  for (const message of thread.messages ?? []) {
+    const metadata = messageMetadata(message);
+    const messageId = String(metadata.id ?? "").trim();
+    if (!messageId || processedMessageIds.has(messageId)) {
+      continue;
+    }
+
+    processedMessageIds.add(messageId);
+    mergeCounts(
+      counts,
+      await processMessage(serviceClient, mailbox, message, messageId),
+    );
+  }
+
+  return counts;
 }
 
 async function processJob(
@@ -221,36 +287,66 @@ async function processJob(
   );
   let latestHistoryId: string | undefined;
   let fallbackBackfill = false;
-  let messageIds: string[] = [];
+  let candidates: GmailMessageCandidate[] = [];
 
   try {
     if (job.job_type === "gmail_sync" && startHistoryId) {
-      const history = await collectHistoryMessageIds(
+      const history = await collectHistoryMessageCandidates(
         token.access_token,
         startHistoryId,
       );
-      messageIds = history.messageIds;
+      candidates = history.candidates;
       latestHistoryId = notificationHistoryId || history.latestHistoryId;
     } else {
-      messageIds = await collectBackfillMessageIds(token.access_token);
+      candidates = await collectBackfillMessageCandidates(token.access_token);
     }
   } catch (error) {
     if (error instanceof GoogleApiError && error.status === 404) {
       fallbackBackfill = true;
-      messageIds = await collectBackfillMessageIds(token.access_token);
+      candidates = await collectBackfillMessageCandidates(token.access_token);
     } else {
       throw error;
     }
   }
 
-  for (const messageId of messageIds) {
+  const processedThreadIds = new Set<string>();
+  const processedMessageIds = new Set<string>();
+  for (const candidate of candidates) {
+    if (candidate.threadId && !processedThreadIds.has(candidate.threadId)) {
+      processedThreadIds.add(candidate.threadId);
+      mergeCounts(
+        counts,
+        await processThread(
+          serviceClient,
+          mailbox,
+          token.access_token,
+          candidate.threadId,
+          processedMessageIds,
+        ),
+      );
+      if (!processedMessageIds.has(candidate.messageId)) {
+        mergeCounts(
+          counts,
+          await processMessageById(
+            serviceClient,
+            mailbox,
+            token.access_token,
+            candidate.messageId,
+            processedMessageIds,
+          ),
+        );
+      }
+      continue;
+    }
+
     mergeCounts(
       counts,
-      await processMessage(
+      await processMessageById(
         serviceClient,
         mailbox,
         token.access_token,
-        messageId,
+        candidate.messageId,
+        processedMessageIds,
       ),
     );
   }

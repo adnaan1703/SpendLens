@@ -93,6 +93,10 @@ Current parser support:
 - HDFC credit-card debit alerts matching the anonymized samples from Milestone 9.
 - HDFC Bank UPI debit alerts matching the anonymized samples from Milestone 10.
 
+Gmail sync expands each candidate message to its Gmail thread before parsing, so
+multiple HDFC credit-card or UPI alerts grouped into the same Gmail conversation
+are processed as independent messages.
+
 Unsupported Gmail messages are ignored by the sync function and do not create
 transactions. Unknown or non-high-confidence merchant classifications create
 review items instead of silently assigning bad categories.
