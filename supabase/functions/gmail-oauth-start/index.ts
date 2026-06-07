@@ -6,6 +6,7 @@ import {
   jsonResponse,
   readJsonBody,
 } from "../_shared/http.ts";
+import { errorMessage, logOperationalEvent } from "../_shared/observability.ts";
 import { createServiceClient, requireUser } from "../_shared/supabase.ts";
 
 Deno.serve(async (req: Request) => {
@@ -63,14 +64,25 @@ Deno.serve(async (req: Request) => {
       throw insertError;
     }
 
+    logOperationalEvent("gmail_oauth_start_created", {
+      householdId,
+      profileId: profile.id,
+      expiresAt,
+      scope: gmailReadonlyScope,
+    });
     return jsonResponse({
       authorizationUrl: buildGoogleOAuthUrl(state),
       expiresAt,
       scope: gmailReadonlyScope,
     });
   } catch (error) {
+    logOperationalEvent(
+      "gmail_oauth_start_failed",
+      { error: errorMessage(error, "Unable to start Gmail OAuth.") },
+      "error",
+    );
     return errorResponse(
-      error instanceof Error ? error.message : "Unable to start Gmail OAuth.",
+      errorMessage(error, "Unable to start Gmail OAuth."),
       400,
     );
   }

@@ -6,6 +6,7 @@ import {
   watchGmailMailbox,
 } from "../_shared/google.ts";
 import { handleOptions, htmlResponse } from "../_shared/http.ts";
+import { errorMessage, logOperationalEvent } from "../_shared/observability.ts";
 import { createServiceClient } from "../_shared/supabase.ts";
 
 function page(title: string, message: string): string {
@@ -39,10 +40,20 @@ Deno.serve(async (req: Request) => {
   const oauthError = url.searchParams.get("error");
 
   if (oauthError) {
+    logOperationalEvent(
+      "gmail_oauth_callback_cancelled",
+      { error: oauthError },
+      "warn",
+    );
     return htmlResponse(page("Gmail connection cancelled", oauthError), 400);
   }
 
   if (!code || !state) {
+    logOperationalEvent(
+      "gmail_oauth_callback_failed",
+      { error: "Missing OAuth code or state." },
+      "warn",
+    );
     return htmlResponse(
       page("Gmail connection failed", "Missing OAuth code or state."),
       400,
@@ -62,6 +73,11 @@ Deno.serve(async (req: Request) => {
       .maybeSingle();
 
     if (stateError || !stateRow) {
+      logOperationalEvent(
+        "gmail_oauth_callback_failed",
+        { error: "OAuth state expired or invalid." },
+        "warn",
+      );
       return htmlResponse(
         page("Gmail connection failed", "OAuth state expired or invalid."),
         400,
@@ -81,7 +97,7 @@ Deno.serve(async (req: Request) => {
     const profile = await fetchGmailProfile(tokens.access_token);
     const watch = await watchGmailMailbox(tokens.access_token);
 
-    const { error: mailboxError } = await serviceClient.rpc(
+    const { data: mailboxData, error: mailboxError } = await serviceClient.rpc(
       "upsert_gmail_mailbox",
       {
         p_household_id: stateRow.household_id,
@@ -100,14 +116,24 @@ Deno.serve(async (req: Request) => {
       throw mailboxError;
     }
 
+    const mailbox = Array.isArray(mailboxData) ? mailboxData[0] : mailboxData;
+    logOperationalEvent("gmail_oauth_callback_completed", {
+      mailboxId: mailbox?.id,
+      householdId: stateRow.household_id,
+      watchExpiresAt: watch.expirationDate ?? null,
+      scope: tokens.scope ?? null,
+    });
     return htmlResponse(page(
       "Gmail connected",
       "SpendLens can now ingest supported transaction emails from this mailbox. You can return to the app.",
     ));
   } catch (error) {
-    const message = error instanceof Error
-      ? error.message
-      : "Unknown Gmail OAuth callback error.";
+    const message = errorMessage(error, "Unknown Gmail OAuth callback error.");
+    logOperationalEvent(
+      "gmail_oauth_callback_failed",
+      { error: message },
+      "error",
+    );
     return htmlResponse(page("Gmail connection failed", message), 400);
   }
 });

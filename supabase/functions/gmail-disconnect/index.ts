@@ -9,6 +9,7 @@ import {
   jsonResponse,
   readJsonBody,
 } from "../_shared/http.ts";
+import { errorMessage, logOperationalEvent } from "../_shared/observability.ts";
 import { createServiceClient, requireUser } from "../_shared/supabase.ts";
 
 Deno.serve(async (req: Request) => {
@@ -75,10 +76,19 @@ Deno.serve(async (req: Request) => {
       throw error;
     }
 
+    logOperationalEvent("gmail_disconnect_completed", {
+      mailboxId,
+      hadStopWarning: stopWarning !== null,
+    }, stopWarning === null ? "info" : "warn");
     return jsonResponse({ mailbox: data?.[0] ?? null, warning: stopWarning });
   } catch (error) {
+    logOperationalEvent(
+      "gmail_disconnect_failed",
+      { error: errorMessage(error, "Unable to disconnect Gmail.") },
+      "error",
+    );
     return errorResponse(
-      error instanceof Error ? error.message : "Unable to disconnect Gmail.",
+      errorMessage(error, "Unable to disconnect Gmail."),
       400,
     );
   }

@@ -86,6 +86,20 @@ apikey: <SUPABASE_SECRET_KEY>
 
 Do not put the secret key in Flutter or committed files.
 
+For production scheduling, monitoring, and hosted smoke checks, use
+`docs/implementation-plan/PRODUCTION_READINESS.md`.
+
+## Operational Monitoring
+
+Gmail Edge Functions emit structured JSON log events for OAuth, Pub/Sub,
+sync, renewal, backfill, and disconnect workflows. Service-role monitoring can
+query:
+
+- `public.v_ingestion_operational_health`
+- `public.v_parser_operational_health`
+
+These views are not granted to `anon` or `authenticated`.
+
 ## Parser Coverage
 
 Current parser support:

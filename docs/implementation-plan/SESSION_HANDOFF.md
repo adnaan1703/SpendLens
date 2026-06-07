@@ -5,9 +5,9 @@ Use this file to coordinate work across multiple implementation sessions. Update
 ## Current Status
 
 - Current milestone: Not started.
-- Last completed milestone: Milestone 10, UPI Ingestion and Parser Expansion.
-- Current implementation state: Flutter Android app scaffold exists in `apps/mobile` with SpendLens Google sign-in, route protection, authenticated shell, RLS-safe profile/default-household bootstrap, household loading/error states, sign-out, package `com.olympus.spendlens`, core packages, environment templates, tests, and Supabase folder structure. Supabase local config applies migrations for schema, RLS, views, workbook-derived default categories, merchant review corrections, piggy-bank entry validation, Gmail connector ingestion, pgTAP database tests, and the Android auth redirect URL. Milestone 3 adds a local workbook importer under `tools/workbook-import`, fixture tests, and rerun documentation in `docs/implementation-plan/WORKBOOK_IMPORT.md`. Milestone 5 adds Supabase-backed finance repository reads/writes, dashboard KPIs, reporting-month selection, monthly category cap setup/editing, category and merchant summaries, transaction search/filter pagination, and transaction detail panels. Milestone 6 adds merchant review queue UI, correction RPC/rule persistence, historical reclassification, review resolution, transaction classification audit metadata, and future-import rule application. Milestone 7 adds Supabase-backed piggy-bank list/detail UI, create/edit forms, ledger entry creation, ledger-derived balance/progress reads, no-overdraft withdrawal validation, and regression tests. Milestone 8 adds filtered monthly trend reports, gross/refund/net reporting, category trend tables, merchant summary tables, and filtered transaction CSV copy from the Trends screen. Milestone 9 adds Vault-backed Gmail OAuth connector state, Pub/Sub webhook job dedupe, Gmail sync/backfill/watch-renewal Edge Functions, HDFC credit-card debit parsing from anonymized fixtures, SQL ingestion RPCs, and Settings connector status/connect/disconnect UI. Milestone 10 adds HDFC Bank UPI debit parsing from anonymized fixtures, UPI-aware Gmail backfill search and fingerprinting, UPI ingestion pgTAP coverage, and source-type filters for credit card vs UPI on transaction/trend screens.
-- Next recommended milestone: Milestone 11, Deployment, Security, and Production Readiness.
+- Last completed milestone: Milestone 11, Deployment, Security, and Production Readiness.
+- Current implementation state: Flutter Android app scaffold exists in `apps/mobile` with SpendLens Google sign-in, route protection, authenticated shell, RLS-safe profile/default-household bootstrap, household loading/error states, sign-out, package `com.olympus.spendlens`, core packages, environment templates, tests, and Supabase folder structure. Supabase local config applies migrations for schema, RLS, views, workbook-derived default categories, merchant review corrections, piggy-bank entry validation, Gmail connector ingestion, production-readiness monitoring views, pgTAP database tests, and the Android auth redirect URL. Milestone 3 adds a local workbook importer under `tools/workbook-import`, fixture tests, and rerun documentation in `docs/implementation-plan/WORKBOOK_IMPORT.md`. Milestone 5 adds Supabase-backed finance repository reads/writes, dashboard KPIs, reporting-month selection, monthly category cap setup/editing, category and merchant summaries, transaction search/filter pagination, and transaction detail panels. Milestone 6 adds merchant review queue UI, correction RPC/rule persistence, historical reclassification, review resolution, transaction classification audit metadata, and future-import rule application. Milestone 7 adds Supabase-backed piggy-bank list/detail UI, create/edit forms, ledger entry creation, ledger-derived balance/progress reads, no-overdraft withdrawal validation, and regression tests. Milestone 8 adds filtered monthly trend reports, gross/refund/net reporting, category trend tables, merchant summary tables, and filtered transaction CSV copy from the Trends screen. Milestone 9 adds Vault-backed Gmail OAuth connector state, Pub/Sub webhook job dedupe, Gmail sync/backfill/watch-renewal Edge Functions, HDFC credit-card debit parsing from anonymized fixtures, SQL ingestion RPCs, and Settings connector status/connect/disconnect UI. Milestone 10 adds HDFC Bank UPI debit parsing from anonymized fixtures, UPI-aware Gmail backfill search and fingerprinting, UPI ingestion pgTAP coverage, and source-type filters for credit card vs UPI on transaction/trend screens. Milestone 11 adds production-readiness runbooks, local smoke automation, service-role ingestion/parser health views, structured Edge Function operational logs, Android release signing/shrinking configuration, and staging/production Edge Function secret templates.
+- Next recommended milestone: Milestone 12, AI-Ready Layer and LLM Features.
 
 ## Required Reading for New Threads
 
@@ -65,7 +65,7 @@ Do not ask the user to perform all setup at once. Ask only when the relevant mil
 - Milestone 8, Trends and Reports: completed.
 - Milestone 9, Gmail Connector and Credit-Card Email Ingestion: completed.
 - Milestone 10, UPI Ingestion and Parser Expansion: completed.
-- Milestone 11, Deployment, Security, and Production Readiness: pending.
+- Milestone 11, Deployment, Security, and Production Readiness: completed.
 - Milestone 12, AI-Ready Layer and LLM Features: pending.
 
 ## Update Rules
@@ -397,3 +397,43 @@ When an architecture decision changes:
   - UPI credit/refund parsing remains deferred until anonymized matching samples are provided.
   - No remote Supabase migration push, function deployment, hosted secret setup, or remote advisors were run.
   - Live authenticated Android-device UPI ingestion/filter coverage was not exercised in this session.
+
+## Milestone 11 Completion Notes
+
+- Completed on 2026-06-07.
+- Added production-readiness documentation in `docs/implementation-plan/PRODUCTION_READINESS.md` covering environment split, local readiness gates, Supabase deployment order, Google production setup, scheduling, monitoring, Android release builds, billing alerts, backups, and hosted smoke tests.
+- Added service-role-only operational views:
+  - `public.v_ingestion_operational_health` for active mailboxes, missing OAuth secrets, expiring watches, stale syncs, queued/retrying/failed jobs, and latest non-secret errors.
+  - `public.v_parser_operational_health` for Gmail parser/version/status counts.
+- Added pgTAP production-readiness coverage proving the operational views are `security_invoker`, not granted to `anon`/`authenticated`, readable by `service_role`, and summarize retry/parser state correctly.
+- Added structured JSON Edge Function logs for Gmail OAuth, Pub/Sub, sync, watch renewal, backfill, disconnect, and connector-status failures without logging raw Gmail bodies or OAuth codes.
+- Added `tools/production-readiness/local-smoke.sh` for repo secret checks, service-only view checks, Supabase test/lint/advisor checks, Edge Function checks, parser tests, and optional mobile release smoke via `RUN_MOBILE=1`.
+- Added `tools/production-readiness/deploy-edge-functions.sh` for deploying JWT-protected and service/public Gmail Edge Functions to a confirmed Supabase project ref.
+- Added staging/production Edge Function secret templates under `supabase/functions/env`, tightened `.gitignore` for local env files, and documented production values as placeholders only.
+- Added Android release signing configuration through ignored `apps/mobile/android/key.properties`, release shrinking, `proguard-rules.pro`, and `key.properties.example`; local release builds fall back to debug signing when no upload key exists.
+- Verification run:
+  - `curl -L --max-time 20 https://supabase.com/changelog.md | sed -n '1,220p'`
+  - Supabase MCP docs search for Edge Function secrets, deployment, scheduling, publishable/secret keys, and production monitoring guidance
+  - `supabase --version`
+  - `supabase functions --help`
+  - `supabase functions deploy --help`
+  - `supabase secrets --help`
+  - `supabase db --help`
+  - `supabase db push --help`
+  - `supabase db advisors --help`
+  - `supabase migration new production_readiness_monitoring`
+  - `deno fmt supabase/functions`
+  - `supabase db reset --local`
+  - `supabase test db --local supabase/tests/production_readiness.sql`
+  - `supabase test db --local supabase/tests`
+  - `tools/production-readiness/local-smoke.sh`
+  - `flutter analyze`
+  - `flutter test`
+  - `flutter pub get`
+  - `flutter build apk --release --no-pub --dart-define=APP_ENV=production --dart-define=SUPABASE_URL=https://example.supabase.co --dart-define=SUPABASE_PUBLISHABLE_KEY=sb_publishable_example --dart-define=AUTH_REDIRECT_URL=com.olympus.spendlens://login-callback/`
+  - `RUN_MOBILE=1 tools/production-readiness/local-smoke.sh`
+- Known gaps:
+  - No production Supabase project was created or linked, and no remote migrations/functions/secrets/advisors were applied.
+  - No production Google Cloud OAuth/Pub/Sub setup or hosted Gmail connector smoke was performed.
+  - No Google Play Console/internal-test release was created.
+  - The release APK smoke used placeholder Supabase values and debug signing fallback because real production project values and Android upload-key material were not provided.

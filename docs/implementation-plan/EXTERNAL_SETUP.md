@@ -19,6 +19,7 @@ User actions:
 Later production actions:
 
 - Create a separate production project.
+- Use publishable and secret API keys for new production setup where available.
 - Enable daily backups if using a paid plan.
 - Configure spend cap or billing alerts.
 - Add team access only if needed.
@@ -88,6 +89,20 @@ User actions:
 - Choose Android package name.
 - Configure Android OAuth client ID in Google Cloud.
 - Configure signing key and release track.
+
+## Milestone 11 Production Setup
+
+Milestone 11 adds local readiness checks and deployment runbooks, but the
+following choices still require user confirmation before hosted production work:
+
+- Production Supabase project ref and region.
+- Production Supabase billing/backup plan.
+- Production Google Cloud project and OAuth client IDs.
+- Production Pub/Sub topic/subscription names.
+- Google Play internal-test or production distribution path.
+
+Use [Production Readiness](PRODUCTION_READINESS.md) for the ordered deployment,
+monitoring, backup, billing, and smoke-test checklist.
 
 ## Supabase Project Configuration
 

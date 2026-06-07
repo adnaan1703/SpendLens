@@ -19,6 +19,7 @@ import {
   createServiceClient,
   requireServiceRequest,
 } from "../_shared/supabase.ts";
+import { errorMessage, logOperationalEvent } from "../_shared/observability.ts";
 import {
   normalizeFingerprintText,
   parseGmailTransaction,
@@ -30,6 +31,7 @@ type JobRow = {
   linked_mailbox_id: string;
   job_type: "gmail_sync" | "gmail_backfill";
   attempts: number;
+  max_attempts: number;
   payload: Record<string, unknown>;
 };
 
@@ -382,7 +384,7 @@ Deno.serve(async (req: Request) => {
     const { data: jobs, error: jobsError } = await serviceClient
       .from("ingestion_jobs")
       .select(
-        "id, household_id, linked_mailbox_id, job_type, attempts, payload",
+        "id, household_id, linked_mailbox_id, job_type, attempts, max_attempts, payload",
       )
       .in("job_type", ["gmail_sync", "gmail_backfill"])
       .eq("status", "queued")
@@ -422,6 +424,13 @@ Deno.serve(async (req: Request) => {
       try {
         const result = await processJob(serviceClient, job);
         completed.push(result);
+        logOperationalEvent("gmail_sync_job_completed", {
+          jobId: job.id,
+          mailboxId: job.linked_mailbox_id,
+          jobType: job.job_type,
+          fallbackBackfill: result.fallbackBackfill,
+          counts: result.counts,
+        });
         await serviceClient
           .from("ingestion_jobs")
           .update({
@@ -434,17 +443,28 @@ Deno.serve(async (req: Request) => {
           })
           .eq("id", job.id);
       } catch (error) {
-        const message = error instanceof Error
-          ? error.message
-          : "Unknown Gmail sync error.";
+        const message = errorMessage(error, "Unknown Gmail sync error.");
+        const attempts = job.attempts + 1;
+        const finalAttempt = attempts >= job.max_attempts;
         failed.push({ jobId: job.id, error: message });
+        logOperationalEvent(
+          "gmail_sync_job_failed",
+          {
+            jobId: job.id,
+            mailboxId: job.linked_mailbox_id,
+            jobType: job.job_type,
+            attempts,
+            maxAttempts: job.max_attempts,
+            finalAttempt,
+            error: message,
+          },
+          finalAttempt ? "error" : "warn",
+        );
         await serviceClient
           .from("ingestion_jobs")
           .update({
-            status: job.attempts + 1 >= 5 ? "failed" : "queued",
-            completed_at: job.attempts + 1 >= 5
-              ? new Date().toISOString()
-              : null,
+            status: finalAttempt ? "failed" : "queued",
+            completed_at: finalAttempt ? new Date().toISOString() : null,
             error_message: message,
             run_after: new Date(Date.now() + 15 * 60 * 1000).toISOString(),
           })
@@ -457,10 +477,25 @@ Deno.serve(async (req: Request) => {
       }
     }
 
+    logOperationalEvent(
+      "gmail_sync_run_completed",
+      {
+        limit,
+        selectedJobs: jobs?.length ?? 0,
+        completed: completed.length,
+        failed: failed.length,
+      },
+      failed.length > 0 ? "warn" : "info",
+    );
     return jsonResponse({ completed, failed });
   } catch (error) {
+    logOperationalEvent(
+      "gmail_sync_run_failed",
+      { error: errorMessage(error, "Unable to run Gmail sync.") },
+      "error",
+    );
     return errorResponse(
-      error instanceof Error ? error.message : "Unable to run Gmail sync.",
+      errorMessage(error, "Unable to run Gmail sync."),
       400,
     );
   }

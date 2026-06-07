@@ -28,6 +28,11 @@ flutter analyze
 flutter test
 ```
 
+Production readiness checks and deployment runbooks live in:
+
+- `docs/implementation-plan/PRODUCTION_READINESS.md`
+- `tools/production-readiness/local-smoke.sh`
+
 ## Planning References
 
 - `docs/implementation-plan/README.md`

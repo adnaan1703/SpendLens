@@ -8,6 +8,7 @@ import {
   createServiceClient,
   requireServiceRequest,
 } from "../_shared/supabase.ts";
+import { errorMessage, logOperationalEvent } from "../_shared/observability.ts";
 
 Deno.serve(async (req: Request) => {
   const options = handleOptions(req);
@@ -59,12 +60,21 @@ Deno.serve(async (req: Request) => {
       }
     }
 
+    logOperationalEvent("gmail_backfill_check_completed", {
+      limit,
+      staleMailboxCount: mailboxes?.length ?? 0,
+      queued: queued.length,
+      skipped: skipped.length,
+    });
     return jsonResponse({ queued, skipped });
   } catch (error) {
+    logOperationalEvent(
+      "gmail_backfill_check_failed",
+      { error: errorMessage(error, "Unable to enqueue Gmail backfill.") },
+      "error",
+    );
     return errorResponse(
-      error instanceof Error
-        ? error.message
-        : "Unable to enqueue Gmail backfill.",
+      errorMessage(error, "Unable to enqueue Gmail backfill."),
       400,
     );
   }

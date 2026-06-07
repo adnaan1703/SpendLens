@@ -1,0 +1,7 @@
+# Copy to apps/mobile/android/key.properties and fill with local signing values.
+# The real key.properties file and keystore are ignored by Git.
+
+storePassword=<keystore-password>
+keyPassword=<key-password>
+keyAlias=<upload-key-alias>
+storeFile=<relative-path-from-apps/mobile/android-to-keystore.jks>

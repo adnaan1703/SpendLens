@@ -9,6 +9,7 @@ import {
   createServiceClient,
   requireServiceRequest,
 } from "../_shared/supabase.ts";
+import { errorMessage, logOperationalEvent } from "../_shared/observability.ts";
 
 Deno.serve(async (req: Request) => {
   const options = handleOptions(req);
@@ -64,22 +65,43 @@ Deno.serve(async (req: Request) => {
           watchExpiresAt: watch.expirationDate,
         });
       } catch (error) {
-        const message = error instanceof Error
-          ? error.message
-          : "Unknown Gmail watch renewal error.";
+        const message = errorMessage(
+          error,
+          "Unknown Gmail watch renewal error.",
+        );
         await serviceClient.rpc("mark_gmail_mailbox_error", {
           p_mailbox_id: mailbox.id,
           p_error: message,
           p_status: "failed",
         });
         failed.push({ mailboxId: mailbox.id, error: message });
+        logOperationalEvent(
+          "gmail_watch_renewal_mailbox_failed",
+          { mailboxId: mailbox.id, error: message },
+          "error",
+        );
       }
     }
 
+    logOperationalEvent(
+      "gmail_watch_renewal_completed",
+      {
+        limit,
+        selectedMailboxes: mailboxes?.length ?? 0,
+        renewed: renewed.length,
+        failed: failed.length,
+      },
+      failed.length > 0 ? "warn" : "info",
+    );
     return jsonResponse({ renewed, failed });
   } catch (error) {
+    logOperationalEvent(
+      "gmail_watch_renewal_failed",
+      { error: errorMessage(error, "Unable to renew Gmail watches.") },
+      "error",
+    );
     return errorResponse(
-      error instanceof Error ? error.message : "Unable to renew Gmail watches.",
+      errorMessage(error, "Unable to renew Gmail watches."),
       400,
     );
   }

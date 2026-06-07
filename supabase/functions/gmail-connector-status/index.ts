@@ -4,6 +4,7 @@ import {
   jsonResponse,
   readJsonBody,
 } from "../_shared/http.ts";
+import { errorMessage, logOperationalEvent } from "../_shared/observability.ts";
 import { requireUser } from "../_shared/supabase.ts";
 
 Deno.serve(async (req: Request) => {
@@ -35,10 +36,13 @@ Deno.serve(async (req: Request) => {
 
     return jsonResponse({ mailboxes: data ?? [] });
   } catch (error) {
+    logOperationalEvent(
+      "gmail_connector_status_failed",
+      { error: errorMessage(error, "Unable to load connector status.") },
+      "error",
+    );
     return errorResponse(
-      error instanceof Error
-        ? error.message
-        : "Unable to load connector status.",
+      errorMessage(error, "Unable to load connector status."),
       400,
     );
   }

@@ -1,5 +1,6 @@
 import { base64UrlDecode } from "../_shared/crypto.ts";
 import { errorResponse, handleOptions, jsonResponse } from "../_shared/http.ts";
+import { errorMessage, logOperationalEvent } from "../_shared/observability.ts";
 import { createServiceClient } from "../_shared/supabase.ts";
 
 function verifyPubSubSecret(req: Request): void {
@@ -60,12 +61,19 @@ Deno.serve(async (req: Request) => {
       throw error;
     }
 
+    logOperationalEvent("gmail_pubsub_notification_queued", {
+      pubsubMessageId: String(message.messageId ?? message.message_id ?? ""),
+      result,
+    });
     return jsonResponse({ ok: true, result });
   } catch (error) {
+    logOperationalEvent(
+      "gmail_pubsub_webhook_failed",
+      { error: errorMessage(error, "Unable to handle Pub/Sub notification.") },
+      "error",
+    );
     return errorResponse(
-      error instanceof Error
-        ? error.message
-        : "Unable to handle Pub/Sub notification.",
+      errorMessage(error, "Unable to handle Pub/Sub notification."),
       400,
     );
   }
