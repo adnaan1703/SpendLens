@@ -8,21 +8,56 @@ type GmailPart = {
 
 function extractParts(
   part: GmailPart | undefined,
+  mimeType: string,
   matches: string[],
 ): string[] {
   if (!part) {
     return matches;
   }
 
-  if (part.mimeType === "text/plain" && part.body?.data) {
+  if (part.mimeType === mimeType && part.body?.data) {
     matches.push(base64UrlDecode(part.body.data));
   }
 
   for (const child of part.parts ?? []) {
-    extractParts(child, matches);
+    extractParts(child, mimeType, matches);
   }
 
   return matches;
+}
+
+function decodeHtmlEntities(value: string): string {
+  return value
+    .replaceAll(
+      /&#(\d+);/g,
+      (_match, codePoint) => String.fromCodePoint(Number(codePoint)),
+    )
+    .replaceAll(
+      /&#x([0-9a-f]+);/gi,
+      (_match, codePoint) =>
+        String.fromCodePoint(Number.parseInt(codePoint, 16)),
+    )
+    .replaceAll(/&nbsp;/gi, " ")
+    .replaceAll(/&amp;/gi, "&")
+    .replaceAll(/&quot;/gi, '"')
+    .replaceAll(/&#39;/g, "'")
+    .replaceAll(/&lt;/gi, "<")
+    .replaceAll(/&gt;/gi, ">");
+}
+
+function htmlToPlainText(value: string): string {
+  return decodeHtmlEntities(
+    value
+      .replaceAll(/<style[\s\S]*?<\/style>/gi, " ")
+      .replaceAll(/<script[\s\S]*?<\/script>/gi, " ")
+      .replaceAll(/<(?:br|\/p|\/div|\/tr|\/li)\b[^>]*>/gi, "\n")
+      .replaceAll(/<[^>]+>/g, " "),
+  )
+    .replaceAll(/\s+([.,:;!?])/g, "$1")
+    .replaceAll(/[ \t\r\f\v]+/g, " ")
+    .replaceAll(/\n\s+/g, "\n")
+    .replaceAll(/\n{3,}/g, "\n\n")
+    .trim();
 }
 
 function headerValue(
@@ -40,10 +75,17 @@ function headerValue(
 
 export function extractPlainText(message: Record<string, unknown>): string {
   const payload = message.payload as GmailPart | undefined;
-  const matches = extractParts(payload, []);
+  const matches = extractParts(payload, "text/plain", []);
 
   if (matches.length > 0) {
     return matches.join("\n\n");
+  }
+
+  const htmlMatches = extractParts(payload, "text/html", [])
+    .map(htmlToPlainText)
+    .filter((value) => value.length > 0);
+  if (htmlMatches.length > 0) {
+    return htmlMatches.join("\n\n");
   }
 
   if (payload?.body?.data) {
