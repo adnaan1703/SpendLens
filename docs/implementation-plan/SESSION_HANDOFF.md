@@ -5,8 +5,8 @@ Use this file to coordinate work across multiple implementation sessions. Update
 ## Current Status
 
 - Current milestone: Not started.
-- Last completed milestone: Milestone 13, May 2026 Gmail Backfill.
-- Current implementation state: Flutter Android app scaffold exists in `apps/mobile` with SpendLens Google sign-in, route protection, authenticated shell, RLS-safe profile/default-household bootstrap, household loading/error states, sign-out, package `com.olympus.spendlens`, core packages, environment templates, tests, and Supabase folder structure. Supabase local config applies migrations for schema, RLS, views, workbook-derived default categories, merchant review corrections, piggy-bank entry validation, Gmail connector ingestion, production-readiness monitoring views, AI feature settings/usage/jobs/merchant suggestions, pgTAP database tests, and the Android auth redirect URL. Milestone 3 adds a local workbook importer under `tools/workbook-import`, fixture tests, and rerun documentation in `docs/implementation-plan/WORKBOOK_IMPORT.md`. Milestone 5 adds Supabase-backed finance repository reads/writes, dashboard KPIs, reporting-month selection, monthly category cap setup/editing, category and merchant summaries, transaction search/filter pagination, and transaction detail panels. Milestone 6 adds merchant review queue UI, correction RPC/rule persistence, historical reclassification, review resolution, transaction classification audit metadata, and future-import rule application. Milestone 7 adds Supabase-backed piggy-bank list/detail UI, create/edit forms, ledger entry creation, ledger-derived balance/progress reads, no-overdraft withdrawal validation, and regression tests. Milestone 8 adds filtered monthly trend reports, gross/refund/net reporting, category trend tables, merchant summary tables, and filtered transaction CSV copy from the Trends screen. Milestone 9 adds Vault-backed Gmail OAuth connector state, Pub/Sub webhook job dedupe, Gmail sync/backfill/watch-renewal Edge Functions, HDFC credit-card debit parsing from anonymized fixtures, SQL ingestion RPCs, and Settings connector status/connect/disconnect UI. Milestone 10 adds HDFC Bank UPI debit parsing from anonymized fixtures, UPI-aware Gmail backfill search and fingerprinting, UPI ingestion pgTAP coverage, and source-type filters for credit card vs UPI on transaction/trend screens. Milestone 11 adds production-readiness runbooks, local smoke automation, service-role ingestion/parser health views, structured Edge Function operational logs, Android release signing/shrinking configuration, and staging/production Edge Function secret templates. Milestone 12 adds Gemini-backed expense Q&A, merchant research suggestions, AI usage/budget status, backend-only LLM calls, and free-tier-only dev/staging controls. Milestone 13 adds a service-only May 2026 Gmail range backfill function, range-aware Gmail sync search/date filtering, OAuth account selection for mailbox choice, deployment tooling updates, and a hosted dev/staging runbook.
+- Last completed milestone: Milestone 14, In-App Category Creation.
+- Current implementation state: Flutter Android app scaffold exists in `apps/mobile` with SpendLens Google sign-in, route protection, authenticated shell, RLS-safe profile/default-household bootstrap, household loading/error states, sign-out, package `com.olympus.spendlens`, core packages, environment templates, tests, and Supabase folder structure. Supabase local config applies migrations for schema, RLS, views, workbook-derived default categories, merchant review corrections, piggy-bank entry validation, Gmail connector ingestion, production-readiness monitoring views, AI feature settings/usage/jobs/merchant suggestions, pgTAP database tests, and the Android auth redirect URL. Milestone 3 adds a local workbook importer under `tools/workbook-import`, fixture tests, and rerun documentation in `docs/implementation-plan/WORKBOOK_IMPORT.md`. Milestone 5 adds Supabase-backed finance repository reads/writes, dashboard KPIs, reporting-month selection, monthly category cap setup/editing, category and merchant summaries, transaction search/filter pagination, and transaction detail panels. Milestone 6 adds merchant review queue UI, correction RPC/rule persistence, historical reclassification, review resolution, transaction classification audit metadata, and future-import rule application. Milestone 7 adds Supabase-backed piggy-bank list/detail UI, create/edit forms, ledger entry creation, ledger-derived balance/progress reads, no-overdraft withdrawal validation, and regression tests. Milestone 8 adds filtered monthly trend reports, gross/refund/net reporting, category trend tables, merchant summary tables, and filtered transaction CSV copy from the Trends screen. Milestone 9 adds Vault-backed Gmail OAuth connector state, Pub/Sub webhook job dedupe, Gmail sync/backfill/watch-renewal Edge Functions, HDFC credit-card debit parsing from anonymized fixtures, SQL ingestion RPCs, and Settings connector status/connect/disconnect UI. Milestone 10 adds HDFC Bank UPI debit parsing from anonymized fixtures, UPI-aware Gmail backfill search and fingerprinting, UPI ingestion pgTAP coverage, and source-type filters for credit card vs UPI on transaction/trend screens. Milestone 11 adds production-readiness runbooks, local smoke automation, service-role ingestion/parser health views, structured Edge Function operational logs, Android release signing/shrinking configuration, and staging/production Edge Function secret templates. Milestone 12 adds Gemini-backed expense Q&A, merchant research suggestions, AI usage/budget status, backend-only LLM calls, and free-tier-only dev/staging controls. Milestone 13 adds a service-only May 2026 Gmail range backfill function, range-aware Gmail sync search/date filtering, OAuth account selection for mailbox choice, deployment tooling updates, and a hosted dev/staging runbook. Milestone 14 adds authenticated in-app creation of a category plus first subcategory from Settings and Merchant Review through an RLS-safe `create_household_category` RPC.
 - Remote deployment state: On 2026-06-08, user confirmed Supabase project `bslsitzdvrdosubbdxpd` as the intended dev/staging target. All local migrations through `20260607174515_ai_ready_layer_llm_features.sql` were pushed there, hosted `expense-qa` and `merchant-research` were already active with JWT verification, and `GEMINI_API_KEY` was present in hosted Edge Function secrets by name. After the user signed in through the Android emulator, hosted profile/household bootstrap and authenticated Gemini Edge Function smoke passed. On 2026-06-08 for Milestone 13, `gmail-oauth-start` was deployed as version 2 with JWT verification, `gmail-sync` was deployed as version 2 without JWT verification, and new `gmail-backfill-range` was deployed as version 1 without JWT verification. Hosted `gmail-backfill-range` `OPTIONS` smoke returned 200, and an unauthenticated POST returned the expected service-key error. The live May Gmail backfill itself was not run because it requires the user to connect the target Gmail mailbox and invoke the runbook with a Supabase secret key from a local/platform secret store.
 - Next recommended milestone: None in the current active plan; iOS and web remain deferred future milestones unless explicitly resumed.
 
@@ -34,6 +34,7 @@ At the start of a new implementation thread, read:
 - Merchant corrections apply to past and future matching transactions.
 - Raw email bodies are not retained by default.
 - LLM features are backend-mediated through Supabase Edge Functions.
+- In-app category creation creates a category plus its first subcategory together; broader taxonomy administration is deferred.
 
 ## Clarification Policy
 
@@ -69,6 +70,7 @@ Do not ask the user to perform all setup at once. Ask only when the relevant mil
 - Milestone 11, Deployment, Security, and Production Readiness: completed.
 - Milestone 12, AI-Ready Layer and LLM Features: completed.
 - Milestone 13, May 2026 Gmail Backfill: completed.
+- Milestone 14, In-App Category Creation: completed.
 
 ## Update Rules
 
@@ -556,3 +558,49 @@ When an architecture decision changes:
 - Mocks used:
   - Existing anonymized Gmail parser fixtures.
   - Synthetic local-only mailbox rows for function enqueue verification.
+
+## Milestone 14 Completion Notes
+
+- Completed on 2026-06-08.
+- Added `create_household_category`, an authenticated `security invoker` RPC that creates a household category plus its first subcategory in one transaction.
+- The RPC:
+  - Requires the signed-in profile to have household write access.
+  - Trims category and subcategory names.
+  - Rejects blank category or subcategory names.
+  - Rejects case-insensitive duplicate category names within the household.
+  - Returns the created category and subcategory IDs/names for immediate Flutter selection.
+- Added pgTAP coverage for successful creation, duplicate-name rejection, blank-name rejection, viewer rejection, and non-member rejection.
+- Updated existing database tests whose fixtures assumed newly inserted households had no default taxonomy rows; they now account for automatic default-taxonomy hydration.
+- Extended the Flutter finance repository with `CategoryCreationRequest`, `CategoryCreationResult`, and `createCategory`.
+- Added a reusable category creation dialog and lookup-refresh helper.
+- Added a Settings category manager card that lists categories/subcategories and creates new category/subcategory pairs.
+- Added inline category creation from Merchant Review correction dialogs; newly created pairs are auto-selected for the correction.
+- Added widget coverage for Settings category creation and Merchant Review inline category creation.
+- Verification run:
+  - `curl -L --max-time 20 https://supabase.com/changelog.md | sed -n '1,220p'`
+  - Supabase MCP docs search for RPC/function grants and security-invoker guidance.
+  - `supabase --version`
+  - `supabase migration --help`
+  - `supabase migration new create_household_category_rpc`
+  - `dart format lib/src/data/repositories/finance_repository.dart lib/src/features/categories/category_creation_dialog.dart lib/src/features/merchant_review/merchant_review_screen.dart lib/src/features/settings/settings_screen.dart test/finance_features_test.dart`
+  - `flutter test test/finance_features_test.dart`
+  - `supabase db reset --local`
+  - `supabase test db --local supabase/tests`
+  - `supabase db lint --local --schema app_private,public --fail-on error`
+  - `supabase db advisors --local --type security --level warn --fail-on none`
+  - `supabase db advisors --local --type performance --level warn --fail-on none`
+  - `flutter analyze`
+  - `flutter test`
+  - `flutter build apk --debug --no-pub`
+  - `supabase migration list --local`
+- Known gaps:
+  - Hosted dev/staging migration push was not performed in this session.
+  - No Android-emulator manual smoke was run.
+  - Category rename, delete, reorder, merge, historical reclassification, and standalone subcategory management remain deferred taxonomy-admin work.
+- Assumptions made:
+  - The first in-app creation slice should create a category plus one initial subcategory together.
+  - The creation entry points should be Settings and Merchant Review.
+- Mocks created:
+  - None.
+- Mocks used:
+  - Existing fake finance repository/widget-test data.

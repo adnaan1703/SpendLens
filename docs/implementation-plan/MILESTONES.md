@@ -562,6 +562,56 @@ Flutter app.
 - May 2026 app views update through RLS-safe client reads, not Flutter
   privileged credentials.
 
+## Milestone 14: In-App Category Creation
+
+### Status
+
+Completed on 2026-06-08.
+
+### Objective
+
+Allow household writers to create a new category and its first subcategory from
+the Android app without privileged client credentials.
+
+### Tasks
+
+- Add a `security invoker` `create_household_category` RPC that:
+  - Validates the signed-in profile.
+  - Requires household write access.
+  - Trims category and subcategory names.
+  - Rejects blank names.
+  - Rejects case-insensitive duplicate category names within the household.
+  - Creates the category and first subcategory atomically.
+  - Returns the created category and subcategory IDs/names.
+- Add database tests for successful creation, duplicate-name rejection, blank
+  name rejection, viewer rejection, and non-member rejection.
+- Extend the Flutter finance repository with a category creation request/result.
+- Add a Settings category manager card with current categories/subcategories and
+  a create dialog.
+- Add inline category creation from the Merchant Review correction dialog and
+  auto-select the newly created category/subcategory for the correction.
+- Refresh shared category lookup providers after creation so filters, caps, and
+  correction forms see the new values.
+
+### External Work
+
+- None.
+
+### Acceptance Criteria
+
+- A household owner/admin/member can create a category plus first subcategory
+  from Settings.
+- A household owner/admin/member can create and immediately select a category
+  plus first subcategory while resolving a merchant review item.
+- Viewers and non-members cannot create household categories.
+- Duplicate category names are rejected case-insensitively.
+- No service-role credentials or Edge Functions are used for this workflow.
+
+### Deferred Scope
+
+- Category rename, delete, reorder, merge, historical reclassification, and
+  standalone subcategory management remain future taxonomy-admin work.
+
 ## Cross-Milestone Consistency Rules
 
 - Ask the user before proceeding on any undocumented decision. Codex may recommend a default, but must wait for confirmation.

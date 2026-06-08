@@ -6,6 +6,7 @@ import '../../data/repositories/household_repository.dart';
 import '../../shared/widgets/app_page.dart';
 import '../../shared/widgets/empty_state.dart';
 import '../../shared/widgets/metric_card.dart';
+import '../categories/category_creation_dialog.dart';
 
 class MerchantReviewScreen extends ConsumerWidget {
   const MerchantReviewScreen({super.key});
@@ -131,23 +132,27 @@ class MerchantReviewScreen extends ConsumerWidget {
     final formKey = GlobalKey<FormState>();
     var merchantGroup = item.correctionMerchantName;
     var notes = '';
+    var dialogCategories = [...categories];
+    var dialogSubcategories = [...subcategories];
     var selectedCategoryId = item.correctionCategoryId;
     if (selectedCategoryId != null &&
-        !categories.any((category) => category.id == selectedCategoryId)) {
+        !dialogCategories.any(
+          (category) => category.id == selectedCategoryId,
+        )) {
       selectedCategoryId = null;
     }
-    selectedCategoryId ??= categories.firstOrNull?.id;
+    selectedCategoryId ??= dialogCategories.firstOrNull?.id;
 
     var selectedSubcategoryId = item.correctionSubcategoryId;
     if (selectedSubcategoryId != null &&
-        !subcategories.any(
+        !dialogSubcategories.any(
           (subcategory) =>
               subcategory.id == selectedSubcategoryId &&
               subcategory.categoryId == selectedCategoryId,
         )) {
       selectedSubcategoryId = null;
     }
-    selectedSubcategoryId ??= subcategories
+    selectedSubcategoryId ??= dialogSubcategories
         .where((subcategory) => subcategory.categoryId == selectedCategoryId)
         .firstOrNull
         ?.id;
@@ -159,7 +164,7 @@ class MerchantReviewScreen extends ConsumerWidget {
 
         return StatefulBuilder(
           builder: (context, setDialogState) {
-            final availableSubcategories = subcategories
+            final availableSubcategories = dialogSubcategories
                 .where(
                   (subcategory) => subcategory.categoryId == selectedCategoryId,
                 )
@@ -203,7 +208,7 @@ class MerchantReviewScreen extends ConsumerWidget {
                             prefixIcon: Icon(Icons.category_outlined),
                           ),
                           items: [
-                            for (final category in categories)
+                            for (final category in dialogCategories)
                               DropdownMenuItem(
                                 value: category.id,
                                 child: Text(category.name),
@@ -219,7 +224,7 @@ class MerchantReviewScreen extends ConsumerWidget {
                               : (value) {
                                   setDialogState(() {
                                     selectedCategoryId = value;
-                                    selectedSubcategoryId = subcategories
+                                    selectedSubcategoryId = dialogSubcategories
                                         .where(
                                           (subcategory) =>
                                               subcategory.categoryId == value,
@@ -228,6 +233,75 @@ class MerchantReviewScreen extends ConsumerWidget {
                                         ?.id;
                                   });
                                 },
+                        ),
+                        Align(
+                          alignment: Alignment.centerLeft,
+                          child: TextButton.icon(
+                            onPressed: isSaving
+                                ? null
+                                : () async {
+                                    final created =
+                                        await showCategoryCreationDialog(
+                                          context: dialogContext,
+                                          ref: ref,
+                                          householdId:
+                                              householdContext.household.id,
+                                        );
+                                    if (created == null) return;
+
+                                    refreshCategoryLookups(
+                                      ref,
+                                      householdContext.household.id,
+                                    );
+
+                                    setDialogState(() {
+                                      if (!dialogCategories.any(
+                                        (category) =>
+                                            category.id == created.category.id,
+                                      )) {
+                                        dialogCategories =
+                                            [
+                                              ...dialogCategories,
+                                              created.category,
+                                            ]..sort(
+                                              (a, b) =>
+                                                  a.name.compareTo(b.name),
+                                            );
+                                      }
+                                      if (!dialogSubcategories.any(
+                                        (subcategory) =>
+                                            subcategory.id ==
+                                            created.subcategory.id,
+                                      )) {
+                                        dialogSubcategories =
+                                            [
+                                              ...dialogSubcategories,
+                                              created.subcategory,
+                                            ]..sort(
+                                              (a, b) =>
+                                                  a.name.compareTo(b.name),
+                                            );
+                                      }
+                                      selectedCategoryId = created.category.id;
+                                      selectedSubcategoryId =
+                                          created.subcategory.id;
+                                    });
+
+                                    if (dialogContext.mounted) {
+                                      ScaffoldMessenger.of(
+                                        dialogContext,
+                                      ).showSnackBar(
+                                        SnackBar(
+                                          content: Text(
+                                            'Created ${created.category.name}',
+                                          ),
+                                        ),
+                                      );
+                                    }
+                                  },
+                            icon: const Icon(Icons.add),
+                            label: const Text('Create category'),
+                          ),
                         ),
                         const SizedBox(height: 12),
                         DropdownButtonFormField<String>(

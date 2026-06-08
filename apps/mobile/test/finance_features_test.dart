@@ -270,6 +270,83 @@ void main() {
     expect(find.text('Resolved 1 review items'), findsOneWidget);
   });
 
+  testWidgets('merchant review creates and selects a category inline', (
+    tester,
+  ) async {
+    final repository = _FakeFinanceRepository();
+
+    await tester.pumpWidget(
+      _financeTestApp(
+        repository: repository,
+        child: const MerchantReviewScreen(),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Resolve'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Create category'));
+    await tester.pumpAndSettle();
+
+    await tester.enterText(
+      find.ancestor(
+        of: find.text('Category name'),
+        matching: find.byType(TextFormField),
+      ),
+      'Travel',
+    );
+    await tester.enterText(
+      find.ancestor(
+        of: find.text('Subcategory name'),
+        matching: find.byType(TextFormField),
+      ),
+      'Flights',
+    );
+    await tester.tap(find.widgetWithText(FilledButton, 'Create').last);
+    await tester.pumpAndSettle();
+
+    await tester.enterText(find.byType(TextFormField).first, 'Travel Desk');
+    await tester.tap(find.text('Save'));
+    await tester.pumpAndSettle();
+
+    expect(repository.createdCategoryRequests, hasLength(1));
+    expect(repository.createdCategoryRequests.single.categoryName, 'Travel');
+    expect(
+      repository.createdCategoryRequests.single.subcategoryName,
+      'Flights',
+    );
+    expect(repository.corrections, hasLength(1));
+    expect(repository.corrections.single.categoryId, 'cat-created-1');
+    expect(repository.corrections.single.subcategoryId, 'sub-created-1');
+  });
+
+  testWidgets('settings creates category and subcategory', (tester) async {
+    final repository = _FakeFinanceRepository();
+
+    await tester.pumpWidget(
+      _financeTestApp(repository: repository, child: const SettingsScreen()),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.ensureVisible(find.text('Categories'));
+    await tester.tap(find.widgetWithText(FilledButton, 'Create').first);
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byType(TextFormField).at(0), 'Travel');
+    await tester.enterText(find.byType(TextFormField).at(1), 'Flights');
+    await tester.tap(find.widgetWithText(FilledButton, 'Create').last);
+    await tester.pumpAndSettle();
+
+    expect(repository.createdCategoryRequests, hasLength(1));
+    expect(repository.createdCategoryRequests.single.categoryName, 'Travel');
+    expect(
+      repository.createdCategoryRequests.single.subcategoryName,
+      'Flights',
+    );
+    expect(find.text('Travel'), findsOneWidget);
+    expect(find.text('Flights'), findsOneWidget);
+    expect(find.text('Created Travel'), findsOneWidget);
+  });
+
   testWidgets('settings shows Gmail connector status', (tester) async {
     final repository = _FakeFinanceRepository();
 
@@ -436,6 +513,7 @@ final class _SavedCap {
 final class _FakeFinanceRepository implements FinanceRepository {
   final savedCaps = <_SavedCap>[];
   final corrections = <MerchantCorrectionRequest>[];
+  final createdCategoryRequests = <CategoryCreationRequest>[];
   final expenseQuestions = <ExpenseQuestionRequest>[];
   final researchRequests = <MerchantResearchRequest>[];
   final piggyBanks = <PiggyBankSummary>[];
@@ -472,13 +550,13 @@ final class _FakeFinanceRepository implements FinanceRepository {
   TransactionQuery? lastQuery;
   TrendQuery? lastTrendQuery;
 
-  final categories = const [
+  final categories = <CategoryOption>[
     CategoryOption(id: 'cat-food', name: 'Food'),
     CategoryOption(id: 'cat-fuel', name: 'Fuel'),
     CategoryOption(id: 'cat-shopping', name: 'Shopping'),
   ];
 
-  final subcategories = const [
+  final subcategories = <SubcategoryOption>[
     SubcategoryOption(
       id: 'sub-food-delivery',
       categoryId: 'cat-food',
@@ -699,6 +777,28 @@ final class _FakeFinanceRepository implements FinanceRepository {
     required String householdId,
   }) async {
     return subcategories;
+  }
+
+  @override
+  Future<CategoryCreationResult> createCategory(
+    CategoryCreationRequest request,
+  ) async {
+    createdCategoryRequests.add(request);
+    final index = createdCategoryRequests.length;
+    final category = CategoryOption(
+      id: 'cat-created-$index',
+      name: request.categoryName.trim(),
+    );
+    final subcategory = SubcategoryOption(
+      id: 'sub-created-$index',
+      categoryId: category.id,
+      name: request.subcategoryName.trim(),
+    );
+
+    categories.add(category);
+    subcategories.add(subcategory);
+
+    return CategoryCreationResult(category: category, subcategory: subcategory);
   }
 
   @override

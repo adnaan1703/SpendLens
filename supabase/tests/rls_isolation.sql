@@ -167,7 +167,15 @@ set local request.jwt.claim.sub = '10000000-0000-0000-0000-000000000002';
 select is((select count(*)::integer from public.transactions), 1, 'user B reads only their household transactions');
 select is((select count(*)::integer from public.transactions where household_id = '30000000-0000-0000-0000-000000000001'), 0, 'user B cannot read household A transactions');
 select is((select gross_spend from public.v_monthly_spend), 300.00::numeric(14,2), 'user B summary totals include only household B');
-select is((select count(*)::integer from public.categories), 1, 'user B reads only their household categories');
+select is(
+  (
+    select count(*)::integer
+    from public.categories
+    where household_id = '30000000-0000-0000-0000-000000000001'
+  ),
+  0,
+  'user B cannot read household A categories'
+);
 
 select * from finish();
 

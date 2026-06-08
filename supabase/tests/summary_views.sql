@@ -17,6 +17,12 @@ values ('31000000-0000-0000-0000-000000000001', 'Summary Household', '21000000-0
 insert into public.household_members (id, household_id, profile_id, role)
 values ('41000000-0000-0000-0000-000000000001', '31000000-0000-0000-0000-000000000001', '21000000-0000-0000-0000-000000000001', 'owner');
 
+delete from public.subcategories
+where household_id = '31000000-0000-0000-0000-000000000001';
+
+delete from public.categories
+where household_id = '31000000-0000-0000-0000-000000000001';
+
 insert into public.categories (id, household_id, name, sort_order)
 values
   ('51000000-0000-0000-0000-000000000001', '31000000-0000-0000-0000-000000000001', 'Food & Dining', 1),

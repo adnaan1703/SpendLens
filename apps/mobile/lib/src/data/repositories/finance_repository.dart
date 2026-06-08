@@ -832,6 +832,44 @@ final class SubcategoryOption {
   }
 }
 
+final class CategoryCreationRequest {
+  const CategoryCreationRequest({
+    required this.householdId,
+    required this.categoryName,
+    required this.subcategoryName,
+  });
+
+  final String householdId;
+  final String categoryName;
+  final String subcategoryName;
+}
+
+final class CategoryCreationResult {
+  const CategoryCreationResult({
+    required this.category,
+    required this.subcategory,
+  });
+
+  final CategoryOption category;
+  final SubcategoryOption subcategory;
+
+  factory CategoryCreationResult.fromJson(Map<String, dynamic> json) {
+    final categoryId = json['category_id'] as String;
+
+    return CategoryCreationResult(
+      category: CategoryOption(
+        id: categoryId,
+        name: json['category_name'] as String,
+      ),
+      subcategory: SubcategoryOption(
+        id: json['subcategory_id'] as String,
+        categoryId: categoryId,
+        name: json['subcategory_name'] as String,
+      ),
+    );
+  }
+}
+
 final class MerchantOption {
   const MerchantOption({required this.id, required this.displayName});
 
@@ -1454,6 +1492,10 @@ abstract interface class FinanceRepository {
     required String householdId,
   });
 
+  Future<CategoryCreationResult> createCategory(
+    CategoryCreationRequest request,
+  );
+
   Future<List<MerchantOption>> fetchMerchants({required String householdId});
 
   Future<List<MerchantReviewItem>> fetchMerchantReviewQueue({
@@ -1607,6 +1649,26 @@ final class SupabaseFinanceRepository implements FinanceRepository {
         .order('name');
 
     return rows.map(SubcategoryOption.fromJson).toList(growable: false);
+  }
+
+  @override
+  Future<CategoryCreationResult> createCategory(
+    CategoryCreationRequest request,
+  ) async {
+    final rows = await _client.rpc<List<dynamic>>(
+      'create_household_category',
+      params: {
+        'p_household_id': request.householdId,
+        'p_category_name': request.categoryName,
+        'p_subcategory_name': request.subcategoryName,
+      },
+    );
+
+    if (rows.isEmpty) {
+      throw StateError('Category creation did not return a result.');
+    }
+
+    return CategoryCreationResult.fromJson(rows.first as Map<String, dynamic>);
   }
 
   @override
@@ -2270,6 +2332,13 @@ final class DisabledFinanceRepository implements FinanceRepository {
   Future<List<SubcategoryOption>> fetchSubcategories({
     required String householdId,
   }) {
+    throw const SupabaseNotConfiguredException();
+  }
+
+  @override
+  Future<CategoryCreationResult> createCategory(
+    CategoryCreationRequest request,
+  ) {
     throw const SupabaseNotConfiguredException();
   }
 

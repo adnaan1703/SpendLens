@@ -8,6 +8,7 @@ import '../../data/repositories/finance_repository.dart';
 import '../../data/repositories/household_repository.dart';
 import '../../shared/widgets/app_page.dart';
 import '../auth/data/auth_repository.dart';
+import '../categories/category_creation_dialog.dart';
 
 class SettingsScreen extends ConsumerStatefulWidget {
   const SettingsScreen({super.key});
@@ -89,6 +90,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             ),
           ),
           if (householdContext != null) ...[
+            const SizedBox(height: 16),
+            _CategoryManagerCard(householdId: householdContext.household.id),
             const SizedBox(height: 16),
             _GmailConnectorCard(householdId: householdContext.household.id),
             const SizedBox(height: 16),
@@ -204,6 +207,134 @@ class _AiSettingsCard extends ConsumerWidget {
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+class _CategoryManagerCard extends ConsumerWidget {
+  const _CategoryManagerCard({required this.householdId});
+
+  final String householdId;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final textTheme = Theme.of(context).textTheme;
+    final categories = ref.watch(transactionCategoriesProvider(householdId));
+    final subcategories = ref.watch(merchantSubcategoriesProvider(householdId));
+
+    Future<void> createCategory() async {
+      final result = await showCategoryCreationDialog(
+        context: context,
+        ref: ref,
+        householdId: householdId,
+      );
+      if (result == null) return;
+
+      refreshCategoryLookups(ref, householdId);
+
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Created ${result.category.name}')),
+        );
+      }
+    }
+
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            _SettingsSectionHeader(
+              icon: Icons.category_outlined,
+              title: 'Categories',
+              action: FilledButton.tonalIcon(
+                onPressed: categories.isLoading || subcategories.isLoading
+                    ? null
+                    : createCategory,
+                icon: const Icon(Icons.add),
+                label: const Text('Create'),
+              ),
+            ),
+            const SizedBox(height: 16),
+            if (categories.isLoading || subcategories.isLoading)
+              const Center(child: CircularProgressIndicator())
+            else if (categories.hasError)
+              Text(categories.error.toString(), style: textTheme.bodySmall)
+            else if (subcategories.hasError)
+              Text(subcategories.error.toString(), style: textTheme.bodySmall)
+            else
+              _CategoryList(
+                categories: categories.value ?? const [],
+                subcategories: subcategories.value ?? const [],
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _CategoryList extends StatelessWidget {
+  const _CategoryList({required this.categories, required this.subcategories});
+
+  final List<CategoryOption> categories;
+  final List<SubcategoryOption> subcategories;
+
+  @override
+  Widget build(BuildContext context) {
+    final textTheme = Theme.of(context).textTheme;
+
+    if (categories.isEmpty) {
+      return Text('No categories', style: textTheme.bodyMedium);
+    }
+
+    return Column(
+      children: [
+        for (final category in categories) ...[
+          ListTile(
+            contentPadding: EdgeInsets.zero,
+            leading: const Icon(Icons.category_outlined),
+            title: Text(category.name),
+            subtitle: _SubcategoryWrap(
+              subcategories: subcategories
+                  .where((subcategory) => subcategory.categoryId == category.id)
+                  .toList(growable: false),
+            ),
+          ),
+          if (category != categories.last) const Divider(height: 12),
+        ],
+      ],
+    );
+  }
+}
+
+class _SubcategoryWrap extends StatelessWidget {
+  const _SubcategoryWrap({required this.subcategories});
+
+  final List<SubcategoryOption> subcategories;
+
+  @override
+  Widget build(BuildContext context) {
+    final textTheme = Theme.of(context).textTheme;
+
+    if (subcategories.isEmpty) {
+      return Text('No subcategories', style: textTheme.bodySmall);
+    }
+
+    return Padding(
+      padding: const EdgeInsets.only(top: 8),
+      child: Wrap(
+        spacing: 8,
+        runSpacing: 8,
+        children: [
+          for (final subcategory in subcategories)
+            Chip(
+              avatar: const Icon(Icons.sell_outlined, size: 18),
+              label: Text(subcategory.name),
+            ),
+        ],
       ),
     );
   }
