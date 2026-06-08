@@ -352,6 +352,37 @@ Rules:
 - Store Gmail message ID and parser diagnostics only.
 - Do not store raw email body by default.
 
+### `gmail_parse_attempts`
+
+Stores service-only diagnostics for Gmail transaction candidates before and
+after body parsing. Failed body parses do not always have a `transactions` row,
+so they are tracked separately from `transaction_sources`.
+
+Important fields:
+
+- `household_id uuid references households(id)`
+- `linked_mailbox_id uuid references linked_mailboxes(id)`
+- `transaction_id uuid references transactions(id)` when parsing and ingestion
+  succeed
+- `candidate_type source_account_type` for `upi` or `credit_card`
+- `source_message_id text`
+- `source_thread_id text`
+- `source_received_at timestamptz`
+- `sender_email text`
+- `subject text`
+- `parser_name text`
+- `parser_version text`
+- `parse_status text` for `parsed`, `parse_failed`, or `outside_date_range`
+- `transaction_date date` when body parsing extracts one
+- `source_reference text`
+- `diagnostics jsonb`
+
+Rules:
+
+- Month reconciliation uses `source_received_at`.
+- Raw email bodies and body snippets are not stored.
+- Rows are service-role only and are not exposed to the Flutter app.
+
 ## Review Queue
 
 ### `review_items`

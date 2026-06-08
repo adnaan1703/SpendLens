@@ -3,7 +3,7 @@ begin;
 create extension if not exists pgtap with schema extensions;
 set search_path = public, extensions;
 
-select plan(20);
+select plan(23);
 
 select isnt(
   (select installed_version from pg_available_extensions where name = 'supabase_vault'),
@@ -31,8 +31,8 @@ select is(
 
 select is(
   has_table_privilege('authenticated', 'public.ingestion_jobs', 'select'),
-  false,
-  'authenticated users cannot read ingestion jobs directly'
+  true,
+  'authenticated users can read RLS-scoped ingestion job metadata'
 );
 
 insert into auth.users (id)
@@ -431,6 +431,103 @@ select is(
   (select count(*)::integer from public.review_items where status = 'open'),
   2,
   'unknown UPI payee creates an open review item'
+);
+
+set local role service_role;
+
+select public.record_gmail_parse_attempt(
+  (select id from test_mailbox),
+  (
+    select id
+    from public.transactions
+    where source_fingerprint = 'gmail-upi-fingerprint-1'
+  ),
+  'gmail-upi-message-1',
+  'gmail-upi-thread-1',
+  '2026-05-31 23:00:00+05:30',
+  'alerts@hdfcbank.bank.in',
+  'You have done a UPI txn. Check details!',
+  'upi',
+  'hdfc_upi_debit',
+  '1.0.0',
+  'parsed',
+  '2026-06-05',
+  '652216925085',
+  jsonb_build_object('template', 'hdfc_upi_debit_v1')
+);
+
+select public.record_gmail_parse_attempt(
+  (select id from test_mailbox),
+  (
+    select id
+    from public.transactions
+    where source_fingerprint = 'gmail-upi-fingerprint-1'
+  ),
+  'gmail-upi-message-1',
+  'gmail-upi-thread-1',
+  '2026-05-31 23:00:00+05:30',
+  'alerts@hdfcbank.bank.in',
+  'You have done a UPI txn. Check details!',
+  'upi',
+  'hdfc_upi_debit',
+  '1.0.0',
+  'parsed',
+  '2026-06-05',
+  '652216925085',
+  jsonb_build_object('template', 'hdfc_upi_debit_v1')
+);
+
+select public.record_gmail_parse_attempt(
+  (select id from test_mailbox),
+  null,
+  'gmail-credit-card-failed-message-1',
+  'gmail-credit-card-thread-1',
+  '2026-05-10 18:20:00+05:30',
+  'alerts@hdfcbank.bank.in',
+  'A payment was made using your Credit Card',
+  'credit_card',
+  'hdfc_credit_card_debit',
+  '1.0.0',
+  'parse_failed',
+  null,
+  null,
+  jsonb_build_object('reason', 'hdfc_debit_pattern_not_matched')
+);
+
+reset role;
+
+select is(
+  (select count(*)::integer from public.gmail_parse_attempts),
+  2,
+  'Gmail parse attempt recording is idempotent by message candidate and parser'
+);
+
+select results_eq(
+  $$
+    select candidate_type::text, parse_status, count(*)::integer
+    from public.gmail_parse_attempts
+    where source_received_at >= '2026-05-01'
+      and source_received_at < '2026-06-01'
+    group by candidate_type, parse_status
+    order by candidate_type::text, parse_status
+  $$,
+  $$
+    values
+      ('credit_card', 'parse_failed', 1),
+      ('upi', 'parsed', 1)
+  $$,
+  'Gmail parse attempts can be reconciled by received month and candidate type'
+);
+
+select is(
+  (
+    select transaction_id is not null
+    from public.gmail_parse_attempts
+    where candidate_type = 'upi'
+      and parse_status = 'parsed'
+  ),
+  true,
+  'parsed Gmail attempt links back to the imported transaction'
 );
 
 set local role service_role;

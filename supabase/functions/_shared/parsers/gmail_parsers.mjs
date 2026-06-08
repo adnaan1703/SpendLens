@@ -26,16 +26,41 @@ function parseTwoDigitDate(dayText, monthText, yearText) {
   ].join("-");
 }
 
+export function extractGmailSenderEmail(messageMetadata) {
+  const from = String(messageMetadata?.from ?? "").trim();
+  const angleMatch = from.match(/<([^>]+)>/);
+  return String(angleMatch?.[1] ?? from).trim().toLowerCase();
+}
+
+function normalizeAlertSubject(value) {
+  return String(value ?? "")
+    .normalize("NFKC")
+    .replace(/^[\s!\u2757\uFE0F]+/u, "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .toLowerCase();
+}
+
+function isHdfcAlertSender(messageMetadata) {
+  return extractGmailSenderEmail(messageMetadata) === "alerts@hdfcbank.bank.in";
+}
+
+function hasNormalizedSubject(messageMetadata, expected) {
+  return normalizeAlertSubject(messageMetadata?.subject) ===
+    normalizeAlertSubject(expected);
+}
+
 export const hdfcCreditCardDebitParser = {
   parserName: "hdfc_credit_card_debit",
   parserVersion: "1.0.0",
+  candidateType: "credit_card",
 
-  matches(messageMetadata, bodyText) {
-    const haystack = `${messageMetadata?.from ?? ""}\n${
-      messageMetadata?.subject ?? ""
-    }\n${bodyText}`;
-    return /HDFC Bank Credit Card ending \d{4}/i.test(haystack) &&
-      /has been debited/i.test(haystack);
+  matches(messageMetadata) {
+    return isHdfcAlertSender(messageMetadata) &&
+      hasNormalizedSubject(
+        messageMetadata,
+        "A payment was made using your Credit Card",
+      );
   },
 
   parse(messageMetadata, bodyText) {
@@ -46,6 +71,7 @@ export const hdfcCreditCardDebitParser = {
     if (!match) {
       return {
         ok: false,
+        candidate_type: this.candidateType,
         parser_name: this.parserName,
         parser_version: this.parserVersion,
         diagnostics: {
@@ -69,6 +95,7 @@ export const hdfcCreditCardDebitParser = {
     if (!month) {
       return {
         ok: false,
+        candidate_type: this.candidateType,
         parser_name: this.parserName,
         parser_version: this.parserVersion,
         diagnostics: {
@@ -91,6 +118,7 @@ export const hdfcCreditCardDebitParser = {
 
     return {
       ok: true,
+      candidate_type: this.candidateType,
       parser_name: this.parserName,
       parser_version: this.parserVersion,
       transaction_date: transactionDate,
@@ -117,14 +145,14 @@ export const hdfcCreditCardDebitParser = {
 export const hdfcUpiDebitParser = {
   parserName: "hdfc_upi_debit",
   parserVersion: "1.0.0",
+  candidateType: "upi",
 
-  matches(messageMetadata, bodyText) {
-    const haystack = `${messageMetadata?.from ?? ""}\n${
-      messageMetadata?.subject ?? ""
-    }\n${bodyText}`;
-    return /HDFC Bank/i.test(haystack) &&
-      /UPI txn|UPI transaction/i.test(haystack) &&
-      /is debited from your account ending \d{4}/i.test(haystack);
+  matches(messageMetadata) {
+    return isHdfcAlertSender(messageMetadata) &&
+      hasNormalizedSubject(
+        messageMetadata,
+        "You have done a UPI txn. Check details!",
+      );
   },
 
   parse(messageMetadata, bodyText) {
@@ -138,6 +166,7 @@ export const hdfcUpiDebitParser = {
     if (!transactionMatch) {
       return {
         ok: false,
+        candidate_type: this.candidateType,
         parser_name: this.parserName,
         parser_version: this.parserVersion,
         diagnostics: {
@@ -165,6 +194,7 @@ export const hdfcUpiDebitParser = {
 
     return {
       ok: true,
+      candidate_type: this.candidateType,
       parser_name: this.parserName,
       parser_version: this.parserVersion,
       transaction_date: parseTwoDigitDate(dayText, monthText, yearText),
@@ -191,12 +221,43 @@ export const hdfcUpiDebitParser = {
 
 export const gmailParsers = [hdfcCreditCardDebitParser, hdfcUpiDebitParser];
 
-export function parseGmailTransaction(messageMetadata, bodyText) {
+function parserForMetadata(messageMetadata) {
   for (const parser of gmailParsers) {
-    if (!parser.matches(messageMetadata, bodyText)) {
+    if (!parser.matches(messageMetadata)) {
       continue;
     }
 
+    return parser;
+  }
+
+  return null;
+}
+
+export function classifyGmailTransaction(messageMetadata) {
+  const parser = parserForMetadata(messageMetadata);
+  if (!parser) {
+    return {
+      ok: false,
+      parser_name: "unsupported",
+      parser_version: "1.0.0",
+      diagnostics: {
+        reason: "unsupported_gmail_message",
+        messageId: messageMetadata?.id ?? null,
+      },
+    };
+  }
+
+  return {
+    ok: true,
+    candidate_type: parser.candidateType,
+    parser_name: parser.parserName,
+    parser_version: parser.parserVersion,
+  };
+}
+
+export function parseGmailTransaction(messageMetadata, bodyText) {
+  const parser = parserForMetadata(messageMetadata);
+  if (parser) {
     return parser.parse(messageMetadata, bodyText);
   }
 

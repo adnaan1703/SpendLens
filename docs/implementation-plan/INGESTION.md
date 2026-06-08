@@ -129,14 +129,16 @@ Sync job responsibilities:
 1. Load mailbox connector and stored Gmail history ID.
 2. Call Gmail `history.list`.
 3. Fetch candidate message metadata and expand each candidate Gmail thread.
-4. Filter by supported senders, labels, and transaction-like content.
-5. Run parser registry.
-6. Generate a transaction fingerprint.
-7. Upsert transaction idempotently.
-8. Store `transaction_sources` metadata.
-9. Apply merchant rules.
-10. Create review items for low-confidence or unknown mappings.
-11. Advance stored Gmail history ID after successful processing.
+4. Classify supported transaction candidates by sender and subject metadata.
+5. Parse the message body only for recognized candidates.
+6. Store a `gmail_parse_attempts` row for parsed, parse-failed, and
+   outside-date-range candidates.
+7. Generate a transaction fingerprint for parsed in-range transactions.
+8. Upsert transaction idempotently.
+9. Store `transaction_sources` metadata.
+10. Apply merchant rules.
+11. Create review items for low-confidence or unknown mappings.
+12. Advance stored Gmail history ID after successful processing.
 
 ### Backfill
 
@@ -155,8 +157,13 @@ Each parser should expose:
 
 - `parser_name`
 - `parser_version`
-- `matches(messageMetadata, bodyText)`
+- `candidate_type`
+- `matches(messageMetadata)`
 - `parse(messageMetadata, bodyText)`
+
+`matches` must only use safe metadata such as sender and subject. Body parsing
+must happen in `parse` after a message is already classified as a supported
+candidate.
 
 Parser output:
 
@@ -176,8 +183,17 @@ Parser rules:
 - Return structured data only.
 - Do not write to the database directly.
 - Include diagnostics for failed or partial parses.
+- Store parse-attempt diagnostics through the sync worker, not inside parser
+  functions.
 - Avoid retaining body text.
 - Add fixture tests for every supported email template.
+
+Current HDFC candidate filters:
+
+- UPI debit: sender `alerts@hdfcbank.bank.in`, subject `You have done a UPI
+  txn. Check details!`, allowing a leading alert symbol.
+- Credit-card debit: sender `alerts@hdfcbank.bank.in`, subject `A payment was
+  made using your Credit Card`.
 
 ## Supported Parser Order
 
@@ -233,6 +249,8 @@ When the user corrects a mapping:
 
 - Do not store raw email bodies by default.
 - Store Gmail message ID, thread ID, received timestamp, parser name/version, parse status, and short diagnostics.
+- Store service-only `gmail_parse_attempts` rows for supported Gmail candidates
+  even when body parsing fails.
 - Log parser failures without sensitive full message content.
 - Do not expose mailbox tokens to clients.
 - Delete or rotate OAuth credentials when a mailbox is disconnected.

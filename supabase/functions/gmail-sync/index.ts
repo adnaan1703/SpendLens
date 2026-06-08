@@ -28,6 +28,7 @@ import {
 } from "../_shared/supabase.ts";
 import { errorMessage, logOperationalEvent } from "../_shared/observability.ts";
 import {
+  extractGmailSenderEmail,
   normalizeFingerprintText,
   parseGmailTransaction,
 } from "../_shared/parsers/gmail_parsers.mjs";
@@ -53,6 +54,7 @@ type ProcessCounts = {
   fetched: number;
   parsed: number;
   unsupported: number;
+  parseFailed: number;
   outsideDateRange: number;
   inserted: number;
   updated: number;
@@ -75,6 +77,7 @@ function emptyCounts(): ProcessCounts {
     fetched: 0,
     parsed: 0,
     unsupported: 0,
+    parseFailed: 0,
     outsideDateRange: 0,
     inserted: 0,
     updated: 0,
@@ -190,6 +193,67 @@ function sourceFingerprint(
   ].join("|"));
 }
 
+function optionalString(value: unknown): string | null {
+  if (typeof value !== "string") {
+    return null;
+  }
+
+  const trimmed = value.trim();
+  return trimmed === "" ? null : trimmed;
+}
+
+function parseCandidateType(
+  parsed: Record<string, unknown>,
+): "credit_card" | "upi" | null {
+  const candidateType = optionalString(parsed.candidate_type);
+  if (candidateType === "credit_card" || candidateType === "upi") {
+    return candidateType;
+  }
+
+  const sourceHint = parsed.source_account_hint as
+    | Record<string, unknown>
+    | undefined;
+  const sourceHintType = optionalString(sourceHint?.type);
+  return sourceHintType === "credit_card" || sourceHintType === "upi"
+    ? sourceHintType
+    : null;
+}
+
+async function recordGmailParseAttempt(
+  serviceClient: ReturnType<typeof createServiceClient>,
+  mailbox: MailboxRow,
+  metadata: Record<string, unknown>,
+  parsed: Record<string, unknown>,
+  parseStatus: "parsed" | "parse_failed" | "outside_date_range",
+  transactionId: string | null,
+): Promise<void> {
+  const candidateType = parseCandidateType(parsed);
+  if (!candidateType) {
+    return;
+  }
+
+  const { error } = await serviceClient.rpc("record_gmail_parse_attempt", {
+    p_mailbox_id: mailbox.id,
+    p_transaction_id: transactionId,
+    p_source_message_id: String(metadata.id ?? ""),
+    p_source_thread_id: optionalString(metadata.threadId),
+    p_source_received_at: String(metadata.receivedAt ?? ""),
+    p_sender_email: extractGmailSenderEmail(metadata),
+    p_subject: String(metadata.subject ?? ""),
+    p_candidate_type: candidateType,
+    p_parser_name: String(parsed.parser_name ?? ""),
+    p_parser_version: String(parsed.parser_version ?? ""),
+    p_parse_status: parseStatus,
+    p_transaction_date: optionalString(parsed.transaction_date),
+    p_source_reference: optionalString(parsed.source_reference),
+    p_diagnostics: parsed.diagnostics ?? {},
+  });
+
+  if (error) {
+    throw error;
+  }
+}
+
 async function processMessage(
   serviceClient: ReturnType<typeof createServiceClient>,
   mailbox: MailboxRow,
@@ -203,8 +267,21 @@ async function processMessage(
   const metadata = messageMetadata(message);
   const bodyText = extractPlainText(message);
   const parsed = parseGmailTransaction(metadata, bodyText);
+  const parsedRecord = parsed as Record<string, unknown>;
 
-  if (!parsed.ok) {
+  if (!parsedRecord.ok) {
+    if (parseCandidateType(parsedRecord)) {
+      await recordGmailParseAttempt(
+        serviceClient,
+        mailbox,
+        metadata,
+        parsedRecord,
+        "parse_failed",
+        null,
+      );
+      return { fetched: 1, parseFailed: 1 };
+    }
+
     return { fetched: 1, unsupported: 1 };
   }
 
@@ -212,11 +289,19 @@ async function processMessage(
     (dateFilter.transactionStartDate ||
       dateFilter.transactionEndDateExclusive) &&
     !isDateWithinRange(
-      parsed.transaction_date,
+      String(parsedRecord.transaction_date ?? ""),
       dateFilter.transactionStartDate,
       dateFilter.transactionEndDateExclusive,
     )
   ) {
+    await recordGmailParseAttempt(
+      serviceClient,
+      mailbox,
+      metadata,
+      parsedRecord,
+      "outside_date_range",
+      null,
+    );
     return { fetched: 1, parsed: 1, outsideDateRange: 1 };
   }
 
@@ -224,12 +309,12 @@ async function processMessage(
     mailbox.household_id,
     mailbox.id,
     messageId,
-    parsed,
+    parsedRecord,
   );
   const { data, error } = await serviceClient.rpc("ingest_gmail_transaction", {
     p_mailbox_id: mailbox.id,
     p_message_metadata: metadata,
-    p_parsed_transaction: parsed,
+    p_parsed_transaction: parsedRecord,
     p_source_fingerprint: fingerprint,
   });
 
@@ -238,6 +323,15 @@ async function processMessage(
   }
 
   const result = Array.isArray(data) ? data[0] : data;
+  await recordGmailParseAttempt(
+    serviceClient,
+    mailbox,
+    metadata,
+    parsedRecord,
+    "parsed",
+    result?.gmail_transaction_id ?? null,
+  );
+
   return {
     fetched: 1,
     parsed: 1,

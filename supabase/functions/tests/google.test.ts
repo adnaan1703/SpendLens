@@ -66,9 +66,8 @@ Deno.test("buildGmailTransactionSearchQuery uses buffered date bounds", () => {
     `Expected Gmail before bound in query: ${query}`,
   );
   assert(
-    query.includes('"HDFC Bank Credit Card"') &&
-      query.includes('"UPI transaction reference no"'),
-    `Expected supported HDFC terms in query: ${query}`,
+    query.includes("from:alerts@hdfcbank.bank.in"),
+    `Expected HDFC alert sender in query: ${query}`,
   );
 });
 

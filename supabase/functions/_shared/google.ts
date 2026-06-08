@@ -212,12 +212,6 @@ export function buildGmailTransactionSearchQuery(
     return query;
   }
 
-  const terms = [
-    '"HDFC Bank Credit Card"',
-    '"has been debited"',
-    '"UPI transaction reference no"',
-    '"You have done a UPI txn"',
-  ].join(" OR ");
   const dateParts: string[] = [];
 
   if (options.searchStartDate) {
@@ -234,7 +228,7 @@ export function buildGmailTransactionSearchQuery(
     dateParts.push("newer_than:30d");
   }
 
-  return [...dateParts, `(${terms})`].join(" ");
+  return [...dateParts, "from:alerts@hdfcbank.bank.in"].join(" ");
 }
 
 export async function listRecentGmailMessages(

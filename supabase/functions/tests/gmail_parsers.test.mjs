@@ -2,6 +2,8 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
+  classifyGmailTransaction,
+  extractGmailSenderEmail,
   hdfcCreditCardDebitParser,
   hdfcUpiDebitParser,
   parseGmailTransaction,
@@ -126,6 +128,54 @@ HDFC Bank`,
   },
 ];
 
+test("HDFC alert sender is extracted from display-name headers", () => {
+  assert.equal(
+    extractGmailSenderEmail({
+      from: "HDFC Bank InstaAlerts <alerts@hdfcbank.bank.in>",
+    }),
+    "alerts@hdfcbank.bank.in",
+  );
+});
+
+test("parser registry classifies HDFC credit-card alerts by sender and subject", () => {
+  const classified = classifyGmailTransaction({
+    id: "msg-cc-candidate",
+    from: "HDFC Bank InstaAlerts <alerts@hdfcbank.bank.in>",
+    subject: "A payment was made using your Credit Card",
+  });
+
+  assert.equal(classified.ok, true);
+  assert.equal(classified.candidate_type, "credit_card");
+  assert.equal(classified.parser_name, "hdfc_credit_card_debit");
+});
+
+test("parser registry classifies HDFC UPI alerts by sender and normalized subject", () => {
+  const classified = classifyGmailTransaction({
+    id: "msg-upi-candidate",
+    from: "HDFC Bank InstaAlerts <alerts@hdfcbank.bank.in>",
+    subject: "\u2757 You have done a UPI txn. Check details!",
+  });
+
+  assert.equal(classified.ok, true);
+  assert.equal(classified.candidate_type, "upi");
+  assert.equal(classified.parser_name, "hdfc_upi_debit");
+});
+
+test("parser registry rejects body-only matches without approved metadata", () => {
+  const parsed = parseGmailTransaction(
+    {
+      id: "msg-body-only",
+      from: "alerts@hdfcbank.net",
+      subject: "Credit Card Alert",
+    },
+    sampleOne,
+  );
+
+  assert.equal(parsed.ok, false);
+  assert.equal(parsed.parser_name, "unsupported");
+  assert.equal(parsed.diagnostics.reason, "unsupported_gmail_message");
+});
+
 test("HDFC debit parser extracts amount merchant card and timestamp", () => {
   const parsed = hdfcCreditCardDebitParser.parse({ id: "msg-1" }, sampleOne);
 
@@ -141,7 +191,11 @@ test("HDFC debit parser extracts amount merchant card and timestamp", () => {
 
 test("parser registry handles HDFC SmartEMI footer without changing merchant", () => {
   const parsed = parseGmailTransaction(
-    { id: "msg-2", from: "alerts@hdfcbank.net", subject: "Credit Card Alert" },
+    {
+      id: "msg-2",
+      from: "HDFC Bank InstaAlerts <alerts@hdfcbank.bank.in>",
+      subject: "A payment was made using your Credit Card",
+    },
     sampleTwo,
   );
 
@@ -154,6 +208,7 @@ test("parser registry handles HDFC SmartEMI footer without changing merchant", (
     parsed.source_account_hint.display_name,
     "HDFC Credit Card ending 3604",
   );
+  assert.equal(parsed.candidate_type, "credit_card");
 });
 
 test("thread-expanded HDFC credit-card messages parse independently", () => {
@@ -194,6 +249,7 @@ test("HDFC UPI debit parser extracts amount payee account and reference", () => 
   assert.equal(parsed.transaction_time, null);
   assert.equal(parsed.statement_merchant, "S V M FUEL STATION");
   assert.equal(parsed.source_reference, "123809697002");
+  assert.equal(parsed.candidate_type, "upi");
   assert.equal(parsed.source_account_hint.type, "upi");
   assert.equal(
     parsed.source_account_hint.display_name,

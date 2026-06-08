@@ -3,7 +3,7 @@ begin;
 create extension if not exists pgtap with schema extensions;
 set search_path = public, extensions;
 
-select plan(12);
+select plan(20);
 
 select has_view(
   'public',
@@ -15,6 +15,18 @@ select has_view(
   'public',
   'v_parser_operational_health',
   'parser operational health view exists'
+);
+
+select has_table(
+  'public',
+  'gmail_parse_attempts',
+  'Gmail parse attempts table exists'
+);
+
+select has_view(
+  'public',
+  'v_gmail_parse_attempt_health',
+  'Gmail parse attempt health view exists'
 );
 
 select ok(
@@ -47,6 +59,21 @@ select ok(
   'parser operational health view uses security_invoker'
 );
 
+select ok(
+  coalesce(
+    (
+      select c.reloptions @> array['security_invoker=true']
+      from pg_class c
+      join pg_namespace n
+        on n.oid = c.relnamespace
+      where n.nspname = 'public'
+        and c.relname = 'v_gmail_parse_attempt_health'
+    ),
+    false
+  ),
+  'Gmail parse attempt health view uses security_invoker'
+);
+
 select is(
   has_table_privilege('authenticated', 'public.v_ingestion_operational_health', 'select'),
   false,
@@ -60,6 +87,18 @@ select is(
 );
 
 select is(
+  has_table_privilege('authenticated', 'public.gmail_parse_attempts', 'select'),
+  false,
+  'authenticated users cannot read Gmail parse attempts'
+);
+
+select is(
+  has_table_privilege('authenticated', 'public.v_gmail_parse_attempt_health', 'select'),
+  false,
+  'authenticated users cannot read Gmail parse attempt health'
+);
+
+select is(
   has_table_privilege('service_role', 'public.v_ingestion_operational_health', 'select'),
   true,
   'service role can read ingestion operational health'
@@ -69,6 +108,18 @@ select is(
   has_table_privilege('service_role', 'public.v_parser_operational_health', 'select'),
   true,
   'service role can read parser operational health'
+);
+
+select is(
+  has_table_privilege('service_role', 'public.gmail_parse_attempts', 'select'),
+  true,
+  'service role can read Gmail parse attempts'
+);
+
+select is(
+  has_table_privilege('service_role', 'public.v_gmail_parse_attempt_health', 'select'),
+  true,
+  'service role can read Gmail parse attempt health'
 );
 
 insert into auth.users (id)
@@ -235,6 +286,62 @@ values (
   '{"template":"hdfc_upi_debit_v1"}'::jsonb
 );
 
+insert into public.gmail_parse_attempts (
+  id,
+  household_id,
+  linked_mailbox_id,
+  transaction_id,
+  candidate_type,
+  source_message_id,
+  source_thread_id,
+  source_received_at,
+  sender_email,
+  subject,
+  parser_name,
+  parser_version,
+  parse_status,
+  transaction_date,
+  source_reference,
+  diagnostics
+)
+values
+  (
+    '92000000-0000-0000-0000-000000000001',
+    '32000000-0000-0000-0000-000000000001',
+    '52000000-0000-0000-0000-000000000001',
+    '72000000-0000-0000-0000-000000000001',
+    'upi',
+    'gmail-production-smoke',
+    'gmail-production-smoke-thread',
+    '2026-06-07 10:00:00+05:30',
+    'alerts@hdfcbank.bank.in',
+    'You have done a UPI txn. Check details!',
+    'hdfc_upi_debit',
+    '1.0.0',
+    'parsed',
+    '2026-06-07',
+    '652216925085',
+    '{"template":"hdfc_upi_debit_v1"}'::jsonb
+  ),
+  (
+    '92000000-0000-0000-0000-000000000002',
+    '32000000-0000-0000-0000-000000000001',
+    '52000000-0000-0000-0000-000000000001',
+    null,
+    'credit_card',
+    'gmail-production-failed-smoke',
+    'gmail-production-failed-thread',
+    '2026-06-08 10:00:00+05:30',
+    'alerts@hdfcbank.bank.in',
+    'A payment was made using your Credit Card',
+    'hdfc_credit_card_debit',
+    '1.0.0',
+    'parse_failed',
+    null,
+    null,
+    '{"reason":"hdfc_debit_pattern_not_matched"}'::jsonb
+  );
+
 select results_eq(
   $$
     select
@@ -280,6 +387,25 @@ select results_eq(
     values ('hdfc_upi_debit', '1.0.0', 'parsed', 1)
   $$,
   'parser health view summarizes Gmail parser status counts'
+);
+
+select results_eq(
+  $$
+    select
+      candidate_type::text,
+      parser_name,
+      parse_status,
+      parse_attempt_count
+    from public.v_gmail_parse_attempt_health
+    where household_id = '32000000-0000-0000-0000-000000000001'
+    order by candidate_type::text, parse_status
+  $$,
+  $$
+    values
+      ('credit_card', 'hdfc_credit_card_debit', 'parse_failed', 1),
+      ('upi', 'hdfc_upi_debit', 'parsed', 1)
+  $$,
+  'Gmail parse attempt health view summarizes candidate parse statuses'
 );
 
 reset role;

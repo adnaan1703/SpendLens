@@ -102,8 +102,14 @@ Scope:
 - Supported templates only:
   - HDFC credit-card debit alerts.
   - HDFC Bank UPI debit alerts.
-- Unsupported templates are counted as skipped by `gmail-sync`; they are not
-  guessed or imported.
+- Supported candidates are selected by sender and subject first, then parsed:
+  - Sender: `alerts@hdfcbank.bank.in`
+  - UPI subject: `You have done a UPI txn. Check details!`, allowing a leading
+    alert symbol.
+  - Credit-card subject: `A payment was made using your Credit Card`.
+- Non-candidate HDFC alert emails are skipped. Candidate emails with body parse
+  failures are recorded in `gmail_parse_attempts` with `parse_status =
+  'parse_failed'`; they are not guessed or imported.
 
 The app login account and connected Gmail mailbox can differ. The Gmail OAuth
 URL uses `prompt=consent select_account` so the user can sign into SpendLens
@@ -142,11 +148,41 @@ curl -sS \
   --data '{"limit": 10}'
 ```
 
-Range jobs fetch candidates from a slightly buffered Gmail search window, then
-`gmail-sync` only ingests parsed transactions in the strict transaction-date
-window `2026-05-01 <= transaction_date < 2026-06-01`. Re-running the same range
-does not duplicate transactions because jobs use deterministic idempotency keys
-and ingestion still upserts by `(household_id, source_fingerprint)`.
+Range jobs fetch HDFC alert-sender emails from a slightly buffered Gmail search
+window. `gmail-sync` classifies messages by sender and subject, records every
+UPI or credit-card parse attempt, and only ingests parsed transactions in the
+strict transaction-date window `2026-05-01 <= transaction_date < 2026-06-01`.
+Re-running the same range does not duplicate transactions because jobs use
+deterministic idempotency keys, parse attempts upsert by message/parser, and
+ingestion still upserts by `(household_id, source_fingerprint)`.
+
+To reconcile candidate parsing for May by Gmail received timestamp:
+
+```sql
+select candidate_type, parse_status, count(*)
+from public.gmail_parse_attempts
+where source_received_at >= '2026-05-01'
+  and source_received_at < '2026-06-01'
+group by candidate_type, parse_status
+order by candidate_type, parse_status;
+```
+
+To inspect body parse failures without raw email content:
+
+```sql
+select
+  source_received_at,
+  candidate_type,
+  source_message_id,
+  source_thread_id,
+  parser_name,
+  diagnostics
+from public.gmail_parse_attempts
+where parse_status = 'parse_failed'
+  and source_received_at >= '2026-05-01'
+  and source_received_at < '2026-06-01'
+order by source_received_at;
+```
 
 Hosted verification should check:
 
@@ -154,6 +190,8 @@ Hosted verification should check:
 - May range jobs are completed or intentionally skipped because they already
   completed.
 - May 2026 Gmail transaction counts increased.
+- `gmail_parse_attempts` shows expected `parsed`, `parse_failed`, and
+  `outside_date_range` counts for UPI and credit-card candidates.
 - Source account types include expected `credit_card` and/or `upi` rows.
 - No duplicate `(household_id, source_fingerprint)` rows exist.
 - App reads May 2026 Dashboard, Transactions, Trends, and source-type filters
@@ -167,6 +205,7 @@ query:
 
 - `public.v_ingestion_operational_health`
 - `public.v_parser_operational_health`
+- `public.v_gmail_parse_attempt_health`
 
 These views are not granted to `anon` or `authenticated`.
 
@@ -174,16 +213,21 @@ These views are not granted to `anon` or `authenticated`.
 
 Current parser support:
 
-- HDFC credit-card debit alerts matching the anonymized samples from Milestone 9.
-- HDFC Bank UPI debit alerts matching the anonymized samples from Milestone 10.
+- HDFC credit-card debit alerts from `alerts@hdfcbank.bank.in` with subject
+  `A payment was made using your Credit Card`.
+- HDFC Bank UPI debit alerts from `alerts@hdfcbank.bank.in` with subject `You
+  have done a UPI txn. Check details!`, with or without the leading alert
+  symbol.
 
 Gmail sync expands each candidate message to its Gmail thread before parsing, so
 multiple HDFC credit-card or UPI alerts grouped into the same Gmail conversation
 are processed as independent messages.
 
 Unsupported Gmail messages are ignored by the sync function and do not create
-transactions. Unknown or non-high-confidence merchant classifications create
-review items instead of silently assigning bad categories.
+transactions or parse-attempt rows. Supported candidates with failed body
+parses create service-only `gmail_parse_attempts` rows. Unknown or
+non-high-confidence merchant classifications create review items instead of
+silently assigning bad categories.
 
 UPI credit/refund parser support is still sample-gated. Add anonymized
 credit/refund fixtures before implementing that template.
@@ -191,8 +235,11 @@ credit/refund fixtures before implementing that template.
 ## Privacy Rules
 
 - Raw email bodies are not stored.
+- Body snippets are not stored in parse-attempt diagnostics.
 - Gmail refresh tokens are stored in Supabase Vault.
 - `linked_mailboxes.oauth_secret_ref` stores only the Vault reference.
 - The Flutter app reads `v_linked_mailbox_status`, which omits secret references.
 - Gmail message IDs, thread IDs, received time, parser name/version, parse
   status, and diagnostics are stored in `transaction_sources`.
+- Candidate parse-attempt metadata and diagnostics are stored in
+  `gmail_parse_attempts`, which is service-only.
