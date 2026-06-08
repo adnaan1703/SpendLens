@@ -100,6 +100,12 @@ We're here to support you in every step of the way.
 Warm regards,
 HDFC Bank`;
 
+const upiDebitSampleV2 =
+  `Dear Customer, Rs.3278.04 has been debited from account 0932 to VPA cred.telecom@axisb Dreamplug Service Private Limited on 06-05-26. Your UPI transaction reference number is 649208302029. If you did not authorize this transaction, please report it immediately by calling 18002586161 Or SMS BLOCK UPI to 7308080808. Warm Regards, HDFC Bank
+
+For more details on Service charges and Fees, click here.
+(c) HDFC Bank`;
+
 const threadedUpiSamples = [
   {
     id: "msg-thread-upi-1",
@@ -125,6 +131,14 @@ UPI transaction reference no.: 652216925085.
 
 Warm regards,
 HDFC Bank`,
+  },
+  {
+    id: "msg-thread-upi-3",
+    expectedAmount: 3278.04,
+    expectedDate: "2026-05-06",
+    expectedMerchant: "Dreamplug Service Private Limited",
+    expectedReference: "649208302029",
+    body: upiDebitSampleV2,
   },
 ];
 
@@ -258,6 +272,32 @@ test("HDFC UPI debit parser extracts amount payee account and reference", () => 
   assert.equal(parsed.source_account_hint.masked_identifier, "0932");
   assert.deepEqual(parsed.diagnostics, {
     template: "hdfc_upi_debit_v1",
+    has_payee_label: true,
+  });
+});
+
+test("HDFC UPI debit parser handles account-to-VPA body template", () => {
+  const parsed = hdfcUpiDebitParser.parse(
+    {
+      id: "msg-upi-v2",
+      from: "HDFC Bank InstaAlerts <alerts@hdfcbank.bank.in>",
+      subject: "You have done a UPI txn. Check details!",
+    },
+    upiDebitSampleV2,
+  );
+
+  assert.equal(parsed.ok, true);
+  assert.equal(parsed.parser_name, "hdfc_upi_debit");
+  assert.equal(parsed.amount, 3278.04);
+  assert.equal(parsed.transaction_date, "2026-05-06");
+  assert.equal(parsed.transaction_time, null);
+  assert.equal(parsed.statement_merchant, "Dreamplug Service Private Limited");
+  assert.equal(parsed.source_reference, "649208302029");
+  assert.equal(parsed.candidate_type, "upi");
+  assert.equal(parsed.source_account_hint.type, "upi");
+  assert.equal(parsed.source_account_hint.masked_identifier, "0932");
+  assert.deepEqual(parsed.diagnostics, {
+    template: "hdfc_upi_debit_v2",
     has_payee_label: true,
   });
 });

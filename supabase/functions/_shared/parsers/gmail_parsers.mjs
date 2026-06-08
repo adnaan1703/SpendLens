@@ -156,14 +156,26 @@ export const hdfcUpiDebitParser = {
   },
 
   parse(messageMetadata, bodyText) {
-    const transactionMatch = bodyText.match(
-      /Rs\.\s*([0-9,]+(?:\.[0-9]{1,2})?)\s+is\s+debited\s+from\s+your\s+account\s+ending\s+(\d{4})\s+towards\s+VPA\s+([^\s(]+)(?:\s+\(([^)]+)\))?\s+on\s+(\d{2})-(\d{2})-(\d{2})\./is,
-    );
+    const templateMatches = [
+      {
+        template: "hdfc_upi_debit_v1",
+        match: bodyText.match(
+          /Rs\.\s*([0-9,]+(?:\.[0-9]{1,2})?)\s+is\s+debited\s+from\s+your\s+account\s+ending\s+(\d{4})\s+towards\s+VPA\s+([^\s(]+)(?:\s+\(([^)]+)\))?\s+on\s+(\d{2})-(\d{2})-(\d{2})\./is,
+        ),
+      },
+      {
+        template: "hdfc_upi_debit_v2",
+        match: bodyText.match(
+          /Rs\.\s*([0-9,]+(?:\.[0-9]{1,2})?)\s+has\s+been\s+debited\s+from\s+account\s+(\d{4})\s+to\s+VPA\s+([^\s]+)\s+(.+?)\s+on\s+(\d{2})-(\d{2})-(\d{2})\./is,
+        ),
+      },
+    ];
+    const matchedTemplate = templateMatches.find(({ match }) => match);
     const referenceMatch = bodyText.match(
-      /UPI\s+transaction\s+reference\s+no\.:\s*([A-Za-z0-9-]+)\./i,
+      /(?:UPI\s+transaction\s+reference\s+no\.:\s*|Your\s+UPI\s+transaction\s+reference\s+number\s+is\s*)([A-Za-z0-9-]+)\b/i,
     );
 
-    if (!transactionMatch) {
+    if (!matchedTemplate?.match) {
       return {
         ok: false,
         candidate_type: this.candidateType,
@@ -185,7 +197,7 @@ export const hdfcUpiDebitParser = {
       dayText,
       monthText,
       yearText,
-    ] = transactionMatch;
+    ] = matchedTemplate.match;
     const statementMerchant = (payeeLabel ?? payeeVpa)
       .replace(/\s+/g, " ")
       .trim();
@@ -212,7 +224,7 @@ export const hdfcUpiDebitParser = {
         masked_identifier: maskedIdentifier,
       },
       diagnostics: {
-        template: "hdfc_upi_debit_v1",
+        template: matchedTemplate.template,
         has_payee_label: Boolean(payeeLabel),
       },
     };
