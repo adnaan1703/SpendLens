@@ -15,7 +15,9 @@ supabase functions deploy \
   --project-ref "$PROJECT_REF" \
   gmail-oauth-start \
   gmail-connector-status \
-  gmail-disconnect
+  gmail-disconnect \
+  expense-qa \
+  merchant-research
 
 supabase functions deploy \
   --project-ref "$PROJECT_REF" \

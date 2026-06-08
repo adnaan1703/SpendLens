@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../data/repositories/household_repository.dart';
+import '../features/ai/ai_screen.dart';
 import '../features/dashboard/dashboard_screen.dart';
 import '../features/merchant_review/merchant_review_screen.dart';
 import '../features/piggy_banks/piggy_banks_screen.dart';
@@ -47,6 +48,12 @@ const appDestinations = [
     path: MerchantReviewScreen.routePath,
     icon: Icons.rule_folder_outlined,
     selectedIcon: Icons.rule_folder,
+  ),
+  AppDestination(
+    label: 'Ask',
+    path: AiScreen.routePath,
+    icon: Icons.auto_awesome_outlined,
+    selectedIcon: Icons.auto_awesome,
   ),
   AppDestination(
     label: 'Piggy Banks',
@@ -115,6 +122,8 @@ class AppShell extends StatelessWidget {
           ? null
           : NavigationBar(
               selectedIndex: selectedIndex,
+              labelBehavior:
+                  NavigationDestinationLabelBehavior.onlyShowSelected,
               onDestinationSelected: (index) {
                 context.go(appDestinations[index].path);
               },

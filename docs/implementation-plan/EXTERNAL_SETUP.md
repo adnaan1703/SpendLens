@@ -122,7 +122,8 @@ Required configuration:
   - Google OAuth client ID.
   - Google OAuth client secret.
   - Pub/Sub verification secret if used.
-  - Future LLM provider API key.
+  - Gemini API key for backend-only AI calls.
+  - Optional Gemini paid-rate values before disabling free-tier-only AI mode.
 - Configure scheduled functions:
   - Gmail watch renewal.
   - Gmail backfill check.
@@ -151,6 +152,22 @@ Cost expectations for personal/household use:
 - Edge Function invocation count should be far below normal included quotas.
 - Google Pub/Sub volume should be tiny.
 - LLM tokens and web search are the main future cost risk.
+
+## Milestone 12 AI Setup
+
+Milestone 12 dev/staging values confirmed on 2026-06-07:
+
+- AI provider: `gemini`.
+- Model: `gemini-3.5-flash`.
+- Budget posture: free-tier-only for development/staging, with a zero paid spend cap.
+- Merchant research web search: disabled by default, with a database setting to enable later after billing is confirmed.
+
+Remaining before live AI testing:
+
+- Create or use a Gemini API key.
+- Set the key only in Supabase Edge Function secrets as `GEMINI_API_KEY`.
+- Keep `AI_ESTIMATED_COST_USD_PER_CALL=0` while using free-tier-only mode.
+- Set `GEMINI_INPUT_COST_PER_MILLION_USD` and `GEMINI_OUTPUT_COST_PER_MILLION_USD` before disabling free-tier-only mode.
 
 ## Information Codex Should Ask For When Needed
 

@@ -17,7 +17,7 @@ Read these documents in order at the start of every new implementation thread:
 
 SpendLens is a personal and household expense intelligence app. The current implementation plan is Android-first: build the Flutter Android app first and defer iOS and web until later.
 
-The app imports historical credit-card analysis from `docs/Credit Card Spend Analysis - FY 2025-26.xlsx`, then moves to ongoing ingestion from Gmail transaction emails for credit cards and UPI. It presents spend by category, monthly category caps, transaction details, merchant review workflows, trends, and manual piggy-bank ledgers for future goals.
+The app imports historical credit-card analysis from `docs/Credit Card Spend Analysis - FY 2025-26.xlsx`, then moves to ongoing ingestion from Gmail transaction emails for credit cards and UPI. It presents spend by category, monthly category caps, transaction details, merchant review workflows, trends, manual piggy-bank ledgers for future goals, and backend-mediated Gemini expense Q&A.
 
 ## Architecture Decision
 
@@ -44,7 +44,7 @@ This is not a "no backend" architecture. It is a backend without a permanently r
 - Piggy banks: manual ledger accounts in v1.
 - Merchant corrections: apply to matching past and future transactions.
 - Email retention: store minimal parsed data only; do not retain raw email bodies by default.
-- AI: not part of the first product release, but the data model and job boundaries must be AI-ready.
+- AI: backend-mediated Gemini expense Q&A and merchant research suggestions; dev/staging use free-tier-only mode with web search disabled by default.
 - iOS app: deferred, not part of the current implementation milestones.
 - Web interface: deferred, not part of the current implementation milestones.
 

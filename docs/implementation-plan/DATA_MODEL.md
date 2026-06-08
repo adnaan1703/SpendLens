@@ -423,9 +423,25 @@ Rules:
 - Do not store editable balance directly.
 - Withdrawals cannot exceed balance unless the user explicitly confirms an overdraft adjustment in a future feature.
 
-## AI-Ready Tables
+## AI Tables
 
-These tables can be added before AI UI is released, or introduced in the AI milestone.
+These tables support backend-mediated Gemini expense Q&A and merchant research suggestions.
+
+### `ai_feature_settings`
+
+Important fields:
+
+- `household_id uuid primary key references households(id)`
+- `provider text not null default 'gemini'`
+- `model text not null default 'gemini-3.5-flash'`
+- `monthly_spend_cap_usd numeric(12,6) not null default 0`
+- `expense_qa_enabled boolean not null default true`
+- `merchant_research_enabled boolean not null default true`
+- `merchant_research_web_search_enabled boolean not null default false`
+- `free_tier_only boolean not null default true`
+- `created_by uuid references profiles(id)`
+- `created_at timestamptz`
+- `updated_at timestamptz`
 
 ### `ai_usage_events`
 
@@ -454,6 +470,9 @@ Important fields:
 - `status job_status not null`
 - `input jsonb not null`
 - `output jsonb`
+- `provider text not null`
+- `model text not null`
+- `usage_event_id uuid references ai_usage_events(id)`
 - `error_message text`
 - `created_at timestamptz`
 - `started_at timestamptz`
@@ -465,14 +484,19 @@ Important fields:
 
 - `id uuid primary key`
 - `household_id uuid references households(id)`
+- `review_item_id uuid references review_items(id)`
 - `normalized_merchant_name text not null`
+- `statement_merchant text`
 - `suggested_display_name text`
 - `suggested_category_id uuid references categories(id)`
 - `suggested_subcategory_id uuid references subcategories(id)`
 - `evidence jsonb`
 - `confidence confidence`
 - `status review_status not null default 'open'`
+- `ai_job_id uuid references ai_jobs(id)`
+- `usage_event_id uuid references ai_usage_events(id)`
 - `created_at timestamptz`
+- `updated_at timestamptz`
 
 ## Summary Views
 
@@ -486,4 +510,3 @@ Create these views for app reads:
 - `v_piggy_bank_balances`: piggy-bank balance and target progress.
 
 Views exposed to clients must either obey RLS through underlying tables or be created as `security_invoker` where supported.
-

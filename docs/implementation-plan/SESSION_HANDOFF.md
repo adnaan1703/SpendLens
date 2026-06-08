@@ -5,9 +5,10 @@ Use this file to coordinate work across multiple implementation sessions. Update
 ## Current Status
 
 - Current milestone: Not started.
-- Last completed milestone: Milestone 11, Deployment, Security, and Production Readiness.
-- Current implementation state: Flutter Android app scaffold exists in `apps/mobile` with SpendLens Google sign-in, route protection, authenticated shell, RLS-safe profile/default-household bootstrap, household loading/error states, sign-out, package `com.olympus.spendlens`, core packages, environment templates, tests, and Supabase folder structure. Supabase local config applies migrations for schema, RLS, views, workbook-derived default categories, merchant review corrections, piggy-bank entry validation, Gmail connector ingestion, production-readiness monitoring views, pgTAP database tests, and the Android auth redirect URL. Milestone 3 adds a local workbook importer under `tools/workbook-import`, fixture tests, and rerun documentation in `docs/implementation-plan/WORKBOOK_IMPORT.md`. Milestone 5 adds Supabase-backed finance repository reads/writes, dashboard KPIs, reporting-month selection, monthly category cap setup/editing, category and merchant summaries, transaction search/filter pagination, and transaction detail panels. Milestone 6 adds merchant review queue UI, correction RPC/rule persistence, historical reclassification, review resolution, transaction classification audit metadata, and future-import rule application. Milestone 7 adds Supabase-backed piggy-bank list/detail UI, create/edit forms, ledger entry creation, ledger-derived balance/progress reads, no-overdraft withdrawal validation, and regression tests. Milestone 8 adds filtered monthly trend reports, gross/refund/net reporting, category trend tables, merchant summary tables, and filtered transaction CSV copy from the Trends screen. Milestone 9 adds Vault-backed Gmail OAuth connector state, Pub/Sub webhook job dedupe, Gmail sync/backfill/watch-renewal Edge Functions, HDFC credit-card debit parsing from anonymized fixtures, SQL ingestion RPCs, and Settings connector status/connect/disconnect UI. Milestone 10 adds HDFC Bank UPI debit parsing from anonymized fixtures, UPI-aware Gmail backfill search and fingerprinting, UPI ingestion pgTAP coverage, and source-type filters for credit card vs UPI on transaction/trend screens. Milestone 11 adds production-readiness runbooks, local smoke automation, service-role ingestion/parser health views, structured Edge Function operational logs, Android release signing/shrinking configuration, and staging/production Edge Function secret templates.
-- Next recommended milestone: Milestone 12, AI-Ready Layer and LLM Features.
+- Last completed milestone: Milestone 12, AI-Ready Layer and LLM Features.
+- Current implementation state: Flutter Android app scaffold exists in `apps/mobile` with SpendLens Google sign-in, route protection, authenticated shell, RLS-safe profile/default-household bootstrap, household loading/error states, sign-out, package `com.olympus.spendlens`, core packages, environment templates, tests, and Supabase folder structure. Supabase local config applies migrations for schema, RLS, views, workbook-derived default categories, merchant review corrections, piggy-bank entry validation, Gmail connector ingestion, production-readiness monitoring views, AI feature settings/usage/jobs/merchant suggestions, pgTAP database tests, and the Android auth redirect URL. Milestone 3 adds a local workbook importer under `tools/workbook-import`, fixture tests, and rerun documentation in `docs/implementation-plan/WORKBOOK_IMPORT.md`. Milestone 5 adds Supabase-backed finance repository reads/writes, dashboard KPIs, reporting-month selection, monthly category cap setup/editing, category and merchant summaries, transaction search/filter pagination, and transaction detail panels. Milestone 6 adds merchant review queue UI, correction RPC/rule persistence, historical reclassification, review resolution, transaction classification audit metadata, and future-import rule application. Milestone 7 adds Supabase-backed piggy-bank list/detail UI, create/edit forms, ledger entry creation, ledger-derived balance/progress reads, no-overdraft withdrawal validation, and regression tests. Milestone 8 adds filtered monthly trend reports, gross/refund/net reporting, category trend tables, merchant summary tables, and filtered transaction CSV copy from the Trends screen. Milestone 9 adds Vault-backed Gmail OAuth connector state, Pub/Sub webhook job dedupe, Gmail sync/backfill/watch-renewal Edge Functions, HDFC credit-card debit parsing from anonymized fixtures, SQL ingestion RPCs, and Settings connector status/connect/disconnect UI. Milestone 10 adds HDFC Bank UPI debit parsing from anonymized fixtures, UPI-aware Gmail backfill search and fingerprinting, UPI ingestion pgTAP coverage, and source-type filters for credit card vs UPI on transaction/trend screens. Milestone 11 adds production-readiness runbooks, local smoke automation, service-role ingestion/parser health views, structured Edge Function operational logs, Android release signing/shrinking configuration, and staging/production Edge Function secret templates. Milestone 12 adds Gemini-backed expense Q&A, merchant research suggestions, AI usage/budget status, backend-only LLM calls, and free-tier-only dev/staging controls.
+- Remote deployment state: On 2026-06-08, user confirmed Supabase project `bslsitzdvrdosubbdxpd` as the intended dev/staging target. All local migrations through `20260607174515_ai_ready_layer_llm_features.sql` were pushed there, hosted `expense-qa` and `merchant-research` were already active with JWT verification, and `GEMINI_API_KEY` was present in hosted Edge Function secrets by name. After the user signed in through the Android emulator, hosted profile/household bootstrap and authenticated Gemini Edge Function smoke passed.
+- Next recommended milestone: None in the current active plan; iOS and web remain deferred future milestones unless explicitly resumed.
 
 ## Required Reading for New Threads
 
@@ -32,7 +33,7 @@ At the start of a new implementation thread, read:
 - Piggy banks are manual ledgers.
 - Merchant corrections apply to past and future matching transactions.
 - Raw email bodies are not retained by default.
-- LLM features are future milestones and must be backend-mediated.
+- LLM features are backend-mediated through Supabase Edge Functions.
 
 ## Clarification Policy
 
@@ -51,7 +52,7 @@ Do not ask the user to perform all setup at once. Ask only when the relevant mil
 - Milestone 9: Google Cloud project, Gmail API, Pub/Sub, OAuth consent, OAuth clients.
 - Milestone 10: Anonymized UPI email samples.
 - Milestone 11: Production Supabase project and Google Play Console account if Android release is needed.
-- Milestone 12: LLM provider account, API key, and monthly AI budget cap.
+- Milestone 12: Gemini API key in Supabase Edge Function secrets before live AI calls.
 
 ## Milestone Status
 
@@ -66,7 +67,7 @@ Do not ask the user to perform all setup at once. Ask only when the relevant mil
 - Milestone 9, Gmail Connector and Credit-Card Email Ingestion: completed.
 - Milestone 10, UPI Ingestion and Parser Expansion: completed.
 - Milestone 11, Deployment, Security, and Production Readiness: completed.
-- Milestone 12, AI-Ready Layer and LLM Features: pending.
+- Milestone 12, AI-Ready Layer and LLM Features: completed.
 
 ## Update Rules
 
@@ -437,3 +438,57 @@ When an architecture decision changes:
   - No production Google Cloud OAuth/Pub/Sub setup or hosted Gmail connector smoke was performed.
   - No Google Play Console/internal-test release was created.
   - The release APK smoke used placeholder Supabase values and debug signing fallback because real production project values and Android upload-key material were not provided.
+
+## Milestone 12 Completion Notes
+
+- Completed on 2026-06-07.
+- User-confirmed AI choices:
+  - Provider: `gemini`.
+  - Model: `gemini-3.5-flash`.
+  - Dev/staging budget posture: free-tier-only with zero paid spend cap.
+  - Merchant research web search: disabled for development, with the schema/function setting in place for later enablement.
+- Added Supabase AI foundation:
+  - `ai_feature_settings` for household AI provider/model/cap/feature flags.
+  - `ai_usage_events` for token/cost/status logging.
+  - `ai_jobs` for expense Q&A and merchant research job records.
+  - `merchant_research_suggestions` for cached user-approval suggestions.
+  - RLS policies, explicit grants/revokes, security-invoker budget/suggestion views, budget checks, usage logging RPC, and suggestion upsert RPC.
+- Added Gemini Edge Function support:
+  - Shared `gemini.ts` REST helper using `generateContent`, usage metadata parsing, zero paid-cost default in free-tier mode, and optional `google_search` tool wiring.
+  - `expense-qa` authenticated Edge Function that validates household budget access through RLS, retrieves scoped finance context, calls Gemini backend-only, records jobs/usage, and returns answer metadata.
+  - `merchant-research` authenticated Edge Function that checks cached suggestions first, calls Gemini for unknown merchant suggestions, keeps web search off unless the household flag enables it, and stores suggestions for approval.
+- Added Flutter AI UI:
+  - Ask Expenses route in the authenticated shell.
+  - AI budget/provider/status panel in Settings.
+  - Merchant Review research action and cached AI suggestion list; suggestions do not mutate merchant mappings automatically.
+- Updated production/readiness tooling:
+  - Edge Function secret templates include `GEMINI_API_KEY`, preflight cost, and optional paid-rate values.
+  - Deployment script includes `expense-qa` and `merchant-research`.
+  - Local smoke checks include Gemini helper tests and client-secret scans for `GEMINI_API_KEY`.
+- Verification run:
+  - `curl -L --max-time 20 https://supabase.com/changelog.md | sed -n '1,220p'`
+  - Supabase MCP docs search for Edge Function auth/RLS and API grants guidance
+  - Google AI docs lookup for Gemini `generateContent`, usage metadata, pricing/free tier, and Google Search grounding
+  - `supabase migration new ai_ready_layer_llm_features`
+  - `supabase db reset --local`
+  - `supabase test db --local supabase/tests/ai_ready_layer.sql`
+  - `supabase test db --local supabase/tests`
+  - `supabase db lint --local --schema app_private,public --fail-on error`
+  - `supabase db advisors --local --type security --level warn --fail-on none`
+  - `supabase db advisors --local --type performance --level warn --fail-on none`
+  - `deno fmt --check supabase/functions`
+  - `deno lint supabase/functions`
+  - `deno check supabase/functions/_shared/*.ts supabase/functions/*/index.ts supabase/functions/tests/*.ts`
+  - `deno test supabase/functions/tests/gemini.test.ts`
+  - `dart format apps/mobile/lib/src/data/repositories/finance_repository.dart apps/mobile/lib/src/features/ai/ai_screen.dart apps/mobile/lib/src/app/app_shell.dart apps/mobile/lib/src/app/router.dart apps/mobile/lib/src/features/settings/settings_screen.dart apps/mobile/lib/src/features/merchant_review/merchant_review_screen.dart apps/mobile/test/finance_features_test.dart`
+  - `flutter analyze`
+  - `flutter test test/finance_features_test.dart`
+  - `flutter test`
+- Known gaps:
+  - Hosted dev/staging migrations were applied after milestone completion on 2026-06-08 to project `bslsitzdvrdosubbdxpd`.
+  - `GEMINI_API_KEY` is present in hosted Edge Function secrets by name, and a local Gemini API smoke against `gemini-3.5-flash` passed using ignored `supabase/functions/env/staging.env`.
+  - Hosted `expense-qa` and `merchant-research` are active, enforce JWT, and returned HTTP 200 in authenticated hosted smoke calls using the emulator app session.
+  - The fake merchant research smoke suggestion was removed after validation. One zero-cost hosted expense Q&A usage/job record remains from the successful smoke.
+  - Remote schema lint and performance advisor passed after the hosted migration push. Security advisor reports `auth_leaked_password_protection` as a warning; this is an Auth configuration hardening item, not an app schema or AI smoke failure.
+  - Merchant research web search remains disabled by default; enabling it later requires explicitly setting `merchant_research_web_search_enabled = true` and confirming the current Gemini/Search billing posture.
+  - No Android-device live AI smoke was exercised in this session.

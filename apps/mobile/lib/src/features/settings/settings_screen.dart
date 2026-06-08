@@ -91,6 +91,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           if (householdContext != null) ...[
             const SizedBox(height: 16),
             _GmailConnectorCard(householdId: householdContext.household.id),
+            const SizedBox(height: 16),
+            _AiSettingsCard(householdId: householdContext.household.id),
           ],
           const SizedBox(height: 16),
           Card(
@@ -126,6 +128,82 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _AiSettingsCard extends ConsumerWidget {
+  const _AiSettingsCard({required this.householdId});
+
+  final String householdId;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final textTheme = Theme.of(context).textTheme;
+    final status = ref.watch(aiBudgetStatusProvider(householdId));
+
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: status.when(
+          loading: () => const Center(child: CircularProgressIndicator()),
+          error: (error, _) => Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              _SettingsSectionHeader(
+                icon: Icons.auto_awesome_outlined,
+                title: 'AI',
+                action: IconButton(
+                  tooltip: 'Refresh',
+                  onPressed: () =>
+                      ref.invalidate(aiBudgetStatusProvider(householdId)),
+                  icon: const Icon(Icons.refresh),
+                ),
+              ),
+              const SizedBox(height: 12),
+              Text('AI status unavailable', style: textTheme.titleSmall),
+              const SizedBox(height: 6),
+              Text(error.toString(), style: textTheme.bodySmall),
+            ],
+          ),
+          data: (ai) => Column(
+            children: [
+              _SettingsSectionHeader(
+                icon: Icons.auto_awesome,
+                title: 'AI',
+                action: IconButton(
+                  tooltip: 'Refresh',
+                  onPressed: () =>
+                      ref.invalidate(aiBudgetStatusProvider(householdId)),
+                  icon: const Icon(Icons.refresh),
+                ),
+              ),
+              const SizedBox(height: 16),
+              _SettingsRow(label: 'Provider', value: ai.provider),
+              const Divider(height: 28),
+              _SettingsRow(label: 'Model', value: ai.model),
+              const Divider(height: 28),
+              _SettingsRow(label: 'Mode', value: ai.modeLabel),
+              const Divider(height: 28),
+              _SettingsRow(
+                label: 'Monthly cap',
+                value: '\$${ai.monthlySpendCapUsd.toStringAsFixed(2)}',
+              ),
+              const Divider(height: 28),
+              _SettingsRow(
+                label: 'Current usage',
+                value:
+                    '${ai.currentMonthEventCount} calls / \$${ai.currentMonthSpendUsd.toStringAsFixed(4)}',
+              ),
+              const Divider(height: 28),
+              _SettingsRow(
+                label: 'Merchant research',
+                value: ai.merchantResearchSearchLabel,
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

@@ -82,7 +82,7 @@ Edge Functions are the v1 backend execution layer. Use them for:
 - Workbook import.
 - Merchant rule application and reclassification.
 - Scheduled watch renewal and backfill.
-- Future lightweight AI calls.
+- Lightweight Gemini expense Q&A and merchant research calls.
 
 Edge Functions should stay short, idempotent, and request-oriented. They should enqueue work when the operation may be slow or retried.
 
@@ -156,13 +156,13 @@ The worker should consume jobs from Supabase and write results back to Postgres.
 3. Balance is ledger-derived, not editable directly.
 4. Entries may optionally link to real transactions.
 
-### Future LLM Q&A
+### LLM Q&A
 
 1. User asks a question in the app.
 2. Client calls an Edge Function.
-3. Function validates membership and creates an `ai_usage_events` row.
+3. Function validates membership and checks household AI budget settings.
 4. Function retrieves only scoped, relevant finance data through safe SQL views.
-5. Function calls the LLM provider.
+5. Function calls Gemini through a backend-only API key.
 6. Answer, citations/queries, token usage, and cost estimate are stored.
 7. Client displays the answer.
 
@@ -210,10 +210,10 @@ Required controls:
 
 - Log every Edge Function category in operational logs.
 - Log every AI call in `ai_usage_events`.
-- Add monthly AI budget caps before AI features become user-facing.
+- Enforce monthly AI budget caps before model calls.
 - Cache merchant research by normalized merchant name.
 - Use deterministic merchant rules before LLM enrichment.
-- Only run web search on unknown or low-confidence merchants.
+- Only run web search on unknown or low-confidence merchants after the household flag is explicitly enabled.
 - Keep Gmail sync idempotent to avoid retry loops and duplicate work.
 
 ## Architecture References

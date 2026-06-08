@@ -21,7 +21,7 @@ if [[ -n "$tracked_secret_files" ]]; then
 fi
 
 client_secret_refs="$(
-  git grep -nE 'SUPABASE_(SERVICE_ROLE|SECRET)_KEY|GOOGLE_OAUTH_CLIENT_SECRET|PUBSUB_VERIFICATION_SECRET|oauth_secret_ref|refresh_token' \
+  git grep -nE 'SUPABASE_(SERVICE_ROLE|SECRET)_KEY|GOOGLE_OAUTH_CLIENT_SECRET|PUBSUB_VERIFICATION_SECRET|GEMINI_API_KEY|oauth_secret_ref|refresh_token' \
     -- apps/mobile/lib apps/mobile/android || true
 )"
 
@@ -84,6 +84,7 @@ supabase db query --local "$SQL" >/dev/null
 deno fmt --check supabase/functions
 deno lint supabase/functions
 deno check supabase/functions/_shared/*.ts supabase/functions/*/index.ts
+deno test supabase/functions/tests/gemini.test.ts
 node --test supabase/functions/tests/gmail_parsers.test.mjs
 
 if [[ "${RUN_MOBILE:-0}" == "1" ]]; then

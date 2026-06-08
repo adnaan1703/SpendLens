@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../core/bootstrap/app_bootstrap.dart';
 import '../data/repositories/household_repository.dart';
+import '../features/ai/ai_screen.dart';
 import '../features/auth/data/auth_repository.dart';
 import '../features/auth/sign_in_screen.dart';
 import '../features/dashboard/dashboard_screen.dart';
@@ -81,6 +82,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           GoRoute(
             path: MerchantReviewScreen.routePath,
             builder: (_, _) => const MerchantReviewScreen(),
+          ),
+          GoRoute(
+            path: AiScreen.routePath,
+            builder: (_, _) => const AiScreen(),
           ),
           GoRoute(
             path: PiggyBanksScreen.routePath,

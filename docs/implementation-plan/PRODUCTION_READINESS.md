@@ -70,6 +70,11 @@ Production Supabase settings to confirm:
 - Data API exposure is explicit; new public tables are not automatically exposed.
 - RLS is enabled on every public base table.
 - Edge Function secrets are set in the hosted secret store.
+- `GEMINI_API_KEY` is set only in Edge Function secrets when AI features are
+  enabled.
+- `GEMINI_INPUT_COST_PER_MILLION_USD` and
+  `GEMINI_OUTPUT_COST_PER_MILLION_USD` are set before disabling free-tier-only
+  AI mode.
 - Daily backups or PITR are enabled according to the chosen Supabase plan.
 - Supabase billing/spend alerts are configured.
 
@@ -114,6 +119,10 @@ Edge Functions now write structured JSON log events. Monitor these event names:
 - `gmail_watch_renewal_completed`
 - `gmail_backfill_check_completed`
 - `gmail_disconnect_completed`
+- `expense_qa_completed`
+- `expense_qa_failed`
+- `merchant_research_completed`
+- `merchant_research_failed`
 
 Service-role SQL health views:
 

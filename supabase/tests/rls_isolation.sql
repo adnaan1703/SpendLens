@@ -29,7 +29,11 @@ select is(
         'transaction_sources',
         'review_items',
         'piggy_banks',
-        'piggy_bank_entries'
+        'piggy_bank_entries',
+        'ai_feature_settings',
+        'ai_usage_events',
+        'ai_jobs',
+        'merchant_research_suggestions'
       ])
       and not c.relrowsecurity
   ),
@@ -51,7 +55,9 @@ select is(
         'v_merchant_summary',
         'v_review_queue',
         'v_piggy_bank_balances',
-        'v_linked_mailbox_status'
+        'v_linked_mailbox_status',
+        'v_ai_budget_status',
+        'v_open_merchant_research_suggestions'
       ])
       and not (coalesce(c.reloptions, array[]::text[]) @> array['security_invoker=true'])
   ),

@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:spendlens/src/core/bootstrap/app_bootstrap.dart';
 import 'package:spendlens/src/data/repositories/finance_repository.dart';
 import 'package:spendlens/src/data/repositories/household_repository.dart';
+import 'package:spendlens/src/features/ai/ai_screen.dart';
 import 'package:spendlens/src/features/dashboard/dashboard_screen.dart';
 import 'package:spendlens/src/features/merchant_review/merchant_review_screen.dart';
 import 'package:spendlens/src/features/piggy_banks/piggy_banks_screen.dart';
@@ -283,6 +284,64 @@ void main() {
     expect(find.text('Queued jobs'), findsOneWidget);
   });
 
+  testWidgets('settings shows AI budget status', (tester) async {
+    final repository = _FakeFinanceRepository();
+
+    await tester.pumpWidget(
+      _financeTestApp(repository: repository, child: const SettingsScreen()),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('AI'), findsOneWidget);
+    expect(find.text('gemini'), findsOneWidget);
+    expect(find.text('gemini-3.5-flash'), findsOneWidget);
+    expect(find.text('Free tier'), findsOneWidget);
+    expect(find.text('Search off'), findsOneWidget);
+  });
+
+  testWidgets('ask expenses submits question and shows answer', (tester) async {
+    final repository = _FakeFinanceRepository();
+
+    await tester.pumpWidget(
+      _financeTestApp(repository: repository, child: const AiScreen()),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.enterText(
+      find.byType(TextField),
+      'What did I spend on food in March?',
+    );
+    await tester.tap(find.text('Ask'));
+    await tester.pumpAndSettle();
+
+    expect(repository.expenseQuestions, hasLength(1));
+    expect(repository.expenseQuestions.single.question, contains('food'));
+    expect(find.text('Food spend was INR 42,000 in Mar 2026.'), findsOneWidget);
+    expect(find.text('18 input tokens'), findsOneWidget);
+  });
+
+  testWidgets('merchant review researches and shows cached suggestion', (
+    tester,
+  ) async {
+    final repository = _FakeFinanceRepository();
+
+    await tester.pumpWidget(
+      _financeTestApp(
+        repository: repository,
+        child: const MerchantReviewScreen(),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Research'));
+    await tester.pumpAndSettle();
+
+    expect(repository.researchRequests, hasLength(1));
+    expect(find.text('AI suggestions'), findsOneWidget);
+    expect(find.text('Amazon Shopping'), findsOneWidget);
+    expect(find.text('Shopping / Marketplace / medium'), findsOneWidget);
+  });
+
   testWidgets('piggy banks create entries and update target progress', (
     tester,
   ) async {
@@ -377,8 +436,25 @@ final class _SavedCap {
 final class _FakeFinanceRepository implements FinanceRepository {
   final savedCaps = <_SavedCap>[];
   final corrections = <MerchantCorrectionRequest>[];
+  final expenseQuestions = <ExpenseQuestionRequest>[];
+  final researchRequests = <MerchantResearchRequest>[];
   final piggyBanks = <PiggyBankSummary>[];
   final piggyEntries = <PiggyBankEntry>[];
+  final merchantResearchSuggestions = <MerchantResearchSuggestion>[];
+  final aiStatus = AiBudgetStatus(
+    householdId: 'household-1',
+    provider: 'gemini',
+    model: 'gemini-3.5-flash',
+    monthlySpendCapUsd: 0,
+    expenseQaEnabled: true,
+    merchantResearchEnabled: true,
+    merchantResearchWebSearchEnabled: false,
+    freeTierOnly: true,
+    currentPeriodMonth: DateTime(2026, 6),
+    currentMonthSpendUsd: 0,
+    currentMonthEventCount: 0,
+    remainingMonthlyBudgetUsd: 0,
+  );
   final gmailStatuses = <GmailConnectorStatus>[
     GmailConnectorStatus(
       id: 'mailbox-1',
@@ -649,6 +725,67 @@ final class _FakeFinanceRepository implements FinanceRepository {
     return gmailStatuses
         .where((status) => status.householdId == householdId)
         .toList();
+  }
+
+  @override
+  Future<AiBudgetStatus> fetchAiBudgetStatus({
+    required String householdId,
+  }) async {
+    return aiStatus;
+  }
+
+  @override
+  Future<ExpenseQuestionAnswer> askExpenseQuestion(
+    ExpenseQuestionRequest request,
+  ) async {
+    expenseQuestions.add(request);
+    return const ExpenseQuestionAnswer(
+      answer: 'Food spend was INR 42,000 in Mar 2026.',
+      jobId: 'job-1',
+      usageEventId: 'usage-1',
+      inputTokens: 18,
+      outputTokens: 9,
+      estimatedCostUsd: 0,
+    );
+  }
+
+  @override
+  Future<List<MerchantResearchSuggestion>> fetchMerchantResearchSuggestions({
+    required String householdId,
+  }) async {
+    return merchantResearchSuggestions
+        .where((suggestion) => suggestion.householdId == householdId)
+        .toList();
+  }
+
+  @override
+  Future<MerchantResearchSuggestion> researchMerchant(
+    MerchantResearchRequest request,
+  ) async {
+    researchRequests.add(request);
+    final suggestion = MerchantResearchSuggestion(
+      id: 'suggestion-1',
+      householdId: request.householdId,
+      reviewItemId: request.reviewItemId,
+      normalizedMerchantName: 'amzn mktp in',
+      statementMerchant: request.statementMerchant,
+      suggestedDisplayName: 'Amazon Shopping',
+      suggestedCategoryName: 'Shopping',
+      suggestedSubcategoryName: 'Marketplace',
+      confidence: 'medium',
+      status: 'open',
+      createdAt: DateTime(2026, 3, 20, 12),
+    );
+    merchantResearchSuggestions
+      ..removeWhere(
+        (existing) =>
+            existing.householdId == suggestion.householdId &&
+            existing.normalizedMerchantName ==
+                suggestion.normalizedMerchantName,
+      )
+      ..add(suggestion);
+
+    return suggestion;
   }
 
   @override
