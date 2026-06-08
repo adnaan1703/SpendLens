@@ -512,6 +512,56 @@ Add controlled LLM features without changing the app's core architecture.
 - Merchant research suggestions require approval before changing mappings.
 - AI feature respects configured budget caps.
 
+## Milestone 13: May 2026 Gmail Backfill
+
+### Status
+
+Completed on 2026-06-08.
+
+### Objective
+
+Backfill May 2026 Gmail transaction emails for the hosted dev/staging Supabase
+project without expanding parser scope or exposing privileged credentials to the
+Flutter app.
+
+### Tasks
+
+- Add a service-only `gmail-backfill-range` Edge Function protected by the
+  Supabase secret-key check.
+- Validate one active Gmail mailbox and queue one `gmail_backfill` job per date
+  slice.
+- Use deterministic idempotency keys such as
+  `manual-range:2026-05-01:2026-05-02`.
+- Extend `gmail-sync` so `gmail_backfill` jobs can use payload-provided Gmail
+  search date bounds and candidate limits.
+- Fetch candidates from a slightly buffered Gmail search window, then ingest
+  only parsed transactions in the strict transaction-date range.
+- Keep parser scope limited to HDFC credit-card debit alerts and HDFC Bank UPI
+  debit alerts.
+- Update Gmail OAuth account selection to support connecting one Gmail mailbox
+  while signed into the app with another account.
+- Update Gmail connector docs and session handoff with the May 2026 runbook.
+
+### External Work
+
+- User signs into SpendLens with the app account.
+- User connects Gmail from Settings and intentionally chooses the target Gmail
+  mailbox during Google OAuth.
+- A server-side caller invokes `gmail-backfill-range` and `gmail-sync` against
+  project `bslsitzdvrdosubbdxpd` using a local/platform Supabase secret key.
+
+### Acceptance Criteria
+
+- Gmail can be connected for a different mailbox than the app login account.
+- May 2026 supported HDFC credit-card and UPI debit emails are imported into the
+  signed-in user's household.
+- Re-running the same range does not create duplicate transactions.
+- Unsupported templates are skipped and counted instead of guessed.
+- Unknown or non-high-confidence merchants continue to create review items
+  through the existing ingestion RPC.
+- May 2026 app views update through RLS-safe client reads, not Flutter
+  privileged credentials.
+
 ## Cross-Milestone Consistency Rules
 
 - Ask the user before proceeding on any undocumented decision. Codex may recommend a default, but must wait for confirmation.

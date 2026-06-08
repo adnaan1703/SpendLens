@@ -84,7 +84,7 @@ supabase db query --local "$SQL" >/dev/null
 deno fmt --check supabase/functions
 deno lint supabase/functions
 deno check supabase/functions/_shared/*.ts supabase/functions/*/index.ts
-deno test supabase/functions/tests/gemini.test.ts
+deno test supabase/functions/tests/*.ts
 node --test supabase/functions/tests/gmail_parsers.test.mjs
 
 if [[ "${RUN_MOBILE:-0}" == "1" ]]; then

@@ -13,6 +13,7 @@ Vault-backed refresh-token storage, and database ingestion jobs.
 - `gmail-sync`: service-key call; processes queued Gmail sync/backfill jobs.
 - `gmail-watch-renewal`: service-key call; renews watches that are missing or near expiry.
 - `gmail-backfill-check`: service-key call; queues daily bounded backfills for stale mailboxes.
+- `gmail-backfill-range`: service-key call; queues explicit date-range backfill jobs for one active Gmail mailbox.
 
 ## Configured Dev Values
 
@@ -88,6 +89,75 @@ Do not put the secret key in Flutter or committed files.
 
 For production scheduling, monitoring, and hosted smoke checks, use
 `docs/implementation-plan/PRODUCTION_READINESS.md`.
+
+## May 2026 Range Backfill
+
+Milestone 13 adds an explicit hosted dev/staging runbook for importing supported
+May 2026 Gmail transaction emails from the already connected mailbox.
+
+Scope:
+
+- Target Supabase project: `bslsitzdvrdosubbdxpd` dev/staging.
+- Target transaction window: `2026-05-01` inclusive through `2026-06-01` exclusive.
+- Supported templates only:
+  - HDFC credit-card debit alerts.
+  - HDFC Bank UPI debit alerts.
+- Unsupported templates are counted as skipped by `gmail-sync`; they are not
+  guessed or imported.
+
+The app login account and connected Gmail mailbox can differ. The Gmail OAuth
+URL uses `prompt=consent select_account` so the user can sign into SpendLens
+with one account and choose another mailbox during Google consent.
+
+After the user connects Gmail from Settings, confirm that hosted
+`linked_mailboxes` has one active Gmail mailbox for the household and that the
+mailbox email is the intended Gmail account. Then call `gmail-backfill-range`
+with a server-side Supabase secret key from an ignored env file or platform
+secret store:
+
+```sh
+curl -sS \
+  -X POST "https://bslsitzdvrdosubbdxpd.supabase.co/functions/v1/gmail-backfill-range" \
+  -H "Content-Type: application/json" \
+  -H "apikey: $SUPABASE_SECRET_KEY" \
+  --data '{
+    "mailboxId": "<linked_mailboxes.id>",
+    "transactionStartDate": "2026-05-01",
+    "transactionEndDateExclusive": "2026-06-01",
+    "sliceDays": 1,
+    "maxCandidatesPerSlice": 200
+  }'
+```
+
+This enqueues one `gmail_backfill` job per slice with deterministic
+idempotency keys such as `manual-range:2026-05-01:2026-05-02`.
+
+Run `gmail-sync` until no queued May range jobs remain:
+
+```sh
+curl -sS \
+  -X POST "https://bslsitzdvrdosubbdxpd.supabase.co/functions/v1/gmail-sync" \
+  -H "Content-Type: application/json" \
+  -H "apikey: $SUPABASE_SECRET_KEY" \
+  --data '{"limit": 10}'
+```
+
+Range jobs fetch candidates from a slightly buffered Gmail search window, then
+`gmail-sync` only ingests parsed transactions in the strict transaction-date
+window `2026-05-01 <= transaction_date < 2026-06-01`. Re-running the same range
+does not duplicate transactions because jobs use deterministic idempotency keys
+and ingestion still upserts by `(household_id, source_fingerprint)`.
+
+Hosted verification should check:
+
+- Active mailbox exists for the intended Gmail account.
+- May range jobs are completed or intentionally skipped because they already
+  completed.
+- May 2026 Gmail transaction counts increased.
+- Source account types include expected `credit_card` and/or `upi` rows.
+- No duplicate `(household_id, source_fingerprint)` rows exist.
+- App reads May 2026 Dashboard, Transactions, Trends, and source-type filters
+  without privileged credentials.
 
 ## Operational Monitoring
 

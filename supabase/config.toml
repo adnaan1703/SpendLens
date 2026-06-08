@@ -412,6 +412,9 @@ verify_jwt = false
 [functions.gmail-backfill-check]
 verify_jwt = false
 
+[functions.gmail-backfill-range]
+verify_jwt = false
+
 [analytics]
 enabled = true
 port = 54327

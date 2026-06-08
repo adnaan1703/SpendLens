@@ -1,4 +1,8 @@
-import { fetchGmailThread } from "../_shared/google.ts";
+import {
+  buildGmailTransactionSearchQuery,
+  fetchGmailThread,
+  listRecentGmailMessages,
+} from "../_shared/google.ts";
 
 function assert(condition: boolean, message: string): void {
   if (!condition) {
@@ -41,6 +45,74 @@ Deno.test("fetchGmailThread requests a full Gmail thread", async () => {
     assert(
       thread.messages?.[0]?.id === "message-1",
       "Thread messages were not returned.",
+    );
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+Deno.test("buildGmailTransactionSearchQuery uses buffered date bounds", () => {
+  const query = buildGmailTransactionSearchQuery({
+    searchStartDate: "2026-04-30",
+    searchEndDateExclusive: "2026-05-02",
+  });
+
+  assert(
+    query.includes("after:2026/04/30"),
+    `Expected Gmail after bound in query: ${query}`,
+  );
+  assert(
+    query.includes("before:2026/05/02"),
+    `Expected Gmail before bound in query: ${query}`,
+  );
+  assert(
+    query.includes('"HDFC Bank Credit Card"') &&
+      query.includes('"UPI transaction reference no"'),
+    `Expected supported HDFC terms in query: ${query}`,
+  );
+});
+
+Deno.test("listRecentGmailMessages passes range query and page size", async () => {
+  const originalFetch = globalThis.fetch;
+  const requestedUrls: URL[] = [];
+
+  globalThis.fetch = ((input: string | URL | Request) => {
+    requestedUrls.push(new URL(input.toString()));
+    return Promise.resolve(
+      new Response(
+        JSON.stringify({
+          messages: [{ id: "message-1", threadId: "thread-1" }],
+        }),
+        { status: 200, headers: { "Content-Type": "application/json" } },
+      ),
+    );
+  }) as typeof fetch;
+
+  try {
+    const page = await listRecentGmailMessages("access-token", "next-page", {
+      searchStartDate: "2026-04-30",
+      searchEndDateExclusive: "2026-05-02",
+      maxResults: 200,
+    });
+
+    assert(page.messages?.[0]?.id === "message-1", "Messages were not read.");
+    const observedUrl = requestedUrls[0];
+    if (!observedUrl) {
+      throw new Error("Gmail list URL was not requested.");
+    }
+    assert(
+      observedUrl.searchParams.get("pageToken") === "next-page",
+      `Unexpected page token: ${observedUrl.toString()}`,
+    );
+    assert(
+      observedUrl.searchParams.get("maxResults") === "200",
+      `Unexpected maxResults: ${observedUrl.toString()}`,
+    );
+    const query = observedUrl.searchParams.get("q") ?? "";
+    assert(
+      query.includes("after:2026/04/30") &&
+        query.includes("before:2026/05/02"),
+      `Unexpected Gmail query: ${query}`,
     );
   } finally {
     globalThis.fetch = originalFetch;

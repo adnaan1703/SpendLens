@@ -26,4 +26,5 @@ supabase functions deploy \
   gmail-pubsub-webhook \
   gmail-sync \
   gmail-watch-renewal \
-  gmail-backfill-check
+  gmail-backfill-check \
+  gmail-backfill-range

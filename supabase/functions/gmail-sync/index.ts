@@ -2,12 +2,19 @@ import { sha256Hex } from "../_shared/crypto.ts";
 import {
   fetchGmailMessage,
   fetchGmailThread,
+  type GmailMessageListOptions,
   type GmailMessageSummary,
   GoogleApiError,
   listGmailHistory,
   listRecentGmailMessages,
   refreshAccessToken,
 } from "../_shared/google.ts";
+import {
+  compareIsoDates,
+  isDateWithinRange,
+  optionalIsoDate,
+  parseBoundedInteger,
+} from "../_shared/gmail_range.ts";
 import { extractPlainText, messageMetadata } from "../_shared/gmail_message.ts";
 import {
   errorResponse,
@@ -46,9 +53,16 @@ type ProcessCounts = {
   fetched: number;
   parsed: number;
   unsupported: number;
+  outsideDateRange: number;
   inserted: number;
   updated: number;
   reviewItems: number;
+};
+
+type BackfillOptions = GmailMessageListOptions & {
+  maxCandidates: number;
+  transactionStartDate: string | null;
+  transactionEndDateExclusive: string | null;
 };
 
 type GmailMessageCandidate = {
@@ -61,6 +75,7 @@ function emptyCounts(): ProcessCounts {
     fetched: 0,
     parsed: 0,
     unsupported: 0,
+    outsideDateRange: 0,
     inserted: 0,
     updated: 0,
     reviewItems: 0,
@@ -120,19 +135,26 @@ async function collectHistoryMessageCandidates(
 
 async function collectBackfillMessageCandidates(
   accessToken: string,
+  options: BackfillOptions,
 ): Promise<GmailMessageCandidate[]> {
   const candidates = new Map<string, GmailMessageCandidate>();
   let pageToken: string | undefined;
+  const maxCandidates = options.maxCandidates;
 
   do {
-    const page = await listRecentGmailMessages(accessToken, pageToken);
+    const page = await listRecentGmailMessages(accessToken, pageToken, {
+      query: options.query,
+      searchStartDate: options.searchStartDate,
+      searchEndDateExclusive: options.searchEndDateExclusive,
+      maxResults: Math.min(100, maxCandidates - candidates.size),
+    });
     for (const message of page.messages ?? []) {
       addCandidate(candidates, message);
     }
     pageToken = page.nextPageToken;
-  } while (pageToken && candidates.size < 50);
+  } while (pageToken && candidates.size < maxCandidates);
 
-  return [...candidates.values()].slice(0, 50);
+  return [...candidates.values()].slice(0, maxCandidates);
 }
 
 function sourceFingerprint(
@@ -173,6 +195,10 @@ async function processMessage(
   mailbox: MailboxRow,
   message: Record<string, unknown>,
   messageId: string,
+  dateFilter: Pick<
+    BackfillOptions,
+    "transactionStartDate" | "transactionEndDateExclusive"
+  >,
 ): Promise<Partial<ProcessCounts>> {
   const metadata = messageMetadata(message);
   const bodyText = extractPlainText(message);
@@ -180,6 +206,18 @@ async function processMessage(
 
   if (!parsed.ok) {
     return { fetched: 1, unsupported: 1 };
+  }
+
+  if (
+    (dateFilter.transactionStartDate ||
+      dateFilter.transactionEndDateExclusive) &&
+    !isDateWithinRange(
+      parsed.transaction_date,
+      dateFilter.transactionStartDate,
+      dateFilter.transactionEndDateExclusive,
+    )
+  ) {
+    return { fetched: 1, parsed: 1, outsideDateRange: 1 };
   }
 
   const fingerprint = await sourceFingerprint(
@@ -215,6 +253,10 @@ async function processMessageById(
   accessToken: string,
   messageId: string,
   processedMessageIds: Set<string>,
+  dateFilter: Pick<
+    BackfillOptions,
+    "transactionStartDate" | "transactionEndDateExclusive"
+  >,
 ): Promise<Partial<ProcessCounts>> {
   if (processedMessageIds.has(messageId)) {
     return {};
@@ -225,7 +267,13 @@ async function processMessageById(
   const fetchedMessageId = String(metadata.id ?? messageId);
   processedMessageIds.add(fetchedMessageId);
 
-  return processMessage(serviceClient, mailbox, message, fetchedMessageId);
+  return processMessage(
+    serviceClient,
+    mailbox,
+    message,
+    fetchedMessageId,
+    dateFilter,
+  );
 }
 
 async function processThread(
@@ -234,6 +282,10 @@ async function processThread(
   accessToken: string,
   threadId: string,
   processedMessageIds: Set<string>,
+  dateFilter: Pick<
+    BackfillOptions,
+    "transactionStartDate" | "transactionEndDateExclusive"
+  >,
 ): Promise<Partial<ProcessCounts>> {
   const thread = await fetchGmailThread(accessToken, threadId);
   const counts = emptyCounts();
@@ -247,11 +299,73 @@ async function processThread(
     processedMessageIds.add(messageId);
     mergeCounts(
       counts,
-      await processMessage(serviceClient, mailbox, message, messageId),
+      await processMessage(
+        serviceClient,
+        mailbox,
+        message,
+        messageId,
+        dateFilter,
+      ),
     );
   }
 
   return counts;
+}
+
+function stringPayloadValue(
+  payload: Record<string, unknown>,
+  key: string,
+): string | null {
+  const value = payload[key];
+  if (typeof value !== "string") {
+    return null;
+  }
+
+  const trimmed = value.trim();
+  return trimmed === "" ? null : trimmed;
+}
+
+function backfillOptionsFromPayload(
+  payload: Record<string, unknown>,
+): BackfillOptions {
+  const transactionStartDate = optionalIsoDate(
+    payload.transactionStartDate,
+    "transactionStartDate",
+  );
+  const transactionEndDateExclusive = optionalIsoDate(
+    payload.transactionEndDateExclusive,
+    "transactionEndDateExclusive",
+  );
+
+  if (
+    transactionStartDate && transactionEndDateExclusive &&
+    compareIsoDates(transactionStartDate, transactionEndDateExclusive) >= 0
+  ) {
+    throw new Error(
+      "transactionStartDate must be before transactionEndDateExclusive.",
+    );
+  }
+
+  return {
+    query: stringPayloadValue(payload, "gmailSearchQuery") ??
+      stringPayloadValue(payload, "query") ??
+      undefined,
+    searchStartDate: optionalIsoDate(
+      payload.gmailSearchStartDate ?? payload.searchStartDate,
+      "gmailSearchStartDate",
+    ),
+    searchEndDateExclusive: optionalIsoDate(
+      payload.gmailSearchEndDateExclusive ?? payload.searchEndDateExclusive,
+      "gmailSearchEndDateExclusive",
+    ),
+    maxCandidates: parseBoundedInteger(
+      payload.maxCandidates ?? payload.maxCandidatesPerSlice,
+      "maxCandidates",
+      { defaultValue: 50, min: 1, max: 500 },
+    ),
+    transactionStartDate,
+    transactionEndDateExclusive,
+  };
 }
 
 async function processJob(
@@ -290,6 +404,19 @@ async function processJob(
   let latestHistoryId: string | undefined;
   let fallbackBackfill = false;
   let candidates: GmailMessageCandidate[] = [];
+  const defaultBackfillOptions = backfillOptionsFromPayload({});
+  const backfillOptions = job.job_type === "gmail_backfill"
+    ? backfillOptionsFromPayload(job.payload ?? {})
+    : defaultBackfillOptions;
+  const dateFilter = job.job_type === "gmail_backfill"
+    ? {
+      transactionStartDate: backfillOptions.transactionStartDate,
+      transactionEndDateExclusive: backfillOptions.transactionEndDateExclusive,
+    }
+    : {
+      transactionStartDate: null,
+      transactionEndDateExclusive: null,
+    };
 
   try {
     if (job.job_type === "gmail_sync" && startHistoryId) {
@@ -300,12 +427,18 @@ async function processJob(
       candidates = history.candidates;
       latestHistoryId = notificationHistoryId || history.latestHistoryId;
     } else {
-      candidates = await collectBackfillMessageCandidates(token.access_token);
+      candidates = await collectBackfillMessageCandidates(
+        token.access_token,
+        backfillOptions,
+      );
     }
   } catch (error) {
     if (error instanceof GoogleApiError && error.status === 404) {
       fallbackBackfill = true;
-      candidates = await collectBackfillMessageCandidates(token.access_token);
+      candidates = await collectBackfillMessageCandidates(
+        token.access_token,
+        backfillOptions,
+      );
     } else {
       throw error;
     }
@@ -324,6 +457,7 @@ async function processJob(
           token.access_token,
           candidate.threadId,
           processedMessageIds,
+          dateFilter,
         ),
       );
       if (!processedMessageIds.has(candidate.messageId)) {
@@ -335,6 +469,7 @@ async function processJob(
             token.access_token,
             candidate.messageId,
             processedMessageIds,
+            dateFilter,
           ),
         );
       }
@@ -349,6 +484,7 @@ async function processJob(
         token.access_token,
         candidate.messageId,
         processedMessageIds,
+        dateFilter,
       ),
     );
   }

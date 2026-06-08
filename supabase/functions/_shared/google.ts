@@ -1,4 +1,5 @@
 import { requiredEnv } from "./supabase.ts";
+import { assertIsoDate } from "./gmail_range.ts";
 
 export const gmailReadonlyScope =
   "https://www.googleapis.com/auth/gmail.readonly";
@@ -14,6 +15,13 @@ type GoogleTokenResponse = {
 export type GmailMessageSummary = {
   id: string;
   threadId?: string;
+};
+
+export type GmailMessageListOptions = {
+  query?: string;
+  searchStartDate?: string | null;
+  searchEndDateExclusive?: string | null;
+  maxResults?: number;
 };
 
 export class GoogleApiError extends Error {
@@ -49,7 +57,7 @@ export function buildGoogleOAuthUrl(state: string): string {
   url.searchParams.set("response_type", "code");
   url.searchParams.set("scope", gmailReadonlyScope);
   url.searchParams.set("access_type", "offline");
-  url.searchParams.set("prompt", "consent");
+  url.searchParams.set("prompt", "consent select_account");
   url.searchParams.set("include_granted_scopes", "true");
   url.searchParams.set("state", state);
   return url.toString();
@@ -192,29 +200,60 @@ export async function listGmailHistory(
   return checkedGoogleJson(response, "Gmail history list");
 }
 
+function gmailSearchDate(date: string): string {
+  return assertIsoDate(date, "Gmail search date").replaceAll("-", "/");
+}
+
+export function buildGmailTransactionSearchQuery(
+  options: GmailMessageListOptions = {},
+): string {
+  const query = options.query?.trim();
+  if (query) {
+    return query;
+  }
+
+  const terms = [
+    '"HDFC Bank Credit Card"',
+    '"has been debited"',
+    '"UPI transaction reference no"',
+    '"You have done a UPI txn"',
+  ].join(" OR ");
+  const dateParts: string[] = [];
+
+  if (options.searchStartDate) {
+    dateParts.push(`after:${gmailSearchDate(options.searchStartDate)}`);
+  }
+
+  if (options.searchEndDateExclusive) {
+    dateParts.push(
+      `before:${gmailSearchDate(options.searchEndDateExclusive)}`,
+    );
+  }
+
+  if (dateParts.length === 0) {
+    dateParts.push("newer_than:30d");
+  }
+
+  return [...dateParts, `(${terms})`].join(" ");
+}
+
 export async function listRecentGmailMessages(
   accessToken: string,
   pageToken?: string,
-): Promise<
-  {
-    messages?: GmailMessageSummary[];
-    nextPageToken?: string;
-  }
-> {
+  options: GmailMessageListOptions = {},
+): Promise<{
+  messages?: GmailMessageSummary[];
+  nextPageToken?: string;
+}> {
   const url = new URL(
     "https://gmail.googleapis.com/gmail/v1/users/me/messages",
   );
-  url.searchParams.set("maxResults", "25");
-  url.searchParams.set(
-    "q",
-    [
-      "newer_than:30d",
-      '("HDFC Bank Credit Card"',
-      'OR "has been debited"',
-      'OR "UPI transaction reference no"',
-      'OR "You have done a UPI txn")',
-    ].join(" "),
+  const maxResults = Math.min(
+    Math.max(Number(options.maxResults ?? 25), 1),
+    500,
   );
+  url.searchParams.set("maxResults", String(maxResults));
+  url.searchParams.set("q", buildGmailTransactionSearchQuery(options));
   if (pageToken) {
     url.searchParams.set("pageToken", pageToken);
   }

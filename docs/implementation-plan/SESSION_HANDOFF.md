@@ -5,9 +5,9 @@ Use this file to coordinate work across multiple implementation sessions. Update
 ## Current Status
 
 - Current milestone: Not started.
-- Last completed milestone: Milestone 12, AI-Ready Layer and LLM Features.
-- Current implementation state: Flutter Android app scaffold exists in `apps/mobile` with SpendLens Google sign-in, route protection, authenticated shell, RLS-safe profile/default-household bootstrap, household loading/error states, sign-out, package `com.olympus.spendlens`, core packages, environment templates, tests, and Supabase folder structure. Supabase local config applies migrations for schema, RLS, views, workbook-derived default categories, merchant review corrections, piggy-bank entry validation, Gmail connector ingestion, production-readiness monitoring views, AI feature settings/usage/jobs/merchant suggestions, pgTAP database tests, and the Android auth redirect URL. Milestone 3 adds a local workbook importer under `tools/workbook-import`, fixture tests, and rerun documentation in `docs/implementation-plan/WORKBOOK_IMPORT.md`. Milestone 5 adds Supabase-backed finance repository reads/writes, dashboard KPIs, reporting-month selection, monthly category cap setup/editing, category and merchant summaries, transaction search/filter pagination, and transaction detail panels. Milestone 6 adds merchant review queue UI, correction RPC/rule persistence, historical reclassification, review resolution, transaction classification audit metadata, and future-import rule application. Milestone 7 adds Supabase-backed piggy-bank list/detail UI, create/edit forms, ledger entry creation, ledger-derived balance/progress reads, no-overdraft withdrawal validation, and regression tests. Milestone 8 adds filtered monthly trend reports, gross/refund/net reporting, category trend tables, merchant summary tables, and filtered transaction CSV copy from the Trends screen. Milestone 9 adds Vault-backed Gmail OAuth connector state, Pub/Sub webhook job dedupe, Gmail sync/backfill/watch-renewal Edge Functions, HDFC credit-card debit parsing from anonymized fixtures, SQL ingestion RPCs, and Settings connector status/connect/disconnect UI. Milestone 10 adds HDFC Bank UPI debit parsing from anonymized fixtures, UPI-aware Gmail backfill search and fingerprinting, UPI ingestion pgTAP coverage, and source-type filters for credit card vs UPI on transaction/trend screens. Milestone 11 adds production-readiness runbooks, local smoke automation, service-role ingestion/parser health views, structured Edge Function operational logs, Android release signing/shrinking configuration, and staging/production Edge Function secret templates. Milestone 12 adds Gemini-backed expense Q&A, merchant research suggestions, AI usage/budget status, backend-only LLM calls, and free-tier-only dev/staging controls.
-- Remote deployment state: On 2026-06-08, user confirmed Supabase project `bslsitzdvrdosubbdxpd` as the intended dev/staging target. All local migrations through `20260607174515_ai_ready_layer_llm_features.sql` were pushed there, hosted `expense-qa` and `merchant-research` were already active with JWT verification, and `GEMINI_API_KEY` was present in hosted Edge Function secrets by name. After the user signed in through the Android emulator, hosted profile/household bootstrap and authenticated Gemini Edge Function smoke passed.
+- Last completed milestone: Milestone 13, May 2026 Gmail Backfill.
+- Current implementation state: Flutter Android app scaffold exists in `apps/mobile` with SpendLens Google sign-in, route protection, authenticated shell, RLS-safe profile/default-household bootstrap, household loading/error states, sign-out, package `com.olympus.spendlens`, core packages, environment templates, tests, and Supabase folder structure. Supabase local config applies migrations for schema, RLS, views, workbook-derived default categories, merchant review corrections, piggy-bank entry validation, Gmail connector ingestion, production-readiness monitoring views, AI feature settings/usage/jobs/merchant suggestions, pgTAP database tests, and the Android auth redirect URL. Milestone 3 adds a local workbook importer under `tools/workbook-import`, fixture tests, and rerun documentation in `docs/implementation-plan/WORKBOOK_IMPORT.md`. Milestone 5 adds Supabase-backed finance repository reads/writes, dashboard KPIs, reporting-month selection, monthly category cap setup/editing, category and merchant summaries, transaction search/filter pagination, and transaction detail panels. Milestone 6 adds merchant review queue UI, correction RPC/rule persistence, historical reclassification, review resolution, transaction classification audit metadata, and future-import rule application. Milestone 7 adds Supabase-backed piggy-bank list/detail UI, create/edit forms, ledger entry creation, ledger-derived balance/progress reads, no-overdraft withdrawal validation, and regression tests. Milestone 8 adds filtered monthly trend reports, gross/refund/net reporting, category trend tables, merchant summary tables, and filtered transaction CSV copy from the Trends screen. Milestone 9 adds Vault-backed Gmail OAuth connector state, Pub/Sub webhook job dedupe, Gmail sync/backfill/watch-renewal Edge Functions, HDFC credit-card debit parsing from anonymized fixtures, SQL ingestion RPCs, and Settings connector status/connect/disconnect UI. Milestone 10 adds HDFC Bank UPI debit parsing from anonymized fixtures, UPI-aware Gmail backfill search and fingerprinting, UPI ingestion pgTAP coverage, and source-type filters for credit card vs UPI on transaction/trend screens. Milestone 11 adds production-readiness runbooks, local smoke automation, service-role ingestion/parser health views, structured Edge Function operational logs, Android release signing/shrinking configuration, and staging/production Edge Function secret templates. Milestone 12 adds Gemini-backed expense Q&A, merchant research suggestions, AI usage/budget status, backend-only LLM calls, and free-tier-only dev/staging controls. Milestone 13 adds a service-only May 2026 Gmail range backfill function, range-aware Gmail sync search/date filtering, OAuth account selection for mailbox choice, deployment tooling updates, and a hosted dev/staging runbook.
+- Remote deployment state: On 2026-06-08, user confirmed Supabase project `bslsitzdvrdosubbdxpd` as the intended dev/staging target. All local migrations through `20260607174515_ai_ready_layer_llm_features.sql` were pushed there, hosted `expense-qa` and `merchant-research` were already active with JWT verification, and `GEMINI_API_KEY` was present in hosted Edge Function secrets by name. After the user signed in through the Android emulator, hosted profile/household bootstrap and authenticated Gemini Edge Function smoke passed. On 2026-06-08 for Milestone 13, `gmail-oauth-start` was deployed as version 2 with JWT verification, `gmail-sync` was deployed as version 2 without JWT verification, and new `gmail-backfill-range` was deployed as version 1 without JWT verification. Hosted `gmail-backfill-range` `OPTIONS` smoke returned 200, and an unauthenticated POST returned the expected service-key error. The live May Gmail backfill itself was not run because it requires the user to connect the target Gmail mailbox and invoke the runbook with a Supabase secret key from a local/platform secret store.
 - Next recommended milestone: None in the current active plan; iOS and web remain deferred future milestones unless explicitly resumed.
 
 ## Required Reading for New Threads
@@ -68,6 +68,7 @@ Do not ask the user to perform all setup at once. Ask only when the relevant mil
 - Milestone 10, UPI Ingestion and Parser Expansion: completed.
 - Milestone 11, Deployment, Security, and Production Readiness: completed.
 - Milestone 12, AI-Ready Layer and LLM Features: completed.
+- Milestone 13, May 2026 Gmail Backfill: completed.
 
 ## Update Rules
 
@@ -492,3 +493,66 @@ When an architecture decision changes:
   - Remote schema lint and performance advisor passed after the hosted migration push. Security advisor reports `auth_leaked_password_protection` as a warning; this is an Auth configuration hardening item, not an app schema or AI smoke failure.
   - Merchant research web search remains disabled by default; enabling it later requires explicitly setting `merchant_research_web_search_enabled = true` and confirming the current Gemini/Search billing posture.
   - No Android-device live AI smoke was exercised in this session.
+
+## Milestone 13 Completion Notes
+
+- Completed on 2026-06-08.
+- Added `gmail-backfill-range`, a service-only Edge Function that validates one active Gmail mailbox with an OAuth secret and queues deterministic `gmail_backfill` jobs for explicit transaction-date slices.
+- The May 2026 runbook body is:
+  - `mailboxId`
+  - `transactionStartDate = 2026-05-01`
+  - `transactionEndDateExclusive = 2026-06-01`
+  - `sliceDays = 1`
+  - `maxCandidatesPerSlice = 200`
+- Range jobs use idempotency keys like `manual-range:2026-05-01:2026-05-02`, store buffered Gmail search dates in payload, and do not duplicate completed or in-flight work.
+- Updated `gmail-sync` so `gmail_backfill` jobs can pass Gmail search date bounds, optional query text, max candidate limits, and strict parsed transaction-date filters before calling `ingest_gmail_transaction`.
+- Updated Gmail OAuth URL generation from `prompt=consent` to `prompt=consent select_account` so the user can choose a Gmail mailbox different from the app login account.
+- Updated deployment tooling and local smoke coverage for `gmail-backfill-range`.
+- Updated `docs/implementation-plan/GMAIL_CONNECTOR.md` and `docs/implementation-plan/MILESTONES.md` with the M13 runbook and completion scope.
+- Hosted deployment:
+  - `gmail-oauth-start` version 2, JWT verification enabled.
+  - `gmail-sync` version 2, JWT verification disabled and service-key protected in code.
+  - `gmail-backfill-range` version 1, JWT verification disabled and service-key protected in code.
+- Verification run:
+  - `curl -L --max-time 20 https://supabase.com/changelog.md`
+  - Supabase MCP docs search for Edge Function auth/testing/current secret-key behavior.
+  - Google Gmail API docs lookup for `users.messages.list` query behavior and Gmail API search date syntax.
+  - `supabase --version`
+  - `supabase functions --help`
+  - `supabase functions deploy --help`
+  - `supabase db --help`
+  - `node --test supabase/functions/tests/gmail_parsers.test.mjs`
+  - `node --check supabase/functions/_shared/parsers/gmail_parsers.mjs`
+  - `deno fmt --check supabase/functions`
+  - `deno lint supabase/functions`
+  - `deno check supabase/functions/_shared/*.ts supabase/functions/*/index.ts`
+  - `deno test supabase/functions/tests/*.ts`
+  - `supabase db reset --local`
+  - `supabase test db --local supabase/tests/gmail_ingestion.sql`
+  - `supabase test db --local supabase/tests`
+  - `supabase db lint --local --schema app_private,public --fail-on error`
+  - `supabase db advisors --local --type security --level warn --fail-on none`
+  - `supabase db advisors --local --type performance --level warn --fail-on none`
+  - Local `supabase functions serve gmail-backfill-range --no-verify-jwt` smoke with a synthetic active mailbox.
+  - Local `gmail-backfill-range` POST queued three one-day jobs for `2026-05-01` through `2026-05-04`; duplicate POST left three range jobs.
+  - `tools/production-readiness/local-smoke.sh`
+  - `flutter analyze`
+  - `flutter test`
+  - `flutter build apk --debug --no-pub`
+  - `supabase functions deploy --project-ref bslsitzdvrdosubbdxpd gmail-oauth-start`
+  - `supabase functions deploy --project-ref bslsitzdvrdosubbdxpd --no-verify-jwt gmail-sync gmail-backfill-range`
+  - Supabase MCP `list_edge_functions`
+  - Hosted `curl -i -X OPTIONS https://bslsitzdvrdosubbdxpd.supabase.co/functions/v1/gmail-backfill-range`
+  - Hosted no-secret POST to `gmail-backfill-range` returned the expected Supabase secret-key error.
+- Known gaps:
+  - The live May 2026 Gmail backfill was not invoked in this implementation session because it requires the user to connect the target Gmail mailbox and use a Supabase secret key from a local or platform secret store.
+  - No new parser templates were added. HDFC credit-card debit and HDFC Bank UPI debit remain the only supported M13 templates.
+  - No iOS, web, production rollout, scheduling, or new parser expansion work was started.
+- Assumptions made:
+  - The handoff's 2026-06-08 confirmation of `bslsitzdvrdosubbdxpd` as dev/staging remains current for M13 deployment.
+  - May means May 2026, with `2026-05-01 <= transaction_date < 2026-06-01`.
+- Mocks created:
+  - Synthetic local-only mailbox/profile/household rows for the `gmail-backfill-range` function smoke; cleaned up after the smoke.
+- Mocks used:
+  - Existing anonymized Gmail parser fixtures.
+  - Synthetic local-only mailbox rows for function enqueue verification.
