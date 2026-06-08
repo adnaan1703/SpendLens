@@ -11,7 +11,8 @@ Read these documents in order at the start of every new implementation thread:
 5. [External Setup Checklist](EXTERNAL_SETUP.md)
 6. [Gmail Connector](GMAIL_CONNECTOR.md)
 7. [Production Readiness](PRODUCTION_READINESS.md)
-8. [Session Handoff](SESSION_HANDOFF.md)
+8. [Transaction Metadata Editing](TRANSACTION_METADATA_EDITING.md)
+9. [Session Handoff](SESSION_HANDOFF.md)
 
 ## Product Summary
 
@@ -43,6 +44,8 @@ This is not a "no backend" architecture. It is a backend without a permanently r
 - Category caps: monthly.
 - Piggy banks: manual ledger accounts in v1.
 - Merchant corrections: apply to matching past and future transactions.
+- Transaction metadata edits: apply to the matching normalized statement merchant
+  and future imports unless a milestone explicitly narrows scope.
 - Email retention: store minimal parsed data only; do not retain raw email bodies by default.
 - AI: backend-mediated Gemini expense Q&A and merchant research suggestions; dev/staging use free-tier-only mode with web search disabled by default.
 - iOS app: deferred, not part of the current implementation milestones.

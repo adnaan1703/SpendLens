@@ -612,6 +612,72 @@ the Android app without privileged client credentials.
 - Category rename, delete, reorder, merge, historical reclassification, and
   standalone subcategory management remain future taxonomy-admin work.
 
+## Milestone 15: Transaction Metadata Editing
+
+### Status
+
+Planned. See `TRANSACTION_METADATA_EDITING.md` for the detailed fresh-context
+execution plan.
+
+### Objective
+
+Allow household writers to edit transaction merchant/category metadata from both
+Review and Transactions while keeping matching historical rows and future
+ingestion rules consistent.
+
+### Tasks
+
+- Add a `security invoker` transaction metadata correction RPC that:
+  - Validates the signed-in profile.
+  - Requires household write access.
+  - Validates selected transaction ownership.
+  - Optionally validates an open review item for the selected transaction.
+  - Trims and validates merchant group/readable merchant name.
+  - Validates selected category/subcategory ownership and relationship.
+  - Applies merchant/category/subcategory/confidence/notes to all transactions
+    for the same normalized statement merchant in the household.
+  - Creates or updates the exact manual mapping rule used for future imports.
+  - Upserts the canonical merchant and merchant alias.
+  - Resolves matching open review items.
+  - Returns changed transaction and resolved review counts.
+- Reuse or wrap the existing merchant-review correction logic to avoid duplicate
+  backend behavior.
+- Extend the Flutter finance repository models and API request/result types for
+  transaction metadata correction.
+- Add a shared metadata editor used by both Review and Transactions.
+- Keep confidence editable with values `high`, `medium`, `low`, and `manual`.
+- Add an Edit action to the Transactions detail bottom sheet.
+- Keep Review saves resolving review items immediately.
+- Reuse existing inline category creation from the metadata editor.
+- Add database and Flutter regression tests for the new behavior.
+
+### External Work
+
+- None.
+
+### Acceptance Criteria
+
+- A user can edit merchant group, category, subcategory, confidence, and notes
+  from the Review tab.
+- A user can edit the same metadata from a transaction detail bottom sheet.
+- Saving applies to matching past transactions for the normalized statement
+  merchant and updates the mapping rule used by future imports.
+- Review saves resolve matching open review items.
+- Viewers and non-members cannot edit transaction metadata.
+- Invalid category/subcategory combinations and blank merchant names are
+  rejected.
+- Flutter does not use service-role credentials or new privileged client code.
+
+### Deferred Scope
+
+- Editing amount, date, source account, transaction type, source fingerprint,
+  raw statement merchant, Gmail source metadata, or parser diagnostics.
+- Merchant-group-wide alias merging beyond the edited normalized statement
+  merchant rule.
+- Category rename, delete, reorder, merge, and standalone subcategory
+  management.
+- iOS and web work.
+
 ## Cross-Milestone Consistency Rules
 
 - Ask the user before proceeding on any undocumented decision. Codex may recommend a default, but must wait for confirmation.
