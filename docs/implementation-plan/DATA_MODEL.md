@@ -260,9 +260,26 @@ Important fields:
 
 Rules:
 
-- User corrections create `manual` confidence rules.
+- User corrections create exact mapping rules for the edited normalized
+  statement merchant. The selected confidence persists on the rule so future
+  imports can apply the same confidence as the historical correction.
 - v1 correction behavior applies to past and future matching transactions.
 - Matching implementation should prefer exact normalized matches before pattern matches.
+
+### Transaction Metadata Correction RPC
+
+`public.apply_transaction_metadata_correction(...)` is the authenticated,
+`security invoker` write contract for editing transaction classification
+metadata from the app. It requires household write access, validates the
+selected transaction and optional open review item, validates
+category/subcategory ownership, trims the merchant group, updates every
+transaction in the household with the selected transaction's normalized
+statement merchant, upserts the canonical merchant and exact alias, creates or
+updates the future exact mapping rule, and resolves matching open review items.
+
+Editable fields are merchant group, category, subcategory, confidence, and
+notes. Money fields, source fields, transaction dates, raw statement merchant,
+source fingerprints, and Gmail/parser diagnostics are not edited by this RPC.
 
 ## Transactions
 
@@ -294,6 +311,11 @@ Important fields:
 - `currency_code text not null default 'INR'`
 - `confidence confidence not null default 'medium'`
 - `notes text`
+- `classification_rule_id uuid references merchant_mapping_rules(id)`
+- `classification_review_item_id uuid references review_items(id)`
+- `classification_updated_by uuid references profiles(id)`
+- `classification_updated_at timestamptz`
+- `classification_note text`
 - `source_fingerprint text not null`
 - `created_at timestamptz`
 - `updated_at timestamptz`

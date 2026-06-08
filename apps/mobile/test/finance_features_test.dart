@@ -136,14 +136,14 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Swiggy Instamart'), findsOneWidget);
-    expect(find.text('Amazon Pay'), findsOneWidget);
+    expect(find.text('Amazon Shopping'), findsOneWidget);
 
     await tester.enterText(find.byType(TextField), 'swiggy');
     await tester.pumpAndSettle();
 
     expect(repository.lastQuery?.searchText, 'swiggy');
     expect(find.text('Swiggy Instamart'), findsOneWidget);
-    expect(find.text('Amazon Pay'), findsNothing);
+    expect(find.text('Amazon Shopping'), findsNothing);
 
     await tester.tap(find.byType(DropdownButtonFormField<String>).first);
     await tester.pumpAndSettle();
@@ -253,16 +253,19 @@ void main() {
     await tester.tap(find.text('Resolve'));
     await tester.pumpAndSettle();
 
-    expect(find.text('Resolve merchant'), findsOneWidget);
+    expect(find.text('Edit metadata'), findsOneWidget);
     expect(find.text('Merchant group'), findsOneWidget);
     expect(find.text('Category'), findsOneWidget);
     expect(find.text('Subcategory'), findsOneWidget);
+    expect(find.text('Confidence'), findsOneWidget);
 
     await tester.enterText(find.byType(TextFormField).first, 'Amazon Shopping');
     await tester.tap(find.text('Save'));
     await tester.pumpAndSettle();
 
     expect(repository.corrections, hasLength(1));
+    expect(repository.corrections.single.transactionId, 'txn-review-1');
+    expect(repository.corrections.single.reviewItemId, 'review-1');
     expect(repository.corrections.single.merchantGroup, 'Amazon Shopping');
     expect(repository.corrections.single.categoryId, 'cat-shopping');
     expect(repository.corrections.single.subcategoryId, 'sub-marketplace');
@@ -318,6 +321,46 @@ void main() {
     expect(repository.corrections, hasLength(1));
     expect(repository.corrections.single.categoryId, 'cat-created-1');
     expect(repository.corrections.single.subcategoryId, 'sub-created-1');
+  });
+
+  testWidgets('transaction detail opens metadata editor', (tester) async {
+    final repository = _FakeFinanceRepository();
+
+    await tester.pumpWidget(
+      _financeTestApp(
+        repository: repository,
+        child: const TransactionsScreen(),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Swiggy Instamart'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Gross spend'), findsOneWidget);
+    expect(find.text('SWIGGY INSTAMART BANGALORE'), findsOneWidget);
+    await tester.ensureVisible(find.widgetWithText(FilledButton, 'Edit'));
+    await tester.tap(find.widgetWithText(FilledButton, 'Edit'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Edit metadata'), findsOneWidget);
+    expect(
+      find.text('Applies to matching statement merchant and future imports.'),
+      findsOneWidget,
+    );
+
+    await tester.enterText(find.byType(TextFormField).first, 'Swiggy Grocery');
+    await tester.tap(find.text('Save'));
+    await tester.pumpAndSettle();
+
+    expect(repository.corrections, hasLength(1));
+    expect(repository.corrections.single.transactionId, 'txn-1');
+    expect(repository.corrections.single.reviewItemId, isNull);
+    expect(repository.corrections.single.merchantGroup, 'Swiggy Grocery');
+    expect(repository.corrections.single.categoryId, 'cat-food');
+    expect(repository.corrections.single.subcategoryId, 'sub-food-delivery');
+    expect(repository.corrections.single.confidence, 'high');
+    expect(find.text('Updated 1 transactions'), findsOneWidget);
   });
 
   testWidgets('settings creates category and subcategory', (tester) async {
@@ -512,7 +555,7 @@ final class _SavedCap {
 
 final class _FakeFinanceRepository implements FinanceRepository {
   final savedCaps = <_SavedCap>[];
-  final corrections = <MerchantCorrectionRequest>[];
+  final corrections = <TransactionMetadataCorrectionRequest>[];
   final createdCategoryRequests = <CategoryCreationRequest>[];
   final expenseQuestions = <ExpenseQuestionRequest>[];
   final researchRequests = <MerchantResearchRequest>[];
@@ -573,9 +616,13 @@ final class _FakeFinanceRepository implements FinanceRepository {
     FinanceTransaction(
       id: 'txn-1',
       transactionDate: DateTime(2026, 3, 12),
-      statementMerchant: 'Swiggy Instamart',
+      statementMerchant: 'SWIGGY INSTAMART BANGALORE',
+      merchantId: 'merchant-swiggy',
+      merchantName: 'Swiggy Instamart',
       categoryId: 'cat-food',
       categoryName: 'Food',
+      subcategoryId: 'sub-food-delivery',
+      subcategoryName: 'Delivery',
       sourceAccountId: 'source-1',
       transactionType: 'debit_spend',
       amount: 1200,
@@ -590,6 +637,8 @@ final class _FakeFinanceRepository implements FinanceRepository {
       id: 'txn-2',
       transactionDate: DateTime(2026, 3, 8),
       statementMerchant: 'Amazon Pay',
+      merchantId: 'merchant-amazon',
+      merchantName: 'Amazon Shopping',
       categoryId: 'cat-fuel',
       categoryName: 'Fuel',
       sourceAccountId: 'source-1',
@@ -608,6 +657,8 @@ final class _FakeFinanceRepository implements FinanceRepository {
       statementMerchant: 'CRED Club',
       categoryId: 'cat-shopping',
       categoryName: 'Shopping',
+      subcategoryId: 'sub-marketplace',
+      subcategoryName: 'Marketplace',
       sourceAccountId: 'source-upi',
       transactionType: 'debit_spend',
       amount: 112937,
@@ -1071,15 +1122,18 @@ final class _FakeFinanceRepository implements FinanceRepository {
   }
 
   @override
-  Future<MerchantCorrectionResult> applyMerchantReviewCorrection(
-    MerchantCorrectionRequest request,
+  Future<TransactionMetadataCorrectionResult>
+  applyTransactionMetadataCorrection(
+    TransactionMetadataCorrectionRequest request,
   ) async {
     corrections.add(request);
     reviewItems.removeWhere((item) => item.id == request.reviewItemId);
 
-    return const MerchantCorrectionResult(
+    return TransactionMetadataCorrectionResult(
       ruleId: 'rule-1',
       merchantId: 'merchant-amazon',
+      categoryId: request.categoryId,
+      subcategoryId: request.subcategoryId,
       updatedTransactionCount: 1,
       resolvedReviewItemCount: 1,
     );

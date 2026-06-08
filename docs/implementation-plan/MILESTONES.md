@@ -616,8 +616,7 @@ the Android app without privileged client credentials.
 
 ### Status
 
-Planned. See `TRANSACTION_METADATA_EDITING.md` for the detailed fresh-context
-execution plan.
+Completed on 2026-06-09.
 
 ### Objective
 

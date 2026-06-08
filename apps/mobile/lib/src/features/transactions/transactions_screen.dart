@@ -5,6 +5,7 @@ import '../../data/repositories/finance_repository.dart';
 import '../../data/repositories/household_repository.dart';
 import '../../shared/widgets/app_page.dart';
 import '../../shared/widgets/empty_state.dart';
+import '../transaction_metadata/transaction_metadata_editor.dart';
 
 class TransactionsScreen extends ConsumerStatefulWidget {
   const TransactionsScreen({super.key});
@@ -37,6 +38,9 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
     final categories = householdId == null
         ? const AsyncValue<List<CategoryOption>>.loading()
         : ref.watch(transactionCategoriesProvider(householdId));
+    final subcategories = householdId == null
+        ? const AsyncValue<List<SubcategoryOption>>.loading()
+        : ref.watch(merchantSubcategoriesProvider(householdId));
     final sourceAccounts = householdId == null
         ? const AsyncValue<List<SourceAccountOption>>.loading()
         : ref.watch(transactionSourceAccountsProvider(householdId));
@@ -124,6 +128,19 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
                       });
                     }
                   : null,
+              onEdit:
+                  householdContext == null ||
+                      !categories.hasValue ||
+                      !subcategories.hasValue
+                  ? null
+                  : (transaction) {
+                      _showMetadataEditor(
+                        householdContext: householdContext,
+                        transaction: transaction,
+                        categories: categories.value ?? const [],
+                        subcategories: subcategories.value ?? const [],
+                      );
+                    },
             ),
             AsyncValue(hasError: true, :final error) => EmptyState(
               icon: Icons.error_outline,
@@ -164,6 +181,51 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
       _dateRange = null;
       _page = 0;
     });
+  }
+
+  Future<void> _showMetadataEditor({
+    required HouseholdContext householdContext,
+    required FinanceTransaction transaction,
+    required List<CategoryOption> categories,
+    required List<SubcategoryOption> subcategories,
+  }) async {
+    final result = await showTransactionMetadataEditor(
+      context: context,
+      ref: ref,
+      initialValue: TransactionMetadataEditorInitialValue(
+        householdId: householdContext.household.id,
+        transactionId: transaction.id,
+        statementMerchant: transaction.statementMerchant,
+        merchantGroup:
+            transaction.merchantName ?? transaction.statementMerchant,
+        categoryId: transaction.categoryId,
+        subcategoryId: transaction.subcategoryId,
+        confidence: transaction.confidence,
+        notes: transaction.notes,
+      ),
+      categories: categories,
+      subcategories: subcategories,
+    );
+
+    if (result == null) return;
+
+    ref.invalidate(transactionsProvider);
+    ref.invalidate(trendReportProvider);
+    ref.invalidate(merchantReviewQueueProvider(householdContext.household.id));
+    ref.invalidate(
+      merchantResearchSuggestionsProvider(householdContext.household.id),
+    );
+    ref.invalidate(dashboardSnapshotProvider);
+
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Updated ${result.updatedTransactionCount} transactions',
+          ),
+        ),
+      );
+    }
   }
 }
 
@@ -316,11 +378,13 @@ class _TransactionList extends StatelessWidget {
     required this.page,
     required this.onPreviousPage,
     required this.onNextPage,
+    required this.onEdit,
   });
 
   final PagedTransactions page;
   final VoidCallback? onPreviousPage;
   final VoidCallback? onNextPage;
+  final ValueChanged<FinanceTransaction>? onEdit;
 
   @override
   Widget build(BuildContext context) {
@@ -337,7 +401,7 @@ class _TransactionList extends StatelessWidget {
         for (final transaction in page.items)
           Padding(
             padding: const EdgeInsets.only(bottom: 8),
-            child: _TransactionCard(transaction: transaction),
+            child: _TransactionCard(transaction: transaction, onEdit: onEdit),
           ),
         const SizedBox(height: 8),
         Row(
@@ -363,9 +427,10 @@ class _TransactionList extends StatelessWidget {
 }
 
 class _TransactionCard extends StatelessWidget {
-  const _TransactionCard({required this.transaction});
+  const _TransactionCard({required this.transaction, required this.onEdit});
 
   final FinanceTransaction transaction;
+  final ValueChanged<FinanceTransaction>? onEdit;
 
   @override
   Widget build(BuildContext context) {
@@ -380,7 +445,7 @@ class _TransactionCard extends StatelessWidget {
       child: ListTile(
         leading: Icon(_iconFor(transaction), color: amountColor),
         title: Text(
-          transaction.statementMerchant,
+          _titleFor(transaction),
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
         ),
@@ -401,9 +466,22 @@ class _TransactionCard extends StatelessWidget {
     return Icons.receipt_long_outlined;
   }
 
+  String _titleFor(FinanceTransaction transaction) {
+    final merchantName = transaction.merchantName?.trim();
+    if (merchantName != null && merchantName.isNotEmpty) {
+      return merchantName;
+    }
+
+    return transaction.statementMerchant;
+  }
+
   String _subtitleFor(FinanceTransaction transaction) {
+    final title = _titleFor(transaction);
+    final statementMerchant = transaction.statementMerchant.trim();
     final pieces = [
       dateString(transaction.transactionDate),
+      if (statementMerchant.isNotEmpty && statementMerchant != title)
+        statementMerchant,
       if (transaction.categoryName != null) transaction.categoryName!,
       transaction.transactionType.replaceAll('_', ' '),
       if (transaction.cardholderName != null) transaction.cardholderName!,
@@ -428,12 +506,18 @@ class _TransactionCard extends StatelessWidget {
               mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
-                  transaction.statementMerchant,
+                  _titleFor(transaction),
                   style: Theme.of(context).textTheme.headlineSmall,
                 ),
                 const SizedBox(height: 4),
                 Text(dateString(transaction.transactionDate)),
                 const SizedBox(height: 20),
+                if (transaction.statementMerchant.trim() !=
+                    _titleFor(transaction))
+                  _DetailRow(
+                    label: 'Statement',
+                    value: transaction.statementMerchant,
+                  ),
                 _DetailRow(
                   label: 'Gross spend',
                   value: formatMoney(transaction.grossSpend),
@@ -455,6 +539,10 @@ class _TransactionCard extends StatelessWidget {
                   value: transaction.categoryName ?? 'Uncategorized',
                 ),
                 _DetailRow(
+                  label: 'Subcategory',
+                  value: transaction.subcategoryName ?? 'Uncategorized',
+                ),
+                _DetailRow(
                   label: 'Type',
                   value: transaction.transactionType.replaceAll('_', ' '),
                 ),
@@ -467,6 +555,20 @@ class _TransactionCard extends StatelessWidget {
                 if (transaction.notes != null &&
                     transaction.notes!.trim().isNotEmpty)
                   _DetailRow(label: 'Notes', value: transaction.notes!),
+                const SizedBox(height: 8),
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: FilledButton.icon(
+                    onPressed: onEdit == null
+                        ? null
+                        : () {
+                            Navigator.of(context).pop();
+                            onEdit!(transaction);
+                          },
+                    icon: const Icon(Icons.edit_outlined),
+                    label: const Text('Edit'),
+                  ),
+                ),
               ],
             ),
           ),

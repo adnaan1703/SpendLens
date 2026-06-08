@@ -971,41 +971,53 @@ final class MerchantReviewItem {
   }
 }
 
-final class MerchantCorrectionRequest {
-  const MerchantCorrectionRequest({
+final class TransactionMetadataCorrectionRequest {
+  const TransactionMetadataCorrectionRequest({
     required this.householdId,
-    required this.reviewItemId,
+    required this.transactionId,
     required this.merchantGroup,
     required this.categoryId,
     required this.subcategoryId,
+    this.reviewItemId,
+    this.confidence = 'manual',
     this.notes,
   });
 
   final String householdId;
-  final String reviewItemId;
+  final String transactionId;
   final String merchantGroup;
   final String categoryId;
   final String subcategoryId;
+  final String? reviewItemId;
+  final String confidence;
   final String? notes;
 }
 
-final class MerchantCorrectionResult {
-  const MerchantCorrectionResult({
+final class TransactionMetadataCorrectionResult {
+  const TransactionMetadataCorrectionResult({
     required this.ruleId,
     required this.merchantId,
+    required this.categoryId,
+    required this.subcategoryId,
     required this.updatedTransactionCount,
     required this.resolvedReviewItemCount,
   });
 
   final String ruleId;
   final String merchantId;
+  final String categoryId;
+  final String subcategoryId;
   final int updatedTransactionCount;
   final int resolvedReviewItemCount;
 
-  factory MerchantCorrectionResult.fromJson(Map<String, dynamic> json) {
-    return MerchantCorrectionResult(
+  factory TransactionMetadataCorrectionResult.fromJson(
+    Map<String, dynamic> json,
+  ) {
+    return TransactionMetadataCorrectionResult(
       ruleId: json['rule_id'] as String,
       merchantId: json['merchant_id'] as String,
+      categoryId: json['category_id'] as String,
+      subcategoryId: json['subcategory_id'] as String,
       updatedTransactionCount: _asInt(json['updated_transaction_count']),
       resolvedReviewItemCount: _asInt(json['resolved_review_item_count']),
     );
@@ -1033,8 +1045,12 @@ final class FinanceTransaction {
     required this.id,
     required this.transactionDate,
     required this.statementMerchant,
+    this.merchantId,
+    this.merchantName,
     this.categoryId,
     this.categoryName,
+    this.subcategoryId,
+    this.subcategoryName,
     this.sourceAccountId,
     required this.transactionType,
     required this.amount,
@@ -1050,8 +1066,12 @@ final class FinanceTransaction {
   final String id;
   final DateTime transactionDate;
   final String statementMerchant;
+  final String? merchantId;
+  final String? merchantName;
   final String? categoryId;
   final String? categoryName;
+  final String? subcategoryId;
+  final String? subcategoryName;
   final String? sourceAccountId;
   final String transactionType;
   final double amount;
@@ -1070,17 +1090,27 @@ final class FinanceTransaction {
   factory FinanceTransaction.fromJson(
     Map<String, dynamic> json, {
     required Map<String, String> categoryNamesById,
+    required Map<String, String> subcategoryNamesById,
+    required Map<String, String> merchantNamesById,
   }) {
+    final merchantId = json['merchant_id'] as String?;
     final categoryId = json['category_id'] as String?;
+    final subcategoryId = json['subcategory_id'] as String?;
 
     return FinanceTransaction(
       id: json['id'] as String,
       transactionDate: _parseDate(json['transaction_date'] as String),
       statementMerchant: json['statement_merchant'] as String,
+      merchantId: merchantId,
+      merchantName: merchantId == null ? null : merchantNamesById[merchantId],
       categoryId: categoryId,
       categoryName: categoryId == null
           ? null
           : categoryNamesById[categoryId] ?? 'Uncategorized',
+      subcategoryId: subcategoryId,
+      subcategoryName: subcategoryId == null
+          ? null
+          : subcategoryNamesById[subcategoryId] ?? 'Uncategorized',
       sourceAccountId: json['source_account_id'] as String?,
       transactionType: json['transaction_type'] as String,
       amount: _asDouble(json['amount']),
@@ -1539,8 +1569,9 @@ abstract interface class FinanceRepository {
 
   Future<TrendReport> fetchTrendReport(TrendQuery query);
 
-  Future<MerchantCorrectionResult> applyMerchantReviewCorrection(
-    MerchantCorrectionRequest request,
+  Future<TransactionMetadataCorrectionResult>
+  applyTransactionMetadataCorrection(
+    TransactionMetadataCorrectionRequest request,
   );
 
   Future<void> saveCategoryCap({
@@ -1937,9 +1968,22 @@ final class SupabaseFinanceRepository implements FinanceRepository {
 
   @override
   Future<PagedTransactions> fetchTransactions(TransactionQuery query) async {
-    final categories = await fetchCategories(householdId: query.householdId);
+    final results = await Future.wait<Object>([
+      fetchCategories(householdId: query.householdId),
+      fetchSubcategories(householdId: query.householdId),
+      fetchMerchants(householdId: query.householdId),
+    ]);
+    final categories = results[0] as List<CategoryOption>;
+    final subcategories = results[1] as List<SubcategoryOption>;
+    final merchants = results[2] as List<MerchantOption>;
     final categoryNamesById = {
       for (final category in categories) category.id: category.name,
+    };
+    final subcategoryNamesById = {
+      for (final subcategory in subcategories) subcategory.id: subcategory.name,
+    };
+    final merchantNamesById = {
+      for (final merchant in merchants) merchant.id: merchant.displayName,
     };
     final sourceAccountIds = await _sourceAccountIdsForType(
       householdId: query.householdId,
@@ -1960,10 +2004,10 @@ final class SupabaseFinanceRepository implements FinanceRepository {
     var request = _client
         .from('transactions')
         .select(
-          'id, transaction_date, statement_merchant, category_id, '
-          'source_account_id, transaction_type, amount, gross_spend, '
-          'refund_amount, net_expense, currency_code, confidence, '
-          'cardholder_name, notes',
+          'id, transaction_date, statement_merchant, merchant_id, '
+          'category_id, subcategory_id, source_account_id, transaction_type, '
+          'amount, gross_spend, refund_amount, net_expense, currency_code, '
+          'confidence, cardholder_name, notes',
         )
         .eq('household_id', query.householdId);
 
@@ -2003,6 +2047,8 @@ final class SupabaseFinanceRepository implements FinanceRepository {
             (row) => FinanceTransaction.fromJson(
               row,
               categoryNamesById: categoryNamesById,
+              subcategoryNamesById: subcategoryNamesById,
+              merchantNamesById: merchantNamesById,
             ),
           )
           .toList(growable: false),
@@ -2055,18 +2101,21 @@ final class SupabaseFinanceRepository implements FinanceRepository {
   }
 
   @override
-  Future<MerchantCorrectionResult> applyMerchantReviewCorrection(
-    MerchantCorrectionRequest request,
+  Future<TransactionMetadataCorrectionResult>
+  applyTransactionMetadataCorrection(
+    TransactionMetadataCorrectionRequest request,
   ) async {
     final rows = await _client.rpc<List<dynamic>>(
-      'apply_merchant_review_correction',
+      'apply_transaction_metadata_correction',
       params: {
         'p_household_id': request.householdId,
-        'p_review_item_id': request.reviewItemId,
+        'p_transaction_id': request.transactionId,
         'p_merchant_group': request.merchantGroup,
         'p_category_id': request.categoryId,
         'p_subcategory_id': request.subcategoryId,
+        'p_confidence': request.confidence,
         'p_notes': request.notes,
+        'p_review_item_id': request.reviewItemId,
       },
     );
 
@@ -2074,7 +2123,7 @@ final class SupabaseFinanceRepository implements FinanceRepository {
       throw StateError('Correction did not return a result.');
     }
 
-    return MerchantCorrectionResult.fromJson(
+    return TransactionMetadataCorrectionResult.fromJson(
       rows.first as Map<String, dynamic>,
     );
   }
@@ -2433,8 +2482,9 @@ final class DisabledFinanceRepository implements FinanceRepository {
   }
 
   @override
-  Future<MerchantCorrectionResult> applyMerchantReviewCorrection(
-    MerchantCorrectionRequest request,
+  Future<TransactionMetadataCorrectionResult>
+  applyTransactionMetadataCorrection(
+    TransactionMetadataCorrectionRequest request,
   ) {
     throw const SupabaseNotConfiguredException();
   }
