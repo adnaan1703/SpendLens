@@ -212,9 +212,6 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
     ref.invalidate(transactionsProvider);
     ref.invalidate(trendReportProvider);
     ref.invalidate(merchantReviewQueueProvider(householdContext.household.id));
-    ref.invalidate(
-      merchantResearchSuggestionsProvider(householdContext.household.id),
-    );
     ref.invalidate(dashboardSnapshotProvider);
 
     if (mounted) {

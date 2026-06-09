@@ -66,9 +66,11 @@ Future<TransactionMetadataCorrectionResult?> showTransactionMetadataEditor({
     context: context,
     builder: (dialogContext) {
       var isSaving = false;
+      var isSuggesting = false;
 
       return StatefulBuilder(
         builder: (context, setDialogState) {
+          final isBusy = isSaving || isSuggesting;
           final availableSubcategories = dialogSubcategories
               .where(
                 (subcategory) => subcategory.categoryId == selectedCategoryId,
@@ -86,16 +88,19 @@ Future<TransactionMetadataCorrectionResult?> showTransactionMetadataEditor({
                     mainAxisSize: MainAxisSize.min,
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
+                      if (isSuggesting) ...[
+                        const LinearProgressIndicator(),
+                        const SizedBox(height: 12),
+                      ],
                       TextFormField(
+                        key: ValueKey('merchant-group-$merchantGroup'),
                         initialValue: merchantGroup,
+                        enabled: !isBusy,
                         textInputAction: TextInputAction.next,
                         decoration: const InputDecoration(
                           labelText: 'Merchant group',
                           prefixIcon: Icon(Icons.storefront_outlined),
                         ),
-                        onChanged: (value) {
-                          merchantGroup = value;
-                        },
                         validator: (value) {
                           if ((value ?? '').trim().isEmpty) {
                             return 'Merchant group is required';
@@ -103,9 +108,13 @@ Future<TransactionMetadataCorrectionResult?> showTransactionMetadataEditor({
 
                           return null;
                         },
+                        onChanged: (value) {
+                          merchantGroup = value;
+                        },
                       ),
                       const SizedBox(height: 12),
                       DropdownButtonFormField<String>(
+                        key: ValueKey('category-$selectedCategoryId'),
                         isExpanded: true,
                         initialValue: selectedCategoryId,
                         decoration: const InputDecoration(
@@ -124,7 +133,7 @@ Future<TransactionMetadataCorrectionResult?> showTransactionMetadataEditor({
 
                           return null;
                         },
-                        onChanged: isSaving
+                        onChanged: isBusy
                             ? null
                             : (value) {
                                 setDialogState(() {
@@ -142,7 +151,7 @@ Future<TransactionMetadataCorrectionResult?> showTransactionMetadataEditor({
                       Align(
                         alignment: Alignment.centerLeft,
                         child: TextButton.icon(
-                          onPressed: isSaving
+                          onPressed: isBusy
                               ? null
                               : () async {
                                   final created =
@@ -207,7 +216,9 @@ Future<TransactionMetadataCorrectionResult?> showTransactionMetadataEditor({
                       ),
                       const SizedBox(height: 12),
                       DropdownButtonFormField<String>(
-                        key: ValueKey(selectedCategoryId),
+                        key: ValueKey(
+                          'subcategory-$selectedCategoryId-$selectedSubcategoryId',
+                        ),
                         isExpanded: true,
                         initialValue: selectedSubcategoryId,
                         decoration: const InputDecoration(
@@ -228,7 +239,7 @@ Future<TransactionMetadataCorrectionResult?> showTransactionMetadataEditor({
 
                           return null;
                         },
-                        onChanged: isSaving
+                        onChanged: isBusy
                             ? null
                             : (value) {
                                 setDialogState(() {
@@ -238,6 +249,7 @@ Future<TransactionMetadataCorrectionResult?> showTransactionMetadataEditor({
                       ),
                       const SizedBox(height: 12),
                       DropdownButtonFormField<String>(
+                        key: ValueKey('confidence-$confidence'),
                         initialValue: confidence,
                         decoration: const InputDecoration(
                           labelText: 'Confidence',
@@ -255,7 +267,7 @@ Future<TransactionMetadataCorrectionResult?> showTransactionMetadataEditor({
                           ),
                           DropdownMenuItem(value: 'low', child: Text('Low')),
                         ],
-                        onChanged: isSaving
+                        onChanged: isBusy
                             ? null
                             : (value) {
                                 confidence = value ?? 'manual';
@@ -263,7 +275,9 @@ Future<TransactionMetadataCorrectionResult?> showTransactionMetadataEditor({
                       ),
                       const SizedBox(height: 12),
                       TextFormField(
+                        key: ValueKey('notes-$notes'),
                         initialValue: notes,
+                        enabled: !isBusy,
                         minLines: 2,
                         maxLines: 4,
                         decoration: const InputDecoration(
@@ -285,14 +299,78 @@ Future<TransactionMetadataCorrectionResult?> showTransactionMetadataEditor({
               ),
             ),
             actions: [
+              TextButton.icon(
+                onPressed: isBusy
+                    ? null
+                    : () async {
+                        setDialogState(() {
+                          isSuggesting = true;
+                        });
+
+                        try {
+                          final suggestion = await ref
+                              .read(financeRepositoryProvider)
+                              .suggestTransactionMetadata(
+                                TransactionMetadataSuggestionRequest(
+                                  householdId: initialValue.householdId,
+                                  transactionId: initialValue.transactionId,
+                                  reviewItemId: initialValue.reviewItemId,
+                                ),
+                              );
+                          final hasCategory = dialogCategories.any(
+                            (category) => category.id == suggestion.categoryId,
+                          );
+                          final hasSubcategory = dialogSubcategories.any(
+                            (subcategory) =>
+                                subcategory.id == suggestion.subcategoryId &&
+                                subcategory.categoryId == suggestion.categoryId,
+                          );
+                          if (!hasCategory || !hasSubcategory) {
+                            throw StateError(
+                              'Suggestion returned a category that is not available in the editor.',
+                            );
+                          }
+
+                          if (!dialogContext.mounted) return;
+                          setDialogState(() {
+                            merchantGroup = suggestion.merchantGroup;
+                            notes = suggestion.notes;
+                            selectedCategoryId = suggestion.categoryId;
+                            selectedSubcategoryId = suggestion.subcategoryId;
+                            confidence = _supportedConfidence(
+                              suggestion.confidence,
+                            );
+                            isSuggesting = false;
+                          });
+                          ref.invalidate(
+                            aiBudgetStatusProvider(initialValue.householdId),
+                          );
+                        } catch (error) {
+                          if (!dialogContext.mounted) return;
+                          setDialogState(() {
+                            isSuggesting = false;
+                          });
+                          ScaffoldMessenger.of(dialogContext).showSnackBar(
+                            SnackBar(content: Text(error.toString())),
+                          );
+                        }
+                      },
+                icon: isSuggesting
+                    ? const SizedBox.square(
+                        dimension: 18,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.auto_awesome),
+                label: const Text('Suggest'),
+              ),
               TextButton(
-                onPressed: isSaving
+                onPressed: isBusy
                     ? null
                     : () => Navigator.of(dialogContext).pop(),
                 child: const Text('Cancel'),
               ),
               FilledButton.icon(
-                onPressed: isSaving
+                onPressed: isBusy
                     ? null
                     : () async {
                         if (!formKey.currentState!.validate()) return;

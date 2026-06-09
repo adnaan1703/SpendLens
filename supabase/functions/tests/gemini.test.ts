@@ -43,6 +43,35 @@ Deno.test("Gemini request includes Google Search only when enabled", () => {
   );
 });
 
+Deno.test("Gemini request includes structured JSON schema when supplied", () => {
+  const schema = {
+    type: "object",
+    properties: {
+      merchant_group: { type: "string" },
+    },
+    required: ["merchant_group"],
+  };
+  const request = buildGeminiGenerateRequest({
+    systemInstruction: "system",
+    prompt: "prompt",
+    responseMimeType: "application/json",
+    responseJsonSchema: schema,
+  });
+  const generationConfig = request.generationConfig as Record<
+    string,
+    unknown
+  >;
+
+  assert(
+    generationConfig.responseMimeType === "application/json",
+    "Response MIME type was not included.",
+  );
+  assert(
+    generationConfig.responseJsonSchema === schema,
+    "Structured response JSON schema was not included.",
+  );
+});
+
 Deno.test("Gemini response parsing returns text and token usage", () => {
   const parsed = parseGeminiTextResponse({
     candidates: [{

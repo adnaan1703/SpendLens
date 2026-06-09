@@ -17,7 +17,8 @@ supabase functions deploy \
   gmail-connector-status \
   gmail-disconnect \
   expense-qa \
-  merchant-research
+  merchant-research \
+  transaction-metadata-suggest
 
 supabase functions deploy \
   --project-ref "$PROJECT_REF" \

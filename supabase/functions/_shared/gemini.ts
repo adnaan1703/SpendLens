@@ -16,6 +16,7 @@ export type GeminiGenerateOptions = {
   prompt: string;
   systemInstruction: string;
   responseMimeType?: string;
+  responseJsonSchema?: Record<string, unknown>;
   webSearchEnabled?: boolean;
 };
 
@@ -56,6 +57,9 @@ export function buildGeminiGenerateRequest(
       temperature: 1,
       ...(options.responseMimeType
         ? { responseMimeType: options.responseMimeType }
+        : {}),
+      ...(options.responseJsonSchema
+        ? { responseJsonSchema: options.responseJsonSchema }
         : {}),
     },
   };

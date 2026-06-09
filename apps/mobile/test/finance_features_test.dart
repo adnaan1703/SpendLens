@@ -259,7 +259,20 @@ void main() {
     expect(find.text('Subcategory'), findsOneWidget);
     expect(find.text('Confidence'), findsOneWidget);
 
-    await tester.enterText(find.byType(TextFormField).first, 'Amazon Shopping');
+    await tester.tap(find.text('Suggest'));
+    await tester.pumpAndSettle();
+
+    expect(repository.metadataSuggestionRequests, hasLength(1));
+    expect(
+      repository.metadataSuggestionRequests.single.transactionId,
+      'txn-review-1',
+    );
+    expect(
+      repository.metadataSuggestionRequests.single.reviewItemId,
+      'review-1',
+    );
+    expect(find.text('Amazon Shopping'), findsOneWidget);
+
     await tester.tap(find.text('Save'));
     await tester.pumpAndSettle();
 
@@ -269,6 +282,8 @@ void main() {
     expect(repository.corrections.single.merchantGroup, 'Amazon Shopping');
     expect(repository.corrections.single.categoryId, 'cat-shopping');
     expect(repository.corrections.single.subcategoryId, 'sub-marketplace');
+    expect(repository.corrections.single.confidence, 'medium');
+    expect(repository.corrections.single.notes, 'Suggested marketplace spend.');
     expect(find.text('No review items'), findsOneWidget);
     expect(find.text('Resolved 1 review items'), findsOneWidget);
   });
@@ -325,6 +340,14 @@ void main() {
 
   testWidgets('transaction detail opens metadata editor', (tester) async {
     final repository = _FakeFinanceRepository();
+    repository.nextMetadataSuggestion =
+        const TransactionMetadataSuggestionResult(
+          merchantGroup: 'Swiggy Grocery',
+          categoryId: 'cat-food',
+          subcategoryId: 'sub-food-delivery',
+          confidence: 'medium',
+          notes: 'Suggested grocery delivery spend.',
+        );
 
     await tester.pumpWidget(
       _financeTestApp(
@@ -349,7 +372,14 @@ void main() {
       findsOneWidget,
     );
 
-    await tester.enterText(find.byType(TextFormField).first, 'Swiggy Grocery');
+    await tester.tap(find.text('Suggest'));
+    await tester.pumpAndSettle();
+
+    expect(repository.metadataSuggestionRequests, hasLength(1));
+    expect(repository.metadataSuggestionRequests.single.transactionId, 'txn-1');
+    expect(repository.metadataSuggestionRequests.single.reviewItemId, isNull);
+    expect(find.text('Swiggy Grocery'), findsOneWidget);
+
     await tester.tap(find.text('Save'));
     await tester.pumpAndSettle();
 
@@ -359,8 +389,41 @@ void main() {
     expect(repository.corrections.single.merchantGroup, 'Swiggy Grocery');
     expect(repository.corrections.single.categoryId, 'cat-food');
     expect(repository.corrections.single.subcategoryId, 'sub-food-delivery');
-    expect(repository.corrections.single.confidence, 'high');
+    expect(repository.corrections.single.confidence, 'medium');
+    expect(
+      repository.corrections.single.notes,
+      'Suggested grocery delivery spend.',
+    );
     expect(find.text('Updated 1 transactions'), findsOneWidget);
+  });
+
+  testWidgets('transaction metadata suggestion failure keeps form values', (
+    tester,
+  ) async {
+    final repository = _FakeFinanceRepository()
+      ..metadataSuggestionError = StateError('AI unavailable');
+
+    await tester.pumpWidget(
+      _financeTestApp(
+        repository: repository,
+        child: const TransactionsScreen(),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Swiggy Instamart'));
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.widgetWithText(FilledButton, 'Edit'));
+    await tester.tap(find.widgetWithText(FilledButton, 'Edit'));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Suggest'));
+    await tester.pumpAndSettle();
+
+    expect(repository.metadataSuggestionRequests, hasLength(1));
+    expect(find.text('Swiggy Instamart'), findsWidgets);
+    expect(find.text('Bad state: AI unavailable'), findsOneWidget);
+    expect(repository.corrections, isEmpty);
   });
 
   testWidgets('settings creates category and subcategory', (tester) async {
@@ -440,10 +503,25 @@ void main() {
     expect(find.text('18 input tokens'), findsOneWidget);
   });
 
-  testWidgets('merchant review researches and shows cached suggestion', (
+  testWidgets('merchant review hides old AI suggestions and research action', (
     tester,
   ) async {
     final repository = _FakeFinanceRepository();
+    repository.merchantResearchSuggestions.add(
+      MerchantResearchSuggestion(
+        id: 'suggestion-1',
+        householdId: 'household-1',
+        reviewItemId: 'review-1',
+        normalizedMerchantName: 'amzn mktp in',
+        statementMerchant: 'AMZN MKTP IN',
+        suggestedDisplayName: 'Amazon Shopping',
+        suggestedCategoryName: 'Shopping',
+        suggestedSubcategoryName: 'Marketplace',
+        confidence: 'medium',
+        status: 'open',
+        createdAt: DateTime(2026, 3, 20, 12),
+      ),
+    );
 
     await tester.pumpWidget(
       _financeTestApp(
@@ -453,13 +531,10 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    await tester.tap(find.text('Research'));
-    await tester.pumpAndSettle();
-
-    expect(repository.researchRequests, hasLength(1));
-    expect(find.text('AI suggestions'), findsOneWidget);
-    expect(find.text('Amazon Shopping'), findsOneWidget);
-    expect(find.text('Shopping / Marketplace / medium'), findsOneWidget);
+    expect(find.text('Research'), findsNothing);
+    expect(find.text('AI suggestions'), findsNothing);
+    expect(find.text('Amazon Shopping'), findsNothing);
+    expect(repository.researchRequests, isEmpty);
   });
 
   testWidgets('piggy banks create entries and update target progress', (
@@ -559,9 +634,12 @@ final class _FakeFinanceRepository implements FinanceRepository {
   final createdCategoryRequests = <CategoryCreationRequest>[];
   final expenseQuestions = <ExpenseQuestionRequest>[];
   final researchRequests = <MerchantResearchRequest>[];
+  final metadataSuggestionRequests = <TransactionMetadataSuggestionRequest>[];
   final piggyBanks = <PiggyBankSummary>[];
   final piggyEntries = <PiggyBankEntry>[];
   final merchantResearchSuggestions = <MerchantResearchSuggestion>[];
+  TransactionMetadataSuggestionResult? nextMetadataSuggestion;
+  Object? metadataSuggestionError;
   final aiStatus = AiBudgetStatus(
     householdId: 'household-1',
     provider: 'gemini',
@@ -1137,6 +1215,24 @@ final class _FakeFinanceRepository implements FinanceRepository {
       updatedTransactionCount: 1,
       resolvedReviewItemCount: 1,
     );
+  }
+
+  @override
+  Future<TransactionMetadataSuggestionResult> suggestTransactionMetadata(
+    TransactionMetadataSuggestionRequest request,
+  ) async {
+    metadataSuggestionRequests.add(request);
+    final error = metadataSuggestionError;
+    if (error != null) throw error;
+
+    return nextMetadataSuggestion ??
+        const TransactionMetadataSuggestionResult(
+          merchantGroup: 'Amazon Shopping',
+          categoryId: 'cat-shopping',
+          subcategoryId: 'sub-marketplace',
+          confidence: 'medium',
+          notes: 'Suggested marketplace spend.',
+        );
   }
 
   @override

@@ -26,9 +26,6 @@ class MerchantReviewScreen extends ConsumerWidget {
     final subcategories = householdId == null
         ? const AsyncValue<List<SubcategoryOption>>.loading()
         : ref.watch(merchantSubcategoriesProvider(householdId));
-    final researchSuggestions = householdId == null
-        ? const AsyncValue<List<MerchantResearchSuggestion>>.loading()
-        : ref.watch(merchantResearchSuggestionsProvider(householdId));
 
     return AppPage(
       title: 'Merchant Review',
@@ -40,9 +37,6 @@ class MerchantReviewScreen extends ConsumerWidget {
               ? null
               : () {
                   ref.invalidate(merchantReviewQueueProvider(householdId));
-                  ref.invalidate(
-                    merchantResearchSuggestionsProvider(householdId),
-                  );
                 },
           icon: const Icon(Icons.refresh),
         ),
@@ -50,19 +44,8 @@ class MerchantReviewScreen extends ConsumerWidget {
       child: switch (reviewItems) {
         AsyncValue(:final value?) => _MerchantReviewContent(
           items: value,
-          suggestions: researchSuggestions.value ?? const [],
           categories: categories.value ?? const [],
           optionsReady: categories.hasValue && subcategories.hasValue,
-          onResearch: householdContext == null
-              ? null
-              : (item) {
-                  _researchMerchant(
-                    context: context,
-                    ref: ref,
-                    householdContext: householdContext,
-                    item: item,
-                  );
-                },
           onCorrect: householdContext == null
               ? null
               : (item) {
@@ -84,41 +67,6 @@ class MerchantReviewScreen extends ConsumerWidget {
         _ => const Center(child: CircularProgressIndicator()),
       },
     );
-  }
-
-  Future<void> _researchMerchant({
-    required BuildContext context,
-    required WidgetRef ref,
-    required HouseholdContext householdContext,
-    required MerchantReviewItem item,
-  }) async {
-    try {
-      final suggestion = await ref
-          .read(financeRepositoryProvider)
-          .researchMerchant(
-            MerchantResearchRequest(
-              householdId: householdContext.household.id,
-              reviewItemId: item.id,
-              statementMerchant: item.statementMerchant,
-            ),
-          );
-      ref.invalidate(
-        merchantResearchSuggestionsProvider(householdContext.household.id),
-      );
-      ref.invalidate(aiBudgetStatusProvider(householdContext.household.id));
-
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Suggested ${suggestion.title}')),
-        );
-      }
-    } catch (error) {
-      if (context.mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text(error.toString())));
-      }
-    }
   }
 
   Future<void> _showCorrectionDialog({
@@ -152,9 +100,6 @@ class MerchantReviewScreen extends ConsumerWidget {
     ref.invalidate(transactionsProvider);
     ref.invalidate(trendReportProvider);
     ref.invalidate(
-      merchantResearchSuggestionsProvider(householdContext.household.id),
-    );
-    ref.invalidate(
       dashboardSnapshotProvider(
         FinanceMonthRequest(householdId: householdContext.household.id),
       ),
@@ -175,18 +120,14 @@ class MerchantReviewScreen extends ConsumerWidget {
 class _MerchantReviewContent extends StatelessWidget {
   const _MerchantReviewContent({
     required this.items,
-    required this.suggestions,
     required this.categories,
     required this.optionsReady,
-    required this.onResearch,
     required this.onCorrect,
   });
 
   final List<MerchantReviewItem> items;
-  final List<MerchantResearchSuggestion> suggestions;
   final List<CategoryOption> categories;
   final bool optionsReady;
-  final ValueChanged<MerchantReviewItem>? onResearch;
   final ValueChanged<MerchantReviewItem>? onCorrect;
 
   @override
@@ -221,18 +162,12 @@ class _MerchantReviewContent extends StatelessWidget {
           ],
         ),
         const SizedBox(height: 20),
-        if (suggestions.isNotEmpty) ...[
-          _ResearchSuggestionList(suggestions: suggestions),
-          const SizedBox(height: 20),
-        ],
         for (final item in items)
           Padding(
             padding: const EdgeInsets.only(bottom: 10),
             child: _ReviewItemCard(
               item: item,
               canCorrect: optionsReady && onCorrect != null,
-              canResearch: onResearch != null,
-              onResearch: onResearch == null ? null : () => onResearch!(item),
               onCorrect: onCorrect == null ? null : () => onCorrect!(item),
             ),
           ),
@@ -245,15 +180,11 @@ class _ReviewItemCard extends StatelessWidget {
   const _ReviewItemCard({
     required this.item,
     required this.canCorrect,
-    required this.canResearch,
-    required this.onResearch,
     required this.onCorrect,
   });
 
   final MerchantReviewItem item;
   final bool canCorrect;
-  final bool canResearch;
-  final VoidCallback? onResearch;
   final VoidCallback? onCorrect;
 
   @override
@@ -330,11 +261,6 @@ class _ReviewItemCard extends StatelessWidget {
               child: Wrap(
                 spacing: 8,
                 children: [
-                  OutlinedButton.icon(
-                    onPressed: canResearch ? onResearch : null,
-                    icon: const Icon(Icons.auto_awesome_outlined),
-                    label: const Text('Research'),
-                  ),
                   FilledButton.icon(
                     onPressed: canCorrect ? onCorrect : null,
                     icon: const Icon(Icons.check_circle_outline),
@@ -343,46 +269,6 @@ class _ReviewItemCard extends StatelessWidget {
                 ],
               ),
             ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _ResearchSuggestionList extends StatelessWidget {
-  const _ResearchSuggestionList({required this.suggestions});
-
-  final List<MerchantResearchSuggestion> suggestions;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Row(
-              children: [
-                const Icon(Icons.auto_awesome_outlined),
-                const SizedBox(width: 10),
-                Text('AI suggestions', style: theme.textTheme.titleMedium),
-              ],
-            ),
-            const SizedBox(height: 12),
-            for (final suggestion in suggestions)
-              Padding(
-                padding: const EdgeInsets.only(bottom: 8),
-                child: ListTile(
-                  contentPadding: EdgeInsets.zero,
-                  leading: const Icon(Icons.storefront_outlined),
-                  title: Text(suggestion.title),
-                  subtitle: Text(suggestion.subtitle),
-                ),
-              ),
           ],
         ),
       ),

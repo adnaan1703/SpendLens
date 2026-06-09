@@ -993,6 +993,46 @@ final class TransactionMetadataCorrectionRequest {
   final String? notes;
 }
 
+final class TransactionMetadataSuggestionRequest {
+  const TransactionMetadataSuggestionRequest({
+    required this.householdId,
+    required this.transactionId,
+    this.reviewItemId,
+  });
+
+  final String householdId;
+  final String transactionId;
+  final String? reviewItemId;
+}
+
+final class TransactionMetadataSuggestionResult {
+  const TransactionMetadataSuggestionResult({
+    required this.merchantGroup,
+    required this.categoryId,
+    required this.subcategoryId,
+    required this.confidence,
+    required this.notes,
+  });
+
+  final String merchantGroup;
+  final String categoryId;
+  final String subcategoryId;
+  final String confidence;
+  final String notes;
+
+  factory TransactionMetadataSuggestionResult.fromJson(
+    Map<String, dynamic> json,
+  ) {
+    return TransactionMetadataSuggestionResult(
+      merchantGroup: json['merchant_group'] as String,
+      categoryId: json['category_id'] as String,
+      subcategoryId: json['subcategory_id'] as String,
+      confidence: json['confidence'] as String,
+      notes: json['notes'] as String? ?? '',
+    );
+  }
+}
+
 final class TransactionMetadataCorrectionResult {
   const TransactionMetadataCorrectionResult({
     required this.ruleId,
@@ -1574,6 +1614,10 @@ abstract interface class FinanceRepository {
     TransactionMetadataCorrectionRequest request,
   );
 
+  Future<TransactionMetadataSuggestionResult> suggestTransactionMetadata(
+    TransactionMetadataSuggestionRequest request,
+  );
+
   Future<void> saveCategoryCap({
     required String householdId,
     required String profileId,
@@ -2129,6 +2173,30 @@ final class SupabaseFinanceRepository implements FinanceRepository {
   }
 
   @override
+  Future<TransactionMetadataSuggestionResult> suggestTransactionMetadata(
+    TransactionMetadataSuggestionRequest request,
+  ) async {
+    final response = await _client.functions.invoke(
+      'transaction-metadata-suggest',
+      body: {
+        'household_id': request.householdId,
+        'transaction_id': request.transactionId,
+        if (request.reviewItemId != null)
+          'review_item_id': request.reviewItemId,
+      },
+    );
+    final data = response.data as Map<String, dynamic>;
+    final suggestion = data['suggestion'] as Map<String, dynamic>?;
+    if (suggestion == null) {
+      throw StateError(
+        'Transaction metadata suggestion did not return a suggestion.',
+      );
+    }
+
+    return TransactionMetadataSuggestionResult.fromJson(suggestion);
+  }
+
+  @override
   Future<void> saveCategoryCap({
     required String householdId,
     required String profileId,
@@ -2485,6 +2553,13 @@ final class DisabledFinanceRepository implements FinanceRepository {
   Future<TransactionMetadataCorrectionResult>
   applyTransactionMetadataCorrection(
     TransactionMetadataCorrectionRequest request,
+  ) {
+    throw const SupabaseNotConfiguredException();
+  }
+
+  @override
+  Future<TransactionMetadataSuggestionResult> suggestTransactionMetadata(
+    TransactionMetadataSuggestionRequest request,
   ) {
     throw const SupabaseNotConfiguredException();
   }

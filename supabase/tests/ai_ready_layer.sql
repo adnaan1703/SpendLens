@@ -3,7 +3,7 @@ begin;
 create extension if not exists pgtap with schema extensions;
 set search_path = public, extensions;
 
-select plan(17);
+select plan(19);
 
 select is(
   has_table_privilege('authenticated', 'public.ai_usage_events', 'insert'),
@@ -185,6 +185,18 @@ select lives_ok(
   'zero-cost free-tier AI call is allowed with the development cap'
 );
 
+select lives_ok(
+  $$
+    select *
+    from public.check_ai_budget(
+      '34000000-0000-0000-0000-000000000001',
+      'transaction_metadata_suggestion',
+      0
+    )
+  $$,
+  'transaction metadata suggestions are allowed by the AI budget check'
+);
+
 select throws_ok(
   $$
     select *
@@ -227,6 +239,43 @@ values (
   'gemini-3.5-flash',
   now(),
   now()
+);
+
+insert into public.ai_jobs (
+  id,
+  household_id,
+  profile_id,
+  job_type,
+  status,
+  input,
+  output,
+  provider,
+  model,
+  started_at,
+  completed_at
+)
+values (
+  'a4000000-0000-0000-0000-000000000002',
+  '34000000-0000-0000-0000-000000000001',
+  '24000000-0000-0000-0000-000000000001',
+  'transaction_metadata_suggestion',
+  'completed',
+  jsonb_build_object('transaction_id', '64000000-0000-0000-0000-000000000001'),
+  jsonb_build_object('suggestion', jsonb_build_object('merchant_group', 'Amazon Shopping')),
+  'gemini',
+  'gemini-3.5-flash',
+  now(),
+  now()
+);
+
+select is(
+  (
+    select job_type
+    from public.ai_jobs
+    where id = 'a4000000-0000-0000-0000-000000000002'
+  ),
+  'transaction_metadata_suggestion',
+  'AI jobs accept transaction metadata suggestions'
 );
 
 select public.record_ai_usage_event(
