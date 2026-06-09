@@ -482,6 +482,88 @@ void main() {
     expect(find.text('Resolved 1 review items'), findsOneWidget);
   });
 
+  testWidgets('merchant review hides Gmail parse failures card when empty', (
+    tester,
+  ) async {
+    final repository = _FakeFinanceRepository();
+
+    await tester.pumpWidget(
+      _financeTestApp(
+        repository: repository,
+        child: const MerchantReviewScreen(),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Gmail parse failures'), findsNothing);
+    expect(find.text('AMZN MKTP IN'), findsOneWidget);
+  });
+
+  testWidgets('merchant review shows Gmail parse failures card', (
+    tester,
+  ) async {
+    final repository = _FakeFinanceRepository()
+      ..gmailParseFailures.add(_gmailParseFailure());
+
+    await tester.pumpWidget(
+      _financeTestApp(
+        repository: repository,
+        child: const MerchantReviewScreen(),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Gmail parse failures'), findsOneWidget);
+    expect(find.text('1 recent failure'), findsOneWidget);
+    expect(find.text('AMZN MKTP IN'), findsOneWidget);
+  });
+
+  testWidgets(
+    'merchant review shows Gmail parse failures without queue items',
+    (tester) async {
+      final repository = _FakeFinanceRepository()
+        ..reviewItems.clear()
+        ..gmailParseFailures.add(_gmailParseFailure());
+
+      await tester.pumpWidget(
+        _financeTestApp(
+          repository: repository,
+          child: const MerchantReviewScreen(),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('Gmail parse failures'), findsOneWidget);
+      expect(find.text('No review items'), findsNothing);
+    },
+  );
+
+  testWidgets('merchant review renders Gmail parse failure details', (
+    tester,
+  ) async {
+    final repository = _FakeFinanceRepository()
+      ..gmailParseFailures.add(_gmailParseFailure());
+
+    await tester.pumpWidget(
+      _financeTestApp(
+        repository: repository,
+        child: const MerchantReviewScreen(),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(
+      find.text('A payment was made using your Credit Card'),
+      findsOneWidget,
+    );
+    expect(find.text('Credit card'), findsOneWidget);
+    expect(find.text('HDFC debit pattern not matched'), findsOneWidget);
+    expect(find.text('hdfc_credit_card_debit 1.0.0'), findsOneWidget);
+    expect(find.text('Received 2026-06-08 10:30'), findsOneWidget);
+    expect(find.text('Message gmail-failure-message-1'), findsOneWidget);
+    expect(find.text('Thread gmail-failure-thread-1'), findsOneWidget);
+  });
+
   testWidgets('merchant review creates and selects a category inline', (
     tester,
   ) async {
@@ -881,6 +963,7 @@ final class _FakeFinanceRepository implements FinanceRepository {
       lastSyncAt: DateTime(2026, 6, 7, 9),
     ),
   ];
+  final gmailParseFailures = <GmailParseFailure>[];
   var startedGmailConnector = false;
   String? disconnectedMailboxId;
   TransactionQuery? lastQuery;
@@ -1197,6 +1280,13 @@ final class _FakeFinanceRepository implements FinanceRepository {
   }
 
   @override
+  Future<List<GmailParseFailure>> fetchGmailParseFailures({
+    required String householdId,
+  }) async {
+    return gmailParseFailures;
+  }
+
+  @override
   Future<List<GmailConnectorStatus>> fetchGmailConnectorStatus({
     required String householdId,
   }) async {
@@ -1505,6 +1595,21 @@ extension _FirstOrNull<T> on Iterable<T> {
 
     return null;
   }
+}
+
+GmailParseFailure _gmailParseFailure() {
+  return GmailParseFailure(
+    failureId: 'gmail-failure-1',
+    candidateType: 'credit_card',
+    sourceReceivedAt: DateTime(2026, 6, 8, 10, 30),
+    senderEmail: 'alerts@hdfcbank.bank.in',
+    subject: 'A payment was made using your Credit Card',
+    parserName: 'hdfc_credit_card_debit',
+    parserVersion: '1.0.0',
+    reasonCode: 'hdfc_debit_pattern_not_matched',
+    sourceMessageId: 'gmail-failure-message-1',
+    sourceThreadId: 'gmail-failure-thread-1',
+  );
 }
 
 TrendReportTransaction _trendTransaction({

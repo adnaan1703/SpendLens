@@ -66,6 +66,13 @@ final merchantReviewQueueProvider =
           .fetchMerchantReviewQueue(householdId: householdId);
     });
 
+final gmailParseFailuresProvider =
+    FutureProvider.family<List<GmailParseFailure>, String>((ref, householdId) {
+      return ref
+          .watch(financeRepositoryProvider)
+          .fetchGmailParseFailures(householdId: householdId);
+    });
+
 final gmailConnectorStatusProvider =
     FutureProvider.family<List<GmailConnectorStatus>, String>((
       ref,
@@ -1378,6 +1385,68 @@ final class GmailConnectorStatus {
   }
 }
 
+final class GmailParseFailure {
+  const GmailParseFailure({
+    required this.failureId,
+    required this.candidateType,
+    required this.sourceReceivedAt,
+    required this.senderEmail,
+    required this.subject,
+    required this.parserName,
+    required this.parserVersion,
+    required this.sourceMessageId,
+    this.reasonCode,
+    this.sourceThreadId,
+  });
+
+  final String failureId;
+  final String candidateType;
+  final DateTime sourceReceivedAt;
+  final String senderEmail;
+  final String subject;
+  final String parserName;
+  final String parserVersion;
+  final String? reasonCode;
+  final String sourceMessageId;
+  final String? sourceThreadId;
+
+  String get candidateTypeLabel {
+    return switch (candidateType) {
+      'credit_card' => 'Credit card',
+      'upi' => 'UPI',
+      'bank_account' => 'Bank account',
+      'wallet' => 'Wallet',
+      'cash' => 'Cash',
+      _ => _labelFromCode(candidateType),
+    };
+  }
+
+  String get parserLabel => '$parserName $parserVersion';
+
+  String get reasonLabel {
+    return switch (reasonCode) {
+      null || '' => 'No parser reason recorded',
+      'hdfc_debit_pattern_not_matched' => 'HDFC debit pattern not matched',
+      _ => _labelFromCode(reasonCode!),
+    };
+  }
+
+  factory GmailParseFailure.fromJson(Map<String, dynamic> json) {
+    return GmailParseFailure(
+      failureId: json['failure_id'] as String,
+      candidateType: json['candidate_type'] as String,
+      sourceReceivedAt: DateTime.parse(json['source_received_at'] as String),
+      senderEmail: json['sender_email'] as String,
+      subject: json['subject'] as String,
+      parserName: json['parser_name'] as String,
+      parserVersion: json['parser_version'] as String,
+      reasonCode: json['reason_code'] as String?,
+      sourceMessageId: json['source_message_id'] as String,
+      sourceThreadId: json['source_thread_id'] as String?,
+    );
+  }
+}
+
 final class AiBudgetStatus {
   const AiBudgetStatus({
     required this.householdId,
@@ -1504,6 +1573,10 @@ abstract interface class FinanceRepository {
   Future<List<MerchantOption>> fetchMerchants({required String householdId});
 
   Future<List<MerchantReviewItem>> fetchMerchantReviewQueue({
+    required String householdId,
+  });
+
+  Future<List<GmailParseFailure>> fetchGmailParseFailures({
     required String householdId,
   });
 
@@ -1723,6 +1796,21 @@ final class SupabaseFinanceRepository implements FinanceRepository {
         .order('created_at');
 
     return rows.map(MerchantReviewItem.fromJson).toList(growable: false);
+  }
+
+  @override
+  Future<List<GmailParseFailure>> fetchGmailParseFailures({
+    required String householdId,
+  }) async {
+    final rows = await _client.rpc<List<dynamic>>(
+      'list_gmail_parse_failures',
+      params: {'p_household_id': householdId},
+    );
+
+    return rows
+        .cast<Map<String, dynamic>>()
+        .map(GmailParseFailure.fromJson)
+        .toList(growable: false);
   }
 
   @override
@@ -2380,6 +2468,13 @@ final class DisabledFinanceRepository implements FinanceRepository {
   }
 
   @override
+  Future<List<GmailParseFailure>> fetchGmailParseFailures({
+    required String householdId,
+  }) {
+    throw const SupabaseNotConfiguredException();
+  }
+
+  @override
   Future<List<GmailConnectorStatus>> fetchGmailConnectorStatus({
     required String householdId,
   }) {
@@ -2732,6 +2827,23 @@ String? _monthKey(DateTime? date) {
 
 String? _dateKey(DateTime? date) {
   return date == null ? null : dateString(date);
+}
+
+String _labelFromCode(String code) {
+  final words = code
+      .split('_')
+      .where((word) => word.trim().isNotEmpty)
+      .toList(growable: false);
+  if (words.isEmpty) return code;
+
+  return words
+      .map((word) {
+        final lower = word.toLowerCase();
+        if (lower == 'upi' || lower == 'hdfc') return lower.toUpperCase();
+
+        return '${lower[0].toUpperCase()}${lower.substring(1)}';
+      })
+      .join(' ');
 }
 
 String _csvRow(List<Object?> cells) {

@@ -20,6 +20,9 @@ class MerchantReviewScreen extends ConsumerWidget {
     final reviewItems = householdId == null
         ? const AsyncValue<List<MerchantReviewItem>>.loading()
         : ref.watch(merchantReviewQueueProvider(householdId));
+    final parseFailures = householdId == null
+        ? const AsyncValue<List<GmailParseFailure>>.loading()
+        : ref.watch(gmailParseFailuresProvider(householdId));
     final categories = householdId == null
         ? const AsyncValue<List<CategoryOption>>.loading()
         : ref.watch(transactionCategoriesProvider(householdId));
@@ -37,35 +40,71 @@ class MerchantReviewScreen extends ConsumerWidget {
               ? null
               : () {
                   ref.invalidate(merchantReviewQueueProvider(householdId));
+                  ref.invalidate(gmailParseFailuresProvider(householdId));
                 },
           icon: const Icon(Icons.refresh),
         ),
       ],
-      child: switch (reviewItems) {
-        AsyncValue(:final value?) => _MerchantReviewContent(
-          items: value,
-          categories: categories.value ?? const [],
-          optionsReady: categories.hasValue && subcategories.hasValue,
-          onCorrect: householdContext == null
-              ? null
-              : (item) {
-                  _showCorrectionDialog(
-                    context: context,
-                    ref: ref,
-                    householdContext: householdContext,
-                    item: item,
-                    categories: categories.value ?? const [],
-                    subcategories: subcategories.value ?? const [],
-                  );
-                },
-        ),
-        AsyncValue(hasError: true, :final error) => EmptyState(
-          icon: Icons.error_outline,
-          title: 'Review queue unavailable',
-          message: error.toString(),
-        ),
-        _ => const Center(child: CircularProgressIndicator()),
-      },
+      child: _reviewBody(
+        reviewItems: reviewItems,
+        parseFailures: parseFailures,
+        categories: categories,
+        subcategories: subcategories,
+        householdContext: householdContext,
+        context: context,
+        ref: ref,
+      ),
+    );
+  }
+
+  Widget _reviewBody({
+    required AsyncValue<List<MerchantReviewItem>> reviewItems,
+    required AsyncValue<List<GmailParseFailure>> parseFailures,
+    required AsyncValue<List<CategoryOption>> categories,
+    required AsyncValue<List<SubcategoryOption>> subcategories,
+    required HouseholdContext? householdContext,
+    required BuildContext context,
+    required WidgetRef ref,
+  }) {
+    if (reviewItems.hasError) {
+      return EmptyState(
+        icon: Icons.error_outline,
+        title: 'Review queue unavailable',
+        message: reviewItems.error.toString(),
+      );
+    }
+
+    if (parseFailures.hasError) {
+      return EmptyState(
+        icon: Icons.error_outline,
+        title: 'Gmail parse failures unavailable',
+        message: parseFailures.error.toString(),
+      );
+    }
+
+    final items = reviewItems.value;
+    final failures = parseFailures.value;
+    if (items == null || failures == null) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    return _MerchantReviewContent(
+      items: items,
+      parseFailures: failures,
+      categories: categories.value ?? const [],
+      optionsReady: categories.hasValue && subcategories.hasValue,
+      onCorrect: householdContext == null
+          ? null
+          : (item) {
+              _showCorrectionDialog(
+                context: context,
+                ref: ref,
+                householdContext: householdContext,
+                item: item,
+                categories: categories.value ?? const [],
+                subcategories: subcategories.value ?? const [],
+              );
+            },
     );
   }
 
@@ -120,19 +159,21 @@ class MerchantReviewScreen extends ConsumerWidget {
 class _MerchantReviewContent extends StatelessWidget {
   const _MerchantReviewContent({
     required this.items,
+    required this.parseFailures,
     required this.categories,
     required this.optionsReady,
     required this.onCorrect,
   });
 
   final List<MerchantReviewItem> items;
+  final List<GmailParseFailure> parseFailures;
   final List<CategoryOption> categories;
   final bool optionsReady;
   final ValueChanged<MerchantReviewItem>? onCorrect;
 
   @override
   Widget build(BuildContext context) {
-    if (items.isEmpty) {
+    if (items.isEmpty && parseFailures.isEmpty) {
       return const EmptyState(
         icon: Icons.rule_folder_outlined,
         title: 'No review items',
@@ -143,35 +184,174 @@ class _MerchantReviewContent extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Wrap(
-          spacing: 12,
-          runSpacing: 12,
-          children: [
-            MetricCard(
-              label: 'Open reviews',
-              value: items.length.toString(),
-              icon: Icons.rule_folder_outlined,
-              supportingText: items.length == 1 ? 'Item' : 'Items',
+        if (parseFailures.isNotEmpty) ...[
+          _GmailParseFailuresCard(failures: parseFailures),
+          if (items.isNotEmpty) const SizedBox(height: 20),
+        ],
+        if (items.isNotEmpty) ...[
+          Wrap(
+            spacing: 12,
+            runSpacing: 12,
+            children: [
+              MetricCard(
+                label: 'Open reviews',
+                value: items.length.toString(),
+                icon: Icons.rule_folder_outlined,
+                supportingText: items.length == 1 ? 'Item' : 'Items',
+              ),
+              MetricCard(
+                label: 'Correction data',
+                value: optionsReady ? 'Ready' : 'Loading',
+                icon: Icons.tune_outlined,
+                supportingText: '${categories.length} categories',
+              ),
+            ],
+          ),
+          const SizedBox(height: 20),
+          for (final item in items)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 10),
+              child: _ReviewItemCard(
+                item: item,
+                canCorrect: optionsReady && onCorrect != null,
+                onCorrect: onCorrect == null ? null : () => onCorrect!(item),
+              ),
             ),
-            MetricCard(
-              label: 'Correction data',
-              value: optionsReady ? 'Ready' : 'Loading',
-              icon: Icons.tune_outlined,
-              supportingText: '${categories.length} categories',
+        ],
+      ],
+    );
+  }
+}
+
+class _GmailParseFailuresCard extends StatelessWidget {
+  const _GmailParseFailuresCard({required this.failures});
+
+  final List<GmailParseFailure> failures;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Icon(
+                  Icons.mark_email_unread_outlined,
+                  color: theme.colorScheme.error,
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Gmail parse failures',
+                        style: theme.textTheme.titleMedium,
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        '${failures.length} recent '
+                        '${failures.length == 1 ? 'failure' : 'failures'}',
+                        style: theme.textTheme.bodyMedium,
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 14),
+            for (final failure in failures) ...[
+              _GmailParseFailureRow(failure: failure),
+              if (failure != failures.last) const Divider(height: 24),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _GmailParseFailureRow extends StatelessWidget {
+  const _GmailParseFailureRow({required this.failure});
+
+  final GmailParseFailure failure;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(failure.subject, style: theme.textTheme.titleSmall),
+        const SizedBox(height: 8),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: [
+            _InfoChip(
+              icon: Icons.account_balance_wallet_outlined,
+              label: failure.candidateTypeLabel,
+            ),
+            _InfoChip(
+              icon: Icons.report_problem_outlined,
+              label: failure.reasonLabel,
+            ),
+            _InfoChip(
+              icon: Icons.integration_instructions_outlined,
+              label: failure.parserLabel,
             ),
           ],
         ),
-        const SizedBox(height: 20),
-        for (final item in items)
-          Padding(
-            padding: const EdgeInsets.only(bottom: 10),
-            child: _ReviewItemCard(
-              item: item,
-              canCorrect: optionsReady && onCorrect != null,
-              onCorrect: onCorrect == null ? null : () => onCorrect!(item),
-            ),
+        const SizedBox(height: 10),
+        _FailureDetailLine(
+          icon: Icons.schedule_outlined,
+          label: 'Received ${_formatReceivedAt(failure.sourceReceivedAt)}',
+        ),
+        _FailureDetailLine(
+          icon: Icons.alternate_email_outlined,
+          label: failure.senderEmail,
+        ),
+        _FailureDetailLine(
+          icon: Icons.email_outlined,
+          label: 'Message ${failure.sourceMessageId}',
+        ),
+        if (failure.sourceThreadId != null)
+          _FailureDetailLine(
+            icon: Icons.forum_outlined,
+            label: 'Thread ${failure.sourceThreadId}',
           ),
       ],
+    );
+  }
+}
+
+class _FailureDetailLine extends StatelessWidget {
+  const _FailureDetailLine({required this.icon, required this.label});
+
+  final IconData icon;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return Padding(
+      padding: const EdgeInsets.only(top: 4),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(icon, size: 16, color: theme.colorScheme.onSurfaceVariant),
+          const SizedBox(width: 8),
+          Expanded(child: Text(label, style: theme.textTheme.bodySmall)),
+        ],
+      ),
     );
   }
 }
@@ -292,4 +472,14 @@ class _InfoChip extends StatelessWidget {
       backgroundColor: theme.colorScheme.surfaceContainerHighest,
     );
   }
+}
+
+String _formatReceivedAt(DateTime value) {
+  final local = value.toLocal();
+  final month = local.month.toString().padLeft(2, '0');
+  final day = local.day.toString().padLeft(2, '0');
+  final hour = local.hour.toString().padLeft(2, '0');
+  final minute = local.minute.toString().padLeft(2, '0');
+
+  return '${local.year}-$month-$day $hour:$minute';
 }
