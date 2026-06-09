@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../data/repositories/finance_repository.dart';
 import '../../data/repositories/household_repository.dart';
@@ -7,10 +8,73 @@ import '../../shared/widgets/app_page.dart';
 import '../../shared/widgets/empty_state.dart';
 import '../transaction_metadata/transaction_metadata_editor.dart';
 
+final class TransactionInitialFilters {
+  const TransactionInitialFilters({
+    this.categoryId,
+    this.merchantSearchText,
+    this.startDate,
+    this.endDate,
+  });
+
+  factory TransactionInitialFilters.fromUri(Uri uri) {
+    return TransactionInitialFilters(
+      categoryId: _nonEmptyQueryParam(uri.queryParameters['categoryId']),
+      merchantSearchText: _nonEmptyQueryParam(uri.queryParameters['merchant']),
+      startDate: _dateQueryParam(uri.queryParameters['startDate']),
+      endDate: _dateQueryParam(uri.queryParameters['endDate']),
+    );
+  }
+
+  final String? categoryId;
+  final String? merchantSearchText;
+  final DateTime? startDate;
+  final DateTime? endDate;
+
+  @override
+  bool operator ==(Object other) {
+    return other is TransactionInitialFilters &&
+        other.categoryId == categoryId &&
+        other.merchantSearchText == merchantSearchText &&
+        _dateKey(other.startDate) == _dateKey(startDate) &&
+        _dateKey(other.endDate) == _dateKey(endDate);
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    categoryId,
+    merchantSearchText,
+    _dateKey(startDate),
+    _dateKey(endDate),
+  );
+}
+
+String? _nonEmptyQueryParam(String? value) {
+  final trimmed = value?.trim();
+  if (trimmed == null || trimmed.isEmpty) return null;
+
+  return trimmed;
+}
+
+DateTime? _dateQueryParam(String? value) {
+  final parsed = DateTime.tryParse(value ?? '');
+  if (parsed == null) return null;
+
+  return DateTime(parsed.year, parsed.month, parsed.day);
+}
+
+String? _dateKey(DateTime? date) {
+  return date == null ? null : dateString(date);
+}
+
 class TransactionsScreen extends ConsumerStatefulWidget {
-  const TransactionsScreen({super.key});
+  const TransactionsScreen({
+    super.key,
+    this.initialFilters = const TransactionInitialFilters(),
+  });
 
   static const routePath = '/transactions';
+
+  final TransactionInitialFilters initialFilters;
 
   @override
   ConsumerState<TransactionsScreen> createState() => _TransactionsScreenState();
@@ -24,6 +88,22 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
   String? _sourceAccountId;
   DateTimeRange? _dateRange;
   int _page = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _applyInitialFilters(widget.initialFilters);
+  }
+
+  @override
+  void didUpdateWidget(covariant TransactionsScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.initialFilters == widget.initialFilters) return;
+
+    setState(() {
+      _applyInitialFilters(widget.initialFilters);
+    });
+  }
 
   @override
   void dispose() {
@@ -181,6 +261,28 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
       _dateRange = null;
       _page = 0;
     });
+
+    final router = GoRouter.maybeOf(context);
+    if (router != null) {
+      router.go(TransactionsScreen.routePath);
+    }
+  }
+
+  void _applyInitialFilters(TransactionInitialFilters filters) {
+    final merchantSearchText = filters.merchantSearchText ?? '';
+    _searchController.value = TextEditingValue(
+      text: merchantSearchText,
+      selection: TextSelection.collapsed(offset: merchantSearchText.length),
+    );
+    final startDate = filters.startDate;
+    final endDate = filters.endDate;
+    _searchText = merchantSearchText;
+    _categoryId = filters.categoryId;
+    _dateRange =
+        startDate == null || endDate == null || startDate.isAfter(endDate)
+        ? null
+        : DateTimeRange(start: startDate, end: endDate);
+    _page = 0;
   }
 
   Future<void> _showMetadataEditor({
@@ -267,6 +369,9 @@ class _TransactionFilters extends StatelessWidget {
         selectedSourceAccountType != null ||
         selectedSourceAccountId != null ||
         dateRange != null;
+    final hasSelectedCategory =
+        selectedCategoryId == null ||
+        categories.any((category) => category.id == selectedCategoryId);
     final filteredSourceAccounts = selectedSourceAccountType == null
         ? sourceAccounts
         : sourceAccounts
@@ -292,6 +397,7 @@ class _TransactionFilters extends StatelessWidget {
         SizedBox(
           width: 300,
           child: DropdownButtonFormField<String>(
+            key: ValueKey('category-$selectedCategoryId'),
             isExpanded: true,
             initialValue: selectedCategoryId,
             decoration: const InputDecoration(
@@ -303,6 +409,11 @@ class _TransactionFilters extends StatelessWidget {
                 value: null,
                 child: Text('All categories'),
               ),
+              if (!hasSelectedCategory)
+                DropdownMenuItem(
+                  value: selectedCategoryId,
+                  child: const Text('Selected category'),
+                ),
               for (final category in categories)
                 DropdownMenuItem(
                   value: category.id,
@@ -315,6 +426,7 @@ class _TransactionFilters extends StatelessWidget {
         SizedBox(
           width: 220,
           child: DropdownButtonFormField<String>(
+            key: ValueKey('source-type-$selectedSourceAccountType'),
             isExpanded: true,
             initialValue: selectedSourceAccountType,
             decoration: const InputDecoration(
@@ -335,6 +447,7 @@ class _TransactionFilters extends StatelessWidget {
         SizedBox(
           width: 340,
           child: DropdownButtonFormField<String>(
+            key: ValueKey('source-$selectedSourceAccountId'),
             isExpanded: true,
             initialValue: selectedSourceAccountId,
             decoration: const InputDecoration(

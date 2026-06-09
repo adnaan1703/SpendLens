@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:go_router/go_router.dart';
 import 'package:spendlens/src/core/bootstrap/app_bootstrap.dart';
 import 'package:spendlens/src/data/repositories/finance_repository.dart';
 import 'package:spendlens/src/data/repositories/household_repository.dart';
@@ -122,6 +123,56 @@ void main() {
     expect(repository.savedCaps.single.capAmount, 5000);
   });
 
+  testWidgets('dashboard top category drills into monthly transactions', (
+    tester,
+  ) async {
+    final repository = _FakeFinanceRepository();
+    final router = _financeTestRouter();
+    addTearDown(router.dispose);
+
+    await tester.pumpWidget(
+      _financeRouterTestApp(repository: repository, router: router),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.ensureVisible(find.widgetWithText(InkWell, 'Food'));
+    await tester.tap(find.widgetWithText(InkWell, 'Food'));
+    await tester.pumpAndSettle();
+
+    expect(router.routeInformationProvider.value.uri.path, '/transactions');
+    expect(repository.lastQuery?.categoryId, 'cat-food');
+    expect(repository.lastQuery?.searchText, '');
+    expect(dateString(repository.lastQuery!.startDate!), '2026-03-01');
+    expect(dateString(repository.lastQuery!.endDate!), '2026-03-31');
+    expect(repository.lastQuery?.page, 0);
+  });
+
+  testWidgets('dashboard top merchant drills into monthly transactions', (
+    tester,
+  ) async {
+    final repository = _FakeFinanceRepository();
+    final router = _financeTestRouter();
+    addTearDown(router.dispose);
+
+    await tester.pumpWidget(
+      _financeRouterTestApp(repository: repository, router: router),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.ensureVisible(
+      find.widgetWithText(InkWell, 'Swiggy Instamart'),
+    );
+    await tester.tap(find.widgetWithText(InkWell, 'Swiggy Instamart'));
+    await tester.pumpAndSettle();
+
+    expect(router.routeInformationProvider.value.uri.path, '/transactions');
+    expect(repository.lastQuery?.categoryId, isNull);
+    expect(repository.lastQuery?.searchText, 'Swiggy Instamart');
+    expect(dateString(repository.lastQuery!.startDate!), '2026-03-01');
+    expect(dateString(repository.lastQuery!.endDate!), '2026-03-31');
+    expect(repository.lastQuery?.page, 0);
+  });
+
   testWidgets('transactions search and category filters refresh query', (
     tester,
   ) async {
@@ -151,6 +202,70 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(repository.lastQuery?.categoryId, 'cat-food');
+  });
+
+  testWidgets('transaction route filters prepopulate controls and query', (
+    tester,
+  ) async {
+    final repository = _FakeFinanceRepository();
+    final router = _financeTestRouter(
+      initialLocation:
+          '/transactions?categoryId=cat-food&merchant=Swiggy%20Instamart'
+          '&startDate=2026-03-01&endDate=2026-03-31',
+    );
+    addTearDown(router.dispose);
+
+    await tester.pumpWidget(
+      _financeRouterTestApp(repository: repository, router: router),
+    );
+    await tester.pumpAndSettle();
+
+    final merchantSearch = tester.widget<TextField>(find.byType(TextField));
+    expect(merchantSearch.controller?.text, 'Swiggy Instamart');
+    expect(find.text('Food'), findsWidgets);
+    expect(find.text('2026-03-01 to 2026-03-31'), findsOneWidget);
+    expect(repository.lastQuery?.categoryId, 'cat-food');
+    expect(repository.lastQuery?.searchText, 'Swiggy Instamart');
+    expect(dateString(repository.lastQuery!.startDate!), '2026-03-01');
+    expect(dateString(repository.lastQuery!.endDate!), '2026-03-31');
+    expect(repository.lastQuery?.page, 0);
+  });
+
+  testWidgets('clearing transaction route filters resets query and URL', (
+    tester,
+  ) async {
+    final repository = _FakeFinanceRepository()..addSwiggyTransactions(24);
+    final router = _financeTestRouter(
+      initialLocation:
+          '/transactions?categoryId=cat-food&merchant=Swiggy%20Instamart'
+          '&startDate=2026-03-01&endDate=2026-03-31',
+    );
+    addTearDown(router.dispose);
+
+    await tester.pumpWidget(
+      _financeRouterTestApp(repository: repository, router: router),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.ensureVisible(find.byTooltip('Next page'));
+    await tester.tap(find.byTooltip('Next page'));
+    await tester.pumpAndSettle();
+
+    expect(repository.lastQuery?.page, 1);
+
+    await tester.ensureVisible(find.byTooltip('Clear filters'));
+    await tester.tap(find.byTooltip('Clear filters'));
+    await tester.pumpAndSettle();
+
+    final merchantSearch = tester.widget<TextField>(find.byType(TextField));
+    expect(merchantSearch.controller?.text, '');
+    expect(find.text('Date range'), findsOneWidget);
+    expect(router.routeInformationProvider.value.uri.queryParameters, isEmpty);
+    expect(repository.lastQuery?.categoryId, isNull);
+    expect(repository.lastQuery?.searchText, '');
+    expect(repository.lastQuery?.startDate, isNull);
+    expect(repository.lastQuery?.endDate, isNull);
+    expect(repository.lastQuery?.page, 0);
   });
 
   testWidgets('transactions source type filter separates UPI from cards', (
@@ -591,6 +706,44 @@ Widget _financeTestApp({
   );
 }
 
+Widget _financeRouterTestApp({
+  required _FakeFinanceRepository repository,
+  required GoRouter router,
+}) {
+  return ProviderScope(
+    overrides: [
+      appBootstrapProvider.overrideWithValue(
+        const AppBootstrap(supabaseStatus: SupabaseStatus.ready),
+      ),
+      householdContextProvider.overrideWithValue(AsyncData(_householdContext)),
+      financeRepositoryProvider.overrideWithValue(repository),
+    ],
+    child: MaterialApp.router(routerConfig: router),
+  );
+}
+
+GoRouter _financeTestRouter({
+  String initialLocation = DashboardScreen.routePath,
+}) {
+  return GoRouter(
+    initialLocation: initialLocation,
+    routes: [
+      GoRoute(
+        path: DashboardScreen.routePath,
+        builder: (_, _) => const Scaffold(body: DashboardScreen()),
+      ),
+      GoRoute(
+        path: TransactionsScreen.routePath,
+        builder: (_, state) => Scaffold(
+          body: TransactionsScreen(
+            initialFilters: TransactionInitialFilters.fromUri(state.uri),
+          ),
+        ),
+      ),
+    ],
+  );
+}
+
 const _householdContext = HouseholdContext(
   profile: AppProfile(
     id: 'profile-1',
@@ -794,6 +947,33 @@ final class _FakeFinanceRepository implements FinanceRepository {
       currentSubcategoryName: 'Marketplace',
     ),
   ];
+
+  void addSwiggyTransactions(int count) {
+    for (var index = 0; index < count; index += 1) {
+      transactions.add(
+        FinanceTransaction(
+          id: 'txn-swiggy-extra-${index + 1}',
+          transactionDate: DateTime(2026, 3, (index % 28) + 1),
+          statementMerchant: 'SWIGGY INSTAMART BANGALORE ${index + 1}',
+          merchantId: 'merchant-swiggy',
+          merchantName: 'Swiggy Instamart',
+          categoryId: 'cat-food',
+          categoryName: 'Food',
+          subcategoryId: 'sub-food-delivery',
+          subcategoryName: 'Delivery',
+          sourceAccountId: 'source-1',
+          transactionType: 'debit_spend',
+          amount: 100,
+          grossSpend: 100,
+          refundAmount: 0,
+          netExpense: 100,
+          currencyCode: 'INR',
+          confidence: 'high',
+          cardholderName: 'Ada',
+        ),
+      );
+    }
+  }
 
   @override
   Future<DashboardSnapshot> fetchDashboardSnapshot({
@@ -1081,7 +1261,8 @@ final class _FakeFinanceRepository implements FinanceRepository {
     final filtered = transactions.where((transaction) {
       final matchesSearch =
           search.isEmpty ||
-          transaction.statementMerchant.toLowerCase().contains(search);
+          transaction.statementMerchant.toLowerCase().contains(search) ||
+          (transaction.merchantName?.toLowerCase().contains(search) ?? false);
       final matchesCategory =
           query.categoryId == null ||
           transaction.categoryId == query.categoryId;
@@ -1091,11 +1272,19 @@ final class _FakeFinanceRepository implements FinanceRepository {
       final matchesSource =
           query.sourceAccountId == null ||
           transaction.sourceAccountId == query.sourceAccountId;
+      final matchesStart =
+          query.startDate == null ||
+          !transaction.transactionDate.isBefore(query.startDate!);
+      final matchesEnd =
+          query.endDate == null ||
+          !transaction.transactionDate.isAfter(query.endDate!);
 
       return matchesSearch &&
           matchesCategory &&
           matchesSourceType &&
-          matchesSource;
+          matchesSource &&
+          matchesStart &&
+          matchesEnd;
     }).toList();
 
     return PagedTransactions(

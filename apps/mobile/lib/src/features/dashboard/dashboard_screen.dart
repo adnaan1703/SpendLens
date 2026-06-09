@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../core/bootstrap/app_bootstrap.dart';
 import '../../data/repositories/finance_repository.dart';
@@ -8,6 +9,7 @@ import '../../data/repositories/household_repository.dart';
 import '../../shared/widgets/app_page.dart';
 import '../../shared/widgets/empty_state.dart';
 import '../../shared/widgets/metric_card.dart';
+import '../transactions/transactions_screen.dart';
 
 class DashboardScreen extends ConsumerStatefulWidget {
   const DashboardScreen({super.key});
@@ -68,6 +70,18 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                     existingAmount: existingAmount,
                   );
                 },
+          onOpenCategory: (category) {
+            _openTransactionsDrilldown(
+              month: value.selectedMonth,
+              categoryId: category.categoryId,
+            );
+          },
+          onOpenMerchant: (merchant) {
+            _openTransactionsDrilldown(
+              month: value.selectedMonth,
+              merchant: merchant.merchantName,
+            );
+          },
         ),
         AsyncValue(hasError: true, :final error) => EmptyState(
           icon: Icons.error_outline,
@@ -171,6 +185,31 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
       ).showSnackBar(SnackBar(content: Text('${category.name} cap saved')));
     }
   }
+
+  void _openTransactionsDrilldown({
+    required DateTime month,
+    String? categoryId,
+    String? merchant,
+  }) {
+    final router = GoRouter.maybeOf(context);
+    if (router == null) return;
+
+    final startDate = firstDayOfMonth(month);
+    final endDate = addMonths(startDate, 1).subtract(const Duration(days: 1));
+    final queryParameters = <String, String>{
+      'startDate': dateString(startDate),
+      'endDate': dateString(endDate),
+    };
+    if (categoryId != null) queryParameters['categoryId'] = categoryId;
+    if (merchant != null) queryParameters['merchant'] = merchant;
+
+    router.go(
+      Uri(
+        path: TransactionsScreen.routePath,
+        queryParameters: queryParameters,
+      ).toString(),
+    );
+  }
 }
 
 class _DashboardContent extends StatelessWidget {
@@ -179,6 +218,8 @@ class _DashboardContent extends StatelessWidget {
     required this.backendLabel,
     required this.isSupabaseReady,
     required this.onEditCap,
+    required this.onOpenCategory,
+    required this.onOpenMerchant,
   });
 
   final DashboardSnapshot snapshot;
@@ -186,6 +227,8 @@ class _DashboardContent extends StatelessWidget {
   final bool isSupabaseReady;
   final void Function(CategoryOption category, double? existingAmount)?
   onEditCap;
+  final ValueChanged<CategorySpend> onOpenCategory;
+  final ValueChanged<MerchantSpend> onOpenMerchant;
 
   @override
   Widget build(BuildContext context) {
@@ -240,7 +283,11 @@ class _DashboardContent extends StatelessWidget {
         const SizedBox(height: 28),
         _BudgetSection(snapshot: snapshot, onEditCap: onEditCap),
         const SizedBox(height: 28),
-        _SummaryGrid(snapshot: snapshot),
+        _SummaryGrid(
+          snapshot: snapshot,
+          onOpenCategory: onOpenCategory,
+          onOpenMerchant: onOpenMerchant,
+        ),
       ],
     );
   }
@@ -414,17 +461,29 @@ class _BudgetProgressRow extends StatelessWidget {
 }
 
 class _SummaryGrid extends StatelessWidget {
-  const _SummaryGrid({required this.snapshot});
+  const _SummaryGrid({
+    required this.snapshot,
+    required this.onOpenCategory,
+    required this.onOpenMerchant,
+  });
 
   final DashboardSnapshot snapshot;
+  final ValueChanged<CategorySpend> onOpenCategory;
+  final ValueChanged<MerchantSpend> onOpenMerchant;
 
   @override
   Widget build(BuildContext context) {
     final isWide = MediaQuery.sizeOf(context).width >= 860;
 
     final children = [
-      _CategorySpendList(categories: snapshot.topCategories),
-      _MerchantSpendList(merchants: snapshot.topMerchants),
+      _CategorySpendList(
+        categories: snapshot.topCategories,
+        onOpenCategory: onOpenCategory,
+      ),
+      _MerchantSpendList(
+        merchants: snapshot.topMerchants,
+        onOpenMerchant: onOpenMerchant,
+      ),
     ];
 
     if (!isWide) {
@@ -446,9 +505,13 @@ class _SummaryGrid extends StatelessWidget {
 }
 
 class _CategorySpendList extends StatelessWidget {
-  const _CategorySpendList({required this.categories});
+  const _CategorySpendList({
+    required this.categories,
+    required this.onOpenCategory,
+  });
 
   final List<CategorySpend> categories;
+  final ValueChanged<CategorySpend> onOpenCategory;
 
   @override
   Widget build(BuildContext context) {
@@ -478,6 +541,7 @@ class _CategorySpendList extends StatelessWidget {
               value: formatMoney(category.netSpend),
               supportingText: '${category.transactionCount} transactions',
               progress: maxSpend == 0 ? 0 : category.netSpend / maxSpend,
+              onTap: () => onOpenCategory(category),
             ),
       ],
     );
@@ -485,9 +549,13 @@ class _CategorySpendList extends StatelessWidget {
 }
 
 class _MerchantSpendList extends StatelessWidget {
-  const _MerchantSpendList({required this.merchants});
+  const _MerchantSpendList({
+    required this.merchants,
+    required this.onOpenMerchant,
+  });
 
   final List<MerchantSpend> merchants;
+  final ValueChanged<MerchantSpend> onOpenMerchant;
 
   @override
   Widget build(BuildContext context) {
@@ -517,6 +585,7 @@ class _MerchantSpendList extends StatelessWidget {
               value: formatMoney(merchant.netSpend),
               supportingText: '${merchant.transactionCount} transactions',
               progress: maxSpend == 0 ? 0 : merchant.netSpend / maxSpend,
+              onTap: () => onOpenMerchant(merchant),
             ),
       ],
     );
@@ -530,6 +599,7 @@ class _SpendListItem extends StatelessWidget {
     required this.value,
     required this.supportingText,
     required this.progress,
+    required this.onTap,
   });
 
   final IconData icon;
@@ -537,6 +607,7 @@ class _SpendListItem extends StatelessWidget {
   final String value;
   final String supportingText;
   final double progress;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
@@ -544,35 +615,47 @@ class _SpendListItem extends StatelessWidget {
 
     return Card(
       margin: const EdgeInsets.only(bottom: 8),
-      child: Padding(
-        padding: const EdgeInsets.all(14),
-        child: Column(
-          children: [
-            Row(
-              children: [
-                Icon(icon, color: theme.colorScheme.secondary),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        title,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: theme.textTheme.titleSmall,
-                      ),
-                      Text(supportingText, style: theme.textTheme.bodySmall),
-                    ],
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.all(14),
+          child: Column(
+            children: [
+              Row(
+                children: [
+                  Icon(icon, color: theme.colorScheme.secondary),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          title,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: theme.textTheme.titleSmall,
+                        ),
+                        Text(supportingText, style: theme.textTheme.bodySmall),
+                      ],
+                    ),
                   ),
-                ),
-                const SizedBox(width: 8),
-                Text(value, style: theme.textTheme.labelLarge),
-              ],
-            ),
-            const SizedBox(height: 10),
-            LinearProgressIndicator(value: progress.clamp(0, 1).toDouble()),
-          ],
+                  const SizedBox(width: 8),
+                  Text(value, style: theme.textTheme.labelLarge),
+                  if (onTap != null) ...[
+                    const SizedBox(width: 4),
+                    Icon(
+                      Icons.chevron_right,
+                      size: 20,
+                      color: theme.colorScheme.outline,
+                    ),
+                  ],
+                ],
+              ),
+              const SizedBox(height: 10),
+              LinearProgressIndicator(value: progress.clamp(0, 1).toDouble()),
+            ],
+          ),
         ),
       ),
     );

@@ -73,7 +73,9 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           ),
           GoRoute(
             path: TransactionsScreen.routePath,
-            builder: (_, _) => const TransactionsScreen(),
+            builder: (_, state) => TransactionsScreen(
+              initialFilters: TransactionInitialFilters.fromUri(state.uri),
+            ),
           ),
           GoRoute(
             path: TrendsScreen.routePath,
