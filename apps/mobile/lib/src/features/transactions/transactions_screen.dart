@@ -6,6 +6,7 @@ import '../../data/repositories/finance_repository.dart';
 import '../../data/repositories/household_repository.dart';
 import '../../shared/widgets/app_page.dart';
 import '../../shared/widgets/empty_state.dart';
+import '../../shared/widgets/period_filter_dropdown.dart';
 import '../transaction_metadata/transaction_metadata_editor.dart';
 
 final class TransactionInitialFilters {
@@ -124,6 +125,9 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
     final sourceAccounts = householdId == null
         ? const AsyncValue<List<SourceAccountOption>>.loading()
         : ref.watch(transactionSourceAccountsProvider(householdId));
+    final availableMonths = householdId == null
+        ? const AsyncValue<List<DateTime>>.loading()
+        : ref.watch(availableMonthsProvider(householdId));
     final query = householdId == null
         ? null
         : TransactionQuery(
@@ -154,6 +158,7 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
             sourceAccounts: sourceAccounts.value ?? const [],
             selectedSourceAccountType: _sourceAccountType,
             selectedSourceAccountId: _sourceAccountId,
+            availableMonths: availableMonths.value ?? const [],
             dateRange: _dateRange,
             onSearchChanged: (value) {
               setState(() {
@@ -187,7 +192,7 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
                 _page = 0;
               });
             },
-            onPickDateRange: _pickDateRange,
+            onPeriodChanged: _handlePeriodChanged,
             onClear: _clearFilters,
           ),
           const SizedBox(height: 20),
@@ -249,6 +254,23 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
       _dateRange = range;
       _page = 0;
     });
+  }
+
+  void _handlePeriodChanged(PeriodFilterSelection selection) {
+    switch (selection.type) {
+      case PeriodFilterSelectionType.allDates:
+        setState(() {
+          _dateRange = null;
+          _page = 0;
+        });
+      case PeriodFilterSelectionType.month:
+        setState(() {
+          _dateRange = selection.dateRange;
+          _page = 0;
+        });
+      case PeriodFilterSelectionType.customDateRange:
+        _pickDateRange();
+    }
   }
 
   void _clearFilters() {
@@ -337,12 +359,13 @@ class _TransactionFilters extends StatelessWidget {
     required this.sourceAccounts,
     required this.selectedSourceAccountType,
     required this.selectedSourceAccountId,
+    required this.availableMonths,
     required this.dateRange,
     required this.onSearchChanged,
     required this.onCategoryChanged,
     required this.onSourceAccountTypeChanged,
     required this.onSourceAccountChanged,
-    required this.onPickDateRange,
+    required this.onPeriodChanged,
     required this.onClear,
   });
 
@@ -353,12 +376,13 @@ class _TransactionFilters extends StatelessWidget {
   final List<SourceAccountOption> sourceAccounts;
   final String? selectedSourceAccountType;
   final String? selectedSourceAccountId;
+  final List<DateTime> availableMonths;
   final DateTimeRange? dateRange;
   final ValueChanged<String> onSearchChanged;
   final ValueChanged<String?> onCategoryChanged;
   final ValueChanged<String?> onSourceAccountTypeChanged;
   final ValueChanged<String?> onSourceAccountChanged;
-  final VoidCallback onPickDateRange;
+  final ValueChanged<PeriodFilterSelection> onPeriodChanged;
   final VoidCallback onClear;
 
   @override
@@ -462,10 +486,10 @@ class _TransactionFilters extends StatelessWidget {
             onChanged: onSourceAccountChanged,
           ),
         ),
-        OutlinedButton.icon(
-          onPressed: onPickDateRange,
-          icon: const Icon(Icons.date_range_outlined),
-          label: Text(_dateRangeLabel(dateRange)),
+        PeriodFilterDropdown(
+          availableMonths: availableMonths,
+          selectedRange: dateRange,
+          onChanged: onPeriodChanged,
         ),
         IconButton(
           tooltip: 'Clear filters',
@@ -474,12 +498,6 @@ class _TransactionFilters extends StatelessWidget {
         ),
       ],
     );
-  }
-
-  String _dateRangeLabel(DateTimeRange? range) {
-    if (range == null) return 'Date range';
-
-    return '${dateString(range.start)} to ${dateString(range.end)}';
   }
 }
 

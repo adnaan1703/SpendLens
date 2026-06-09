@@ -43,6 +43,15 @@ final transactionSourceAccountsProvider =
           .fetchSourceAccounts(householdId: householdId);
     });
 
+final availableMonthsProvider = FutureProvider.family<List<DateTime>, String>((
+  ref,
+  householdId,
+) {
+  return ref
+      .watch(financeRepositoryProvider)
+      .fetchAvailableMonths(householdId: householdId);
+});
+
 final trendReportProvider = FutureProvider.family<TrendReport, TrendQuery>((
   ref,
   query,
@@ -1482,6 +1491,8 @@ abstract interface class FinanceRepository {
     required String householdId,
   });
 
+  Future<List<DateTime>> fetchAvailableMonths({required String householdId});
+
   Future<List<SubcategoryOption>> fetchSubcategories({
     required String householdId,
   });
@@ -1626,6 +1637,23 @@ final class SupabaseFinanceRepository implements FinanceRepository {
         .order('display_name');
 
     return rows.map(SourceAccountOption.fromJson).toList(growable: false);
+  }
+
+  @override
+  Future<List<DateTime>> fetchAvailableMonths({
+    required String householdId,
+  }) async {
+    final rows = await _client
+        .from('v_monthly_spend')
+        .select('period_month')
+        .eq('household_id', householdId)
+        .order('period_month', ascending: false);
+
+    return rows
+        .map(
+          (row) => firstDayOfMonth(_parseDate(row['period_month'] as String)),
+        )
+        .toList(growable: false);
   }
 
   @override
@@ -2317,6 +2345,11 @@ final class DisabledFinanceRepository implements FinanceRepository {
   Future<List<SourceAccountOption>> fetchSourceAccounts({
     required String householdId,
   }) {
+    throw const SupabaseNotConfiguredException();
+  }
+
+  @override
+  Future<List<DateTime>> fetchAvailableMonths({required String householdId}) {
     throw const SupabaseNotConfiguredException();
   }
 

@@ -10,6 +10,7 @@ import '../../data/repositories/household_repository.dart';
 import '../../shared/widgets/app_page.dart';
 import '../../shared/widgets/empty_state.dart';
 import '../../shared/widgets/metric_card.dart';
+import '../../shared/widgets/period_filter_dropdown.dart';
 
 class TrendsScreen extends ConsumerStatefulWidget {
   const TrendsScreen({super.key});
@@ -36,6 +37,9 @@ class _TrendsScreenState extends ConsumerState<TrendsScreen> {
     final sourceAccounts = householdId == null
         ? const AsyncValue<List<SourceAccountOption>>.loading()
         : ref.watch(transactionSourceAccountsProvider(householdId));
+    final availableMonths = householdId == null
+        ? const AsyncValue<List<DateTime>>.loading()
+        : ref.watch(availableMonthsProvider(householdId));
     final query = householdId == null
         ? null
         : TrendQuery(
@@ -62,6 +66,7 @@ class _TrendsScreenState extends ConsumerState<TrendsScreen> {
             sourceAccounts: sourceAccounts.value ?? const [],
             selectedSourceAccountType: _sourceAccountType,
             selectedSourceAccountId: _sourceAccountId,
+            availableMonths: availableMonths.value ?? const [],
             dateRange: _dateRange,
             report: report.value,
             onCategoryChanged: (value) {
@@ -87,7 +92,7 @@ class _TrendsScreenState extends ConsumerState<TrendsScreen> {
                 _sourceAccountId = value;
               });
             },
-            onPickDateRange: _pickDateRange,
+            onPeriodChanged: _handlePeriodChanged,
             onClear: _clearFilters,
             onCopyCsv: _copyCsv,
           ),
@@ -122,6 +127,21 @@ class _TrendsScreenState extends ConsumerState<TrendsScreen> {
     });
   }
 
+  void _handlePeriodChanged(PeriodFilterSelection selection) {
+    switch (selection.type) {
+      case PeriodFilterSelectionType.allDates:
+        setState(() {
+          _dateRange = null;
+        });
+      case PeriodFilterSelectionType.month:
+        setState(() {
+          _dateRange = selection.dateRange;
+        });
+      case PeriodFilterSelectionType.customDateRange:
+        _pickDateRange();
+    }
+  }
+
   void _clearFilters() {
     setState(() {
       _categoryId = null;
@@ -150,12 +170,13 @@ class _TrendFilters extends StatelessWidget {
     required this.sourceAccounts,
     required this.selectedSourceAccountType,
     required this.selectedSourceAccountId,
+    required this.availableMonths,
     required this.dateRange,
     required this.report,
     required this.onCategoryChanged,
     required this.onSourceAccountTypeChanged,
     required this.onSourceAccountChanged,
-    required this.onPickDateRange,
+    required this.onPeriodChanged,
     required this.onClear,
     required this.onCopyCsv,
   });
@@ -165,12 +186,13 @@ class _TrendFilters extends StatelessWidget {
   final List<SourceAccountOption> sourceAccounts;
   final String? selectedSourceAccountType;
   final String? selectedSourceAccountId;
+  final List<DateTime> availableMonths;
   final DateTimeRange? dateRange;
   final TrendReport? report;
   final ValueChanged<String?> onCategoryChanged;
   final ValueChanged<String?> onSourceAccountTypeChanged;
   final ValueChanged<String?> onSourceAccountChanged;
-  final VoidCallback onPickDateRange;
+  final ValueChanged<PeriodFilterSelection> onPeriodChanged;
   final VoidCallback onClear;
   final ValueChanged<TrendReport> onCopyCsv;
 
@@ -253,10 +275,10 @@ class _TrendFilters extends StatelessWidget {
             onChanged: onSourceAccountChanged,
           ),
         ),
-        OutlinedButton.icon(
-          onPressed: onPickDateRange,
-          icon: const Icon(Icons.date_range_outlined),
-          label: Text(_dateRangeLabel(dateRange)),
+        PeriodFilterDropdown(
+          availableMonths: availableMonths,
+          selectedRange: dateRange,
+          onChanged: onPeriodChanged,
         ),
         IconButton(
           tooltip: 'Clear filters',
@@ -272,12 +294,6 @@ class _TrendFilters extends StatelessWidget {
         ),
       ],
     );
-  }
-
-  String _dateRangeLabel(DateTimeRange? range) {
-    if (range == null) return 'Date range';
-
-    return '${dateString(range.start)} to ${dateString(range.end)}';
   }
 }
 

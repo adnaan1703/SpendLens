@@ -188,6 +188,9 @@ void main() {
 
     expect(find.text('Swiggy Instamart'), findsOneWidget);
     expect(find.text('Amazon Shopping'), findsOneWidget);
+    expect(find.text('All dates'), findsOneWidget);
+    expect(repository.lastQuery?.startDate, isNull);
+    expect(repository.lastQuery?.endDate, isNull);
 
     await tester.enterText(find.byType(TextField), 'swiggy');
     await tester.pumpAndSettle();
@@ -202,6 +205,40 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(repository.lastQuery?.categoryId, 'cat-food');
+  });
+
+  testWidgets('transactions period month filters query and resets pagination', (
+    tester,
+  ) async {
+    final repository = _FakeFinanceRepository()..addSwiggyTransactions(22);
+
+    await tester.pumpWidget(
+      _financeTestApp(
+        repository: repository,
+        child: const TransactionsScreen(),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('All dates'), findsOneWidget);
+    expect(repository.lastQuery?.startDate, isNull);
+    expect(repository.lastQuery?.endDate, isNull);
+
+    await tester.ensureVisible(find.byTooltip('Next page'));
+    await tester.tap(find.byTooltip('Next page'));
+    await tester.pumpAndSettle();
+
+    expect(repository.lastQuery?.page, 1);
+
+    await tester.tap(find.text('All dates'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Mar 2026').last);
+    await tester.pumpAndSettle();
+
+    expect(dateString(repository.lastQuery!.startDate!), '2026-03-01');
+    expect(dateString(repository.lastQuery!.endDate!), '2026-03-31');
+    expect(repository.lastQuery?.page, 0);
+    expect(find.text('CRED Club'), findsNothing);
   });
 
   testWidgets('transaction route filters prepopulate controls and query', (
@@ -223,7 +260,7 @@ void main() {
     final merchantSearch = tester.widget<TextField>(find.byType(TextField));
     expect(merchantSearch.controller?.text, 'Swiggy Instamart');
     expect(find.text('Food'), findsWidgets);
-    expect(find.text('2026-03-01 to 2026-03-31'), findsOneWidget);
+    expect(find.text('Mar 2026'), findsOneWidget);
     expect(repository.lastQuery?.categoryId, 'cat-food');
     expect(repository.lastQuery?.searchText, 'Swiggy Instamart');
     expect(dateString(repository.lastQuery!.startDate!), '2026-03-01');
@@ -259,7 +296,7 @@ void main() {
 
     final merchantSearch = tester.widget<TextField>(find.byType(TextField));
     expect(merchantSearch.controller?.text, '');
-    expect(find.text('Date range'), findsOneWidget);
+    expect(find.text('All dates'), findsOneWidget);
     expect(router.routeInformationProvider.value.uri.queryParameters, isEmpty);
     expect(repository.lastQuery?.categoryId, isNull);
     expect(repository.lastQuery?.searchText, '');
@@ -310,6 +347,9 @@ void main() {
     expect(find.text('Merchant Summary'), findsOneWidget);
     expect(find.text('Swiggy Instamart'), findsWidgets);
     expect(repository.lastTrendQuery?.categoryId, isNull);
+    expect(repository.lastTrendQuery?.startDate, isNull);
+    expect(repository.lastTrendQuery?.endDate, isNull);
+    expect(find.text('All dates'), findsOneWidget);
 
     await tester.tap(find.byType(DropdownButtonFormField<String>).first);
     await tester.pumpAndSettle();
@@ -329,6 +369,45 @@ void main() {
       find.widgetWithText(FilledButton, 'Copy CSV'),
     );
     expect(copyButton.onPressed, isNotNull);
+  });
+
+  testWidgets('trends period month composes with shared filters', (
+    tester,
+  ) async {
+    final repository = _FakeFinanceRepository();
+
+    await tester.pumpWidget(
+      _financeTestApp(repository: repository, child: const TrendsScreen()),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('All dates'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Mar 2026').last);
+    await tester.pumpAndSettle();
+
+    expect(dateString(repository.lastTrendQuery!.startDate!), '2026-03-01');
+    expect(dateString(repository.lastTrendQuery!.endDate!), '2026-03-31');
+    expect(find.text('CRED Club'), findsNothing);
+
+    await tester.tap(find.byType(DropdownButtonFormField<String>).first);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Food').last);
+    await tester.pumpAndSettle();
+
+    expect(repository.lastTrendQuery?.categoryId, 'cat-food');
+    expect(dateString(repository.lastTrendQuery!.startDate!), '2026-03-01');
+    expect(dateString(repository.lastTrendQuery!.endDate!), '2026-03-31');
+
+    await tester.tap(find.byType(DropdownButtonFormField<String>).last);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('HDFC Credit Card - Ada').last);
+    await tester.pumpAndSettle();
+
+    expect(repository.lastTrendQuery?.sourceAccountId, 'source-1');
+    expect(repository.lastTrendQuery?.categoryId, 'cat-food');
+    expect(dateString(repository.lastTrendQuery!.startDate!), '2026-03-01');
+    expect(dateString(repository.lastTrendQuery!.endDate!), '2026-03-31');
   });
 
   testWidgets('trends source type filter separates UPI reporting', (
@@ -1062,6 +1141,13 @@ final class _FakeFinanceRepository implements FinanceRepository {
         displayName: 'HDFC Bank UPI account ending 0932',
       ),
     ];
+  }
+
+  @override
+  Future<List<DateTime>> fetchAvailableMonths({
+    required String householdId,
+  }) async {
+    return [DateTime(2026, 6), DateTime(2026, 3)];
   }
 
   @override
