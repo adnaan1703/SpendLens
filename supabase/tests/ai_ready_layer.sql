@@ -3,7 +3,7 @@ begin;
 create extension if not exists pgtap with schema extensions;
 set search_path = public, extensions;
 
-select plan(19);
+select plan(17);
 
 select is(
   has_table_privilege('authenticated', 'public.ai_usage_events', 'insert'),
@@ -25,16 +25,6 @@ select is(
   ),
   false,
   'authenticated users cannot execute the AI usage logging RPC'
-);
-
-select is(
-  has_function_privilege(
-    'authenticated',
-    'public.upsert_merchant_research_suggestion(uuid, uuid, text, text, text, uuid, uuid, jsonb, public.confidence, uuid, uuid)',
-    'execute'
-  ),
-  false,
-  'authenticated users cannot execute the merchant research cache write RPC'
 );
 
 insert into auth.users (id)
@@ -148,9 +138,13 @@ select is(
 );
 
 select is(
-  (select merchant_research_web_search_enabled from public.v_ai_budget_status where household_id = '34000000-0000-0000-0000-000000000001'),
+  (
+    select transaction_metadata_suggestion_web_search_enabled
+    from public.v_ai_budget_status
+    where household_id = '34000000-0000-0000-0000-000000000001'
+  ),
   false,
-  'merchant research web search is disabled by default'
+  'transaction metadata suggestion web search is disabled by default'
 );
 
 select is(
@@ -195,6 +189,20 @@ select lives_ok(
     )
   $$,
   'transaction metadata suggestions are allowed by the AI budget check'
+);
+
+select throws_ok(
+  $$
+    select *
+    from public.check_ai_budget(
+      '34000000-0000-0000-0000-000000000001',
+      'merchant_research',
+      0
+    )
+  $$,
+  'P0001',
+  'Unsupported AI feature.',
+  'merchant research is no longer an allowed AI budget feature'
 );
 
 select throws_ok(
@@ -278,6 +286,32 @@ select is(
   'AI jobs accept transaction metadata suggestions'
 );
 
+select throws_ok(
+  $$
+    insert into public.ai_jobs (
+      household_id,
+      profile_id,
+      job_type,
+      status,
+      input,
+      provider,
+      model
+    )
+    values (
+      '34000000-0000-0000-0000-000000000001',
+      '24000000-0000-0000-0000-000000000001',
+      'merchant_research',
+      'queued',
+      '{}'::jsonb,
+      'gemini',
+      'gemini-3.5-flash'
+    )
+  $$,
+  '23514',
+  'new row for relation "ai_jobs" violates check constraint "ai_jobs_job_type_supported"',
+  'AI jobs reject new merchant research work'
+);
+
 select public.record_ai_usage_event(
   '34000000-0000-0000-0000-000000000001',
   '24000000-0000-0000-0000-000000000001',
@@ -290,36 +324,6 @@ select public.record_ai_usage_event(
   'completed',
   jsonb_build_object('job_id', 'a4000000-0000-0000-0000-000000000001'),
   jsonb_build_object('finish_reason', 'STOP')
-);
-
-select *
-from public.upsert_merchant_research_suggestion(
-  '34000000-0000-0000-0000-000000000001',
-  '94000000-0000-0000-0000-000000000001',
-  'amzn mktp in',
-  'AMZN MKTP IN',
-  'Amazon Shopping',
-  '54000000-0000-0000-0000-000000000001',
-  '55000000-0000-0000-0000-000000000001',
-  jsonb_build_object('source', 'gemini', 'web_search_enabled', false),
-  'medium',
-  null,
-  null
-);
-
-select *
-from public.upsert_merchant_research_suggestion(
-  '34000000-0000-0000-0000-000000000001',
-  '94000000-0000-0000-0000-000000000001',
-  'amzn mktp in',
-  'AMZN MKTP IN',
-  'Amazon Shopping',
-  '54000000-0000-0000-0000-000000000001',
-  '55000000-0000-0000-0000-000000000001',
-  jsonb_build_object('source', 'cache-refresh', 'web_search_enabled', false),
-  'medium',
-  null,
-  null
 );
 
 reset role;
@@ -337,26 +341,6 @@ select is(
   (select current_month_event_count from public.v_ai_budget_status where household_id = '34000000-0000-0000-0000-000000000001'),
   1,
   'AI budget status includes current-month usage count'
-);
-
-select is(
-  (select count(*)::integer from public.v_open_merchant_research_suggestions),
-  1,
-  'merchant research suggestions are cached by normalized merchant name'
-);
-
-select is(
-  (select suggested_display_name from public.v_open_merchant_research_suggestions),
-  'Amazon Shopping',
-  'merchant research suggestion is visible for approval'
-);
-
-set local request.jwt.claim.sub = '14000000-0000-0000-0000-000000000002';
-
-select is(
-  (select count(*)::integer from public.v_open_merchant_research_suggestions),
-  0,
-  'merchant research suggestions are scoped by household RLS'
 );
 
 select * from finish();

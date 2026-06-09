@@ -47,7 +47,7 @@ This is not a "no backend" architecture. It is a backend without a permanently r
 - Transaction metadata edits: apply to the matching normalized statement merchant
   and future imports unless a milestone explicitly narrows scope.
 - Email retention: store minimal parsed data only; do not retain raw email bodies by default.
-- AI: backend-mediated Gemini expense Q&A and merchant research suggestions; dev/staging use free-tier-only mode with web search disabled by default.
+- AI: backend-mediated Gemini expense Q&A and transaction metadata suggestions; dev/staging use free-tier-only mode with Suggest search disabled by default.
 - iOS app: deferred, not part of the current implementation milestones.
 - Web interface: deferred, not part of the current implementation milestones.
 

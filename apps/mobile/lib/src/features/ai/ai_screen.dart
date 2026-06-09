@@ -193,12 +193,19 @@ class _AiBudgetPanel extends StatelessWidget {
               value: '\$${status.monthlySpendCapUsd.toStringAsFixed(2)}',
             ),
             _AiStatusItem(
-              label: 'Research',
-              value: status.merchantResearchSearchLabel,
+              label: 'Suggest search',
+              value: status.transactionMetadataSuggestionSearchLabel,
             ),
             if (!status.expenseQaEnabled)
               Text(
                 'Expense Q&A disabled',
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: theme.colorScheme.error,
+                ),
+              ),
+            if (!status.transactionMetadataSuggestionEnabled)
+              Text(
+                'Metadata suggestions disabled',
                 style: theme.textTheme.bodyMedium?.copyWith(
                   color: theme.colorScheme.error,
                 ),

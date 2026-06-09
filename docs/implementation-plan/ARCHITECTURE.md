@@ -82,7 +82,7 @@ Edge Functions are the v1 backend execution layer. Use them for:
 - Workbook import.
 - Merchant rule application and reclassification.
 - Scheduled watch renewal and backfill.
-- Lightweight Gemini expense Q&A and merchant research calls.
+- Lightweight Gemini expense Q&A and transaction metadata suggestion calls.
 
 Edge Functions should stay short, idempotent, and request-oriented. They should enqueue work when the operation may be slow or retried.
 
@@ -95,7 +95,7 @@ Use queued jobs for:
 - Email sync from Gmail history IDs.
 - Workbook import batches.
 - Merchant reclassification across historical transactions.
-- Future merchant research.
+- Future async AI suggestion work if synchronous Edge Functions become too slow.
 - Future expense Q&A audit logging and async answers.
 
 ### Dedicated Worker Escape Hatch
@@ -211,9 +211,8 @@ Required controls:
 - Log every Edge Function category in operational logs.
 - Log every AI call in `ai_usage_events`.
 - Enforce monthly AI budget caps before model calls.
-- Cache merchant research by normalized merchant name.
 - Use deterministic merchant rules before LLM enrichment.
-- Only run web search on unknown or low-confidence merchants after the household flag is explicitly enabled.
+- Only run Suggest web search after the household flag is explicitly enabled.
 - Keep Gmail sync idempotent to avoid retry loops and duplicate work.
 
 ## Architecture References

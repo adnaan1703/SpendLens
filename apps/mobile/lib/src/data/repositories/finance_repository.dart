@@ -76,16 +76,6 @@ final aiBudgetStatusProvider = FutureProvider.family<AiBudgetStatus, String>((
       .fetchAiBudgetStatus(householdId: householdId);
 });
 
-final merchantResearchSuggestionsProvider =
-    FutureProvider.family<List<MerchantResearchSuggestion>, String>((
-      ref,
-      householdId,
-    ) {
-      return ref
-          .watch(financeRepositoryProvider)
-          .fetchMerchantResearchSuggestions(householdId: householdId);
-    });
-
 final merchantSubcategoriesProvider =
     FutureProvider.family<List<SubcategoryOption>, String>((ref, householdId) {
       return ref
@@ -1386,8 +1376,8 @@ final class AiBudgetStatus {
     required this.model,
     required this.monthlySpendCapUsd,
     required this.expenseQaEnabled,
-    required this.merchantResearchEnabled,
-    required this.merchantResearchWebSearchEnabled,
+    required this.transactionMetadataSuggestionEnabled,
+    required this.transactionMetadataSuggestionWebSearchEnabled,
     required this.freeTierOnly,
     required this.currentPeriodMonth,
     required this.currentMonthSpendUsd,
@@ -1400,8 +1390,8 @@ final class AiBudgetStatus {
   final String model;
   final double monthlySpendCapUsd;
   final bool expenseQaEnabled;
-  final bool merchantResearchEnabled;
-  final bool merchantResearchWebSearchEnabled;
+  final bool transactionMetadataSuggestionEnabled;
+  final bool transactionMetadataSuggestionWebSearchEnabled;
   final bool freeTierOnly;
   final DateTime currentPeriodMonth;
   final double currentMonthSpendUsd;
@@ -1410,8 +1400,10 @@ final class AiBudgetStatus {
 
   String get modeLabel => freeTierOnly ? 'Free tier' : 'Paid budget';
 
-  String get merchantResearchSearchLabel {
-    return merchantResearchWebSearchEnabled ? 'Search enabled' : 'Search off';
+  String get transactionMetadataSuggestionSearchLabel {
+    return transactionMetadataSuggestionWebSearchEnabled
+        ? 'Search enabled'
+        : 'Search off';
   }
 
   factory AiBudgetStatus.fromJson(Map<String, dynamic> json) {
@@ -1421,10 +1413,11 @@ final class AiBudgetStatus {
       model: json['model'] as String? ?? 'gemini-3.5-flash',
       monthlySpendCapUsd: _asDouble(json['monthly_spend_cap_usd']),
       expenseQaEnabled: json['expense_qa_enabled'] as bool? ?? true,
-      merchantResearchEnabled:
-          json['merchant_research_enabled'] as bool? ?? true,
-      merchantResearchWebSearchEnabled:
-          json['merchant_research_web_search_enabled'] as bool? ?? false,
+      transactionMetadataSuggestionEnabled:
+          json['transaction_metadata_suggestion_enabled'] as bool? ?? true,
+      transactionMetadataSuggestionWebSearchEnabled:
+          json['transaction_metadata_suggestion_web_search_enabled'] as bool? ??
+          false,
       freeTierOnly: json['free_tier_only'] as bool? ?? true,
       currentPeriodMonth: _parseDate(json['current_period_month'] as String),
       currentMonthSpendUsd: _asDouble(json['current_month_spend_usd']),
@@ -1477,75 +1470,6 @@ final class ExpenseQuestionAnswer {
   }
 }
 
-final class MerchantResearchRequest {
-  const MerchantResearchRequest({
-    required this.householdId,
-    required this.reviewItemId,
-    required this.statementMerchant,
-  });
-
-  final String householdId;
-  final String reviewItemId;
-  final String statementMerchant;
-}
-
-final class MerchantResearchSuggestion {
-  const MerchantResearchSuggestion({
-    required this.id,
-    required this.householdId,
-    this.reviewItemId,
-    required this.normalizedMerchantName,
-    this.statementMerchant,
-    this.suggestedDisplayName,
-    this.suggestedCategoryName,
-    this.suggestedSubcategoryName,
-    this.confidence,
-    required this.status,
-    required this.createdAt,
-  });
-
-  final String id;
-  final String householdId;
-  final String? reviewItemId;
-  final String normalizedMerchantName;
-  final String? statementMerchant;
-  final String? suggestedDisplayName;
-  final String? suggestedCategoryName;
-  final String? suggestedSubcategoryName;
-  final String? confidence;
-  final String status;
-  final DateTime createdAt;
-
-  String get title {
-    return suggestedDisplayName ?? statementMerchant ?? normalizedMerchantName;
-  }
-
-  String get subtitle {
-    final parts = [
-      suggestedCategoryName,
-      suggestedSubcategoryName,
-      confidence,
-    ].whereType<String>().where((part) => part.trim().isNotEmpty).toList();
-    return parts.isEmpty ? 'Pending approval' : parts.join(' / ');
-  }
-
-  factory MerchantResearchSuggestion.fromJson(Map<String, dynamic> json) {
-    return MerchantResearchSuggestion(
-      id: json['id'] as String,
-      householdId: json['household_id'] as String,
-      reviewItemId: json['review_item_id'] as String?,
-      normalizedMerchantName: json['normalized_merchant_name'] as String,
-      statementMerchant: json['statement_merchant'] as String?,
-      suggestedDisplayName: json['suggested_display_name'] as String?,
-      suggestedCategoryName: json['suggested_category_name'] as String?,
-      suggestedSubcategoryName: json['suggested_subcategory_name'] as String?,
-      confidence: json['confidence'] as String?,
-      status: json['status'] as String? ?? 'open',
-      createdAt: DateTime.parse(json['created_at'] as String),
-    );
-  }
-}
-
 abstract interface class FinanceRepository {
   Future<DashboardSnapshot> fetchDashboardSnapshot({
     required String householdId,
@@ -1580,14 +1504,6 @@ abstract interface class FinanceRepository {
 
   Future<ExpenseQuestionAnswer> askExpenseQuestion(
     ExpenseQuestionRequest request,
-  );
-
-  Future<List<MerchantResearchSuggestion>> fetchMerchantResearchSuggestions({
-    required String householdId,
-  });
-
-  Future<MerchantResearchSuggestion> researchMerchant(
-    MerchantResearchRequest request,
   );
 
   Future<String> startGmailConnector({required String householdId});
@@ -1805,8 +1721,8 @@ final class SupabaseFinanceRepository implements FinanceRepository {
         .from('v_ai_budget_status')
         .select(
           'household_id, provider, model, monthly_spend_cap_usd, '
-          'expense_qa_enabled, merchant_research_enabled, '
-          'merchant_research_web_search_enabled, free_tier_only, '
+          'expense_qa_enabled, transaction_metadata_suggestion_enabled, '
+          'transaction_metadata_suggestion_web_search_enabled, free_tier_only, '
           'current_period_month, current_month_spend_usd, '
           'current_month_event_count, remaining_monthly_budget_usd',
         )
@@ -1826,47 +1742,6 @@ final class SupabaseFinanceRepository implements FinanceRepository {
     );
     final data = response.data as Map<String, dynamic>;
     return ExpenseQuestionAnswer.fromJson(data);
-  }
-
-  @override
-  Future<List<MerchantResearchSuggestion>> fetchMerchantResearchSuggestions({
-    required String householdId,
-  }) async {
-    final rows = await _client
-        .from('v_open_merchant_research_suggestions')
-        .select(
-          'id, household_id, review_item_id, normalized_merchant_name, '
-          'statement_merchant, suggested_display_name, '
-          'suggested_category_name, suggested_subcategory_name, confidence, '
-          'status, created_at',
-        )
-        .eq('household_id', householdId)
-        .order('created_at', ascending: false);
-
-    return rows
-        .map(MerchantResearchSuggestion.fromJson)
-        .toList(growable: false);
-  }
-
-  @override
-  Future<MerchantResearchSuggestion> researchMerchant(
-    MerchantResearchRequest request,
-  ) async {
-    final response = await _client.functions.invoke(
-      'merchant-research',
-      body: {
-        'household_id': request.householdId,
-        'review_item_id': request.reviewItemId,
-        'statement_merchant': request.statementMerchant,
-      },
-    );
-    final data = response.data as Map<String, dynamic>;
-    final suggestion = data['suggestion'] as Map<String, dynamic>?;
-    if (suggestion == null) {
-      throw StateError('Merchant research did not return a suggestion.');
-    }
-
-    return MerchantResearchSuggestion.fromJson(suggestion);
   }
 
   @override
@@ -2486,20 +2361,6 @@ final class DisabledFinanceRepository implements FinanceRepository {
   @override
   Future<ExpenseQuestionAnswer> askExpenseQuestion(
     ExpenseQuestionRequest request,
-  ) {
-    throw const SupabaseNotConfiguredException();
-  }
-
-  @override
-  Future<List<MerchantResearchSuggestion>> fetchMerchantResearchSuggestions({
-    required String householdId,
-  }) {
-    throw const SupabaseNotConfiguredException();
-  }
-
-  @override
-  Future<MerchantResearchSuggestion> researchMerchant(
-    MerchantResearchRequest request,
   ) {
     throw const SupabaseNotConfiguredException();
   }

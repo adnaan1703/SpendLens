@@ -201,8 +201,8 @@ class _AiSettingsCard extends ConsumerWidget {
               ),
               const Divider(height: 28),
               _SettingsRow(
-                label: 'Merchant research',
-                value: ai.merchantResearchSearchLabel,
+                label: 'Metadata Suggest search',
+                value: ai.transactionMetadataSuggestionSearchLabel,
               ),
             ],
           ),

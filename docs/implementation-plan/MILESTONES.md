@@ -471,7 +471,6 @@ Add controlled LLM features without changing the app's core architecture.
 - Add AI tables if not already present:
   - `ai_usage_events`
   - `ai_jobs`
-  - `merchant_research_suggestions`
 - Add AI budget configuration:
   - Monthly household AI spend cap.
   - Per-feature enable/disable flags.
@@ -481,19 +480,19 @@ Add controlled LLM features without changing the app's core architecture.
   - Retrieve scoped data through safe SQL views.
   - Call LLM.
   - Store token usage and answer metadata.
-- Add merchant research function:
-  - Normalize merchant name.
-  - Check cache first.
-  - Use web search/LLM only for unknown or low-confidence merchants.
-  - Store suggestions for user approval.
+- Add transaction metadata suggestion function:
+  - Validate household membership.
+  - Retrieve scoped transaction, review, taxonomy, and nearby merchant context.
+  - Use web search only when the household Suggest search flag is explicitly enabled.
+  - Return a structured suggestion to the metadata editor without changing rows automatically.
 - Add UI:
   - Ask expenses screen or command panel.
-  - Merchant research suggestions in review queue.
+  - Transaction metadata Suggest action in review and transaction detail editors.
   - AI usage/budget status in settings.
 - Add tests:
   - AI cannot access another household.
   - AI usage is logged.
-  - Cached merchant research prevents repeated calls.
+  - Transaction metadata suggestions are budget-gated.
   - Budget cap prevents additional AI calls.
 - If Edge Function limits become a problem, add a dedicated worker that consumes `ai_jobs`.
 
@@ -502,14 +501,14 @@ Add controlled LLM features without changing the app's core architecture.
 - User creates LLM provider account.
 - User configures API key in Supabase secrets.
 - User sets initial monthly AI budget cap.
-- User approves whether web search is enabled for merchant research.
+- User approves whether web search is enabled for transaction metadata Suggest.
 
 ### Acceptance Criteria
 
 - LLM calls happen only from backend functions or workers.
 - Every AI call is logged with token/cost metadata.
 - User can ask scoped expense questions.
-- Merchant research suggestions require approval before changing mappings.
+- Transaction metadata suggestions populate the editor and require user save before changing rows.
 - AI feature respects configured budget caps.
 
 ## Milestone 13: May 2026 Gmail Backfill

@@ -17,8 +17,13 @@ supabase functions deploy \
   gmail-connector-status \
   gmail-disconnect \
   expense-qa \
-  merchant-research \
   transaction-metadata-suggest
+
+if supabase functions list --project-ref "$PROJECT_REF" | grep -Eq '[[:space:]]merchant-research[[:space:]]'; then
+  supabase functions delete \
+    --project-ref "$PROJECT_REF" \
+    merchant-research
+fi
 
 supabase functions deploy \
   --project-ref "$PROJECT_REF" \

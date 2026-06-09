@@ -121,8 +121,8 @@ Edge Functions now write structured JSON log events. Monitor these event names:
 - `gmail_disconnect_completed`
 - `expense_qa_completed`
 - `expense_qa_failed`
-- `merchant_research_completed`
-- `merchant_research_failed`
+- `transaction_metadata_suggestion_completed`
+- `transaction_metadata_suggestion_failed`
 
 Service-role SQL health views:
 

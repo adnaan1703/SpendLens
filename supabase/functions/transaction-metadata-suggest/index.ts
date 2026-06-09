@@ -103,6 +103,7 @@ Deno.serve(async (req: Request) => {
       prompt: buildTransactionMetadataSuggestionPrompt(context),
       responseMimeType: "application/json",
       responseJsonSchema: transactionMetadataSuggestionSchema,
+      webSearchEnabled: budget.web_search_enabled,
     });
     const suggestion = parseTransactionMetadataSuggestion(
       response.text,

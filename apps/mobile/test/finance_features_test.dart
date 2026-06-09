@@ -503,39 +503,24 @@ void main() {
     expect(find.text('18 input tokens'), findsOneWidget);
   });
 
-  testWidgets('merchant review hides old AI suggestions and research action', (
-    tester,
-  ) async {
-    final repository = _FakeFinanceRepository();
-    repository.merchantResearchSuggestions.add(
-      MerchantResearchSuggestion(
-        id: 'suggestion-1',
-        householdId: 'household-1',
-        reviewItemId: 'review-1',
-        normalizedMerchantName: 'amzn mktp in',
-        statementMerchant: 'AMZN MKTP IN',
-        suggestedDisplayName: 'Amazon Shopping',
-        suggestedCategoryName: 'Shopping',
-        suggestedSubcategoryName: 'Marketplace',
-        confidence: 'medium',
-        status: 'open',
-        createdAt: DateTime(2026, 3, 20, 12),
-      ),
-    );
+  testWidgets(
+    'merchant review hides retired AI suggestions and research action',
+    (tester) async {
+      final repository = _FakeFinanceRepository();
 
-    await tester.pumpWidget(
-      _financeTestApp(
-        repository: repository,
-        child: const MerchantReviewScreen(),
-      ),
-    );
-    await tester.pumpAndSettle();
+      await tester.pumpWidget(
+        _financeTestApp(
+          repository: repository,
+          child: const MerchantReviewScreen(),
+        ),
+      );
+      await tester.pumpAndSettle();
 
-    expect(find.text('Research'), findsNothing);
-    expect(find.text('AI suggestions'), findsNothing);
-    expect(find.text('Amazon Shopping'), findsNothing);
-    expect(repository.researchRequests, isEmpty);
-  });
+      expect(find.text('Research'), findsNothing);
+      expect(find.text('AI suggestions'), findsNothing);
+      expect(find.text('Amazon Shopping'), findsNothing);
+    },
+  );
 
   testWidgets('piggy banks create entries and update target progress', (
     tester,
@@ -633,11 +618,9 @@ final class _FakeFinanceRepository implements FinanceRepository {
   final corrections = <TransactionMetadataCorrectionRequest>[];
   final createdCategoryRequests = <CategoryCreationRequest>[];
   final expenseQuestions = <ExpenseQuestionRequest>[];
-  final researchRequests = <MerchantResearchRequest>[];
   final metadataSuggestionRequests = <TransactionMetadataSuggestionRequest>[];
   final piggyBanks = <PiggyBankSummary>[];
   final piggyEntries = <PiggyBankEntry>[];
-  final merchantResearchSuggestions = <MerchantResearchSuggestion>[];
   TransactionMetadataSuggestionResult? nextMetadataSuggestion;
   Object? metadataSuggestionError;
   final aiStatus = AiBudgetStatus(
@@ -646,8 +629,8 @@ final class _FakeFinanceRepository implements FinanceRepository {
     model: 'gemini-3.5-flash',
     monthlySpendCapUsd: 0,
     expenseQaEnabled: true,
-    merchantResearchEnabled: true,
-    merchantResearchWebSearchEnabled: false,
+    transactionMetadataSuggestionEnabled: true,
+    transactionMetadataSuggestionWebSearchEnabled: false,
     freeTierOnly: true,
     currentPeriodMonth: DateTime(2026, 6),
     currentMonthSpendUsd: 0,
@@ -976,45 +959,6 @@ final class _FakeFinanceRepository implements FinanceRepository {
       outputTokens: 9,
       estimatedCostUsd: 0,
     );
-  }
-
-  @override
-  Future<List<MerchantResearchSuggestion>> fetchMerchantResearchSuggestions({
-    required String householdId,
-  }) async {
-    return merchantResearchSuggestions
-        .where((suggestion) => suggestion.householdId == householdId)
-        .toList();
-  }
-
-  @override
-  Future<MerchantResearchSuggestion> researchMerchant(
-    MerchantResearchRequest request,
-  ) async {
-    researchRequests.add(request);
-    final suggestion = MerchantResearchSuggestion(
-      id: 'suggestion-1',
-      householdId: request.householdId,
-      reviewItemId: request.reviewItemId,
-      normalizedMerchantName: 'amzn mktp in',
-      statementMerchant: request.statementMerchant,
-      suggestedDisplayName: 'Amazon Shopping',
-      suggestedCategoryName: 'Shopping',
-      suggestedSubcategoryName: 'Marketplace',
-      confidence: 'medium',
-      status: 'open',
-      createdAt: DateTime(2026, 3, 20, 12),
-    );
-    merchantResearchSuggestions
-      ..removeWhere(
-        (existing) =>
-            existing.householdId == suggestion.householdId &&
-            existing.normalizedMerchantName ==
-                suggestion.normalizedMerchantName,
-      )
-      ..add(suggestion);
-
-    return suggestion;
   }
 
   @override

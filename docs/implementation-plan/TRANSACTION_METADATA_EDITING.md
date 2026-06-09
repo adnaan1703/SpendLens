@@ -148,9 +148,8 @@ Instructions:
 - Update Review tab behavior:
   - Continue to show current/suggested metadata and confidence.
   - Save through the new transaction metadata correction request.
-  - Resolve on save and refresh review queue, merchant research suggestions,
-    categories/subcategories when relevant, dashboard snapshot, and affected
-    transaction queries.
+  - Resolve on save and refresh review queue, categories/subcategories when
+    relevant, dashboard snapshot, and affected transaction queries.
 - Update Transactions behavior:
   - Add an Edit action in the detail bottom sheet.
   - Open the shared metadata editor from the sheet.
