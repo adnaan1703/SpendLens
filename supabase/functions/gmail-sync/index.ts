@@ -356,7 +356,22 @@ async function processMessageById(
     return {};
   }
 
-  const message = await fetchGmailMessage(accessToken, messageId);
+  let message: Record<string, unknown>;
+  try {
+    message = await fetchGmailMessage(accessToken, messageId);
+  } catch (error) {
+    if (error instanceof GoogleApiError && error.status === 404) {
+      processedMessageIds.add(messageId);
+      logOperationalEvent(
+        "gmail_sync_message_unavailable",
+        { mailboxId: mailbox.id },
+        "warn",
+      );
+      return { unsupported: 1 };
+    }
+    throw error;
+  }
+
   const metadata = messageMetadata(message);
   const fetchedMessageId = String(metadata.id ?? messageId);
   processedMessageIds.add(fetchedMessageId);
@@ -543,17 +558,29 @@ async function processJob(
   for (const candidate of candidates) {
     if (candidate.threadId && !processedThreadIds.has(candidate.threadId)) {
       processedThreadIds.add(candidate.threadId);
-      mergeCounts(
-        counts,
-        await processThread(
-          serviceClient,
-          mailbox,
-          token.access_token,
-          candidate.threadId,
-          processedMessageIds,
-          dateFilter,
-        ),
-      );
+      try {
+        mergeCounts(
+          counts,
+          await processThread(
+            serviceClient,
+            mailbox,
+            token.access_token,
+            candidate.threadId,
+            processedMessageIds,
+            dateFilter,
+          ),
+        );
+      } catch (error) {
+        if (error instanceof GoogleApiError && error.status === 404) {
+          logOperationalEvent(
+            "gmail_sync_thread_unavailable",
+            { jobId: job.id, mailboxId: mailbox.id },
+            "warn",
+          );
+        } else {
+          throw error;
+        }
+      }
       if (!processedMessageIds.has(candidate.messageId)) {
         mergeCounts(
           counts,
