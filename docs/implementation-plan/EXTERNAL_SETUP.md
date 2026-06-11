@@ -71,6 +71,41 @@ Remaining before final live OAuth/Pub/Sub testing:
   path implemented in Milestone 9, include `?token=<PUBSUB_VERIFICATION_SECRET>`
   on the push endpoint or provide the same value through a trusted proxy header.
 
+### Firebase Cloud Messaging
+
+Needed by Milestone 18.
+
+User actions:
+
+- Create or choose a Firebase project for SpendLens Android push notifications.
+- Register an Android app with package name `com.olympus.spendlens`.
+- Provide the generated Android Firebase app configuration when Milestone 18
+  starts.
+- Confirm whether the dev/staging Android Firebase config file may be committed
+  to this repository. Firebase Android app config is not a server credential, but
+  the project value is still an external-service identifier and requires user
+  confirmation.
+- Do not provide FCM service account JSON during Milestone 18.
+
+Needed by Milestone 20.
+
+User actions:
+
+- Create or choose a Firebase service account that can send FCM HTTP v1
+  messages for the selected Firebase project.
+- Store the service account JSON only in Supabase Edge Function secrets or an
+  ignored local env file as `FCM_SERVICE_ACCOUNT_JSON`.
+- Do not paste the private key into chat and do not commit it to Git.
+
+Planned defaults:
+
+- Push provider: Firebase Cloud Messaging.
+- Client target: Android only.
+- Notification detail default: show merchant and amount details, with an in-app
+  toggle to hide sensitive details.
+- Notification grouping: one notification per successful transaction processing
+  batch.
+
 ### Web Hosting
 
 Deferred. Do not set up Cloudflare Pages or another web host during the current Android-first implementation plan. Revisit this only when the user explicitly resumes web interface work.
@@ -124,9 +159,12 @@ Required configuration:
   - Pub/Sub verification secret if used.
   - Gemini API key for backend-only AI calls.
   - Optional Gemini paid-rate values before disabling free-tier-only AI mode.
+  - FCM service account JSON for backend-only Android push dispatch after
+    Milestone 20.
 - Configure scheduled functions:
   - Gmail watch renewal.
   - Gmail backfill check.
+  - Push notification dispatcher after Milestone 20.
   - Optional job sweeper/retry.
 
 ## Google OAuth and Gmail Notes
@@ -179,6 +217,10 @@ Do not ask for these upfront. Ask only when the relevant milestone begins:
 - Google OAuth client IDs.
 - Google OAuth callback URL.
 - Pub/Sub topic and subscription names.
+- Firebase project id and Android app configuration for package
+  `com.olympus.spendlens`, only when Milestone 18 begins.
+- Firebase service account JSON, only as an ignored local env file or hosted
+  Supabase secret when Milestone 20 begins.
 - Android package name.
 - iOS bundle identifier, only when iOS app work resumes.
 - Preferred web production domain, only when web interface work resumes.

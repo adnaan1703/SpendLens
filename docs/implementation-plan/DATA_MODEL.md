@@ -531,6 +531,127 @@ Important fields:
 - `started_at timestamptz`
 - `completed_at timestamptz`
 
+## Planned Push Notification Tables
+
+Milestones 18-21 add Android transaction push notifications. Until those
+milestones are implemented, this section is a planned contract rather than an
+applied schema.
+
+### `push_devices`
+
+App-facing table for a signed-in user's Android FCM token registrations.
+
+Important fields:
+
+- `id uuid primary key`
+- `household_id uuid references households(id)`
+- `profile_id uuid references profiles(id)`
+- `installation_id text not null`
+- `platform text not null`, v1 value `android`
+- `fcm_token text not null`
+- `token_hash text not null`
+- `app_version text`
+- `device_label text`
+- `is_active boolean not null default true`
+- `last_seen_at timestamptz`
+- `revoked_at timestamptz`
+- `created_at timestamptz`
+- `updated_at timestamptz`
+
+Rules:
+
+- A signed-in user may manage only their own devices for households where they
+  are an active member.
+- Raw FCM tokens must not be logged.
+- Service code may read active tokens for dispatch; other household members must
+  not see a user's token.
+
+### `notification_preferences`
+
+Per-user, per-household push preferences.
+
+Important fields:
+
+- `id uuid primary key`
+- `household_id uuid references households(id)`
+- `profile_id uuid references profiles(id)`
+- `transaction_push_enabled boolean not null default true`
+- `include_sensitive_details boolean not null default true`
+- `created_at timestamptz`
+- `updated_at timestamptz`
+
+Rules:
+
+- The default shows merchant and amount details in transaction notifications.
+- Users can disable transaction push notifications or hide sensitive details for
+  their own profile/household preference row.
+
+### `notification_outbox`
+
+Service-only durable notification intent queue.
+
+Important fields:
+
+- `id uuid primary key`
+- `household_id uuid references households(id)`
+- `event_type text not null`, v1 value `transaction_batch`
+- `source_type source_type not null`
+- `source_job_id uuid`
+- `idempotency_key text not null`
+- `transaction_ids uuid[] not null`
+- `transaction_count integer not null`
+- `detail_title text not null`
+- `detail_body text not null`
+- `private_title text not null`
+- `private_body text not null`
+- `data jsonb not null`
+- `status text not null`
+- `attempt_count integer not null default 0`
+- `max_attempts integer not null default 5`
+- `next_attempt_at timestamptz`
+- `locked_at timestamptz`
+- `locked_by text`
+- `sent_at timestamptz`
+- `failed_at timestamptz`
+- `last_error text`
+- `created_at timestamptz`
+- `updated_at timestamptz`
+
+Rules:
+
+- Use unique `(household_id, event_type, idempotency_key)` to avoid duplicate
+  notification work.
+- Gmail sync uses `gmail-job:<ingestion_jobs.id>` idempotency.
+- Workbook imports do not enqueue push notifications by default.
+- App roles do not read or write this table.
+
+### `notification_deliveries`
+
+Service-only per-device delivery audit.
+
+Important fields:
+
+- `id uuid primary key`
+- `outbox_id uuid references notification_outbox(id)`
+- `push_device_id uuid references push_devices(id)`
+- `profile_id uuid references profiles(id)`
+- `fcm_token_hash text`
+- `status text not null`
+- `attempt_count integer not null default 0`
+- `provider_message_id text`
+- `provider_error_code text`
+- `last_error text`
+- `sent_at timestamptz`
+- `created_at timestamptz`
+- `updated_at timestamptz`
+
+Rules:
+
+- Use unique `(outbox_id, push_device_id)` to avoid resending to the same device
+  after retries.
+- Permanent FCM token errors should deactivate only the affected device.
+- App roles do not read or write this table in v1.
+
 ## Summary Views
 
 Create these views for app reads:

@@ -75,8 +75,26 @@ Production Supabase settings to confirm:
 - `GEMINI_INPUT_COST_PER_MILLION_USD` and
   `GEMINI_OUTPUT_COST_PER_MILLION_USD` are set before disabling free-tier-only
   AI mode.
+- `FCM_SERVICE_ACCOUNT_JSON` is set only in Edge Function secrets after Android
+  push dispatch is implemented.
 - Daily backups or PITR are enabled according to the chosen Supabase plan.
 - Supabase billing/spend alerts are configured.
+
+## Firebase Production Setup
+
+Use production Firebase values only after the production Android app and
+Supabase project are confirmed.
+
+- Create or choose a Firebase project for Android push notifications.
+- Register the Android app package `com.olympus.spendlens`.
+- Add the production Android Firebase config to the app only after the user
+  confirms whether the config should be committed or injected locally.
+- Create a service account with permission to send Firebase Cloud Messaging HTTP
+  v1 messages.
+- Store the service account JSON as `FCM_SERVICE_ACCOUNT_JSON` in Supabase Edge
+  Function secrets; never put it in Flutter or source-controlled docs.
+- Verify Android 13+ notification permission behavior on a real device or
+  emulator with Google Play services.
 
 ## Google Production Setup
 
@@ -101,6 +119,8 @@ Schedule these service-key protected functions after hosted secrets are set:
 - `gmail-sync`: every few minutes, or triggered by a lightweight scheduler.
 - `gmail-watch-renewal`: daily.
 - `gmail-backfill-check`: daily.
+- `send-push-notifications`: every minute or every few minutes after push
+  dispatch is implemented.
 
 For Supabase-hosted scheduling, use `pg_cron` plus `pg_net` and store the
 project URL plus secret key in Vault. With the new Supabase key model, send the
@@ -123,6 +143,16 @@ Edge Functions now write structured JSON log events. Monitor these event names:
 - `expense_qa_failed`
 - `transaction_metadata_suggestion_completed`
 - `transaction_metadata_suggestion_failed`
+- `transaction_notification_batch_queued`
+- `transaction_notification_batch_skipped`
+- `push_dispatch_started`
+- `push_outbox_claimed`
+- `push_delivery_sent`
+- `push_delivery_skipped`
+- `push_delivery_failed`
+- `push_device_deactivated`
+- `push_outbox_completed`
+- `push_dispatch_failed`
 
 Service-role SQL health views:
 
@@ -146,6 +176,9 @@ Operational response rules:
 - `stale_sync_mailbox_count > 0`: run or inspect `gmail-backfill-check`.
 - `retrying_job_count > 0`: inspect Edge logs for transient Gmail/API failures.
 - `permanently_failed_job_count > 0`: inspect `latest_job_error` before retrying.
+- Push delivery failures: inspect `notification_outbox`,
+  `notification_deliveries`, and Edge Function logs before retrying. Permanent
+  token failures should deactivate only the affected device.
 
 ## Android Release
 
@@ -187,6 +220,9 @@ After deploying production:
 - Send or receive one supported HDFC credit-card or UPI debit email.
 - Confirm the transaction appears once, source filters work, and unknown
   merchants create review items.
+- If push notifications are enabled, confirm the Android device is registered,
+  run or wait for `send-push-notifications`, receive one transaction
+  notification, tap it, and verify the app opens Transactions.
 - Disconnect Gmail and confirm the mailbox is inactive with no queued jobs.
 
 Do not import production email fixtures or raw email bodies into Git.

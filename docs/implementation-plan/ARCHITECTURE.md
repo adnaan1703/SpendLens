@@ -21,6 +21,7 @@ Supabase Edge Functions
         +--> Import parsers
         +--> Merchant reclassification
         +--> AI provider later
+        +--> Firebase Cloud Messaging for Android push
         +--> External worker later, if needed
 ```
 
@@ -32,6 +33,8 @@ The Flutter Android app owns presentation and user workflows:
 
 - Sign in and session handling.
 - Dashboard, transaction list, trends, merchant review, budgets, and piggy banks.
+- Android notification permission, FCM token registration, and notification tap
+  routing after the push-notification milestones are implemented.
 - Direct reads and safe writes through Supabase SDK where RLS is sufficient.
 - Calls to Edge Functions for privileged operations such as Gmail OAuth, import execution, reclassification, and future AI.
 
@@ -53,6 +56,9 @@ Auth identities map to application profiles and household membership. Every user
 Postgres is the source of truth for:
 
 - Transactions.
+- Push device registrations and notification preferences after the
+  push-notification milestones are implemented.
+- Notification outbox and delivery state for transaction push notifications.
 - Categories and monthly caps.
 - Merchants, aliases, and mapping rules.
 - Import batches and source records.
@@ -83,6 +89,7 @@ Edge Functions are the v1 backend execution layer. Use them for:
 - Merchant rule application and reclassification.
 - Scheduled watch renewal and backfill.
 - Lightweight Gemini expense Q&A and transaction metadata suggestion calls.
+- Service-key protected push notification dispatch to FCM.
 
 Edge Functions should stay short, idempotent, and request-oriented. They should enqueue work when the operation may be slow or retried.
 
@@ -97,6 +104,7 @@ Use queued jobs for:
 - Merchant reclassification across historical transactions.
 - Future async AI suggestion work if synchronous Edge Functions become too slow.
 - Future expense Q&A audit logging and async answers.
+- Transaction notification outbox dispatch and retry state.
 
 ### Dedicated Worker Escape Hatch
 
@@ -168,15 +176,39 @@ The worker should consume jobs from Supabase and write results back to Postgres.
 
 For heavier work, the Edge Function creates an `ai_jobs` row and returns job status. A worker processes the job asynchronously.
 
+### Transaction Push Notifications
+
+1. The Android app asks for notification permission from Settings, obtains an
+   FCM registration token, and registers the current app installation against
+   the signed-in profile and household through an RLS-safe Supabase RPC.
+2. The user can enable/disable transaction push notifications and choose whether
+   merchant/amount details are shown in notification text. The default is to
+   show full details.
+3. Gmail sync and future batch processors collect only newly inserted
+   transaction ids and enqueue one `transaction_batch` notification outbox row
+   per completed processing batch.
+4. Duplicate Gmail reprocessing does not enqueue a second notification because
+   ingestion already reports `inserted = false` for existing
+   `(household_id, source_fingerprint)` rows.
+5. A service-key protected Edge Function claims queued outbox rows, fans out to
+   active Android device tokens for eligible household members, sends through
+   FCM HTTP v1, records per-device delivery state, and deactivates invalid
+   tokens.
+6. The app handles notification taps by opening Transactions and refreshing
+   household finance providers. Exact transaction-detail deep links are deferred.
+
 ## Security Invariants
 
 - Never put service-role keys in Flutter.
+- Never put FCM service account JSON or Firebase private keys in Flutter.
 - Never let the client call Gmail or LLM provider secrets directly.
 - Never retain raw email bodies by default.
 - Store Gmail tokens encrypted or in a protected secrets mechanism.
 - Enforce RLS on every exposed table.
 - Use `household_id` on every finance row.
 - Record import and AI usage audit events.
+- Record push notification queue and delivery state without logging raw FCM
+  tokens.
 - Deduplicate incoming transactions before inserting.
 - Treat all email parser output as untrusted until validated.
 
@@ -214,6 +246,7 @@ Required controls:
 - Use deterministic merchant rules before LLM enrichment.
 - Only run Suggest web search after the household flag is explicitly enabled.
 - Keep Gmail sync idempotent to avoid retry loops and duplicate work.
+- Keep push delivery asynchronous so FCM outages do not block ingestion.
 
 ## Architecture References
 
@@ -224,3 +257,5 @@ Required controls:
 - Supabase Queues: https://supabase.com/docs/guides/queues/quickstart
 - Gmail push notifications: https://developers.google.com/workspace/gmail/api/guides/push
 - Google Pub/Sub pricing: https://cloud.google.com/pubsub/pricing
+- Firebase Cloud Messaging for Flutter: https://firebase.google.com/docs/cloud-messaging/flutter/get-started
+- Firebase Cloud Messaging HTTP v1: https://firebase.google.com/docs/cloud-messaging/send/v1-api

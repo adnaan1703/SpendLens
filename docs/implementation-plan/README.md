@@ -12,13 +12,14 @@ Read these documents in order at the start of every new implementation thread:
 6. [Gmail Connector](GMAIL_CONNECTOR.md)
 7. [Production Readiness](PRODUCTION_READINESS.md)
 8. [Transaction Metadata Editing](TRANSACTION_METADATA_EDITING.md)
-9. [Session Handoff](SESSION_HANDOFF.md)
+9. [Push Notifications](PUSH_NOTIFICATIONS.md)
+10. [Session Handoff](SESSION_HANDOFF.md)
 
 ## Product Summary
 
 SpendLens is a personal and household expense intelligence app. The current implementation plan is Android-first: build the Flutter Android app first and defer iOS and web until later.
 
-The app imports historical credit-card analysis from `docs/Credit Card Spend Analysis - FY 2025-26.xlsx`, then moves to ongoing ingestion from Gmail transaction emails for credit cards and UPI. It presents spend by category, monthly category caps, transaction details, merchant review workflows, trends, manual piggy-bank ledgers for future goals, and backend-mediated Gemini expense Q&A.
+The app imports historical credit-card analysis from `docs/Credit Card Spend Analysis - FY 2025-26.xlsx`, then moves to ongoing ingestion from Gmail transaction emails for credit cards and UPI. It presents spend by category, monthly category caps, transaction details, merchant review workflows, trends, manual piggy-bank ledgers for future goals, backend-mediated Gemini expense Q&A, and planned Android push notifications for newly processed transactions.
 
 ## Architecture Decision
 
@@ -33,6 +34,8 @@ Use a serverless-first backend:
 - Supabase Edge Functions for privileged backend operations.
 - Supabase Queues or job tables for async work.
 - Google Gmail API plus Cloud Pub/Sub for mailbox push notifications.
+- Firebase Cloud Messaging for Android push delivery after transaction
+  processing.
 - Dedicated worker service only when AI or ingestion workloads outgrow Edge Functions.
 
 This is not a "no backend" architecture. It is a backend without a permanently running custom API server in v1.
@@ -48,6 +51,8 @@ This is not a "no backend" architecture. It is a backend without a permanently r
   and future imports unless a milestone explicitly narrows scope.
 - Email retention: store minimal parsed data only; do not retain raw email bodies by default.
 - AI: backend-mediated Gemini expense Q&A and transaction metadata suggestions; dev/staging use free-tier-only mode with Suggest search disabled by default.
+- Android push notifications: Firebase Cloud Messaging delivery, Supabase
+  device registration, and Supabase-managed notification outbox.
 - iOS app: deferred, not part of the current implementation milestones.
 - Web interface: deferred, not part of the current implementation milestones.
 

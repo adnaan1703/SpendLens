@@ -676,16 +676,281 @@ ingestion rules consistent.
   management.
 - iOS and web work.
 
+## Milestone 16: Merchant Research Retirement
+
+### Status
+
+Completed on 2026-06-09.
+
+### Objective
+
+Retire the legacy AI merchant lookup path while keeping the supported
+backend-mediated expense Q&A and transaction metadata Suggest features.
+
+### Tasks
+
+- Remove the obsolete merchant research Edge Function and related Flutter
+  models.
+- Keep historical AI usage/audit rows valid.
+- Keep expense Q&A and transaction metadata Suggest as the active AI features.
+- Rename Suggest budget/search flags so the remaining AI settings describe the
+  active feature accurately.
+- Verify the hosted legacy function is absent when deleting remote functions is
+  in scope.
+
+### External Work
+
+- None for local cleanup.
+- Hosted function deletion requires the intended Supabase project to be
+  confirmed before touching remote state.
+
+### Acceptance Criteria
+
+- The legacy merchant research path is no longer callable from the app.
+- Expense Q&A and transaction metadata Suggest remain available.
+- Historical AI audit data remains queryable.
+- No new privileged client code is introduced.
+
+## Milestone 17: Transaction and Trend Month Filter
+
+### Status
+
+Completed on 2026-06-10.
+
+### Objective
+
+Add shared All dates, month, and custom-period filters to Transactions and
+Trends using existing date-range query fields.
+
+### Tasks
+
+- Add a reusable period filter component.
+- Load available reporting months from `v_monthly_spend`.
+- Map All dates, selected month, and custom period choices onto existing
+  `startDate` and `endDate` repository query fields.
+- Reuse the same filter semantics in Transactions and Trends.
+- Preserve transaction search, source-account filters, category filters, and
+  existing trend calculations.
+
+### External Work
+
+- None.
+
+### Acceptance Criteria
+
+- Transactions and Trends can show all available history.
+- Users can select a specific reporting month.
+- Users can choose a custom date range.
+- Existing finance semantics still use net expense for spend views.
+
+## Milestone 18: Firebase Client and Device Registration
+
+### Status
+
+Planned. See [Push Notifications](PUSH_NOTIFICATIONS.md#m18---firebase-client-and-device-registration).
+
+### Objective
+
+Add Android FCM client setup, notification permission handling, and Supabase
+device/preference registration.
+
+### Tasks
+
+- Confirm Firebase project/app values before implementation:
+  - Firebase project id.
+  - Firebase Android app id for package `com.olympus.spendlens`.
+  - Whether the generated Android Firebase config may be committed.
+- Add Flutter Firebase dependencies and Android Firebase Gradle configuration.
+- Initialize Firebase in the app bootstrap before rendering `SpendLensApp`.
+- Add Android `POST_NOTIFICATIONS` permission and request it only from Settings.
+- Add a notification client service that:
+  - Creates a stable local installation id.
+  - Obtains an FCM token after user action.
+  - Handles token refresh.
+  - Registers/unregisters the device through Supabase.
+- Add `push_devices` and `notification_preferences` schema with RLS.
+- Add app-facing RPCs for registering devices, unregistering devices, updating
+  preferences, and reading current notification settings.
+- Add a Settings Notifications card with permission, registration, transaction
+  notification, and sensitive-detail controls.
+- Add pgTAP and Flutter widget tests for registration, RLS isolation, token
+  rotation, disabled state, and sensitive-detail toggles.
+
+### External Work
+
+- User creates or chooses the Firebase project.
+- User registers the Android Firebase app for `com.olympus.spendlens`.
+- User provides the Firebase Android app configuration and confirms whether it
+  may be tracked in Git.
+
+### Acceptance Criteria
+
+- A signed-in Android user can enable push notifications from Settings.
+- The app registers exactly one active device row per profile/installation.
+- Token refresh updates the existing installation row.
+- Users can disable transaction notifications or hide merchant/amount details.
+- Non-members cannot register devices or update preferences for another
+  household.
+- Flutter contains no service-role keys or Firebase admin credentials.
+
+## Milestone 19: Notification Outbox and Transaction Enqueue Contract
+
+### Status
+
+Planned. See [Push Notifications](PUSH_NOTIFICATIONS.md#m19---notification-outbox-and-transaction-enqueue-contract).
+
+### Objective
+
+Create durable notification queueing and enqueue one notification per successful
+transaction processing batch.
+
+### Tasks
+
+- Add service-only `notification_outbox` and `notification_deliveries` tables.
+- Add service-only RPCs to enqueue transaction notification batches, claim
+  queued outbox rows, and mark outbox rows sent or failed.
+- Store both detailed and private notification title/body variants.
+- Generate notification data payloads with household id, notification id,
+  transaction count, source type, and route `/transactions`.
+- Update `gmail-sync` to accumulate only inserted transaction ids from
+  `ingest_gmail_transaction`.
+- Enqueue exactly one outbox row per completed Gmail sync/backfill job when at
+  least one new transaction was inserted.
+- Use `gmail-job:<ingestion_jobs.id>` idempotency for Gmail batches.
+- Add a direct insert fallback trigger only for future `manual` and `api`
+  source transactions; do not trigger for `workbook` or `gmail`.
+- Add structured queue logs without exposing raw FCM tokens.
+- Add database tests for service-only access, enqueue idempotency, empty lists,
+  cross-household rejection, text generation, direct insert fallback, Gmail
+  batching, and duplicate reprocessing.
+
+### External Work
+
+- None.
+
+### Acceptance Criteria
+
+- A Gmail job with newly inserted transactions creates one queued outbox row.
+- Reprocessing the same Gmail source fingerprints creates no additional
+  notification work.
+- Workbook imports do not enqueue notifications.
+- Future direct manual/API transaction inserts enqueue one single-transaction
+  notification.
+- Normal app roles cannot read or mutate outbox/delivery tables.
+
+## Milestone 20: FCM Dispatcher Edge Function
+
+### Status
+
+Planned. See [Push Notifications](PUSH_NOTIFICATIONS.md#m20---fcm-dispatcher-edge-function).
+
+### Objective
+
+Deliver queued transaction notifications through FCM HTTP v1 from a service-key
+protected Supabase Edge Function.
+
+### Tasks
+
+- Ask the user for FCM service account JSON only as a local ignored secret file
+  or hosted Supabase secret; do not ask them to paste private keys into chat.
+- Add `send-push-notifications` Edge Function protected by the existing
+  Supabase secret-key request check.
+- Add shared FCM helper code that:
+  - Reads `FCM_SERVICE_ACCOUNT_JSON`.
+  - Mints OAuth access tokens for
+    `https://www.googleapis.com/auth/firebase.messaging`.
+  - Sends FCM HTTP v1 messages to the selected Firebase project.
+  - Never logs full FCM tokens or private keys.
+- Fan out queued outbox rows to active Android devices for active household
+  members with transaction push enabled.
+- Choose detailed or private content per user's
+  `include_sensitive_details` preference.
+- Record one delivery row per outbox/device and mark sent, skipped, or failed.
+- Deactivate devices on permanent token errors.
+- Retry transient FCM/network failures with outbox backoff.
+- Add local/staging/production secret examples using placeholder
+  `FCM_SERVICE_ACCOUNT_JSON`.
+- Add dispatcher tests with mocked FCM success, permanent token failure,
+  transient retry, missing credentials, private-vs-detailed content, and no
+  eligible devices.
+
+### External Work
+
+- User stores FCM service account JSON in Supabase Edge Function secrets or an
+  ignored local env file as `FCM_SERVICE_ACCOUNT_JSON`.
+- Hosted scheduler setup is optional until M21, but the function must support
+  manual service-key invocation.
+
+### Acceptance Criteria
+
+- Service-key calls dispatch queued outbox rows to FCM in tested code paths.
+- Successful sends create sent delivery rows and mark outbox sent.
+- Invalid tokens deactivate only affected devices.
+- Transient failures leave queued work retryable.
+- Missing/malformed FCM credentials fail safely without losing notification
+  intent.
+
+## Milestone 21: End-to-End UX, Observability, and Runbooks
+
+### Status
+
+Planned. See [Push Notifications](PUSH_NOTIFICATIONS.md#m21---end-to-end-ux-observability-and-runbooks).
+
+### Objective
+
+Complete notification tap behavior, foreground refresh behavior, operational
+visibility, and production runbooks.
+
+### Tasks
+
+- Handle `FirebaseMessaging.onMessage`, `onMessageOpenedApp`, and
+  `getInitialMessage`.
+- Route transaction notification taps to `/transactions`.
+- Refresh transaction, dashboard, trend, available-month, and review providers
+  for the active household where practical.
+- Show a lightweight in-app notice for foreground transaction messages.
+- Add Android notification channel setup if the final Firebase implementation
+  requires it.
+- Add service-only operational views or documented SQL queries for queued,
+  failed, sent, stale, and invalid-token notification state.
+- Update implementation, mobile, Supabase, external setup, and production
+  readiness docs with Firebase/FCM setup, secrets, scheduler, and smoke tests.
+- Add a hosted smoke checklist covering device registration, transaction batch
+  processing, dispatcher run, notification receipt, notification tap, and
+  private-details mode.
+- Add Flutter tests for tap routing, provider refresh, and foreground notice
+  behavior using fake message streams/controllers.
+
+### External Work
+
+- Hosted end-to-end push receipt requires an Android device or emulator with
+  Google Play services, a Firebase Android app, and `FCM_SERVICE_ACCOUNT_JSON`
+  configured in Supabase Edge Function secrets.
+
+### Acceptance Criteria
+
+- Notification taps open Transactions for signed-in users.
+- Foreground messages refresh app data and show a non-blocking notice.
+- Operators can inspect queued, sent, failed, stale, and invalid-token
+  notification state.
+- Production readiness docs include Firebase setup, FCM secret handling,
+  dispatcher scheduling, and smoke testing.
+- iOS, web push, exact transaction-detail deep links, quiet hours, and marketing
+  notifications remain deferred.
+
 ## Cross-Milestone Consistency Rules
 
 - Ask the user before proceeding on any undocumented decision. Codex may recommend a default, but must wait for confirmation.
 - Keep all finance rows scoped to `household_id`.
 - Use RLS for app-accessible tables.
 - Do not store raw email bodies by default.
+- Do not store FCM service account JSON or private keys in Flutter or tracked
+  docs.
 - Use `net_expense` for summaries and budgets.
 - Exclude card bill payments from spend.
 - Treat refunds as reducing net expense.
 - Ensure imports and sync jobs are idempotent.
+- Keep push delivery asynchronous so FCM failures do not block ingestion.
 - Prefer deterministic rules before AI.
 - Keep client code free of service credentials.
 - Update these docs when architecture decisions change.
