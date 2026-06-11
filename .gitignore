@@ -13,6 +13,7 @@ Thumbs.db
 
 # Local environment and secrets
 .env
+*.env
 .env.*
 !.env.example
 !.env.template
@@ -83,14 +84,13 @@ node_modules/
 .yarn/build-state.yml
 .yarn/install-state.gz
 .pnp.*
+.pnpm-store/
 dist/
 
 # Supabase local state
 supabase/.branches/
 supabase/.temp/
 supabase/.env
-supabase/functions/.env
-supabase/functions/**/.env
 
 # Generated exports and local data dumps
 outputs/
@@ -110,4 +110,3 @@ temp/
 .mypy_cache/
 .ruff_cache/
 .nyc_output/
-
