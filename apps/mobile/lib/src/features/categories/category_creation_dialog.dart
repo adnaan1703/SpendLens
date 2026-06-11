@@ -6,9 +6,15 @@ import '../../data/repositories/finance_repository.dart';
 void refreshCategoryLookups(WidgetRef ref, String householdId) {
   ref.invalidate(transactionCategoriesProvider(householdId));
   ref.invalidate(merchantSubcategoriesProvider(householdId));
+  ref.invalidate(categoryManagerSnapshotProvider(householdId));
+  ref.invalidate(categoryUsagePreviewProvider);
   ref.invalidate(
     dashboardSnapshotProvider(FinanceMonthRequest(householdId: householdId)),
   );
+  ref.invalidate(dashboardSnapshotProvider);
+  ref.invalidate(transactionsProvider);
+  ref.invalidate(trendReportProvider);
+  ref.invalidate(merchantReviewQueueProvider(householdId));
 }
 
 Future<CategoryCreationResult?> showCategoryCreationDialog({

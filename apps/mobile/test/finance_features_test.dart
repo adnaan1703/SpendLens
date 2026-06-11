@@ -724,9 +724,74 @@ void main() {
       repository.createdCategoryRequests.single.subcategoryName,
       'Flights',
     );
-    expect(find.text('Travel'), findsOneWidget);
+    expect(find.text('Travel'), findsWidgets);
     expect(find.text('Flights'), findsOneWidget);
     expect(find.text('Created Travel'), findsOneWidget);
+  });
+
+  testWidgets('settings category manager shows usage preview', (tester) async {
+    final repository = _FakeFinanceRepository();
+
+    await tester.pumpWidget(
+      _financeTestApp(repository: repository, child: const SettingsScreen()),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Food'), findsWidgets);
+    expect(find.text('Delivery'), findsWidgets);
+    expect(find.text('1 transaction - INR 1,200'), findsWidgets);
+    expect(find.text('Swiggy Instamart'), findsOneWidget);
+    expect(find.text('2026-03-12 - Food - Delivery'), findsOneWidget);
+  });
+
+  testWidgets('settings edits category taxonomy without replacing ids', (
+    tester,
+  ) async {
+    final repository = _FakeFinanceRepository();
+
+    await tester.pumpWidget(
+      _financeTestApp(repository: repository, child: const SettingsScreen()),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.ensureVisible(find.byTooltip('Edit category').first);
+    await tester.tap(find.byTooltip('Edit category').first);
+    await tester.pumpAndSettle();
+
+    await tester.enterText(
+      find.byKey(const ValueKey('category-taxonomy-name')),
+      'Groceries',
+    );
+    await tester.enterText(
+      find.byKey(const ValueKey('subcategory-taxonomy-sub-food-delivery')),
+      'Delivery & Grocery',
+    );
+    await tester.tap(find.text('Add subcategory'));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byType(TextFormField).last, 'Staples');
+    await tester.tap(find.widgetWithText(FilledButton, 'Save'));
+    await tester.pumpAndSettle();
+
+    expect(repository.taxonomyUpdates, hasLength(1));
+    expect(repository.taxonomyUpdates.single.categoryId, 'cat-food');
+    expect(repository.taxonomyUpdates.single.categoryName, 'Groceries');
+    expect(
+      repository.taxonomyUpdates.single.subcategories.first.id,
+      'sub-food-delivery',
+    );
+    expect(
+      repository.taxonomyUpdates.single.subcategories.first.name,
+      'Delivery & Grocery',
+    );
+    expect(repository.taxonomyUpdates.single.subcategories.last.id, isNull);
+    expect(
+      repository.taxonomyUpdates.single.subcategories.last.name,
+      'Staples',
+    );
+    expect(find.text('Groceries'), findsWidgets);
+    expect(find.text('Delivery & Grocery'), findsWidgets);
+    expect(find.text('Staples'), findsWidgets);
+    expect(find.text('Updated Groceries'), findsOneWidget);
   });
 
   testWidgets('settings shows Gmail connector status', (tester) async {
@@ -931,6 +996,7 @@ final class _FakeFinanceRepository implements FinanceRepository {
   final savedCaps = <_SavedCap>[];
   final corrections = <TransactionMetadataCorrectionRequest>[];
   final createdCategoryRequests = <CategoryCreationRequest>[];
+  final taxonomyUpdates = <CategoryTaxonomyUpdateRequest>[];
   final expenseQuestions = <ExpenseQuestionRequest>[];
   final metadataSuggestionRequests = <TransactionMetadataSuggestionRequest>[];
   final piggyBanks = <PiggyBankSummary>[];
@@ -1241,6 +1307,43 @@ final class _FakeFinanceRepository implements FinanceRepository {
   }
 
   @override
+  Future<CategoryManagerSnapshot> fetchCategoryManagerSnapshot({
+    required String householdId,
+  }) async {
+    return CategoryManagerSnapshot.fromTransactionRows(
+      categories: categories,
+      subcategories: subcategories,
+      transactionRows: [
+        for (final transaction in transactions)
+          if (transaction.categoryId != null)
+            {
+              'category_id': transaction.categoryId,
+              'subcategory_id': transaction.subcategoryId,
+              'net_expense': transaction.netExpense,
+            },
+      ],
+    );
+  }
+
+  @override
+  Future<CategoryUsagePreview> fetchCategoryUsagePreview(
+    CategoryUsagePreviewRequest request,
+  ) async {
+    final page = await fetchTransactions(
+      TransactionQuery(
+        householdId: request.householdId,
+        categoryId: request.categoryId,
+        subcategoryId: request.subcategoryId,
+        pageSize: 5,
+      ),
+    );
+
+    return CategoryUsagePreview(
+      recentTransactions: page.items.take(5).toList(growable: false),
+    );
+  }
+
+  @override
   Future<CategoryCreationResult> createCategory(
     CategoryCreationRequest request,
   ) async {
@@ -1260,6 +1363,55 @@ final class _FakeFinanceRepository implements FinanceRepository {
     subcategories.add(subcategory);
 
     return CategoryCreationResult(category: category, subcategory: subcategory);
+  }
+
+  @override
+  Future<CategoryTaxonomyUpdateResult> updateCategoryTaxonomy(
+    CategoryTaxonomyUpdateRequest request,
+  ) async {
+    taxonomyUpdates.add(request);
+    final category = CategoryOption(
+      id: request.categoryId,
+      name: request.categoryName.trim(),
+    );
+    final categoryIndex = categories.indexWhere(
+      (candidate) => candidate.id == request.categoryId,
+    );
+    categories[categoryIndex] = category;
+
+    var insertedCount = 0;
+    for (final draft in request.subcategories) {
+      final id = draft.id;
+      if (id == null) {
+        insertedCount += 1;
+        subcategories.add(
+          SubcategoryOption(
+            id: 'sub-taxonomy-${taxonomyUpdates.length}-$insertedCount',
+            categoryId: request.categoryId,
+            name: draft.name.trim(),
+          ),
+        );
+        continue;
+      }
+
+      final subcategoryIndex = subcategories.indexWhere(
+        (candidate) => candidate.id == id,
+      );
+      subcategories[subcategoryIndex] = SubcategoryOption(
+        id: id,
+        categoryId: request.categoryId,
+        name: draft.name.trim(),
+      );
+    }
+
+    final updatedSubcategories = subcategories
+        .where((subcategory) => subcategory.categoryId == request.categoryId)
+        .toList(growable: false);
+
+    return CategoryTaxonomyUpdateResult(
+      category: category,
+      subcategories: updatedSubcategories,
+    );
   }
 
   @override
@@ -1442,6 +1594,9 @@ final class _FakeFinanceRepository implements FinanceRepository {
       final matchesCategory =
           query.categoryId == null ||
           transaction.categoryId == query.categoryId;
+      final matchesSubcategory =
+          query.subcategoryId == null ||
+          transaction.subcategoryId == query.subcategoryId;
       final matchesSourceType =
           query.sourceAccountType == null ||
           sourceTypeFor(transaction.sourceAccountId) == query.sourceAccountType;
@@ -1457,6 +1612,7 @@ final class _FakeFinanceRepository implements FinanceRepository {
 
       return matchesSearch &&
           matchesCategory &&
+          matchesSubcategory &&
           matchesSourceType &&
           matchesSource &&
           matchesStart &&

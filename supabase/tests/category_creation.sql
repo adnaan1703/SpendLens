@@ -3,7 +3,7 @@ begin;
 create extension if not exists pgtap with schema extensions;
 set search_path = public, extensions;
 
-select plan(8);
+select plan(18);
 
 insert into auth.users (id)
 values
@@ -132,6 +132,167 @@ select throws_ok(
   'blank category names are rejected'
 );
 
+insert into public.categories (id, household_id, name, sort_order)
+values (
+  '34000000-0000-0000-0000-000000000002',
+  '34000000-0000-0000-0000-000000000001',
+  'Food',
+  2
+);
+
+insert into public.subcategories (
+  id,
+  household_id,
+  category_id,
+  name,
+  sort_order
+)
+values (
+  '45000000-0000-0000-0000-000000000002',
+  '34000000-0000-0000-0000-000000000001',
+  '34000000-0000-0000-0000-000000000002',
+  'Dining',
+  1
+);
+
+create temporary table updated_taxonomy as
+select *
+from public.update_household_category_taxonomy(
+  '34000000-0000-0000-0000-000000000001',
+  (select category_id from created_category),
+  ' Trips ',
+  jsonb_build_array(
+    jsonb_build_object(
+      'id',
+      (select subcategory_id from created_category),
+      'name',
+      ' Air Travel '
+    ),
+    jsonb_build_object('name', ' Hotels ')
+  )
+);
+
+select is(
+  (select category_name from updated_taxonomy limit 1),
+  'Trips',
+  'category update trims and returns renamed category'
+);
+
+select is(
+  (
+    select sc.name
+    from public.subcategories sc
+    where sc.id = (select subcategory_id from created_category)
+  ),
+  'Air Travel',
+  'existing subcategory is renamed in place'
+);
+
+select ok(
+  exists (
+    select 1
+    from updated_taxonomy ut
+    join public.subcategories sc
+      on sc.id = ut.subcategory_id
+    where ut.subcategory_name = 'Hotels'
+      and sc.category_id = (select category_id from created_category)
+  ),
+  'new subcategory is inserted under the edited category'
+);
+
+select is(
+  (
+    select count(*)::integer
+    from public.categories c
+    where c.id = (select category_id from created_category)
+      and c.name = 'Trips'
+  ),
+  1,
+  'category rename preserves the existing category row'
+);
+
+select throws_ok(
+  $$
+    select *
+    from public.update_household_category_taxonomy(
+      '34000000-0000-0000-0000-000000000001',
+      (select category_id from created_category),
+      'food',
+      jsonb_build_array(
+        jsonb_build_object(
+          'id',
+          (select subcategory_id from created_category),
+          'name',
+          'Air Travel'
+        )
+      )
+    )
+  $$,
+  'P0001',
+  'A category with this name already exists.',
+  'duplicate category names are rejected during update'
+);
+
+select throws_ok(
+  $$
+    select *
+    from public.update_household_category_taxonomy(
+      '34000000-0000-0000-0000-000000000001',
+      (select category_id from created_category),
+      'Trips',
+      jsonb_build_array(
+        jsonb_build_object(
+          'id',
+          (select subcategory_id from created_category),
+          'name',
+          'Lodging'
+        ),
+        jsonb_build_object('name', 'lodging')
+      )
+    )
+  $$,
+  'P0001',
+  'Subcategory names must be unique within a category.',
+  'duplicate subcategory names are rejected within update payloads'
+);
+
+select throws_ok(
+  $$
+    select *
+    from public.update_household_category_taxonomy(
+      '34000000-0000-0000-0000-000000000001',
+      (select category_id from created_category),
+      'Trips',
+      jsonb_build_array(jsonb_build_object('name', ' '))
+    )
+  $$,
+  'P0001',
+  'Subcategory name is required.',
+  'blank subcategory names are rejected during update'
+);
+
+select throws_ok(
+  $$
+    select *
+    from public.update_household_category_taxonomy(
+      '34000000-0000-0000-0000-000000000001',
+      (select category_id from created_category),
+      'Trips',
+      jsonb_build_array(
+        jsonb_build_object(
+          'id',
+          '45000000-0000-0000-0000-000000000002',
+          'name',
+          'Moved Dining'
+        )
+      )
+    )
+  $$,
+  'P0001',
+  'Subcategory not found for this category.',
+  'subcategory ownership is validated during update'
+);
+
 set local request.jwt.claim.sub = '14000000-0000-0000-0000-000000000002';
 
 select throws_ok(
@@ -148,6 +309,28 @@ select throws_ok(
   'viewers cannot create categories'
 );
 
+select throws_ok(
+  $$
+    select *
+    from public.update_household_category_taxonomy(
+      '34000000-0000-0000-0000-000000000001',
+      (select category_id from created_category),
+      'Viewer Trips',
+      jsonb_build_array(
+        jsonb_build_object(
+          'id',
+          (select subcategory_id from created_category),
+          'name',
+          'Viewer Air Travel'
+        )
+      )
+    )
+  $$,
+  'P0001',
+  'You do not have permission to update categories for this household.',
+  'viewers cannot update category taxonomy'
+);
+
 set local request.jwt.claim.sub = '14000000-0000-0000-0000-000000000003';
 
 select throws_ok(
@@ -162,6 +345,28 @@ select throws_ok(
   'P0001',
   'You do not have permission to create categories for this household.',
   'non-members cannot create categories'
+);
+
+select throws_ok(
+  $$
+    select *
+    from public.update_household_category_taxonomy(
+      '34000000-0000-0000-0000-000000000001',
+      (select category_id from created_category),
+      'Outsider Trips',
+      jsonb_build_array(
+        jsonb_build_object(
+          'id',
+          (select subcategory_id from created_category),
+          'name',
+          'Outsider Air Travel'
+        )
+      )
+    )
+  $$,
+  'P0001',
+  'You do not have permission to update categories for this household.',
+  'non-members cannot update category taxonomy'
 );
 
 select * from finish();

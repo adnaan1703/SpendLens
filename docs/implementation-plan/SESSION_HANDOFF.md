@@ -4,17 +4,18 @@ Use this file to coordinate work across multiple implementation sessions. Update
 
 ## Current Status
 
-- Current milestone: Milestone 18, Firebase Client and Device Registration
-  (planned; not started).
-- Last completed milestone: Milestone 17, Transaction and Trend Month Filter.
-- Current implementation state: Flutter Android app scaffold exists in `apps/mobile` with SpendLens Google sign-in, route protection, authenticated shell, RLS-safe profile/default-household bootstrap, household loading/error states, sign-out, package `com.olympus.spendlens`, core packages, environment templates, tests, and Supabase folder structure. Supabase local config applies migrations for schema, RLS, views, workbook-derived default categories, merchant review corrections, piggy-bank entry validation, Gmail connector ingestion, production-readiness monitoring views, AI feature settings/usage/jobs/transaction metadata suggestions, pgTAP database tests, and the Android auth redirect URL. Milestone 3 adds a local workbook importer under `tools/workbook-import`, fixture tests, and rerun documentation in `docs/implementation-plan/WORKBOOK_IMPORT.md`. Milestone 5 adds Supabase-backed finance repository reads/writes, dashboard KPIs, reporting-month selection, monthly category cap setup/editing, category and merchant summaries, transaction search/filter pagination, and transaction detail panels. Milestone 6 adds merchant review queue UI, correction RPC/rule persistence, historical reclassification, review resolution, transaction classification audit metadata, and future-import rule application. Milestone 7 adds Supabase-backed piggy-bank list/detail UI, create/edit forms, ledger entry creation, ledger-derived balance/progress reads, no-overdraft withdrawal validation, and regression tests. Milestone 8 adds filtered monthly trend reports, gross/refund/net reporting, category trend tables, merchant summary tables, and filtered transaction CSV copy from the Trends screen. Milestone 9 adds Vault-backed Gmail OAuth connector state, Pub/Sub webhook job dedupe, Gmail sync/backfill/watch-renewal Edge Functions, HDFC credit-card debit parsing from anonymized fixtures, SQL ingestion RPCs, and Settings connector status/connect/disconnect UI. Milestone 10 adds HDFC Bank UPI debit parsing from anonymized fixtures, UPI-aware Gmail backfill search and fingerprinting, UPI ingestion pgTAP coverage, and source-type filters for credit card vs UPI on transaction/trend screens. Milestone 11 adds production-readiness runbooks, local smoke automation, service-role ingestion/parser health views, structured Edge Function operational logs, Android release signing/shrinking configuration, and staging/production Edge Function secret templates. Milestone 12 adds Gemini-backed expense Q&A, transaction metadata suggestions, AI usage/budget status, backend-only LLM calls, and free-tier-only dev/staging controls. Milestone 13 adds a service-only May 2026 Gmail range backfill function, range-aware Gmail sync search/date filtering, OAuth account selection for mailbox choice, deployment tooling updates, and a hosted dev/staging runbook. Milestone 14 adds authenticated in-app creation of a category plus first subcategory from Settings and Merchant Review through an RLS-safe `create_household_category` RPC. Milestone 15 adds authenticated transaction metadata editing from Review and Transactions through an RLS-safe `apply_transaction_metadata_correction` RPC, a shared Flutter metadata editor, confidence editing, exact normalized merchant reclassification, future mapping-rule updates, and regression coverage. Milestone 16 retires the legacy AI lookup path, keeps expense Q&A plus transaction metadata Suggest, renames Suggest budget/search flags, removes the obsolete Edge Function and Flutter models, and keeps historical AI audit rows. Milestone 17 adds shared All dates/month/custom period filters to Transactions and Trends, backed by available reporting months from `v_monthly_spend` and mapped onto the existing `startDate`/`endDate` query fields. The push-notification sequence is planned in `docs/implementation-plan/PUSH_NOTIFICATIONS.md` as M18-M21, and the category-management sequence is planned in `docs/implementation-plan/CATEGORY_MANAGEMENT.md` as M22-M25, but no Firebase, category-management schema, category-management RPC, Edge Function, or Flutter implementation has started.
+- Current milestone: None. Milestone 22 was started and completed on
+  2026-06-11 after the user explicitly deferred Milestones 18-21.
+- Last completed milestone: Milestone 22, Category Manager Foundation and Usage
+  Preview.
+- Current implementation state: Flutter Android app scaffold exists in `apps/mobile` with SpendLens Google sign-in, route protection, authenticated shell, RLS-safe profile/default-household bootstrap, household loading/error states, sign-out, package `com.olympus.spendlens`, core packages, environment templates, tests, and Supabase folder structure. Supabase local config applies migrations for schema, RLS, views, workbook-derived default categories, merchant review corrections, piggy-bank entry validation, Gmail connector ingestion, production-readiness monitoring views, AI feature settings/usage/jobs/transaction metadata suggestions, pgTAP database tests, and the Android auth redirect URL. Milestone 3 adds a local workbook importer under `tools/workbook-import`, fixture tests, and rerun documentation in `docs/implementation-plan/WORKBOOK_IMPORT.md`. Milestone 5 adds Supabase-backed finance repository reads/writes, dashboard KPIs, reporting-month selection, monthly category cap setup/editing, category and merchant summaries, transaction search/filter pagination, and transaction detail panels. Milestone 6 adds merchant review queue UI, correction RPC/rule persistence, historical reclassification, review resolution, transaction classification audit metadata, and future-import rule application. Milestone 7 adds Supabase-backed piggy-bank list/detail UI, create/edit forms, ledger entry creation, ledger-derived balance/progress reads, no-overdraft withdrawal validation, and regression tests. Milestone 8 adds filtered monthly trend reports, gross/refund/net reporting, category trend tables, merchant summary tables, and filtered transaction CSV copy from the Trends screen. Milestone 9 adds Vault-backed Gmail OAuth connector state, Pub/Sub webhook job dedupe, Gmail sync/backfill/watch-renewal Edge Functions, HDFC credit-card debit parsing from anonymized fixtures, SQL ingestion RPCs, and Settings connector status/connect/disconnect UI. Milestone 10 adds HDFC Bank UPI debit parsing from anonymized fixtures, UPI-aware Gmail backfill search and fingerprinting, UPI ingestion pgTAP coverage, and source-type filters for credit card vs UPI on transaction/trend screens. Milestone 11 adds production-readiness runbooks, local smoke automation, service-role ingestion/parser health views, structured Edge Function operational logs, Android release signing/shrinking configuration, and staging/production Edge Function secret templates. Milestone 12 adds Gemini-backed expense Q&A, transaction metadata suggestions, AI usage/budget status, backend-only LLM calls, and free-tier-only dev/staging controls. Milestone 13 adds a service-only May 2026 Gmail range backfill function, range-aware Gmail sync search/date filtering, OAuth account selection for mailbox choice, deployment tooling updates, and a hosted dev/staging runbook. Milestone 14 adds authenticated in-app creation of a category plus first subcategory from Settings and Merchant Review through an RLS-safe `create_household_category` RPC. Milestone 15 adds authenticated transaction metadata editing from Review and Transactions through an RLS-safe `apply_transaction_metadata_correction` RPC, a shared Flutter metadata editor, confidence editing, exact normalized merchant reclassification, future mapping-rule updates, and regression coverage. Milestone 16 retires the legacy AI lookup path, keeps expense Q&A plus transaction metadata Suggest, renames Suggest budget/search flags, removes the obsolete Edge Function and Flutter models, and keeps historical AI audit rows. Milestone 17 adds shared All dates/month/custom period filters to Transactions and Trends, backed by available reporting months from `v_monthly_spend` and mapped onto the existing `startDate`/`endDate` query fields. Milestone 22 replaces the compact Settings category list with a grouped category manager, category/subcategory usage snapshots, selected recent transaction previews, and rename/add taxonomy editing through an RLS-safe `update_household_category_taxonomy` RPC. Milestones 18-21 remain planned and deferred by user request; Milestones 23-25 remain planned for later category-management work.
 - Remote deployment state: On 2026-06-08, user confirmed Supabase project `bslsitzdvrdosubbdxpd` as the intended dev/staging target. All local migrations through `20260607174515_ai_ready_layer_llm_features.sql` were pushed there, hosted expense Q&A and the now-retired legacy AI lookup function were active with JWT verification, and `GEMINI_API_KEY` was present in hosted Edge Function secrets by name. After the user signed in through the Android emulator, hosted profile/household bootstrap and authenticated Gemini Edge Function smoke passed. On 2026-06-08 for Milestone 13, `gmail-oauth-start` was deployed as version 2 with JWT verification, `gmail-sync` was deployed as version 2 without JWT verification, and new `gmail-backfill-range` was deployed as version 1 without JWT verification. Hosted `gmail-backfill-range` `OPTIONS` smoke returned 200, and an unauthenticated POST returned the expected service-key error. The live May Gmail backfill itself was not run because it requires the user to connect the target Gmail mailbox and invoke the runbook with a Supabase secret key from a local/platform secret store. On 2026-06-09, M16 deleted the hosted legacy AI lookup function from `bslsitzdvrdosubbdxpd` and a follow-up function list verified it absent. The M16 database migration and updated active Suggest function were verified locally but not pushed/deployed to hosted in this implementation session.
-- Next recommended milestone: Milestone 18, Firebase Client and Device
-  Registration. Category management is planned for Milestones 22-25 after the
-  current push-notification sequence unless the user explicitly reprioritizes
-  it. If continuing hosted rollout separately, push the M16 migration and deploy
-  `transaction-metadata-suggest`; iOS and web remain deferred future milestones
-  unless explicitly resumed.
+- Next recommended milestone: Milestone 23, Taxonomy Delete and Review Requeue,
+  if continuing the user-reprioritized category-management sequence. Milestones
+  18-21 remain deferred for later push-notification work unless the user
+  resumes them. If continuing hosted rollout separately, push the M16 migration
+  and deploy `transaction-metadata-suggest`; iOS and web remain deferred future
+  milestones unless explicitly resumed.
 
 ## Required Reading for New Threads
 
@@ -100,11 +101,15 @@ Do not ask the user to perform all setup at once. Ask only when the relevant mil
 - Milestone 15, Transaction Metadata Editing: completed.
 - Milestone 16, Merchant Research Retirement: completed.
 - Milestone 17, Transaction and Trend Month Filter: completed.
-- Milestone 18, Firebase Client and Device Registration: planned.
-- Milestone 19, Notification Outbox and Transaction Enqueue Contract: planned.
-- Milestone 20, FCM Dispatcher Edge Function: planned.
-- Milestone 21, End-to-End UX, Observability, and Runbooks: planned.
-- Milestone 22, Category Manager Foundation and Usage Preview: planned.
+- Milestone 18, Firebase Client and Device Registration: planned; deferred by
+  user request on 2026-06-11.
+- Milestone 19, Notification Outbox and Transaction Enqueue Contract: planned;
+  deferred by user request on 2026-06-11.
+- Milestone 20, FCM Dispatcher Edge Function: planned; deferred by user request
+  on 2026-06-11.
+- Milestone 21, End-to-End UX, Observability, and Runbooks: planned; deferred
+  by user request on 2026-06-11.
+- Milestone 22, Category Manager Foundation and Usage Preview: completed.
 - Milestone 23, Taxonomy Delete and Review Requeue: planned.
 - Milestone 24, Category Merge with Explicit Subcategory Mapping: planned.
 - Milestone 25, Category Management Regression, Docs, and Cleanup: planned.
@@ -870,7 +875,9 @@ When an architecture decision changes:
   - Milestone 25, Category Management Regression, Docs, and Cleanup.
 - Updated implementation-plan README and this handoff to point future sessions
   at the category-management plan.
-- Implementation remains planned. Milestone 22 was not started.
+- At plan-creation time, implementation remained planned and Milestone 22 had
+  not started. Milestone 22 has since been completed; see the completion notes
+  below.
 - Verification run:
   - Planning artifact inspection.
   - Existing Supabase/RLS/category/review schema inspection.
@@ -887,3 +894,54 @@ When an architecture decision changes:
   - None.
 - Mocks used:
   - None.
+
+## Milestone 22 Completion Notes
+
+- Started on 2026-06-11 after the user explicitly deferred Milestones 18-21.
+- Completed on 2026-06-11.
+- Replaced the compact Settings category list with a grouped category manager
+  that keeps category rows visually grouped with subcategory rows, compact edit
+  icon actions, selected usage details, and recent transaction previews.
+- Added `CategoryManagerSnapshot`, `CategoryUsagePreview`, and related Riverpod
+  providers to expose category/subcategory transaction counts, net spend, and
+  recent transactions with merchant/date/amount/category context.
+- Added optional subcategory filtering to `TransactionQuery` so category
+  preview reads can reuse the existing transaction repository path.
+- Added `public.update_household_category_taxonomy(...)` as the single
+  app-facing `security invoker` RPC for non-destructive taxonomy edits. It
+  requires a signed-in profile and household write access, trims and rejects
+  blank names, validates category/subcategory ownership, rejects
+  case-insensitive duplicate category and subcategory names, updates existing
+  rows in place, inserts only new subcategories, and returns the edited
+  category with the ordered subcategory list.
+- The save flow refreshes category/subcategory lookups, category manager
+  snapshot/preview, dashboard snapshots, transactions, trends, and merchant
+  review providers after taxonomy edits.
+- Deferred by scope: delete, merge, moving subcategories between categories,
+  reorder controls, Firebase, push notifications, and later category milestones.
+- Verification run:
+  - `supabase db reset --local`
+  - `supabase test db --local supabase/tests`
+  - `supabase db lint --local --schema app_private,public --fail-on error`
+  - `supabase db advisors --local --type security --level warn --fail-on none`
+  - `supabase db advisors --local --type performance --level warn --fail-on none`
+  - `cd apps/mobile && dart format lib/src/data/repositories/finance_repository.dart lib/src/features/settings/settings_screen.dart lib/src/features/categories/category_creation_dialog.dart test/finance_features_test.dart`
+  - `cd apps/mobile && flutter analyze`
+  - `cd apps/mobile && flutter test test/finance_features_test.dart`
+  - `cd apps/mobile && flutter test`
+  - `cd apps/mobile && flutter build apk --debug --no-pub`
+- Known gaps:
+  - No hosted Supabase migration push or Android-emulator manual smoke was run.
+  - Destructive category operations remain deferred to later category
+    milestones.
+- Assumptions made:
+  - RLS-protected direct reads from `categories`, `subcategories`, and
+    `transactions` are sufficient for M22 usage previews; only taxonomy
+    mutation needed a dedicated RPC.
+  - Subcategory preview filtering could extend the existing `TransactionQuery`
+    without changing visible Transactions-screen controls.
+- Mocks created:
+  - None.
+- Mocks used:
+  - Existing fake finance repository/widget-test data, extended for M22 category
+    manager snapshot, preview, and taxonomy update behavior.

@@ -99,6 +99,23 @@ final merchantSubcategoriesProvider =
           .fetchSubcategories(householdId: householdId);
     });
 
+final categoryManagerSnapshotProvider =
+    FutureProvider.family<CategoryManagerSnapshot, String>((ref, householdId) {
+      return ref
+          .watch(financeRepositoryProvider)
+          .fetchCategoryManagerSnapshot(householdId: householdId);
+    });
+
+final categoryUsagePreviewProvider =
+    FutureProvider.family<CategoryUsagePreview, CategoryUsagePreviewRequest>((
+      ref,
+      request,
+    ) {
+      return ref
+          .watch(financeRepositoryProvider)
+          .fetchCategoryUsagePreview(request);
+    });
+
 final merchantOptionsProvider =
     FutureProvider.family<List<MerchantOption>, String>((ref, householdId) {
       return ref
@@ -153,6 +170,7 @@ final class TransactionQuery {
     required this.householdId,
     this.searchText = '',
     this.categoryId,
+    this.subcategoryId,
     this.sourceAccountType,
     this.sourceAccountId,
     this.startDate,
@@ -164,6 +182,7 @@ final class TransactionQuery {
   final String householdId;
   final String searchText;
   final String? categoryId;
+  final String? subcategoryId;
   final String? sourceAccountType;
   final String? sourceAccountId;
   final DateTime? startDate;
@@ -175,6 +194,8 @@ final class TransactionQuery {
     String? searchText,
     String? categoryId,
     bool clearCategory = false,
+    String? subcategoryId,
+    bool clearSubcategory = false,
     String? sourceAccountType,
     bool clearSourceAccountType = false,
     String? sourceAccountId,
@@ -189,6 +210,9 @@ final class TransactionQuery {
       householdId: householdId,
       searchText: searchText ?? this.searchText,
       categoryId: clearCategory ? null : categoryId ?? this.categoryId,
+      subcategoryId: clearSubcategory
+          ? null
+          : subcategoryId ?? this.subcategoryId,
       sourceAccountType: clearSourceAccountType
           ? null
           : sourceAccountType ?? this.sourceAccountType,
@@ -208,6 +232,7 @@ final class TransactionQuery {
         other.householdId == householdId &&
         other.searchText == searchText &&
         other.categoryId == categoryId &&
+        other.subcategoryId == subcategoryId &&
         other.sourceAccountType == sourceAccountType &&
         other.sourceAccountId == sourceAccountId &&
         _dateKey(other.startDate) == _dateKey(startDate) &&
@@ -221,6 +246,7 @@ final class TransactionQuery {
     householdId,
     searchText,
     categoryId,
+    subcategoryId,
     sourceAccountType,
     sourceAccountId,
     _dateKey(startDate),
@@ -228,6 +254,29 @@ final class TransactionQuery {
     page,
     pageSize,
   );
+}
+
+final class CategoryUsagePreviewRequest {
+  const CategoryUsagePreviewRequest({
+    required this.householdId,
+    required this.categoryId,
+    this.subcategoryId,
+  });
+
+  final String householdId;
+  final String categoryId;
+  final String? subcategoryId;
+
+  @override
+  bool operator ==(Object other) {
+    return other is CategoryUsagePreviewRequest &&
+        other.householdId == householdId &&
+        other.categoryId == categoryId &&
+        other.subcategoryId == subcategoryId;
+  }
+
+  @override
+  int get hashCode => Object.hash(householdId, categoryId, subcategoryId);
 }
 
 final class TrendQuery {
@@ -872,6 +921,151 @@ final class CategoryCreationResult {
         categoryId: categoryId,
         name: json['subcategory_name'] as String,
       ),
+    );
+  }
+}
+
+final class CategoryUsageSummary {
+  const CategoryUsageSummary({
+    required this.id,
+    required this.transactionCount,
+    required this.netSpend,
+  });
+
+  final String id;
+  final int transactionCount;
+  final double netSpend;
+
+  static CategoryUsageSummary empty(String id) {
+    return CategoryUsageSummary(id: id, transactionCount: 0, netSpend: 0);
+  }
+}
+
+final class CategoryManagerSnapshot {
+  const CategoryManagerSnapshot({
+    required this.categories,
+    required this.subcategories,
+    required this.categoryUsageById,
+    required this.subcategoryUsageById,
+  });
+
+  final List<CategoryOption> categories;
+  final List<SubcategoryOption> subcategories;
+  final Map<String, CategoryUsageSummary> categoryUsageById;
+  final Map<String, CategoryUsageSummary> subcategoryUsageById;
+
+  CategoryUsageSummary categoryUsage(String categoryId) {
+    return categoryUsageById[categoryId] ??
+        CategoryUsageSummary.empty(categoryId);
+  }
+
+  CategoryUsageSummary subcategoryUsage(String subcategoryId) {
+    return subcategoryUsageById[subcategoryId] ??
+        CategoryUsageSummary.empty(subcategoryId);
+  }
+
+  factory CategoryManagerSnapshot.fromTransactionRows({
+    required List<CategoryOption> categories,
+    required List<SubcategoryOption> subcategories,
+    required List<Map<String, dynamic>> transactionRows,
+  }) {
+    final categoryTotals = <String, _UsageAccumulator>{};
+    final subcategoryTotals = <String, _UsageAccumulator>{};
+
+    for (final row in transactionRows) {
+      final categoryId = row['category_id'] as String?;
+      final subcategoryId = row['subcategory_id'] as String?;
+      final netExpense = _asDouble(row['net_expense']);
+
+      if (categoryId != null) {
+        categoryTotals
+            .putIfAbsent(categoryId, () => _UsageAccumulator(categoryId))
+            .add(netExpense);
+      }
+
+      if (subcategoryId != null) {
+        subcategoryTotals
+            .putIfAbsent(subcategoryId, () => _UsageAccumulator(subcategoryId))
+            .add(netExpense);
+      }
+    }
+
+    return CategoryManagerSnapshot(
+      categories: categories,
+      subcategories: subcategories,
+      categoryUsageById: {
+        for (final total in categoryTotals.values) total.id: total.toSummary(),
+      },
+      subcategoryUsageById: {
+        for (final total in subcategoryTotals.values)
+          total.id: total.toSummary(),
+      },
+    );
+  }
+}
+
+final class CategoryUsagePreview {
+  const CategoryUsagePreview({required this.recentTransactions});
+
+  final List<FinanceTransaction> recentTransactions;
+}
+
+final class CategoryTaxonomySubcategoryDraft {
+  const CategoryTaxonomySubcategoryDraft({this.id, required this.name});
+
+  final String? id;
+  final String name;
+
+  Map<String, Object?> toJson() {
+    return {'id': id, 'name': name};
+  }
+}
+
+final class CategoryTaxonomyUpdateRequest {
+  const CategoryTaxonomyUpdateRequest({
+    required this.householdId,
+    required this.categoryId,
+    required this.categoryName,
+    required this.subcategories,
+  });
+
+  final String householdId;
+  final String categoryId;
+  final String categoryName;
+  final List<CategoryTaxonomySubcategoryDraft> subcategories;
+}
+
+final class CategoryTaxonomyUpdateResult {
+  const CategoryTaxonomyUpdateResult({
+    required this.category,
+    required this.subcategories,
+  });
+
+  final CategoryOption category;
+  final List<SubcategoryOption> subcategories;
+
+  factory CategoryTaxonomyUpdateResult.fromRows(List<dynamic> rows) {
+    if (rows.isEmpty) {
+      throw StateError('Category update did not return a result.');
+    }
+
+    final first = rows.first as Map<String, dynamic>;
+    final categoryId = first['category_id'] as String;
+
+    return CategoryTaxonomyUpdateResult(
+      category: CategoryOption(
+        id: categoryId,
+        name: first['category_name'] as String,
+      ),
+      subcategories: [
+        for (final row in rows.cast<Map<String, dynamic>>())
+          if (row['subcategory_id'] != null)
+            SubcategoryOption(
+              id: row['subcategory_id'] as String,
+              categoryId: categoryId,
+              name: row['subcategory_name'] as String,
+            ),
+      ],
     );
   }
 }
@@ -1566,8 +1760,20 @@ abstract interface class FinanceRepository {
     required String householdId,
   });
 
+  Future<CategoryManagerSnapshot> fetchCategoryManagerSnapshot({
+    required String householdId,
+  });
+
+  Future<CategoryUsagePreview> fetchCategoryUsagePreview(
+    CategoryUsagePreviewRequest request,
+  );
+
   Future<CategoryCreationResult> createCategory(
     CategoryCreationRequest request,
+  );
+
+  Future<CategoryTaxonomyUpdateResult> updateCategoryTaxonomy(
+    CategoryTaxonomyUpdateRequest request,
   );
 
   Future<List<MerchantOption>> fetchMerchants({required String householdId});
@@ -1744,6 +1950,43 @@ final class SupabaseFinanceRepository implements FinanceRepository {
   }
 
   @override
+  Future<CategoryManagerSnapshot> fetchCategoryManagerSnapshot({
+    required String householdId,
+  }) async {
+    final results = await Future.wait<Object>([
+      fetchCategories(householdId: householdId),
+      fetchSubcategories(householdId: householdId),
+      _client
+          .from('transactions')
+          .select('category_id, subcategory_id, net_expense')
+          .eq('household_id', householdId),
+    ]);
+
+    return CategoryManagerSnapshot.fromTransactionRows(
+      categories: results[0] as List<CategoryOption>,
+      subcategories: results[1] as List<SubcategoryOption>,
+      transactionRows: (results[2] as List<dynamic>)
+          .cast<Map<String, dynamic>>(),
+    );
+  }
+
+  @override
+  Future<CategoryUsagePreview> fetchCategoryUsagePreview(
+    CategoryUsagePreviewRequest request,
+  ) async {
+    final page = await fetchTransactions(
+      TransactionQuery(
+        householdId: request.householdId,
+        categoryId: request.categoryId,
+        subcategoryId: request.subcategoryId,
+        pageSize: 5,
+      ),
+    );
+
+    return CategoryUsagePreview(recentTransactions: page.items);
+  }
+
+  @override
   Future<CategoryCreationResult> createCategory(
     CategoryCreationRequest request,
   ) async {
@@ -1761,6 +2004,25 @@ final class SupabaseFinanceRepository implements FinanceRepository {
     }
 
     return CategoryCreationResult.fromJson(rows.first as Map<String, dynamic>);
+  }
+
+  @override
+  Future<CategoryTaxonomyUpdateResult> updateCategoryTaxonomy(
+    CategoryTaxonomyUpdateRequest request,
+  ) async {
+    final rows = await _client.rpc<List<dynamic>>(
+      'update_household_category_taxonomy',
+      params: {
+        'p_household_id': request.householdId,
+        'p_category_id': request.categoryId,
+        'p_category_name': request.categoryName,
+        'p_subcategories': [
+          for (final subcategory in request.subcategories) subcategory.toJson(),
+        ],
+      },
+    );
+
+    return CategoryTaxonomyUpdateResult.fromRows(rows);
   }
 
   @override
@@ -2053,6 +2315,10 @@ final class SupabaseFinanceRepository implements FinanceRepository {
 
     if (query.categoryId != null) {
       request = request.eq('category_id', query.categoryId!);
+    }
+
+    if (query.subcategoryId != null) {
+      request = request.eq('subcategory_id', query.subcategoryId!);
     }
 
     if (query.sourceAccountId != null) {
@@ -2449,8 +2715,29 @@ final class DisabledFinanceRepository implements FinanceRepository {
   }
 
   @override
+  Future<CategoryManagerSnapshot> fetchCategoryManagerSnapshot({
+    required String householdId,
+  }) {
+    throw const SupabaseNotConfiguredException();
+  }
+
+  @override
+  Future<CategoryUsagePreview> fetchCategoryUsagePreview(
+    CategoryUsagePreviewRequest request,
+  ) {
+    throw const SupabaseNotConfiguredException();
+  }
+
+  @override
   Future<CategoryCreationResult> createCategory(
     CategoryCreationRequest request,
+  ) {
+    throw const SupabaseNotConfiguredException();
+  }
+
+  @override
+  Future<CategoryTaxonomyUpdateResult> updateCategoryTaxonomy(
+    CategoryTaxonomyUpdateRequest request,
   ) {
     throw const SupabaseNotConfiguredException();
   }
@@ -2572,6 +2859,27 @@ final class _MerchantAccumulator {
   int count = 0;
   double netSpend = 0;
   double refundAmount = 0;
+}
+
+final class _UsageAccumulator {
+  _UsageAccumulator(this.id);
+
+  final String id;
+  int count = 0;
+  double netSpend = 0;
+
+  void add(double amount) {
+    count += 1;
+    netSpend += amount;
+  }
+
+  CategoryUsageSummary toSummary() {
+    return CategoryUsageSummary(
+      id: id,
+      transactionCount: count,
+      netSpend: netSpend,
+    );
+  }
 }
 
 final class _MonthlyTrendAccumulator {
