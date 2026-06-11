@@ -938,6 +938,186 @@ visibility, and production runbooks.
 - iOS, web push, exact transaction-detail deep links, quiet hours, and marketing
   notifications remain deferred.
 
+## Milestone 22: Category Manager Foundation and Usage Preview
+
+### Status
+
+Planned. See [Category Management](CATEGORY_MANAGEMENT.md#m22---category-manager-foundation-and-usage-preview).
+
+### Objective
+
+Turn the Settings category card into a real management surface with grouped
+taxonomy, usage summaries, recent transaction previews, and safe
+non-destructive editing.
+
+### Tasks
+
+- Add category detail/preview UI from Settings with transaction counts, net
+  spend, and recent associated transactions.
+- Keep categories visually grouped with their subcategories.
+- Add compact icon actions, including an edit/pencil action per category row.
+- Add repository models and methods for category-management snapshots and usage
+  previews.
+- Add an app-facing `security invoker` RPC for renaming a category, renaming
+  existing subcategories, and adding new subcategories under the same category.
+- Preserve existing category and subcategory IDs for renames.
+- Refresh category, dashboard, transactions, trends, and review providers after
+  taxonomy edits.
+- Add pgTAP and Flutter widget tests.
+
+### External Work
+
+- None.
+
+### Acceptance Criteria
+
+- Household writers can inspect category usage and recent transactions.
+- Household writers can rename categories/subcategories and add subcategories.
+- Renamed labels appear across Settings, transactions, dashboard, and reports
+  through existing ID references.
+- Viewers and non-members cannot mutate taxonomy.
+- Delete and merge controls are not active yet.
+
+### Deferred Scope
+
+- Category deletion, subcategory deletion, category merge, reorder, moving
+  subcategories between categories, icons/colors, and bulk AI recategorization.
+
+## Milestone 23: Taxonomy Delete and Review Requeue
+
+### Status
+
+Planned. See [Category Management](CATEGORY_MANAGEMENT.md#m23---taxonomy-delete-and-review-requeue).
+
+### Objective
+
+Allow category and subcategory deletion without deleting transactions by moving
+affected rows back into the existing Review workflow.
+
+### Tasks
+
+- Add delete actions and confirmation dialogs to category detail.
+- Show affected transaction counts, active mapping-rule counts, cap counts, and
+  recent examples before confirmation.
+- Add app-facing `security invoker` RPCs for deleting a subcategory and deleting
+  a category.
+- Subcategory deletion clears affected `subcategory_id` references, preserves
+  category references, and opens review items for reassignment.
+- Category deletion clears affected category/subcategory classification
+  references and opens review items for recategorization.
+- Deactivate future mapping rules that referenced deleted taxonomy.
+- Clear merchant and review suggestion references that pointed at deleted
+  taxonomy.
+- Remove monthly caps for deleted categories.
+- Add pgTAP and Flutter widget tests.
+
+### External Work
+
+- None.
+
+### Acceptance Criteria
+
+- Household writers can delete unused and used subcategories.
+- Household writers can delete used categories without deleting transactions.
+- Affected transactions appear in Review for manual reclassification.
+- Future mapping rules no longer point at deleted taxonomy.
+- Viewers and non-members cannot delete taxonomy.
+
+### Deferred Scope
+
+- Category merge, reorder, category archival instead of hard delete, and bulk AI
+  recategorization.
+
+## Milestone 24: Category Merge with Explicit Subcategory Mapping
+
+### Status
+
+Planned. See [Category Management](CATEGORY_MANAGEMENT.md#m24---category-merge-with-explicit-subcategory-mapping).
+
+### Objective
+
+Merge categories into a surviving category while explicitly mapping every source
+subcategory to a destination subcategory.
+
+### Tasks
+
+- Add a merge flow to category management.
+- Let the user choose one destination category and one or more source
+  categories.
+- Require every source subcategory to map to an existing destination
+  subcategory or a newly named destination subcategory.
+- Allow editing the surviving category name before saving.
+- Show affected transaction counts, net spend, caps, mapping rules, and recent
+  examples before merge.
+- Add one atomic app-facing `security invoker` merge RPC.
+- Repoint transactions, merchants, mapping rules, review suggestions, and caps
+  to surviving taxonomy.
+- Sum same-month source category caps into destination category caps.
+- Delete merged-away taxonomy rows after references are moved.
+- Add pgTAP and Flutter widget tests.
+
+### External Work
+
+- None.
+
+### Acceptance Criteria
+
+- Household writers can merge categories only after all source subcategories are
+  mapped.
+- Transactions, merchants, mapping rules, review suggestions, and caps point to
+  the surviving category/subcategory IDs after merge.
+- Category caps for matching months are summed.
+- Successful merges do not create review items.
+- Viewers and non-members cannot merge taxonomy.
+
+### Deferred Scope
+
+- Undo history, category archival, reorder, icons/colors, and AI-assisted merge
+  suggestions.
+
+## Milestone 25: Category Management Regression, Docs, and Cleanup
+
+### Status
+
+Planned. See [Category Management](CATEGORY_MANAGEMENT.md#m25---category-management-regression-docs-and-cleanup).
+
+### Objective
+
+Harden the full category management workflow, document final behavior, and
+verify cross-feature consistency after rename, add, delete, and merge.
+
+### Tasks
+
+- Review and polish category management empty, loading, error, confirmation, and
+  success states.
+- Add "View transactions" navigation from category detail to Transactions with
+  the category filter applied.
+- Verify category management consistency across dashboard, monthly caps,
+  transactions, trends, merchant review, metadata editor selectors, workbook
+  import validation, and Gmail future mapping behavior.
+- Update durable docs with final category management behavior.
+- Remove stale TODOs, duplicated helpers, and dead models from M22-M24.
+- Run full local Supabase, importer, Flutter analyze/test/build verification.
+
+### External Work
+
+- None.
+
+### Acceptance Criteria
+
+- Category management has usable mobile states for loading, empty, error,
+  confirmation, saving, and success.
+- Core finance and review surfaces behave correctly after rename, add, delete,
+  and merge.
+- No active mapping rule points at deleted taxonomy after regression tests.
+- Final docs and handoff reflect the implemented behavior and any deferred
+  category work.
+
+### Deferred Scope
+
+- Reorder, cross-household taxonomy templates, category icons/colors,
+  category-level audit timeline UI, and bulk AI recategorization.
+
 ## Cross-Milestone Consistency Rules
 
 - Ask the user before proceeding on any undocumented decision. Codex may recommend a default, but must wait for confirmation.
@@ -951,6 +1131,10 @@ visibility, and production runbooks.
 - Treat refunds as reducing net expense.
 - Ensure imports and sync jobs are idempotent.
 - Keep push delivery asynchronous so FCM failures do not block ingestion.
+- Keep category management app-facing and RLS-safe; never delete transactions
+  during taxonomy deletion or merge.
+- Requeue transactions to Review for category deletion, and require explicit
+  subcategory mapping for category merge.
 - Prefer deterministic rules before AI.
 - Keep client code free of service credentials.
 - Update these docs when architecture decisions change.

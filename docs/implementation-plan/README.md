@@ -13,13 +13,14 @@ Read these documents in order at the start of every new implementation thread:
 7. [Production Readiness](PRODUCTION_READINESS.md)
 8. [Transaction Metadata Editing](TRANSACTION_METADATA_EDITING.md)
 9. [Push Notifications](PUSH_NOTIFICATIONS.md)
-10. [Session Handoff](SESSION_HANDOFF.md)
+10. [Category Management](CATEGORY_MANAGEMENT.md)
+11. [Session Handoff](SESSION_HANDOFF.md)
 
 ## Product Summary
 
 SpendLens is a personal and household expense intelligence app. The current implementation plan is Android-first: build the Flutter Android app first and defer iOS and web until later.
 
-The app imports historical credit-card analysis from `docs/Credit Card Spend Analysis - FY 2025-26.xlsx`, then moves to ongoing ingestion from Gmail transaction emails for credit cards and UPI. It presents spend by category, monthly category caps, transaction details, merchant review workflows, trends, manual piggy-bank ledgers for future goals, backend-mediated Gemini expense Q&A, and planned Android push notifications for newly processed transactions.
+The app imports historical credit-card analysis from `docs/Credit Card Spend Analysis - FY 2025-26.xlsx`, then moves to ongoing ingestion from Gmail transaction emails for credit cards and UPI. It presents spend by category, monthly category caps, transaction details, merchant review workflows, trends, manual piggy-bank ledgers for future goals, backend-mediated Gemini expense Q&A, planned Android push notifications for newly processed transactions, and planned household category management.
 
 ## Architecture Decision
 
@@ -49,6 +50,8 @@ This is not a "no backend" architecture. It is a backend without a permanently r
 - Merchant corrections: apply to matching past and future transactions.
 - Transaction metadata edits: apply to the matching normalized statement merchant
   and future imports unless a milestone explicitly narrows scope.
+- Category management: renames preserve IDs; category deletion requeues affected
+  transactions for review; category merge requires explicit subcategory mapping.
 - Email retention: store minimal parsed data only; do not retain raw email bodies by default.
 - AI: backend-mediated Gemini expense Q&A and transaction metadata suggestions; dev/staging use free-tier-only mode with Suggest search disabled by default.
 - Android push notifications: Firebase Cloud Messaging delivery, Supabase
