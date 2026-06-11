@@ -89,13 +89,6 @@ dist/
 # Supabase local state
 supabase/.branches/
 supabase/.temp/
-supabase/.env
-supabase/functions/.env
-supabase/functions/**/.env
-supabase/functions/env/*.env
-!supabase/functions/env/*.env.example
-apps/mobile/env/*.env
-!apps/mobile/env/*.env.example
 
 # Generated exports and local data dumps
 outputs/
