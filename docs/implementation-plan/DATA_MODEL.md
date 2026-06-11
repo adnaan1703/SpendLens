@@ -170,6 +170,44 @@ Unique constraint:
 
 - `(category_id, lower(name))`
 
+### Category Management Rules
+
+Category management writes are app-facing, authenticated, household-scoped, and
+implemented through `security invoker` RPCs. Flutter must not use service-role
+credentials or privileged backend functions for taxonomy management.
+
+`public.create_household_category(...)` creates one category plus its first
+subcategory. `public.update_household_category_taxonomy(...)` renames an
+existing category, renames existing subcategories under that category, and adds
+new subcategories while preserving existing IDs.
+
+`public.delete_household_subcategory(...)` removes a subcategory without
+deleting transactions. Affected transactions keep their parent `category_id`,
+clear `subcategory_id`, receive classification audit metadata, and return to
+Review for reassignment. Category-level future mapping rules may remain active;
+subcategory-specific references are cleared.
+
+`public.delete_household_category(...)` removes a category only after dependent
+references are handled. Affected transactions keep merchant/source context but
+clear category, subcategory, and classification-rule references, category caps
+for the deleted category are removed, future mapping rules that referenced the
+deleted taxonomy are deactivated, merchant/review suggestions are cleared, and
+affected transactions return to Review.
+
+`public.merge_household_categories(...)` merges one or more source categories
+into a surviving destination category. Every source subcategory must be mapped
+to an existing or newly named destination subcategory before save. The merge
+repoints transactions, merchants, active future mapping rules, open review
+items, and category caps to surviving taxonomy, sums matching monthly caps, and
+does not create Review items.
+
+Dashboard summaries, monthly caps, transaction filters, trend tables, merchant
+review, metadata editor selectors, workbook imports, and Gmail future mapping
+continue to use taxonomy IDs. Settings category detail links to Transactions
+with the selected category filter applied. Subcategory detail keeps its
+subcategory context in Settings; M25 does not introduce a subcategory-specific
+Transactions filter.
+
 ### `category_caps`
 
 Monthly cap per category.

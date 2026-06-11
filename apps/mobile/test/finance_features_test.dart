@@ -744,6 +744,62 @@ void main() {
     expect(find.text('2026-03-12 - Food - Delivery'), findsOneWidget);
   });
 
+  testWidgets('settings category detail opens filtered transactions', (
+    tester,
+  ) async {
+    final repository = _FakeFinanceRepository();
+    final router = _financeTestRouter(
+      initialLocation: SettingsScreen.routePath,
+    );
+    addTearDown(router.dispose);
+
+    await tester.pumpWidget(
+      _financeRouterTestApp(repository: repository, router: router),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.ensureVisible(
+      find.widgetWithText(FilledButton, 'View transactions'),
+    );
+    await tester.tap(find.widgetWithText(FilledButton, 'View transactions'));
+    await tester.pumpAndSettle();
+
+    final uri = router.routeInformationProvider.value.uri;
+    expect(uri.path, '/transactions');
+    expect(uri.queryParameters['categoryId'], 'cat-food');
+    expect(repository.lastQuery?.categoryId, 'cat-food');
+    expect(repository.lastQuery?.subcategoryId, isNull);
+    expect(repository.lastQuery?.startDate, isNull);
+    expect(repository.lastQuery?.endDate, isNull);
+    expect(repository.lastQuery?.page, 0);
+  });
+
+  testWidgets('settings category manager fits a narrow viewport', (
+    tester,
+  ) async {
+    final repository = _FakeFinanceRepository();
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(() {
+      tester.view.resetPhysicalSize();
+      tester.view.resetDevicePixelRatio();
+    });
+
+    await tester.pumpWidget(
+      _financeTestApp(repository: repository, child: const SettingsScreen()),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.ensureVisible(
+      find.widgetWithText(FilledButton, 'View transactions'),
+    );
+    expect(
+      find.widgetWithText(FilledButton, 'View transactions'),
+      findsOneWidget,
+    );
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('settings edits category taxonomy without replacing ids', (
     tester,
   ) async {
@@ -1198,6 +1254,10 @@ GoRouter _financeTestRouter({
             initialFilters: TransactionInitialFilters.fromUri(state.uri),
           ),
         ),
+      ),
+      GoRoute(
+        path: SettingsScreen.routePath,
+        builder: (_, _) => const Scaffold(body: SettingsScreen()),
       ),
     ],
   );

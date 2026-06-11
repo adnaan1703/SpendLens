@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/bootstrap/app_bootstrap.dart';
@@ -9,6 +10,7 @@ import '../../data/repositories/household_repository.dart';
 import '../../shared/widgets/app_page.dart';
 import '../auth/data/auth_repository.dart';
 import '../categories/category_creation_dialog.dart';
+import '../transactions/transactions_screen.dart';
 
 class SettingsScreen extends ConsumerStatefulWidget {
   const SettingsScreen({super.key});
@@ -338,9 +340,13 @@ class _CategoryManagerCardState extends ConsumerState<_CategoryManagerCard> {
                   );
                 },
               ),
-              AsyncValue(hasError: true, :final error) => Text(
-                error.toString(),
-                style: textTheme.bodySmall,
+              AsyncValue(hasError: true, :final error) => Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Text('Categories unavailable', style: textTheme.titleSmall),
+                  const SizedBox(height: 6),
+                  Text(error.toString(), style: textTheme.bodySmall),
+                ],
               ),
               _ => const Center(child: CircularProgressIndicator()),
             },
@@ -382,7 +388,20 @@ class _CategoryManager extends ConsumerWidget {
     final subcategories = snapshot.subcategories;
 
     if (categories.isEmpty) {
-      return Text('No categories', style: textTheme.bodyMedium);
+      return Padding(
+        padding: const EdgeInsets.symmetric(vertical: 16),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              Icons.category_outlined,
+              color: Theme.of(context).colorScheme.outline,
+            ),
+            const SizedBox(height: 8),
+            Text('No categories yet', style: textTheme.bodyMedium),
+          ],
+        ),
+      );
     }
 
     final selectedCategory =
@@ -470,6 +489,8 @@ class _CategoryManager extends ConsumerWidget {
                   ? snapshot.categoryUsage(selectedCategory.id)
                   : snapshot.subcategoryUsage(selectedSubcategory.id),
               preview: preview,
+              onViewTransactions: () =>
+                  _openTransactions(context, selectedCategory.id),
             ),
           ],
           if (category != categories.last) const Divider(height: 12),
@@ -505,6 +526,18 @@ class _CategoryManager extends ConsumerWidget {
         ),
       );
     }
+  }
+
+  void _openTransactions(BuildContext context, String categoryId) {
+    final router = GoRouter.maybeOf(context);
+    if (router == null) return;
+
+    router.go(
+      Uri(
+        path: TransactionsScreen.routePath,
+        queryParameters: {'categoryId': categoryId},
+      ).toString(),
+    );
   }
 
   Future<void> _deleteCategory({
@@ -736,12 +769,14 @@ class _CategoryUsagePanel extends StatelessWidget {
     required this.subcategory,
     required this.usage,
     required this.preview,
+    required this.onViewTransactions,
   });
 
   final CategoryOption category;
   final SubcategoryOption? subcategory;
   final CategoryUsageSummary usage;
   final AsyncValue<CategoryUsagePreview> preview;
+  final VoidCallback onViewTransactions;
 
   @override
   Widget build(BuildContext context) {
@@ -758,11 +793,47 @@ class _CategoryUsagePanel extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Row(
-              children: [
-                Expanded(child: Text(title, style: theme.textTheme.titleSmall)),
-                Text(_usageLabel(usage), style: theme.textTheme.labelLarge),
-              ],
+            LayoutBuilder(
+              builder: (context, constraints) {
+                final summary = Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: theme.textTheme.titleSmall,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 4),
+                    Text(_usageLabel(usage), style: theme.textTheme.labelLarge),
+                  ],
+                );
+                final button = FilledButton.tonalIcon(
+                  onPressed: onViewTransactions,
+                  icon: const Icon(Icons.receipt_long_outlined),
+                  label: const Text('View transactions'),
+                );
+
+                if (constraints.maxWidth < 360) {
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      summary,
+                      const SizedBox(height: 12),
+                      Align(alignment: Alignment.centerLeft, child: button),
+                    ],
+                  );
+                }
+
+                return Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(child: summary),
+                    const SizedBox(width: 12),
+                    button,
+                  ],
+                );
+              },
             ),
             const SizedBox(height: 12),
             switch (preview) {
