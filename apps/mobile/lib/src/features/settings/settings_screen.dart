@@ -407,6 +407,17 @@ class _CategoryManager extends ConsumerWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
+        Align(
+          alignment: Alignment.centerRight,
+          child: FilledButton.tonalIcon(
+            onPressed: categories.length < 2
+                ? null
+                : () => _mergeCategories(context: context, ref: ref),
+            icon: const Icon(Icons.merge_type_outlined),
+            label: const Text('Merge'),
+          ),
+        ),
+        const SizedBox(height: 8),
         for (final category in categories) ...[
           _CategoryRow(
             category: category,
@@ -465,6 +476,35 @@ class _CategoryManager extends ConsumerWidget {
         ],
       ],
     );
+  }
+
+  Future<void> _mergeCategories({
+    required BuildContext context,
+    required WidgetRef ref,
+  }) async {
+    final result = await showDialog<CategoryMergeResult>(
+      context: context,
+      builder: (context) {
+        return _CategoryMergeDialog(
+          householdId: householdId,
+          snapshot: snapshot,
+        );
+      },
+    );
+    if (result == null) return;
+
+    refreshCategoryLookups(ref, householdId);
+    onCategorySelected(result.destinationCategory.id);
+
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Merged into ${result.destinationCategory.name}; moved ${result.changedTransactionCount} transactions',
+          ),
+        ),
+      );
+    }
   }
 
   Future<void> _deleteCategory({
@@ -907,6 +947,509 @@ Future<TaxonomyDeleteResult?> _showTaxonomyDeleteDialog({
       );
     },
   );
+}
+
+const _newDestinationSubcategoryValue = '__new_destination_subcategory__';
+
+class _CategoryMergeDialog extends ConsumerStatefulWidget {
+  const _CategoryMergeDialog({
+    required this.householdId,
+    required this.snapshot,
+  });
+
+  final String householdId;
+  final CategoryManagerSnapshot snapshot;
+
+  @override
+  ConsumerState<_CategoryMergeDialog> createState() =>
+      _CategoryMergeDialogState();
+}
+
+class _CategoryMergeDialogState extends ConsumerState<_CategoryMergeDialog> {
+  late String _destinationCategoryId;
+  late final TextEditingController _destinationNameController;
+  final _sourceCategoryIds = <String>{};
+  final _mappings = <String, _MergeSubcategorySelection>{};
+  bool _isSaving = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _destinationCategoryId = widget.snapshot.categories.first.id;
+    _destinationNameController = TextEditingController(
+      text: widget.snapshot.categories.first.name,
+    );
+  }
+
+  @override
+  void dispose() {
+    _destinationNameController.dispose();
+    super.dispose();
+  }
+
+  List<CategoryOption> get _sourceCategories {
+    return widget.snapshot.categories
+        .where((category) => _sourceCategoryIds.contains(category.id))
+        .toList(growable: false);
+  }
+
+  List<SubcategoryOption> get _destinationSubcategories {
+    return widget.snapshot.subcategories
+        .where(
+          (subcategory) => subcategory.categoryId == _destinationCategoryId,
+        )
+        .toList(growable: false);
+  }
+
+  List<SubcategoryOption> get _sourceSubcategories {
+    return widget.snapshot.subcategories
+        .where(
+          (subcategory) => _sourceCategoryIds.contains(subcategory.categoryId),
+        )
+        .toList(growable: false);
+  }
+
+  String? get _validationMessage {
+    if (_destinationNameController.text.trim().isEmpty) {
+      return 'Destination category name is required.';
+    }
+
+    if (_sourceCategoryIds.isEmpty) {
+      return 'Choose at least one source category.';
+    }
+
+    final destinationNames = {
+      for (final subcategory in _destinationSubcategories)
+        subcategory.name.trim().toLowerCase(),
+    };
+
+    for (final subcategory in _sourceSubcategories) {
+      final mapping = _mappings[subcategory.id];
+      if (mapping == null || !mapping.isMapped) {
+        return 'Map every source subcategory.';
+      }
+
+      final newName = mapping.destinationSubcategoryName?.trim();
+      if (newName == null) continue;
+
+      final normalized = newName.toLowerCase();
+      if (destinationNames.contains(normalized)) {
+        return 'Duplicate destination subcategory names are not allowed.';
+      }
+      destinationNames.add(normalized);
+    }
+
+    return null;
+  }
+
+  void _selectDestination(String categoryId) {
+    final category = widget.snapshot.categories
+        .where((candidate) => candidate.id == categoryId)
+        .first;
+    setState(() {
+      _destinationCategoryId = category.id;
+      _destinationNameController.text = category.name;
+      _sourceCategoryIds.remove(category.id);
+      _mappings.clear();
+    });
+  }
+
+  void _toggleSource(CategoryOption category, bool selected) {
+    setState(() {
+      if (selected) {
+        _sourceCategoryIds.add(category.id);
+        return;
+      }
+
+      _sourceCategoryIds.remove(category.id);
+      for (final subcategory in widget.snapshot.subcategories.where(
+        (subcategory) => subcategory.categoryId == category.id,
+      )) {
+        _mappings.remove(subcategory.id);
+      }
+    });
+  }
+
+  void _mapToExisting(SubcategoryOption source, String destinationId) {
+    setState(() {
+      _mappings[source.id] = _MergeSubcategorySelection(
+        destinationSubcategoryId: destinationId,
+      );
+    });
+  }
+
+  void _mapToNew(SubcategoryOption source, String name) {
+    setState(() {
+      _mappings[source.id] = _MergeSubcategorySelection(
+        destinationSubcategoryName: name,
+      );
+    });
+  }
+
+  Future<void> _save() async {
+    if (_validationMessage != null) return;
+
+    setState(() {
+      _isSaving = true;
+    });
+
+    try {
+      final result = await ref
+          .read(financeRepositoryProvider)
+          .mergeCategories(
+            CategoryMergeRequest(
+              householdId: widget.householdId,
+              destinationCategoryId: _destinationCategoryId,
+              destinationCategoryName: _destinationNameController.text.trim(),
+              sourceCategoryIds: [
+                for (final category in widget.snapshot.categories)
+                  if (_sourceCategoryIds.contains(category.id)) category.id,
+              ],
+              subcategoryMappings: [
+                for (final subcategory in _sourceSubcategories)
+                  CategoryMergeSubcategoryMapping(
+                    sourceSubcategoryId: subcategory.id,
+                    destinationSubcategoryId:
+                        _mappings[subcategory.id]!.destinationSubcategoryId,
+                    destinationSubcategoryName: _mappings[subcategory.id]!
+                        .destinationSubcategoryName
+                        ?.trim(),
+                  ),
+              ],
+            ),
+          );
+
+      if (mounted) {
+        Navigator.of(context).pop(result);
+      }
+    } catch (error) {
+      if (mounted) {
+        setState(() {
+          _isSaving = false;
+        });
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(error.toString())));
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final sourceUsage = _sourceCategories.fold<CategoryUsageSummary>(
+      CategoryUsageSummary.empty('merge'),
+      (total, category) {
+        final usage = widget.snapshot.categoryUsage(category.id);
+        return CategoryUsageSummary(
+          id: 'merge',
+          transactionCount: total.transactionCount + usage.transactionCount,
+          netSpend: total.netSpend + usage.netSpend,
+          activeMappingRuleCount:
+              total.activeMappingRuleCount + usage.activeMappingRuleCount,
+          capCount: total.capCount + usage.capCount,
+        );
+      },
+    );
+    final validationMessage = _validationMessage;
+
+    return AlertDialog(
+      title: const Text('Merge categories'),
+      content: SizedBox(
+        width: 640,
+        child: SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              DropdownButtonFormField<String>(
+                key: const ValueKey('category-merge-destination'),
+                initialValue: _destinationCategoryId,
+                decoration: const InputDecoration(
+                  labelText: 'Destination category',
+                  prefixIcon: Icon(Icons.category_outlined),
+                ),
+                items: [
+                  for (final category in widget.snapshot.categories)
+                    DropdownMenuItem(
+                      value: category.id,
+                      child: Text(category.name),
+                    ),
+                ],
+                onChanged: _isSaving || widget.snapshot.categories.length < 2
+                    ? null
+                    : (value) {
+                        if (value == null) return;
+                        _selectDestination(value);
+                      },
+              ),
+              const SizedBox(height: 12),
+              TextFormField(
+                key: const ValueKey('category-merge-name'),
+                controller: _destinationNameController,
+                enabled: !_isSaving,
+                decoration: const InputDecoration(
+                  labelText: 'Surviving category name',
+                  prefixIcon: Icon(Icons.edit_outlined),
+                ),
+                onChanged: (_) => setState(() {}),
+              ),
+              const SizedBox(height: 16),
+              Text('Source categories', style: theme.textTheme.titleSmall),
+              const SizedBox(height: 8),
+              for (final category in widget.snapshot.categories.where(
+                (category) => category.id != _destinationCategoryId,
+              ))
+                CheckboxListTile(
+                  key: ValueKey('category-merge-source-${category.id}'),
+                  contentPadding: EdgeInsets.zero,
+                  value: _sourceCategoryIds.contains(category.id),
+                  onChanged: _isSaving
+                      ? null
+                      : (value) => _toggleSource(category, value ?? false),
+                  title: Text(category.name),
+                  subtitle: Text(
+                    _usageLabel(widget.snapshot.categoryUsage(category.id)),
+                  ),
+                ),
+              const SizedBox(height: 12),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  _ImpactChip(
+                    icon: Icons.receipt_long_outlined,
+                    label: _countLabel(
+                      sourceUsage.transactionCount,
+                      'transaction',
+                    ),
+                  ),
+                  _ImpactChip(
+                    icon: Icons.currency_rupee,
+                    label: formatMoney(sourceUsage.netSpend),
+                  ),
+                  _ImpactChip(
+                    icon: Icons.rule_folder_outlined,
+                    label: _countLabel(
+                      sourceUsage.activeMappingRuleCount,
+                      'active rule',
+                    ),
+                  ),
+                  _ImpactChip(
+                    icon: Icons.savings_outlined,
+                    label: _countLabel(sourceUsage.capCount, 'cap'),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              Text('Subcategory mapping', style: theme.textTheme.titleSmall),
+              const SizedBox(height: 8),
+              if (_sourceSubcategories.isEmpty)
+                Text(
+                  'Selected source categories have no subcategories to map.',
+                  style: theme.textTheme.bodySmall,
+                )
+              else
+                for (final subcategory in _sourceSubcategories) ...[
+                  _SubcategoryMappingRow(
+                    destinationCategoryId: _destinationCategoryId,
+                    sourceCategory: widget.snapshot.categories
+                        .where(
+                          (category) => category.id == subcategory.categoryId,
+                        )
+                        .first,
+                    sourceSubcategory: subcategory,
+                    destinationSubcategories: _destinationSubcategories,
+                    selection: _mappings[subcategory.id],
+                    isSaving: _isSaving,
+                    onExistingSelected: (destinationId) =>
+                        _mapToExisting(subcategory, destinationId),
+                    onNewNameChanged: (name) => _mapToNew(subcategory, name),
+                    onNewSelected: () => _mapToNew(
+                      subcategory,
+                      _mappings[subcategory.id]?.destinationSubcategoryName ??
+                          '',
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                ],
+              if (_sourceCategories.isNotEmpty) ...[
+                const SizedBox(height: 4),
+                Text(
+                  'Recent transaction examples',
+                  style: theme.textTheme.titleSmall,
+                ),
+                const SizedBox(height: 8),
+                for (final category in _sourceCategories) ...[
+                  Text(category.name, style: theme.textTheme.labelLarge),
+                  const SizedBox(height: 4),
+                  _MergeSourceRecentTransactions(
+                    request: CategoryUsagePreviewRequest(
+                      householdId: widget.householdId,
+                      categoryId: category.id,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                ],
+              ],
+              if (validationMessage != null) ...[
+                const SizedBox(height: 8),
+                Text(
+                  validationMessage,
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: theme.colorScheme.error,
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: _isSaving ? null : () => Navigator.of(context).pop(),
+          child: const Text('Cancel'),
+        ),
+        FilledButton.icon(
+          onPressed: _isSaving || validationMessage != null ? null : _save,
+          icon: _isSaving
+              ? const SizedBox.square(
+                  dimension: 18,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : const Icon(Icons.merge_type_outlined),
+          label: const Text('Save'),
+        ),
+      ],
+    );
+  }
+}
+
+class _SubcategoryMappingRow extends StatelessWidget {
+  const _SubcategoryMappingRow({
+    required this.destinationCategoryId,
+    required this.sourceCategory,
+    required this.sourceSubcategory,
+    required this.destinationSubcategories,
+    required this.selection,
+    required this.isSaving,
+    required this.onExistingSelected,
+    required this.onNewNameChanged,
+    required this.onNewSelected,
+  });
+
+  final String destinationCategoryId;
+  final CategoryOption sourceCategory;
+  final SubcategoryOption sourceSubcategory;
+  final List<SubcategoryOption> destinationSubcategories;
+  final _MergeSubcategorySelection? selection;
+  final bool isSaving;
+  final ValueChanged<String> onExistingSelected;
+  final ValueChanged<String> onNewNameChanged;
+  final VoidCallback onNewSelected;
+
+  @override
+  Widget build(BuildContext context) {
+    final selectedValue = selection?.dropdownValue;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        DropdownButtonFormField<String>(
+          key: ValueKey(
+            'category-merge-map-$destinationCategoryId-${sourceSubcategory.id}',
+          ),
+          initialValue: selectedValue,
+          decoration: InputDecoration(
+            labelText: '${sourceCategory.name} / ${sourceSubcategory.name}',
+            prefixIcon: const Icon(Icons.sell_outlined),
+          ),
+          items: [
+            for (final subcategory in destinationSubcategories)
+              DropdownMenuItem(
+                value: subcategory.id,
+                child: Text(subcategory.name),
+              ),
+            const DropdownMenuItem(
+              value: _newDestinationSubcategoryValue,
+              child: Text('New subcategory'),
+            ),
+          ],
+          onChanged: isSaving
+              ? null
+              : (value) {
+                  if (value == null) return;
+                  if (value == _newDestinationSubcategoryValue) {
+                    onNewSelected();
+                    return;
+                  }
+
+                  onExistingSelected(value);
+                },
+        ),
+        if (selection?.isNew ?? false) ...[
+          const SizedBox(height: 8),
+          TextFormField(
+            key: ValueKey('category-merge-new-${sourceSubcategory.id}'),
+            initialValue: selection?.destinationSubcategoryName ?? '',
+            enabled: !isSaving,
+            decoration: const InputDecoration(
+              labelText: 'New destination subcategory',
+              prefixIcon: Icon(Icons.add),
+            ),
+            onChanged: onNewNameChanged,
+          ),
+        ],
+      ],
+    );
+  }
+}
+
+class _MergeSourceRecentTransactions extends ConsumerWidget {
+  const _MergeSourceRecentTransactions({required this.request});
+
+  final CategoryUsagePreviewRequest request;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final preview = ref.watch(categoryUsagePreviewProvider(request));
+
+    return switch (preview) {
+      AsyncValue(:final value?) => _RecentCategoryTransactions(
+        transactions: value.recentTransactions.take(3).toList(growable: false),
+      ),
+      AsyncValue(hasError: true, :final error) => Text(
+        error.toString(),
+        style: Theme.of(context).textTheme.bodySmall,
+      ),
+      _ => const Center(child: CircularProgressIndicator()),
+    };
+  }
+}
+
+final class _MergeSubcategorySelection {
+  const _MergeSubcategorySelection({
+    this.destinationSubcategoryId,
+    this.destinationSubcategoryName,
+  });
+
+  final String? destinationSubcategoryId;
+  final String? destinationSubcategoryName;
+
+  bool get isNew => destinationSubcategoryName != null;
+
+  bool get isMapped {
+    if (destinationSubcategoryId != null) return true;
+
+    return (destinationSubcategoryName ?? '').trim().isNotEmpty;
+  }
+
+  String? get dropdownValue {
+    if (destinationSubcategoryId != null) return destinationSubcategoryId;
+    if (isNew) return _newDestinationSubcategoryValue;
+
+    return null;
+  }
 }
 
 class _ImpactChip extends StatelessWidget {

@@ -888,6 +888,145 @@ void main() {
     );
   });
 
+  testWidgets('settings merges categories after explicit subcategory mapping', (
+    tester,
+  ) async {
+    final repository = _FakeFinanceRepository();
+
+    await tester.pumpWidget(
+      _financeTestApp(repository: repository, child: const SettingsScreen()),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.ensureVisible(find.widgetWithText(FilledButton, 'Merge'));
+    await tester.tap(find.widgetWithText(FilledButton, 'Merge'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Merge categories'), findsOneWidget);
+    expect(
+      tester
+          .widget<FilledButton>(find.widgetWithText(FilledButton, 'Save'))
+          .onPressed,
+      isNull,
+    );
+
+    await tester.tap(
+      find.byKey(const ValueKey('category-merge-source-cat-shopping')),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('1 transaction'), findsOneWidget);
+    expect(find.text('1 active rule'), findsOneWidget);
+    expect(find.text('1 cap'), findsOneWidget);
+    expect(find.text('CRED Club'), findsWidgets);
+    expect(find.text('Map every source subcategory.'), findsOneWidget);
+    expect(
+      tester
+          .widget<FilledButton>(find.widgetWithText(FilledButton, 'Save'))
+          .onPressed,
+      isNull,
+    );
+
+    final marketplaceMapping = find.byKey(
+      const ValueKey('category-merge-map-cat-food-sub-marketplace'),
+    );
+    await tester.ensureVisible(marketplaceMapping);
+    await tester.pumpAndSettle();
+    await tester.tap(marketplaceMapping);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('New subcategory').last);
+    await tester.pumpAndSettle();
+
+    await tester.ensureVisible(
+      find.byKey(const ValueKey('category-merge-new-sub-marketplace')),
+    );
+    await tester.pumpAndSettle();
+    await tester.enterText(
+      find.byKey(const ValueKey('category-merge-new-sub-marketplace')),
+      'delivery',
+    );
+    await tester.pumpAndSettle();
+
+    expect(
+      find.text('Duplicate destination subcategory names are not allowed.'),
+      findsOneWidget,
+    );
+    expect(
+      tester
+          .widget<FilledButton>(find.widgetWithText(FilledButton, 'Save'))
+          .onPressed,
+      isNull,
+    );
+
+    await tester.enterText(
+      find.byKey(const ValueKey('category-merge-new-sub-marketplace')),
+      'Online Shopping',
+    );
+    await tester.enterText(
+      find.byKey(const ValueKey('category-merge-name')),
+      'Food & Dining',
+    );
+    await tester.pumpAndSettle();
+
+    expect(
+      tester
+          .widget<FilledButton>(find.widgetWithText(FilledButton, 'Save'))
+          .onPressed,
+      isNotNull,
+    );
+
+    await tester.tap(find.widgetWithText(FilledButton, 'Save'));
+    await tester.pumpAndSettle();
+
+    expect(repository.mergeRequests, hasLength(1));
+    expect(repository.mergeRequests.single.destinationCategoryId, 'cat-food');
+    expect(
+      repository.mergeRequests.single.destinationCategoryName,
+      'Food & Dining',
+    );
+    expect(repository.mergeRequests.single.sourceCategoryIds, ['cat-shopping']);
+    expect(
+      repository
+          .mergeRequests
+          .single
+          .subcategoryMappings
+          .single
+          .sourceSubcategoryId,
+      'sub-marketplace',
+    );
+    expect(
+      repository
+          .mergeRequests
+          .single
+          .subcategoryMappings
+          .single
+          .destinationSubcategoryName,
+      'Online Shopping',
+    );
+    expect(
+      repository.categories.map((category) => category.name),
+      isNot(contains('Shopping')),
+    );
+    expect(find.text('Food & Dining'), findsWidgets);
+    expect(find.text('Online Shopping'), findsWidgets);
+    expect(
+      repository.transactions
+          .singleWhere((transaction) => transaction.id == 'txn-3')
+          .categoryId,
+      'cat-food',
+    );
+    expect(
+      repository.transactions
+          .singleWhere((transaction) => transaction.id == 'txn-3')
+          .subcategoryName,
+      'Online Shopping',
+    );
+    expect(
+      find.text('Merged into Food & Dining; moved 1 transactions'),
+      findsOneWidget,
+    );
+  });
+
   testWidgets('settings shows Gmail connector status', (tester) async {
     final repository = _FakeFinanceRepository();
 
@@ -1093,6 +1232,7 @@ final class _FakeFinanceRepository implements FinanceRepository {
   final taxonomyUpdates = <CategoryTaxonomyUpdateRequest>[];
   final deletedSubcategoryRequests = <TaxonomySubcategoryDeleteRequest>[];
   final deletedCategoryRequests = <TaxonomyCategoryDeleteRequest>[];
+  final mergeRequests = <CategoryMergeRequest>[];
   final expenseQuestions = <ExpenseQuestionRequest>[];
   final metadataSuggestionRequests = <TransactionMetadataSuggestionRequest>[];
   final piggyBanks = <PiggyBankSummary>[];
@@ -1614,6 +1754,119 @@ final class _FakeFinanceRepository implements FinanceRepository {
       clearedMerchantCount: 1,
       clearedReviewSuggestionCount: 0,
       deletedCapCount: affectedCaps,
+    );
+  }
+
+  @override
+  Future<CategoryMergeResult> mergeCategories(
+    CategoryMergeRequest request,
+  ) async {
+    mergeRequests.add(request);
+    final destinationIndex = categories.indexWhere(
+      (category) => category.id == request.destinationCategoryId,
+    );
+    final destinationCategory = CategoryOption(
+      id: request.destinationCategoryId,
+      name: request.destinationCategoryName.trim(),
+    );
+    categories[destinationIndex] = destinationCategory;
+
+    var createdSubcategoryCount = 0;
+    final mappedSubcategories = <String, SubcategoryOption>{};
+    for (final mapping in request.subcategoryMappings) {
+      final destinationSubcategoryId = mapping.destinationSubcategoryId;
+      if (destinationSubcategoryId != null) {
+        mappedSubcategories[mapping.sourceSubcategoryId] = subcategories
+            .where((subcategory) => subcategory.id == destinationSubcategoryId)
+            .first;
+        continue;
+      }
+
+      createdSubcategoryCount += 1;
+      final subcategory = SubcategoryOption(
+        id: 'sub-merged-$createdSubcategoryCount',
+        categoryId: request.destinationCategoryId,
+        name: mapping.destinationSubcategoryName!.trim(),
+      );
+      subcategories.add(subcategory);
+      mappedSubcategories[mapping.sourceSubcategoryId] = subcategory;
+    }
+
+    final affectedTransactions = transactions
+        .where(
+          (transaction) =>
+              transaction.categoryId != null &&
+              request.sourceCategoryIds.contains(transaction.categoryId),
+        )
+        .toList(growable: false);
+
+    for (var index = 0; index < transactions.length; index += 1) {
+      final transaction = transactions[index];
+      if (transaction.categoryId == null ||
+          !request.sourceCategoryIds.contains(transaction.categoryId)) {
+        continue;
+      }
+
+      final mappedSubcategory = transaction.subcategoryId == null
+          ? null
+          : mappedSubcategories[transaction.subcategoryId];
+      transactions[index] = _copyTransaction(
+        transaction,
+        categoryId: request.destinationCategoryId,
+        categoryName: destinationCategory.name,
+        subcategoryId: mappedSubcategory?.id,
+        subcategoryName: mappedSubcategory?.name,
+        clearSubcategory: mappedSubcategory == null,
+      );
+    }
+
+    final affectedRules = activeMappingRules
+        .where(
+          (rule) => request.sourceCategoryIds.contains(rule['category_id']),
+        )
+        .length;
+    for (final rule in activeMappingRules) {
+      if (!request.sourceCategoryIds.contains(rule['category_id'])) continue;
+
+      final sourceSubcategoryId = rule['subcategory_id'] as String?;
+      final mappedSubcategory = sourceSubcategoryId == null
+          ? null
+          : mappedSubcategories[sourceSubcategoryId];
+      rule['category_id'] = request.destinationCategoryId;
+      rule['subcategory_id'] = mappedSubcategory?.id;
+    }
+
+    final affectedCaps = categoryCaps
+        .where((cap) => request.sourceCategoryIds.contains(cap['category_id']))
+        .length;
+    categoryCaps.removeWhere(
+      (cap) => request.sourceCategoryIds.contains(cap['category_id']),
+    );
+
+    final deletedSubcategoryCount = subcategories
+        .where(
+          (subcategory) =>
+              request.sourceCategoryIds.contains(subcategory.categoryId),
+        )
+        .length;
+    subcategories.removeWhere(
+      (subcategory) =>
+          request.sourceCategoryIds.contains(subcategory.categoryId),
+    );
+    categories.removeWhere(
+      (category) => request.sourceCategoryIds.contains(category.id),
+    );
+
+    return CategoryMergeResult(
+      destinationCategory: destinationCategory,
+      changedTransactionCount: affectedTransactions.length,
+      changedMerchantCount: 1,
+      changedMappingRuleCount: affectedRules,
+      changedReviewSuggestionCount: 0,
+      mergedCapCount: affectedCaps,
+      createdSubcategoryCount: createdSubcategoryCount,
+      deletedCategoryCount: request.sourceCategoryIds.length,
+      deletedSubcategoryCount: deletedSubcategoryCount,
     );
   }
 

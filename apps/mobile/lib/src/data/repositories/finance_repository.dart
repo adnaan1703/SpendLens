@@ -1159,6 +1159,85 @@ final class TaxonomyDeleteResult {
   }
 }
 
+final class CategoryMergeSubcategoryMapping {
+  const CategoryMergeSubcategoryMapping({
+    required this.sourceSubcategoryId,
+    this.destinationSubcategoryId,
+    this.destinationSubcategoryName,
+  });
+
+  final String sourceSubcategoryId;
+  final String? destinationSubcategoryId;
+  final String? destinationSubcategoryName;
+
+  Map<String, Object?> toJson() {
+    return {
+      'source_subcategory_id': sourceSubcategoryId,
+      'destination_subcategory_id': destinationSubcategoryId,
+      'destination_subcategory_name': destinationSubcategoryName,
+    };
+  }
+}
+
+final class CategoryMergeRequest {
+  const CategoryMergeRequest({
+    required this.householdId,
+    required this.destinationCategoryId,
+    required this.destinationCategoryName,
+    required this.sourceCategoryIds,
+    required this.subcategoryMappings,
+  });
+
+  final String householdId;
+  final String destinationCategoryId;
+  final String destinationCategoryName;
+  final List<String> sourceCategoryIds;
+  final List<CategoryMergeSubcategoryMapping> subcategoryMappings;
+}
+
+final class CategoryMergeResult {
+  const CategoryMergeResult({
+    required this.destinationCategory,
+    required this.changedTransactionCount,
+    required this.changedMerchantCount,
+    required this.changedMappingRuleCount,
+    required this.changedReviewSuggestionCount,
+    required this.mergedCapCount,
+    required this.createdSubcategoryCount,
+    required this.deletedCategoryCount,
+    required this.deletedSubcategoryCount,
+  });
+
+  final CategoryOption destinationCategory;
+  final int changedTransactionCount;
+  final int changedMerchantCount;
+  final int changedMappingRuleCount;
+  final int changedReviewSuggestionCount;
+  final int mergedCapCount;
+  final int createdSubcategoryCount;
+  final int deletedCategoryCount;
+  final int deletedSubcategoryCount;
+
+  factory CategoryMergeResult.fromJson(Map<String, dynamic> json) {
+    return CategoryMergeResult(
+      destinationCategory: CategoryOption(
+        id: json['destination_category_id'] as String,
+        name: json['destination_category_name'] as String,
+      ),
+      changedTransactionCount: _asInt(json['changed_transaction_count']),
+      changedMerchantCount: _asInt(json['changed_merchant_count']),
+      changedMappingRuleCount: _asInt(json['changed_mapping_rule_count']),
+      changedReviewSuggestionCount: _asInt(
+        json['changed_review_suggestion_count'],
+      ),
+      mergedCapCount: _asInt(json['merged_cap_count']),
+      createdSubcategoryCount: _asInt(json['created_subcategory_count']),
+      deletedCategoryCount: _asInt(json['deleted_category_count']),
+      deletedSubcategoryCount: _asInt(json['deleted_subcategory_count']),
+    );
+  }
+}
+
 final class MerchantOption {
   const MerchantOption({required this.id, required this.displayName});
 
@@ -1873,6 +1952,8 @@ abstract interface class FinanceRepository {
     TaxonomyCategoryDeleteRequest request,
   );
 
+  Future<CategoryMergeResult> mergeCategories(CategoryMergeRequest request);
+
   Future<List<MerchantOption>> fetchMerchants({required String householdId});
 
   Future<List<MerchantReviewItem>> fetchMerchantReviewQueue({
@@ -2178,6 +2259,30 @@ final class SupabaseFinanceRepository implements FinanceRepository {
       mappingRuleCountKey: 'deactivated_mapping_rule_count',
       capCountKey: 'deleted_cap_count',
     );
+  }
+
+  @override
+  Future<CategoryMergeResult> mergeCategories(
+    CategoryMergeRequest request,
+  ) async {
+    final rows = await _client.rpc<List<dynamic>>(
+      'merge_household_categories',
+      params: {
+        'p_household_id': request.householdId,
+        'p_destination_category_id': request.destinationCategoryId,
+        'p_destination_category_name': request.destinationCategoryName,
+        'p_source_category_ids': request.sourceCategoryIds,
+        'p_subcategory_mappings': [
+          for (final mapping in request.subcategoryMappings) mapping.toJson(),
+        ],
+      },
+    );
+
+    if (rows.isEmpty) {
+      throw StateError('Category merge did not return a result.');
+    }
+
+    return CategoryMergeResult.fromJson(rows.first as Map<String, dynamic>);
   }
 
   @override
@@ -2908,6 +3013,11 @@ final class DisabledFinanceRepository implements FinanceRepository {
   Future<TaxonomyDeleteResult> deleteCategory(
     TaxonomyCategoryDeleteRequest request,
   ) {
+    throw const SupabaseNotConfiguredException();
+  }
+
+  @override
+  Future<CategoryMergeResult> mergeCategories(CategoryMergeRequest request) {
     throw const SupabaseNotConfiguredException();
   }
 
