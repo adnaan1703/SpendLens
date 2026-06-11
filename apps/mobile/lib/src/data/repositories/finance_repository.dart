@@ -930,11 +930,15 @@ final class CategoryUsageSummary {
     required this.id,
     required this.transactionCount,
     required this.netSpend,
+    this.activeMappingRuleCount = 0,
+    this.capCount = 0,
   });
 
   final String id;
   final int transactionCount;
   final double netSpend;
+  final int activeMappingRuleCount;
+  final int capCount;
 
   static CategoryUsageSummary empty(String id) {
     return CategoryUsageSummary(id: id, transactionCount: 0, netSpend: 0);
@@ -968,6 +972,8 @@ final class CategoryManagerSnapshot {
     required List<CategoryOption> categories,
     required List<SubcategoryOption> subcategories,
     required List<Map<String, dynamic>> transactionRows,
+    List<Map<String, dynamic>> activeMappingRuleRows = const [],
+    List<Map<String, dynamic>> capRows = const [],
   }) {
     final categoryTotals = <String, _UsageAccumulator>{};
     final subcategoryTotals = <String, _UsageAccumulator>{};
@@ -988,6 +994,32 @@ final class CategoryManagerSnapshot {
             .putIfAbsent(subcategoryId, () => _UsageAccumulator(subcategoryId))
             .add(netExpense);
       }
+    }
+
+    for (final row in activeMappingRuleRows) {
+      final categoryId = row['category_id'] as String?;
+      final subcategoryId = row['subcategory_id'] as String?;
+
+      if (categoryId != null) {
+        categoryTotals
+            .putIfAbsent(categoryId, () => _UsageAccumulator(categoryId))
+            .addMappingRule();
+      }
+
+      if (subcategoryId != null) {
+        subcategoryTotals
+            .putIfAbsent(subcategoryId, () => _UsageAccumulator(subcategoryId))
+            .addMappingRule();
+      }
+    }
+
+    for (final row in capRows) {
+      final categoryId = row['category_id'] as String?;
+      if (categoryId == null) continue;
+
+      categoryTotals
+          .putIfAbsent(categoryId, () => _UsageAccumulator(categoryId))
+          .addCap();
     }
 
     return CategoryManagerSnapshot(
@@ -1066,6 +1098,63 @@ final class CategoryTaxonomyUpdateResult {
               name: row['subcategory_name'] as String,
             ),
       ],
+    );
+  }
+}
+
+final class TaxonomySubcategoryDeleteRequest {
+  const TaxonomySubcategoryDeleteRequest({
+    required this.householdId,
+    required this.categoryId,
+    required this.subcategoryId,
+  });
+
+  final String householdId;
+  final String categoryId;
+  final String subcategoryId;
+}
+
+final class TaxonomyCategoryDeleteRequest {
+  const TaxonomyCategoryDeleteRequest({
+    required this.householdId,
+    required this.categoryId,
+  });
+
+  final String householdId;
+  final String categoryId;
+}
+
+final class TaxonomyDeleteResult {
+  const TaxonomyDeleteResult({
+    required this.affectedTransactionCount,
+    required this.openedReviewItemCount,
+    required this.mappingRuleCount,
+    required this.clearedMerchantCount,
+    required this.clearedReviewSuggestionCount,
+    required this.deletedCapCount,
+  });
+
+  final int affectedTransactionCount;
+  final int openedReviewItemCount;
+  final int mappingRuleCount;
+  final int clearedMerchantCount;
+  final int clearedReviewSuggestionCount;
+  final int deletedCapCount;
+
+  factory TaxonomyDeleteResult.fromJson(
+    Map<String, dynamic> json, {
+    required String mappingRuleCountKey,
+    String? capCountKey,
+  }) {
+    return TaxonomyDeleteResult(
+      affectedTransactionCount: _asInt(json['affected_transaction_count']),
+      openedReviewItemCount: _asInt(json['opened_review_item_count']),
+      mappingRuleCount: _asInt(json[mappingRuleCountKey]),
+      clearedMerchantCount: _asInt(json['cleared_merchant_count']),
+      clearedReviewSuggestionCount: _asInt(
+        json['cleared_review_suggestion_count'],
+      ),
+      deletedCapCount: capCountKey == null ? 0 : _asInt(json[capCountKey]),
     );
   }
 }
@@ -1776,6 +1865,14 @@ abstract interface class FinanceRepository {
     CategoryTaxonomyUpdateRequest request,
   );
 
+  Future<TaxonomyDeleteResult> deleteSubcategory(
+    TaxonomySubcategoryDeleteRequest request,
+  );
+
+  Future<TaxonomyDeleteResult> deleteCategory(
+    TaxonomyCategoryDeleteRequest request,
+  );
+
   Future<List<MerchantOption>> fetchMerchants({required String householdId});
 
   Future<List<MerchantReviewItem>> fetchMerchantReviewQueue({
@@ -1960,6 +2057,15 @@ final class SupabaseFinanceRepository implements FinanceRepository {
           .from('transactions')
           .select('category_id, subcategory_id, net_expense')
           .eq('household_id', householdId),
+      _client
+          .from('merchant_mapping_rules')
+          .select('category_id, subcategory_id')
+          .eq('household_id', householdId)
+          .eq('apply_to_future', true),
+      _client
+          .from('category_caps')
+          .select('category_id')
+          .eq('household_id', householdId),
     ]);
 
     return CategoryManagerSnapshot.fromTransactionRows(
@@ -1967,6 +2073,9 @@ final class SupabaseFinanceRepository implements FinanceRepository {
       subcategories: results[1] as List<SubcategoryOption>,
       transactionRows: (results[2] as List<dynamic>)
           .cast<Map<String, dynamic>>(),
+      activeMappingRuleRows: (results[3] as List<dynamic>)
+          .cast<Map<String, dynamic>>(),
+      capRows: (results[4] as List<dynamic>).cast<Map<String, dynamic>>(),
     );
   }
 
@@ -2023,6 +2132,52 @@ final class SupabaseFinanceRepository implements FinanceRepository {
     );
 
     return CategoryTaxonomyUpdateResult.fromRows(rows);
+  }
+
+  @override
+  Future<TaxonomyDeleteResult> deleteSubcategory(
+    TaxonomySubcategoryDeleteRequest request,
+  ) async {
+    final rows = await _client.rpc<List<dynamic>>(
+      'delete_household_subcategory',
+      params: {
+        'p_household_id': request.householdId,
+        'p_category_id': request.categoryId,
+        'p_subcategory_id': request.subcategoryId,
+      },
+    );
+
+    if (rows.isEmpty) {
+      throw StateError('Subcategory deletion did not return a result.');
+    }
+
+    return TaxonomyDeleteResult.fromJson(
+      rows.first as Map<String, dynamic>,
+      mappingRuleCountKey: 'cleared_mapping_rule_count',
+    );
+  }
+
+  @override
+  Future<TaxonomyDeleteResult> deleteCategory(
+    TaxonomyCategoryDeleteRequest request,
+  ) async {
+    final rows = await _client.rpc<List<dynamic>>(
+      'delete_household_category',
+      params: {
+        'p_household_id': request.householdId,
+        'p_category_id': request.categoryId,
+      },
+    );
+
+    if (rows.isEmpty) {
+      throw StateError('Category deletion did not return a result.');
+    }
+
+    return TaxonomyDeleteResult.fromJson(
+      rows.first as Map<String, dynamic>,
+      mappingRuleCountKey: 'deactivated_mapping_rule_count',
+      capCountKey: 'deleted_cap_count',
+    );
   }
 
   @override
@@ -2743,6 +2898,20 @@ final class DisabledFinanceRepository implements FinanceRepository {
   }
 
   @override
+  Future<TaxonomyDeleteResult> deleteSubcategory(
+    TaxonomySubcategoryDeleteRequest request,
+  ) {
+    throw const SupabaseNotConfiguredException();
+  }
+
+  @override
+  Future<TaxonomyDeleteResult> deleteCategory(
+    TaxonomyCategoryDeleteRequest request,
+  ) {
+    throw const SupabaseNotConfiguredException();
+  }
+
+  @override
   Future<List<MerchantOption>> fetchMerchants({required String householdId}) {
     throw const SupabaseNotConfiguredException();
   }
@@ -2867,10 +3036,20 @@ final class _UsageAccumulator {
   final String id;
   int count = 0;
   double netSpend = 0;
+  int activeMappingRuleCount = 0;
+  int capCount = 0;
 
   void add(double amount) {
     count += 1;
     netSpend += amount;
+  }
+
+  void addMappingRule() {
+    activeMappingRuleCount += 1;
+  }
+
+  void addCap() {
+    capCount += 1;
   }
 
   CategoryUsageSummary toSummary() {
@@ -2878,6 +3057,8 @@ final class _UsageAccumulator {
       id: id,
       transactionCount: count,
       netSpend: netSpend,
+      activeMappingRuleCount: activeMappingRuleCount,
+      capCount: capCount,
     );
   }
 }

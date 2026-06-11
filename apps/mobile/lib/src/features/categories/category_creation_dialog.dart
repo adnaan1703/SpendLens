@@ -8,6 +8,7 @@ void refreshCategoryLookups(WidgetRef ref, String householdId) {
   ref.invalidate(merchantSubcategoriesProvider(householdId));
   ref.invalidate(categoryManagerSnapshotProvider(householdId));
   ref.invalidate(categoryUsagePreviewProvider);
+  ref.invalidate(availableMonthsProvider(householdId));
   ref.invalidate(
     dashboardSnapshotProvider(FinanceMonthRequest(householdId: householdId)),
   );

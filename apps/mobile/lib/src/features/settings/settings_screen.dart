@@ -421,6 +421,12 @@ class _CategoryManager extends ConsumerWidget {
                   .where((subcategory) => subcategory.categoryId == category.id)
                   .toList(growable: false),
             ),
+            onDelete: () => _deleteCategory(
+              context: context,
+              ref: ref,
+              category: category,
+              usage: snapshot.categoryUsage(category.id),
+            ),
           ),
           for (final subcategory in subcategories.where(
             (subcategory) => subcategory.categoryId == category.id,
@@ -435,6 +441,13 @@ class _CategoryManager extends ConsumerWidget {
                 subcategories
                     .where((candidate) => candidate.categoryId == category.id)
                     .toList(growable: false),
+              ),
+              onDelete: () => _deleteSubcategory(
+                context: context,
+                ref: ref,
+                category: category,
+                subcategory: subcategory,
+                usage: snapshot.subcategoryUsage(subcategory.id),
               ),
             ),
           if (selectedCategory.id == category.id) ...[
@@ -453,6 +466,130 @@ class _CategoryManager extends ConsumerWidget {
       ],
     );
   }
+
+  Future<void> _deleteCategory({
+    required BuildContext context,
+    required WidgetRef ref,
+    required CategoryOption category,
+    required CategoryUsageSummary usage,
+  }) async {
+    onCategorySelected(category.id);
+    final preview = await _loadDeletePreview(
+      context: context,
+      ref: ref,
+      request: CategoryUsagePreviewRequest(
+        householdId: householdId,
+        categoryId: category.id,
+      ),
+    );
+    if (preview == null || !context.mounted) return;
+
+    final result = await _showTaxonomyDeleteDialog(
+      context: context,
+      title: 'Delete category',
+      targetName: category.name,
+      body:
+          'Transactions keep their merchant and statement details, but category fields return to Review.',
+      usage: usage,
+      preview: preview,
+      onDelete: () {
+        return ref
+            .read(financeRepositoryProvider)
+            .deleteCategory(
+              TaxonomyCategoryDeleteRequest(
+                householdId: householdId,
+                categoryId: category.id,
+              ),
+            );
+      },
+    );
+    if (result == null) return;
+
+    refreshCategoryLookups(ref, householdId);
+
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Deleted ${category.name}; requeued ${result.openedReviewItemCount} transactions',
+          ),
+        ),
+      );
+    }
+  }
+
+  Future<void> _deleteSubcategory({
+    required BuildContext context,
+    required WidgetRef ref,
+    required CategoryOption category,
+    required SubcategoryOption subcategory,
+    required CategoryUsageSummary usage,
+  }) async {
+    onSubcategorySelected(category.id, subcategory.id);
+    final preview = await _loadDeletePreview(
+      context: context,
+      ref: ref,
+      request: CategoryUsagePreviewRequest(
+        householdId: householdId,
+        categoryId: category.id,
+        subcategoryId: subcategory.id,
+      ),
+    );
+    if (preview == null || !context.mounted) return;
+
+    final result = await _showTaxonomyDeleteDialog(
+      context: context,
+      title: 'Delete subcategory',
+      targetName: subcategory.name,
+      body:
+          'Transactions keep ${category.name} as their category, but subcategory fields return to Review.',
+      usage: usage,
+      preview: preview,
+      onDelete: () {
+        return ref
+            .read(financeRepositoryProvider)
+            .deleteSubcategory(
+              TaxonomySubcategoryDeleteRequest(
+                householdId: householdId,
+                categoryId: category.id,
+                subcategoryId: subcategory.id,
+              ),
+            );
+      },
+    );
+    if (result == null) return;
+
+    refreshCategoryLookups(ref, householdId);
+
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Deleted ${subcategory.name}; requeued ${result.openedReviewItemCount} transactions',
+          ),
+        ),
+      );
+    }
+  }
+
+  Future<CategoryUsagePreview?> _loadDeletePreview({
+    required BuildContext context,
+    required WidgetRef ref,
+    required CategoryUsagePreviewRequest request,
+  }) async {
+    try {
+      return await ref
+          .read(financeRepositoryProvider)
+          .fetchCategoryUsagePreview(request);
+    } catch (error) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(error.toString())));
+      }
+      return null;
+    }
+  }
 }
 
 class _CategoryRow extends StatelessWidget {
@@ -462,6 +599,7 @@ class _CategoryRow extends StatelessWidget {
     required this.isSelected,
     required this.onTap,
     required this.onEdit,
+    required this.onDelete,
   });
 
   final CategoryOption category;
@@ -469,6 +607,7 @@ class _CategoryRow extends StatelessWidget {
   final bool isSelected;
   final VoidCallback onTap;
   final VoidCallback onEdit;
+  final VoidCallback onDelete;
 
   @override
   Widget build(BuildContext context) {
@@ -480,10 +619,20 @@ class _CategoryRow extends StatelessWidget {
       leading: const Icon(Icons.category_outlined),
       title: Text(category.name),
       subtitle: Text(_usageLabel(usage), style: textTheme.bodySmall),
-      trailing: IconButton(
-        tooltip: 'Edit category',
-        onPressed: onEdit,
-        icon: const Icon(Icons.edit_outlined),
+      trailing: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          IconButton(
+            tooltip: 'Edit category',
+            onPressed: onEdit,
+            icon: const Icon(Icons.edit_outlined),
+          ),
+          IconButton(
+            tooltip: 'Delete category',
+            onPressed: onDelete,
+            icon: const Icon(Icons.delete_outline),
+          ),
+        ],
       ),
       onTap: onTap,
     );
@@ -497,6 +646,7 @@ class _SubcategoryRow extends StatelessWidget {
     required this.isSelected,
     required this.onTap,
     required this.onEdit,
+    required this.onDelete,
   });
 
   final SubcategoryOption subcategory;
@@ -504,6 +654,7 @@ class _SubcategoryRow extends StatelessWidget {
   final bool isSelected;
   final VoidCallback onTap;
   final VoidCallback onEdit;
+  final VoidCallback onDelete;
 
   @override
   Widget build(BuildContext context) {
@@ -518,10 +669,20 @@ class _SubcategoryRow extends StatelessWidget {
         leading: const Icon(Icons.sell_outlined, size: 20),
         title: Text(subcategory.name),
         subtitle: Text(_usageLabel(usage), style: textTheme.bodySmall),
-        trailing: IconButton(
-          tooltip: 'Edit subcategory',
-          onPressed: onEdit,
-          icon: const Icon(Icons.edit_outlined),
+        trailing: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            IconButton(
+              tooltip: 'Edit subcategory',
+              onPressed: onEdit,
+              icon: const Icon(Icons.edit_outlined),
+            ),
+            IconButton(
+              tooltip: 'Delete subcategory',
+              onPressed: onDelete,
+              icon: const Icon(Icons.delete_outline),
+            ),
+          ],
         ),
         onTap: onTap,
       ),
@@ -628,6 +789,138 @@ class _RecentCategoryTransactions extends StatelessWidget {
             ),
           ),
       ],
+    );
+  }
+}
+
+Future<TaxonomyDeleteResult?> _showTaxonomyDeleteDialog({
+  required BuildContext context,
+  required String title,
+  required String targetName,
+  required String body,
+  required CategoryUsageSummary usage,
+  required CategoryUsagePreview preview,
+  required Future<TaxonomyDeleteResult> Function() onDelete,
+}) {
+  return showDialog<TaxonomyDeleteResult>(
+    context: context,
+    builder: (dialogContext) {
+      var isDeleting = false;
+
+      return StatefulBuilder(
+        builder: (context, setDialogState) {
+          return AlertDialog(
+            title: Text(title),
+            content: SizedBox(
+              width: 520,
+              child: SingleChildScrollView(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      targetName,
+                      style: Theme.of(context).textTheme.titleMedium,
+                    ),
+                    const SizedBox(height: 8),
+                    Text(body),
+                    const SizedBox(height: 16),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: [
+                        _ImpactChip(
+                          icon: Icons.receipt_long_outlined,
+                          label: _countLabel(
+                            usage.transactionCount,
+                            'transaction',
+                          ),
+                        ),
+                        _ImpactChip(
+                          icon: Icons.rule_folder_outlined,
+                          label: _countLabel(
+                            usage.activeMappingRuleCount,
+                            'active rule',
+                          ),
+                        ),
+                        _ImpactChip(
+                          icon: Icons.savings_outlined,
+                          label: _countLabel(usage.capCount, 'cap'),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+                    Text(
+                      'Recent transactions',
+                      style: Theme.of(context).textTheme.titleSmall,
+                    ),
+                    const SizedBox(height: 8),
+                    _RecentCategoryTransactions(
+                      transactions: preview.recentTransactions,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: isDeleting
+                    ? null
+                    : () => Navigator.of(dialogContext).pop(),
+                child: const Text('Cancel'),
+              ),
+              FilledButton.icon(
+                onPressed: isDeleting
+                    ? null
+                    : () async {
+                        setDialogState(() {
+                          isDeleting = true;
+                        });
+
+                        try {
+                          final result = await onDelete();
+                          if (dialogContext.mounted) {
+                            Navigator.of(dialogContext).pop(result);
+                          }
+                        } catch (error) {
+                          setDialogState(() {
+                            isDeleting = false;
+                          });
+                          if (dialogContext.mounted) {
+                            ScaffoldMessenger.of(dialogContext).showSnackBar(
+                              SnackBar(content: Text(error.toString())),
+                            );
+                          }
+                        }
+                      },
+                icon: isDeleting
+                    ? const SizedBox.square(
+                        dimension: 18,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.delete_outline),
+                label: const Text('Delete'),
+              ),
+            ],
+          );
+        },
+      );
+    },
+  );
+}
+
+class _ImpactChip extends StatelessWidget {
+  const _ImpactChip({required this.icon, required this.label});
+
+  final IconData icon;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Chip(
+      avatar: Icon(icon, size: 18),
+      label: Text(label),
+      backgroundColor: Theme.of(context).colorScheme.surfaceContainerHighest,
     );
   }
 }
@@ -823,6 +1116,10 @@ String _usageLabel(CategoryUsageSummary usage) {
       ? '1 transaction'
       : '${usage.transactionCount} transactions';
   return '$countLabel - ${formatMoney(usage.netSpend)}';
+}
+
+String _countLabel(int count, String singular) {
+  return count == 1 ? '1 $singular' : '$count ${singular}s';
 }
 
 extension _SettingsFirstOrNull<T> on Iterable<T> {

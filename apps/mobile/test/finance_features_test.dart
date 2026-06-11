@@ -186,7 +186,7 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('Swiggy Instamart'), findsOneWidget);
+    expect(find.text('Swiggy Instamart'), findsWidgets);
     expect(find.text('Amazon Shopping'), findsOneWidget);
     expect(find.text('All dates'), findsOneWidget);
     expect(repository.lastQuery?.startDate, isNull);
@@ -196,7 +196,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(repository.lastQuery?.searchText, 'swiggy');
-    expect(find.text('Swiggy Instamart'), findsOneWidget);
+    expect(find.text('Swiggy Instamart'), findsWidgets);
     expect(find.text('Amazon Shopping'), findsNothing);
 
     await tester.tap(find.byType(DropdownButtonFormField<String>).first);
@@ -318,8 +318,8 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('CRED Club'), findsOneWidget);
-    expect(find.text('Swiggy Instamart'), findsOneWidget);
+    expect(find.text('CRED Club'), findsWidgets);
+    expect(find.text('Swiggy Instamart'), findsWidgets);
 
     await tester.tap(find.byType(DropdownButtonFormField<String>).at(1));
     await tester.pumpAndSettle();
@@ -327,7 +327,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(repository.lastQuery?.sourceAccountType, 'upi');
-    expect(find.text('CRED Club'), findsOneWidget);
+    expect(find.text('CRED Club'), findsWidgets);
     expect(find.text('Swiggy Instamart'), findsNothing);
   });
 
@@ -794,6 +794,100 @@ void main() {
     expect(find.text('Updated Groceries'), findsOneWidget);
   });
 
+  testWidgets('settings deletes subcategory after impact confirmation', (
+    tester,
+  ) async {
+    final repository = _FakeFinanceRepository();
+
+    await tester.pumpWidget(
+      _financeTestApp(repository: repository, child: const SettingsScreen()),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.ensureVisible(find.byTooltip('Delete subcategory').first);
+    await tester.tap(find.byTooltip('Delete subcategory').first);
+    await tester.pumpAndSettle();
+
+    expect(find.text('Delete subcategory'), findsOneWidget);
+    expect(find.text('Delivery'), findsWidgets);
+    expect(find.text('1 transaction'), findsOneWidget);
+    expect(find.text('1 active rule'), findsOneWidget);
+    expect(find.text('0 caps'), findsOneWidget);
+    expect(find.text('Swiggy Instamart'), findsWidgets);
+
+    await tester.tap(find.widgetWithText(FilledButton, 'Delete'));
+    await tester.pumpAndSettle();
+
+    expect(repository.deletedSubcategoryRequests, hasLength(1));
+    expect(
+      repository.deletedSubcategoryRequests.single.subcategoryId,
+      'sub-food-delivery',
+    );
+    expect(
+      repository.transactions
+          .singleWhere((transaction) => transaction.id == 'txn-1')
+          .categoryId,
+      'cat-food',
+    );
+    expect(
+      repository.transactions
+          .singleWhere((transaction) => transaction.id == 'txn-1')
+          .subcategoryId,
+      isNull,
+    );
+    expect(
+      find.text('Deleted Delivery; requeued 1 transactions'),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('settings deletes category after impact confirmation', (
+    tester,
+  ) async {
+    final repository = _FakeFinanceRepository();
+
+    await tester.pumpWidget(
+      _financeTestApp(repository: repository, child: const SettingsScreen()),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.ensureVisible(find.byTooltip('Delete category').last);
+    await tester.tap(find.byTooltip('Delete category').last);
+    await tester.pumpAndSettle();
+
+    expect(find.text('Delete category'), findsOneWidget);
+    expect(find.text('Shopping'), findsWidgets);
+    expect(find.text('1 transaction'), findsOneWidget);
+    expect(find.text('1 active rule'), findsOneWidget);
+    expect(find.text('1 cap'), findsOneWidget);
+    expect(find.text('CRED Club'), findsWidgets);
+
+    await tester.tap(find.widgetWithText(FilledButton, 'Delete'));
+    await tester.pumpAndSettle();
+
+    expect(repository.deletedCategoryRequests, hasLength(1));
+    expect(
+      repository.deletedCategoryRequests.single.categoryId,
+      'cat-shopping',
+    );
+    expect(
+      repository.transactions
+          .singleWhere((transaction) => transaction.id == 'txn-3')
+          .categoryId,
+      isNull,
+    );
+    expect(
+      repository.transactions
+          .singleWhere((transaction) => transaction.id == 'txn-3')
+          .subcategoryId,
+      isNull,
+    );
+    expect(
+      find.text('Deleted Shopping; requeued 1 transactions'),
+      findsOneWidget,
+    );
+  });
+
   testWidgets('settings shows Gmail connector status', (tester) async {
     final repository = _FakeFinanceRepository();
 
@@ -997,6 +1091,8 @@ final class _FakeFinanceRepository implements FinanceRepository {
   final corrections = <TransactionMetadataCorrectionRequest>[];
   final createdCategoryRequests = <CategoryCreationRequest>[];
   final taxonomyUpdates = <CategoryTaxonomyUpdateRequest>[];
+  final deletedSubcategoryRequests = <TaxonomySubcategoryDeleteRequest>[];
+  final deletedCategoryRequests = <TaxonomyCategoryDeleteRequest>[];
   final expenseQuestions = <ExpenseQuestionRequest>[];
   final metadataSuggestionRequests = <TransactionMetadataSuggestionRequest>[];
   final piggyBanks = <PiggyBankSummary>[];
@@ -1052,6 +1148,15 @@ final class _FakeFinanceRepository implements FinanceRepository {
       categoryId: 'cat-shopping',
       name: 'Marketplace',
     ),
+  ];
+
+  final activeMappingRules = <Map<String, dynamic>>[
+    {'category_id': 'cat-food', 'subcategory_id': 'sub-food-delivery'},
+    {'category_id': 'cat-shopping', 'subcategory_id': 'sub-marketplace'},
+  ];
+
+  final categoryCaps = <Map<String, dynamic>>[
+    {'category_id': 'cat-shopping'},
   ];
 
   final transactions = [
@@ -1322,6 +1427,8 @@ final class _FakeFinanceRepository implements FinanceRepository {
               'net_expense': transaction.netExpense,
             },
       ],
+      activeMappingRuleRows: activeMappingRules,
+      capRows: categoryCaps,
     );
   }
 
@@ -1411,6 +1518,102 @@ final class _FakeFinanceRepository implements FinanceRepository {
     return CategoryTaxonomyUpdateResult(
       category: category,
       subcategories: updatedSubcategories,
+    );
+  }
+
+  @override
+  Future<TaxonomyDeleteResult> deleteSubcategory(
+    TaxonomySubcategoryDeleteRequest request,
+  ) async {
+    deletedSubcategoryRequests.add(request);
+    final affectedTransactions = transactions
+        .where(
+          (transaction) =>
+              transaction.categoryId == request.categoryId &&
+              transaction.subcategoryId == request.subcategoryId,
+        )
+        .toList(growable: false);
+    final affectedRules = activeMappingRules
+        .where(
+          (rule) =>
+              rule['category_id'] == request.categoryId &&
+              rule['subcategory_id'] == request.subcategoryId,
+        )
+        .length;
+
+    subcategories.removeWhere(
+      (subcategory) => subcategory.id == request.subcategoryId,
+    );
+    for (var index = 0; index < transactions.length; index += 1) {
+      final transaction = transactions[index];
+      if (transaction.categoryId != request.categoryId ||
+          transaction.subcategoryId != request.subcategoryId) {
+        continue;
+      }
+
+      transactions[index] = _copyTransaction(
+        transaction,
+        clearSubcategory: true,
+      );
+    }
+    for (final rule in activeMappingRules) {
+      if (rule['category_id'] == request.categoryId &&
+          rule['subcategory_id'] == request.subcategoryId) {
+        rule['subcategory_id'] = null;
+      }
+    }
+
+    return TaxonomyDeleteResult(
+      affectedTransactionCount: affectedTransactions.length,
+      openedReviewItemCount: affectedTransactions.length,
+      mappingRuleCount: affectedRules,
+      clearedMerchantCount: 1,
+      clearedReviewSuggestionCount: 0,
+      deletedCapCount: 0,
+    );
+  }
+
+  @override
+  Future<TaxonomyDeleteResult> deleteCategory(
+    TaxonomyCategoryDeleteRequest request,
+  ) async {
+    deletedCategoryRequests.add(request);
+    final affectedTransactions = transactions
+        .where((transaction) => transaction.categoryId == request.categoryId)
+        .toList(growable: false);
+    final affectedRules = activeMappingRules
+        .where((rule) => rule['category_id'] == request.categoryId)
+        .length;
+    final affectedCaps = categoryCaps
+        .where((cap) => cap['category_id'] == request.categoryId)
+        .length;
+
+    categories.removeWhere((category) => category.id == request.categoryId);
+    subcategories.removeWhere(
+      (subcategory) => subcategory.categoryId == request.categoryId,
+    );
+    activeMappingRules.removeWhere(
+      (rule) => rule['category_id'] == request.categoryId,
+    );
+    categoryCaps.removeWhere((cap) => cap['category_id'] == request.categoryId);
+    for (var index = 0; index < transactions.length; index += 1) {
+      final transaction = transactions[index];
+      if (transaction.categoryId != request.categoryId) continue;
+
+      transactions[index] = _copyTransaction(
+        transaction,
+        clearCategory: true,
+        clearSubcategory: true,
+      );
+    }
+
+    return TaxonomyDeleteResult(
+      affectedTransactionCount: affectedTransactions.length,
+      openedReviewItemCount: affectedTransactions.length,
+      mappingRuleCount: affectedRules,
+      clearedMerchantCount: 1,
+      clearedReviewSuggestionCount: 0,
+      deletedCapCount: affectedCaps,
     );
   }
 
@@ -1751,6 +1954,44 @@ extension _FirstOrNull<T> on Iterable<T> {
 
     return null;
   }
+}
+
+FinanceTransaction _copyTransaction(
+  FinanceTransaction transaction, {
+  String? categoryId,
+  String? categoryName,
+  String? subcategoryId,
+  String? subcategoryName,
+  bool clearCategory = false,
+  bool clearSubcategory = false,
+}) {
+  return FinanceTransaction(
+    id: transaction.id,
+    transactionDate: transaction.transactionDate,
+    statementMerchant: transaction.statementMerchant,
+    merchantId: transaction.merchantId,
+    merchantName: transaction.merchantName,
+    categoryId: clearCategory ? null : categoryId ?? transaction.categoryId,
+    categoryName: clearCategory
+        ? null
+        : categoryName ?? transaction.categoryName,
+    subcategoryId: clearSubcategory
+        ? null
+        : subcategoryId ?? transaction.subcategoryId,
+    subcategoryName: clearSubcategory
+        ? null
+        : subcategoryName ?? transaction.subcategoryName,
+    sourceAccountId: transaction.sourceAccountId,
+    transactionType: transaction.transactionType,
+    amount: transaction.amount,
+    grossSpend: transaction.grossSpend,
+    refundAmount: transaction.refundAmount,
+    netExpense: transaction.netExpense,
+    currencyCode: transaction.currencyCode,
+    confidence: transaction.confidence,
+    cardholderName: transaction.cardholderName,
+    notes: transaction.notes,
+  );
 }
 
 GmailParseFailure _gmailParseFailure() {
