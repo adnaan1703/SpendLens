@@ -386,6 +386,58 @@ Financial rules:
 - Refunds are represented as positive `refund_amount`.
 - Dashboard and budgets use `net_expense`.
 
+### Planned transaction labels
+
+Milestones 26-28 add household-shared labels for ad hoc transaction grouping.
+Labels are separate from category taxonomy and merchant mapping rules.
+
+#### `labels`
+
+Household label vocabulary.
+
+Important fields:
+
+- `id uuid primary key`
+- `household_id uuid references households(id)`
+- `name text not null`
+- `created_by uuid references profiles(id)`
+- `created_at timestamptz`
+- `updated_at timestamptz`
+
+Rules:
+
+- Names are trimmed and nonblank.
+- Names are case-insensitively unique within a household.
+- Labels are household-shared, not per-profile private.
+- Renaming a label preserves its ID and updates visible label text wherever that
+  label is attached.
+
+#### `transaction_labels`
+
+Many-to-many assignment between transactions and labels.
+
+Important fields:
+
+- `household_id uuid references households(id)`
+- `transaction_id uuid references transactions(id)`
+- `label_id uuid references labels(id)`
+- `created_by uuid references profiles(id)`
+- `created_at timestamptz`
+
+Rules:
+
+- A transaction can have many labels.
+- A label can be attached to many transactions.
+- The same label can be attached to a transaction only once.
+- Assigning a label to one transaction does not assign it to other transactions
+  from the same merchant, normalized statement merchant, category, source
+  account, import, or Gmail thread.
+- Label edits never update `category_id`, `subcategory_id`, `merchant_id`,
+  `merchant_mapping_rules`, Review rows, category caps, source metadata, money
+  fields, or future import behavior.
+- Deleting a label detaches it from all transactions and preserves every
+  transaction row.
+
 ### `transaction_sources`
 
 Stores source metadata without retaining raw email bodies.

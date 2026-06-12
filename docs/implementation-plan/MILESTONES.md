@@ -1,6 +1,6 @@
 # SpendLens Milestones
 
-Each milestone is intended to be executable in a separate thread. A new thread should read `README.md`, `ARCHITECTURE.md`, `DATA_MODEL.md`, `INGESTION.md`, and the active milestone before making changes.
+Each milestone is intended to be executable in a separate thread. A new thread should read `README.md`, `ARCHITECTURE.md`, `DATA_MODEL.md`, `INGESTION.md`, and the active milestone before making changes. Milestones with dedicated companion plans should also read the linked plan document before editing.
 
 ## Milestone 1: Project Foundation
 
@@ -1118,6 +1118,144 @@ verify cross-feature consistency after rename, add, delete, and merge.
 - Reorder, cross-household taxonomy templates, category icons/colors,
   category-level audit timeline UI, and bulk AI recategorization.
 
+## Milestone 26: Labels Data Model and Repository Foundation
+
+### Status
+
+Planned. See [Transaction Labels](TRANSACTION_LABELS.md#m26---labels-data-model-and-repository-foundation).
+
+### Objective
+
+Add the database, RLS, RPC, repository, and test foundation for
+household-shared transaction labels.
+
+### Tasks
+
+- Add household-scoped `labels` and `transaction_labels` tables.
+- Add constraints, indexes, RLS policies, and authenticated grants.
+- Add app-facing `security invoker` RPCs for replacing one transaction's labels,
+  renaming a label, and deleting a label with detach semantics.
+- Add a household-scoped label usage read path for Settings.
+- Extend Flutter repository models with label options, manager snapshots,
+  transaction label lists, and `TransactionQuery.labelId`.
+- Update transaction fetching so paged transactions include label lists without
+  duplicating rows.
+- Add pgTAP tests for label create/reuse, assignment replacement, rename,
+  delete/detach, RLS isolation, viewer rejection, non-member rejection, and
+  cross-household rejection.
+
+### External Work
+
+- None.
+
+### Acceptance Criteria
+
+- Household writers can create/reuse labels and replace labels for exactly one
+  selected transaction through an RLS-safe RPC.
+- Household writers can rename and delete labels; deletion detaches assignments
+  and preserves all transactions.
+- Household members can read household labels; viewers and non-members cannot
+  mutate labels or assignments.
+- Flutter repository contracts can fetch transactions with labels and perform
+  label mutations.
+
+### Deferred Scope
+
+- Transaction label UI, Settings label manager UI, bulk labeling, label colors,
+  label icons, AI label suggestions, label reports, and automatic workbook/Gmail
+  labeling.
+
+## Milestone 27: Transaction Labeling UX
+
+### Status
+
+Planned. See [Transaction Labels](TRANSACTION_LABELS.md#m27---transaction-labeling-ux).
+
+### Objective
+
+Let users see, create, attach, remove, and filter labels from transaction
+surfaces one transaction at a time.
+
+### Tasks
+
+- Show compact label chips in transaction list rows and full label context in
+  transaction detail.
+- Add a transaction label editor from transaction detail.
+- Support existing-label selection, inline new-label creation, removal, disabled
+  save state, and user-visible save errors.
+- Save through the repository method backed by `set_transaction_labels`.
+- Add a single-label Transactions filter backed by `TransactionQuery.labelId`
+  and route query param `labelId`.
+- Refresh transaction and label providers after label saves.
+- Add Flutter widget tests for display, edit, create, remove, route parsing,
+  filter application, overflow display, and clear-filter behavior.
+
+### External Work
+
+- None.
+
+### Acceptance Criteria
+
+- A household writer can attach existing labels to a selected transaction.
+- A household writer can create a new label inline and attach it to the selected
+  transaction.
+- A household writer can remove labels from the selected transaction.
+- Labels appear in transaction list/detail after save.
+- Filtering Transactions by one label returns only transactions attached to that
+  label.
+- Label edits do not update other transactions from the same merchant or create
+  merchant mapping rules.
+
+### Deferred Scope
+
+- Bulk multi-select labeling, Settings label management, label reports,
+  dashboard summaries by label, and AI label suggestions.
+
+## Milestone 28: Settings Label Manager and Regression
+
+### Status
+
+Planned. See [Transaction Labels](TRANSACTION_LABELS.md#m28---settings-label-manager-and-regression).
+
+### Objective
+
+Add household label vocabulary management in Settings and harden the full label
+workflow.
+
+### Tasks
+
+- Add a Settings Labels manager with create, rename, delete, and usage counts.
+- Show attached transaction count before deleting a used label.
+- Delete used labels by detaching them from all transactions, without deleting or
+  reclassifying transactions.
+- Refresh Settings and transaction providers after create, rename, and delete.
+- Cover active-filter behavior when a selected label is deleted.
+- Verify long labels and narrow viewports do not overflow.
+- Update durable docs and handoff with final label behavior.
+- Add focused Flutter regression tests and run the local Supabase verification
+  path.
+
+### External Work
+
+- None.
+
+### Acceptance Criteria
+
+- Settings exposes household label management with create, rename, delete, and
+  usage counts.
+- Used-label deletion detaches the label from all transactions after
+  confirmation and leaves transaction classification untouched.
+- Transaction label display, editing, and filtering still work after rename and
+  delete.
+- Viewers and non-members cannot mutate labels.
+- Final docs and handoff reflect implemented behavior and deferred label work.
+
+### Deferred Scope
+
+- Label colors/icons, label sharing outside the household, per-user private
+  labels, bulk labeling, AI label suggestions, label reports, and automatic
+  workbook/Gmail labeling.
+
 ## Cross-Milestone Consistency Rules
 
 - Ask the user before proceeding on any undocumented decision. Codex may recommend a default, but must wait for confirmation.
@@ -1135,6 +1273,9 @@ verify cross-feature consistency after rename, add, delete, and merge.
   during taxonomy deletion or merge.
 - Requeue transactions to Review for category deletion, and require explicit
   subcategory mapping for category merge.
+- Keep transaction labels separate from categories and merchant mappings. Label
+  changes must not reclassify transactions, alter future import behavior, or
+  send transactions to Review.
 - Prefer deterministic rules before AI.
 - Keep client code free of service credentials.
 - Update these docs when architecture decisions change.
