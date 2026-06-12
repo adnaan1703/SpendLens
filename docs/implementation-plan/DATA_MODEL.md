@@ -189,17 +189,21 @@ subcategory-specific references are cleared.
 
 `public.delete_household_category(...)` removes a category only after dependent
 references are handled. Affected transactions keep merchant/source context but
-clear category, subcategory, and classification-rule references, category caps
-for the deleted category are removed, future mapping rules that referenced the
-deleted taxonomy are deactivated, merchant/review suggestions are cleared, and
-affected transactions return to Review.
+clear category, subcategory, and classification-rule references, current
+category caps for the deleted category are removed, future mapping rules that
+referenced the deleted taxonomy are deactivated, merchant/review suggestions are
+cleared, and affected transactions return to Review. After Milestones 29-31,
+category deletion removes the deleted category from monthly cap targets and
+deletes any cap left with no category or label targets.
 
 `public.merge_household_categories(...)` merges one or more source categories
 into a surviving destination category. Every source subcategory must be mapped
 to an existing or newly named destination subcategory before save. The merge
 repoints transactions, merchants, active future mapping rules, open review
-items, and category caps to surviving taxonomy, sums matching monthly caps, and
-does not create Review items.
+items, and current category caps to surviving taxonomy, sums matching monthly
+caps, and does not create Review items. After Milestones 29-31, merge repoints
+monthly cap category targets to the surviving category and dedupes targets
+without summing independent named caps.
 
 Dashboard summaries, monthly caps, transaction filters, trend tables, merchant
 review, metadata editor selectors, workbook imports, and Gmail future mapping
@@ -208,7 +212,7 @@ with the selected category filter applied. Subcategory detail keeps its
 subcategory context in Settings; M25 does not introduce a subcategory-specific
 Transactions filter.
 
-### `category_caps`
+### `category_caps` (legacy until M29-M31)
 
 Monthly cap per category.
 
@@ -226,12 +230,80 @@ Important fields:
 Rules:
 
 - `period_month` is the first day of the month.
-- Caps are category-level in v1, not subcategory-level.
+- Caps are category-level until Milestones 29-31 replace the app-facing cap
+  model with named category/label targets.
 - A missing cap means no cap has been set.
 
 Unique constraint:
 
 - `(household_id, category_id, period_month)`
+
+### `monthly_caps` (planned M29-M31)
+
+Named monthly cap definition.
+
+Important fields:
+
+- `id uuid primary key`
+- `household_id uuid references households(id)`
+- `name text not null`
+- `period_month date not null`
+- `cap_amount numeric(14,2) not null`
+- `created_by uuid references profiles(id)`
+- `created_at timestamptz`
+- `updated_at timestamptz`
+
+Rules:
+
+- `name` is required, trimmed, nonblank, and case-insensitively unique per
+  household and month.
+- `period_month` is the first day of the month.
+- `cap_amount` cannot be negative.
+- A cap must have at least one category or label target.
+- A transaction contributes to a cap when any selected category or label target
+  matches.
+- A transaction counts once within a cap even when multiple targets match.
+- Overlapping caps are allowed, so the same transaction can count toward
+  multiple caps.
+- Cap edits do not change transaction categories, labels, merchant mappings,
+  review state, importer behavior, or future Gmail classification.
+
+### `monthly_cap_categories` (planned M29-M31)
+
+Many-to-many target list between monthly caps and top-level categories.
+
+Important fields:
+
+- `household_id uuid references households(id)`
+- `monthly_cap_id uuid references monthly_caps(id)`
+- `category_id uuid references categories(id)`
+- `created_at timestamptz`
+
+Rules:
+
+- A category can be selected once per cap.
+- Category deletion removes this target. If a cap has no remaining category or
+  label targets, the cap is deleted.
+- Category merge repoints source category targets to the surviving category and
+  dedupes targets; independent named caps are not summed.
+
+### `monthly_cap_labels` (planned M29-M31)
+
+Many-to-many target list between monthly caps and transaction labels.
+
+Important fields:
+
+- `household_id uuid references households(id)`
+- `monthly_cap_id uuid references monthly_caps(id)`
+- `label_id uuid references labels(id)`
+- `created_at timestamptz`
+
+Rules:
+
+- A label can be selected once per cap.
+- Label deletion removes this target. If a cap has no remaining category or
+  label targets, the cap is deleted.
+- Label rename preserves target behavior because caps reference label IDs.
 
 ## Merchants and Mapping
 
@@ -434,9 +506,11 @@ Rules:
 - Assigning a label to one transaction does not assign it to other transactions
   from the same merchant, normalized statement merchant, category, source
   account, import, or Gmail thread.
-- Label edits never update `category_id`, `subcategory_id`, `merchant_id`,
-  `merchant_mapping_rules`, Review rows, category caps, source metadata, money
-  fields, or future import behavior.
+- Label assignment edits never update `category_id`, `subcategory_id`,
+  `merchant_id`, `merchant_mapping_rules`, Review rows, monthly cap
+  definitions, source metadata, money fields, or future import behavior.
+  After Milestones 29-31, cap progress can change when a transaction gains or
+  loses a label that is used as a cap target.
 - Deleting a label detaches it from all transactions and preserves every
   transaction row. If a deleted label was the active Transactions filter, the
   app clears that stale filter after label lookup refresh.
@@ -751,7 +825,9 @@ Create these views for app reads:
 
 - `v_monthly_spend`: monthly gross, refunds, net spend, bill payments.
 - `v_category_monthly_spend`: category spend per month.
-- `v_budget_progress`: category cap, spent, remaining, percent used, over-budget flag.
+- `v_budget_progress`: legacy category cap, spent, remaining, percent used, over-budget flag.
+- `v_monthly_cap_progress` (planned M29-M31): named cap progress for category
+  and label targets, with each transaction counted once per cap.
 - `v_merchant_summary`: merchant spend, refunds, net, transaction counts.
 - `v_review_queue`: open review items with transaction and suggestions.
 - `v_piggy_bank_balances`: piggy-bank balance and target progress.

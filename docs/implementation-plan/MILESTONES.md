@@ -1263,6 +1263,136 @@ workflow.
   labels, bulk labeling, AI label suggestions, label reports, and automatic
   workbook/Gmail labeling.
 
+## Milestone 29: Monthly Cap Data Model and Repository Foundation
+
+### Status
+
+Planned. See
+[Monthly Caps](MONTHLY_CAPS.md#m29---monthly-cap-data-model-and-repository-foundation).
+
+### Objective
+
+Replace the category-only cap contract with required-name monthly caps that can
+target categories and labels.
+
+### Tasks
+
+- Add household-scoped `monthly_caps`, `monthly_cap_categories`, and
+  `monthly_cap_labels` tables.
+- Backfill existing `category_caps` into named monthly caps with one category
+  target each.
+- Add RLS policies, authenticated grants, and app-facing `security invoker`
+  RPCs for cap upsert and delete.
+- Add `v_monthly_cap_progress` with OR matching across category and label
+  targets, one-count-per-transaction semantics within each cap, and overlap
+  support across separate caps.
+- Update category delete, category merge, and label delete behavior for cap
+  targets.
+- Update Flutter repository contracts and fake repository support for the new
+  cap models.
+- Add focused pgTAP and Flutter repository tests.
+
+### External Work
+
+- None.
+
+### Acceptance Criteria
+
+- Existing category caps migrate into named monthly caps.
+- Household writers can create, update, and delete caps through RLS-safe RPCs.
+- Cap progress works for category-only, label-only, and mixed target caps.
+- Transactions are counted once within one cap and can count in overlapping
+  caps.
+- Viewers and non-members cannot mutate caps.
+
+### Deferred Scope
+
+- Dashboard multi-target cap UI, cap-row drilldown, cap notifications,
+  subcategory caps, and non-category/label targets.
+
+## Milestone 30: Dashboard Multi-Target Cap UX
+
+### Status
+
+Planned. See
+[Monthly Caps](MONTHLY_CAPS.md#m30---dashboard-multi-target-cap-ux).
+
+### Objective
+
+Expose named category/label caps from the Dashboard.
+
+### Tasks
+
+- Replace category-only cap creation chips with an `Add cap` action.
+- Add a cap form with required name, INR monthly amount, multi-select
+  categories, and multi-select labels.
+- Validate nonblank name, valid nonnegative amount, and at least one target.
+- Show cap progress rows with name, amount, spent, remaining/over amount,
+  matched transaction count, and category/label target chips.
+- Support edit and delete flows for existing caps.
+- Refresh Dashboard providers after cap mutations.
+- Add focused Dashboard widget tests.
+
+### External Work
+
+- None.
+
+### Acceptance Criteria
+
+- Users can create category-only, label-only, and mixed caps from Dashboard.
+- Users can edit cap name, amount, and targets.
+- Users can delete caps without changing transactions, categories, labels,
+  merchant rules, or review rows.
+- Long names and target chips behave correctly on narrow screens.
+
+### Deferred Scope
+
+- Cap-row transaction drilldown, cap reports, cap notifications, and automatic
+  label assignment.
+
+## Milestone 31: Monthly Caps Regression, Docs, and Cleanup
+
+### Status
+
+Planned. See
+[Monthly Caps](MONTHLY_CAPS.md#m31---monthly-caps-regression-docs-and-cleanup).
+
+### Objective
+
+Harden multi-target caps, remove stale category-only assumptions, and document
+the final behavior.
+
+### Tasks
+
+- Run cross-feature regression for cap progress after category delete, category
+  merge, label delete, label rename, and transaction label assignment changes.
+- Remove or retire active `category_caps`, `v_budget_progress`,
+  `BudgetProgress`, and `saveCategoryCap` references after the new model is
+  fully wired.
+- Update durable docs and handoff with final monthly cap behavior.
+- Add pgTAP and Flutter regression coverage for target cleanup, dedupe, no
+  double-counting, and allowed overlap.
+- Run full local Supabase, Flutter analyze/test, and debug Android build
+  verification.
+
+### External Work
+
+- None.
+
+### Acceptance Criteria
+
+- No active app code reads or writes category-only cap contracts.
+- Multi-target caps behave correctly across category and label lifecycle
+  changes.
+- Final docs reflect required names, category/label targets, OR matching,
+  one-count-per-cap semantics, and allowed overlap.
+- Milestones 18-21 remain deferred unless explicitly resumed.
+
+### Deferred Scope
+
+- Subcategory caps, merchant/source-account targets, cap notifications,
+  rollover budgets, shared templates, AI cap suggestions, and cap drilldown.
+
 ## Cross-Milestone Consistency Rules
 
 - Ask the user before proceeding on any undocumented decision. Codex may recommend a default, but must wait for confirmation.
@@ -1283,6 +1413,9 @@ workflow.
 - Keep transaction labels separate from categories and merchant mappings. Label
   changes must not reclassify transactions, alter future import behavior, or
   send transactions to Review.
+- Multi-target monthly caps use required names, category and/or label targets,
+  OR matching, one-count-per-cap transaction semantics, and allowed overlap
+  between separate caps.
 - Prefer deterministic rules before AI.
 - Keep client code free of service credentials.
 - Update these docs when architecture decisions change.
