@@ -386,10 +386,10 @@ Financial rules:
 - Refunds are represented as positive `refund_amount`.
 - Dashboard and budgets use `net_expense`.
 
-### Planned transaction labels
+### Transaction labels
 
-Milestones 26-28 add household-shared labels for ad hoc transaction grouping.
-Labels are separate from category taxonomy and merchant mapping rules.
+SpendLens uses household-shared labels for ad hoc transaction grouping. Labels
+are separate from category taxonomy and merchant mapping rules.
 
 #### `labels`
 

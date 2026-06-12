@@ -95,6 +95,85 @@ void main() {
     expect(csv, contains('"HDFC SmartBuy, Flights"'));
   });
 
+  test('transaction query supports label filter equality and copyWith', () {
+    const query = TransactionQuery(
+      householdId: 'household-1',
+      searchText: 'swiggy',
+      labelId: 'label-grocery',
+    );
+
+    expect(
+      query,
+      const TransactionQuery(
+        householdId: 'household-1',
+        searchText: 'swiggy',
+        labelId: 'label-grocery',
+      ),
+    );
+    expect(
+      query.copyWith(labelId: 'label-reimburse').labelId,
+      'label-reimburse',
+    );
+    expect(query.copyWith(clearLabel: true).labelId, isNull);
+  });
+
+  test('label repository contract mutates one transaction label set', () async {
+    final repository = _FakeFinanceRepository();
+
+    final result = await repository.setTransactionLabels(
+      const TransactionLabelsSetRequest(
+        householdId: 'household-1',
+        transactionId: 'txn-2',
+        labelIds: ['label-grocery'],
+        newLabelNames: ['Office'],
+      ),
+    );
+
+    expect(result.labels.map((label) => label.name), ['Groceries', 'Office']);
+    expect(repository.labelSetRequests.single.transactionId, 'txn-2');
+
+    final groceryPage = await repository.fetchTransactions(
+      const TransactionQuery(
+        householdId: 'household-1',
+        labelId: 'label-grocery',
+      ),
+    );
+    expect(groceryPage.items.map((transaction) => transaction.id), [
+      'txn-1',
+      'txn-2',
+    ]);
+
+    final renamed = await repository.renameHouseholdLabel(
+      const LabelRenameRequest(
+        householdId: 'household-1',
+        labelId: 'label-grocery',
+        name: 'Food Run',
+      ),
+    );
+    expect(renamed.name, 'Food Run');
+
+    final snapshot = await repository.fetchLabelManagerSnapshot(
+      householdId: 'household-1',
+    );
+    expect(snapshot.usageFor('label-grocery')?.transactionCount, 2);
+
+    final deleted = await repository.deleteHouseholdLabel(
+      const LabelDeleteRequest(
+        householdId: 'household-1',
+        labelId: 'label-grocery',
+      ),
+    );
+    expect(deleted.detachedTransactionCount, 2);
+
+    final emptyPage = await repository.fetchTransactions(
+      const TransactionQuery(
+        householdId: 'household-1',
+        labelId: 'label-grocery',
+      ),
+    );
+    expect(emptyPage.items, isEmpty);
+  });
+
   testWidgets('dashboard shows net spend and saves category caps', (
     tester,
   ) async {
@@ -1293,6 +1372,9 @@ final class _FakeFinanceRepository implements FinanceRepository {
   final deletedSubcategoryRequests = <TaxonomySubcategoryDeleteRequest>[];
   final deletedCategoryRequests = <TaxonomyCategoryDeleteRequest>[];
   final mergeRequests = <CategoryMergeRequest>[];
+  final labelSetRequests = <TransactionLabelsSetRequest>[];
+  final labelRenameRequests = <LabelRenameRequest>[];
+  final labelDeleteRequests = <LabelDeleteRequest>[];
   final expenseQuestions = <ExpenseQuestionRequest>[];
   final metadataSuggestionRequests = <TransactionMetadataSuggestionRequest>[];
   final piggyBanks = <PiggyBankSummary>[];
@@ -1359,6 +1441,11 @@ final class _FakeFinanceRepository implements FinanceRepository {
     {'category_id': 'cat-shopping'},
   ];
 
+  final labels = <LabelOption>[
+    LabelOption(id: 'label-grocery', name: 'Groceries'),
+    LabelOption(id: 'label-reimburse', name: 'Reimburse'),
+  ];
+
   final transactions = [
     FinanceTransaction(
       id: 'txn-1',
@@ -1379,6 +1466,7 @@ final class _FakeFinanceRepository implements FinanceRepository {
       currencyCode: 'INR',
       confidence: 'high',
       cardholderName: 'Ada',
+      labels: const [LabelOption(id: 'label-grocery', name: 'Groceries')],
     ),
     FinanceTransaction(
       id: 'txn-2',
@@ -1414,6 +1502,7 @@ final class _FakeFinanceRepository implements FinanceRepository {
       netExpense: 112937,
       currencyCode: 'INR',
       confidence: 'high',
+      labels: const [LabelOption(id: 'label-reimburse', name: 'Reimburse')],
     ),
   ];
 
@@ -1629,6 +1718,33 @@ final class _FakeFinanceRepository implements FinanceRepository {
       ],
       activeMappingRuleRows: activeMappingRules,
       capRows: categoryCaps,
+    );
+  }
+
+  @override
+  Future<List<LabelOption>> fetchLabels({required String householdId}) async {
+    return [...labels]..sort(_compareTestLabels);
+  }
+
+  @override
+  Future<LabelManagerSnapshot> fetchLabelManagerSnapshot({
+    required String householdId,
+  }) async {
+    return LabelManagerSnapshot(
+      labels: [
+        for (final label in labels)
+          LabelUsageSummary(
+            label: label,
+            transactionCount: transactions
+                .where(
+                  (transaction) => transaction.labels.any(
+                    (transactionLabel) => transactionLabel.id == label.id,
+                  ),
+                )
+                .length,
+            recentUsedAt: _recentLabelUse(label.id),
+          ),
+      ]..sort((a, b) => _compareTestLabels(a.label, b.label)),
     );
   }
 
@@ -2098,6 +2214,21 @@ final class _FakeFinanceRepository implements FinanceRepository {
         .fold<double>(0, (total, entry) => total + entry.signedAmount);
   }
 
+  DateTime? _recentLabelUse(String labelId) {
+    final dates =
+        transactions
+            .where(
+              (transaction) =>
+                  transaction.labels.any((label) => label.id == labelId),
+            )
+            .map((transaction) => transaction.transactionDate)
+            .toList(growable: false)
+          ..sort();
+    if (dates.isEmpty) return null;
+
+    return dates.last;
+  }
+
   @override
   Future<PagedTransactions> fetchTransactions(TransactionQuery query) async {
     lastQuery = query;
@@ -2113,6 +2244,9 @@ final class _FakeFinanceRepository implements FinanceRepository {
       final matchesSubcategory =
           query.subcategoryId == null ||
           transaction.subcategoryId == query.subcategoryId;
+      final matchesLabel =
+          query.labelId == null ||
+          transaction.labels.any((label) => label.id == query.labelId);
       final matchesSourceType =
           query.sourceAccountType == null ||
           sourceTypeFor(transaction.sourceAccountId) == query.sourceAccountType;
@@ -2129,6 +2263,7 @@ final class _FakeFinanceRepository implements FinanceRepository {
       return matchesSearch &&
           matchesCategory &&
           matchesSubcategory &&
+          matchesLabel &&
           matchesSourceType &&
           matchesSource &&
           matchesStart &&
@@ -2139,6 +2274,106 @@ final class _FakeFinanceRepository implements FinanceRepository {
       items: filtered,
       page: query.page,
       pageSize: query.pageSize,
+    );
+  }
+
+  @override
+  Future<TransactionLabelsSetResult> setTransactionLabels(
+    TransactionLabelsSetRequest request,
+  ) async {
+    labelSetRequests.add(request);
+    final nextLabels = <LabelOption>[
+      for (final labelId in request.labelIds)
+        labels.where((label) => label.id == labelId).first,
+    ];
+
+    for (final rawName in request.newLabelNames) {
+      final name = rawName.trim();
+      final existing = labels
+          .where((label) => label.name.toLowerCase() == name.toLowerCase())
+          .firstOrNull;
+      if (existing != null) {
+        nextLabels.add(existing);
+        continue;
+      }
+
+      final label = LabelOption(id: 'label-${labels.length + 1}', name: name);
+      labels.add(label);
+      nextLabels.add(label);
+    }
+
+    final distinctLabels = <String, LabelOption>{
+      for (final label in nextLabels) label.id: label,
+    }.values.toList(growable: false)..sort(_compareTestLabels);
+
+    final index = transactions.indexWhere(
+      (transaction) => transaction.id == request.transactionId,
+    );
+    transactions[index] = _copyTransaction(
+      transactions[index],
+      labels: distinctLabels,
+    );
+
+    return TransactionLabelsSetResult(labels: distinctLabels);
+  }
+
+  @override
+  Future<LabelOption> renameHouseholdLabel(LabelRenameRequest request) async {
+    labelRenameRequests.add(request);
+    final name = request.name.trim();
+    final index = labels.indexWhere((label) => label.id == request.labelId);
+    final label = LabelOption(id: request.labelId, name: name);
+    labels[index] = label;
+
+    for (
+      var transactionIndex = 0;
+      transactionIndex < transactions.length;
+      transactionIndex += 1
+    ) {
+      final transaction = transactions[transactionIndex];
+      if (!transaction.labels.any((candidate) => candidate.id == label.id)) {
+        continue;
+      }
+
+      transactions[transactionIndex] = _copyTransaction(
+        transaction,
+        labels: [
+          for (final candidate in transaction.labels)
+            candidate.id == label.id ? label : candidate,
+        ]..sort(_compareTestLabels),
+      );
+    }
+
+    return label;
+  }
+
+  @override
+  Future<LabelDeleteResult> deleteHouseholdLabel(
+    LabelDeleteRequest request,
+  ) async {
+    labelDeleteRequests.add(request);
+    var detachedCount = 0;
+    labels.removeWhere((label) => label.id == request.labelId);
+
+    for (var index = 0; index < transactions.length; index += 1) {
+      final transaction = transactions[index];
+      if (!transaction.labels.any((label) => label.id == request.labelId)) {
+        continue;
+      }
+
+      detachedCount += 1;
+      transactions[index] = _copyTransaction(
+        transaction,
+        labels: [
+          for (final label in transaction.labels)
+            if (label.id != request.labelId) label,
+        ],
+      );
+    }
+
+    return LabelDeleteResult(
+      labelId: request.labelId,
+      detachedTransactionCount: detachedCount,
     );
   }
 
@@ -2269,12 +2504,20 @@ extension _FirstOrNull<T> on Iterable<T> {
   }
 }
 
+int _compareTestLabels(LabelOption a, LabelOption b) {
+  final lowerComparison = a.name.toLowerCase().compareTo(b.name.toLowerCase());
+  if (lowerComparison != 0) return lowerComparison;
+
+  return a.id.compareTo(b.id);
+}
+
 FinanceTransaction _copyTransaction(
   FinanceTransaction transaction, {
   String? categoryId,
   String? categoryName,
   String? subcategoryId,
   String? subcategoryName,
+  List<LabelOption>? labels,
   bool clearCategory = false,
   bool clearSubcategory = false,
 }) {
@@ -2304,6 +2547,7 @@ FinanceTransaction _copyTransaction(
     confidence: transaction.confidence,
     cardholderName: transaction.cardholderName,
     notes: transaction.notes,
+    labels: labels ?? transaction.labels,
   );
 }
 

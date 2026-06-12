@@ -106,6 +106,20 @@ final categoryManagerSnapshotProvider =
           .fetchCategoryManagerSnapshot(householdId: householdId);
     });
 
+final labelManagerSnapshotProvider =
+    FutureProvider.family<LabelManagerSnapshot, String>((ref, householdId) {
+      return ref
+          .watch(financeRepositoryProvider)
+          .fetchLabelManagerSnapshot(householdId: householdId);
+    });
+
+final transactionLabelsProvider =
+    FutureProvider.family<List<LabelOption>, String>((ref, householdId) {
+      return ref
+          .watch(financeRepositoryProvider)
+          .fetchLabels(householdId: householdId);
+    });
+
 final categoryUsagePreviewProvider =
     FutureProvider.family<CategoryUsagePreview, CategoryUsagePreviewRequest>((
       ref,
@@ -171,6 +185,7 @@ final class TransactionQuery {
     this.searchText = '',
     this.categoryId,
     this.subcategoryId,
+    this.labelId,
     this.sourceAccountType,
     this.sourceAccountId,
     this.startDate,
@@ -183,6 +198,7 @@ final class TransactionQuery {
   final String searchText;
   final String? categoryId;
   final String? subcategoryId;
+  final String? labelId;
   final String? sourceAccountType;
   final String? sourceAccountId;
   final DateTime? startDate;
@@ -196,6 +212,8 @@ final class TransactionQuery {
     bool clearCategory = false,
     String? subcategoryId,
     bool clearSubcategory = false,
+    String? labelId,
+    bool clearLabel = false,
     String? sourceAccountType,
     bool clearSourceAccountType = false,
     String? sourceAccountId,
@@ -213,6 +231,7 @@ final class TransactionQuery {
       subcategoryId: clearSubcategory
           ? null
           : subcategoryId ?? this.subcategoryId,
+      labelId: clearLabel ? null : labelId ?? this.labelId,
       sourceAccountType: clearSourceAccountType
           ? null
           : sourceAccountType ?? this.sourceAccountType,
@@ -233,6 +252,7 @@ final class TransactionQuery {
         other.searchText == searchText &&
         other.categoryId == categoryId &&
         other.subcategoryId == subcategoryId &&
+        other.labelId == labelId &&
         other.sourceAccountType == sourceAccountType &&
         other.sourceAccountId == sourceAccountId &&
         _dateKey(other.startDate) == _dateKey(startDate) &&
@@ -247,6 +267,7 @@ final class TransactionQuery {
     searchText,
     categoryId,
     subcategoryId,
+    labelId,
     sourceAccountType,
     sourceAccountId,
     _dateKey(startDate),
@@ -887,6 +908,49 @@ final class SubcategoryOption {
   }
 }
 
+final class LabelOption {
+  const LabelOption({required this.id, required this.name});
+
+  final String id;
+  final String name;
+
+  factory LabelOption.fromJson(Map<String, dynamic> json) {
+    return LabelOption(id: json['id'] as String, name: json['name'] as String);
+  }
+}
+
+final class LabelUsageSummary {
+  const LabelUsageSummary({
+    required this.label,
+    required this.transactionCount,
+    this.recentUsedAt,
+  });
+
+  final LabelOption label;
+  final int transactionCount;
+  final DateTime? recentUsedAt;
+
+  factory LabelUsageSummary.fromJson(Map<String, dynamic> json) {
+    return LabelUsageSummary(
+      label: LabelOption.fromJson(json),
+      transactionCount: _asInt(json['transaction_count']),
+      recentUsedAt: parseOptionalDateTime(json['recent_used_at']),
+    );
+  }
+}
+
+final class LabelManagerSnapshot {
+  const LabelManagerSnapshot({required this.labels});
+
+  final List<LabelUsageSummary> labels;
+
+  bool get isEmpty => labels.isEmpty;
+
+  LabelUsageSummary? usageFor(String labelId) {
+    return labels.where((usage) => usage.label.id == labelId).firstOrNull;
+  }
+}
+
 final class CategoryCreationRequest {
   const CategoryCreationRequest({
     required this.householdId,
@@ -1339,6 +1403,71 @@ final class MerchantReviewItem {
   }
 }
 
+final class TransactionLabelsSetRequest {
+  const TransactionLabelsSetRequest({
+    required this.householdId,
+    required this.transactionId,
+    this.labelIds = const [],
+    this.newLabelNames = const [],
+  });
+
+  final String householdId;
+  final String transactionId;
+  final List<String> labelIds;
+  final List<String> newLabelNames;
+}
+
+final class TransactionLabelsSetResult {
+  const TransactionLabelsSetResult({required this.labels});
+
+  final List<LabelOption> labels;
+
+  factory TransactionLabelsSetResult.fromRows(List<dynamic> rows) {
+    return TransactionLabelsSetResult(
+      labels: rows
+          .cast<Map<String, dynamic>>()
+          .map(LabelOption.fromJson)
+          .toList(growable: false),
+    );
+  }
+}
+
+final class LabelRenameRequest {
+  const LabelRenameRequest({
+    required this.householdId,
+    required this.labelId,
+    required this.name,
+  });
+
+  final String householdId;
+  final String labelId;
+  final String name;
+}
+
+final class LabelDeleteRequest {
+  const LabelDeleteRequest({required this.householdId, required this.labelId});
+
+  final String householdId;
+  final String labelId;
+}
+
+final class LabelDeleteResult {
+  const LabelDeleteResult({
+    required this.labelId,
+    required this.detachedTransactionCount,
+  });
+
+  final String labelId;
+  final int detachedTransactionCount;
+
+  factory LabelDeleteResult.fromJson(Map<String, dynamic> json) {
+    return LabelDeleteResult(
+      labelId: json['label_id'] as String,
+      detachedTransactionCount: _asInt(json['detached_transaction_count']),
+    );
+  }
+}
+
 final class TransactionMetadataCorrectionRequest {
   const TransactionMetadataCorrectionRequest({
     required this.householdId,
@@ -1469,6 +1598,7 @@ final class FinanceTransaction {
     required this.confidence,
     this.cardholderName,
     this.notes,
+    this.labels = const [],
   });
 
   final String id;
@@ -1490,6 +1620,7 @@ final class FinanceTransaction {
   final String confidence;
   final String? cardholderName;
   final String? notes;
+  final List<LabelOption> labels;
 
   bool get isRefund => transactionType == 'refund_reversal';
 
@@ -1500,6 +1631,7 @@ final class FinanceTransaction {
     required Map<String, String> categoryNamesById,
     required Map<String, String> subcategoryNamesById,
     required Map<String, String> merchantNamesById,
+    List<LabelOption> labels = const [],
   }) {
     final merchantId = json['merchant_id'] as String?;
     final categoryId = json['category_id'] as String?;
@@ -1529,6 +1661,7 @@ final class FinanceTransaction {
       confidence: json['confidence'] as String? ?? 'medium',
       cardholderName: json['cardholder_name'] as String?,
       notes: json['notes'] as String?,
+      labels: labels,
     );
   }
 }
@@ -1932,6 +2065,12 @@ abstract interface class FinanceRepository {
     required String householdId,
   });
 
+  Future<List<LabelOption>> fetchLabels({required String householdId});
+
+  Future<LabelManagerSnapshot> fetchLabelManagerSnapshot({
+    required String householdId,
+  });
+
   Future<CategoryUsagePreview> fetchCategoryUsagePreview(
     CategoryUsagePreviewRequest request,
   );
@@ -1990,6 +2129,14 @@ abstract interface class FinanceRepository {
   Future<PiggyBankEntry> createPiggyBankEntry(PiggyBankEntryRequest request);
 
   Future<PagedTransactions> fetchTransactions(TransactionQuery query);
+
+  Future<TransactionLabelsSetResult> setTransactionLabels(
+    TransactionLabelsSetRequest request,
+  );
+
+  Future<LabelOption> renameHouseholdLabel(LabelRenameRequest request);
+
+  Future<LabelDeleteResult> deleteHouseholdLabel(LabelDeleteRequest request);
 
   Future<TrendReport> fetchTrendReport(TrendQuery query);
 
@@ -2157,6 +2304,32 @@ final class SupabaseFinanceRepository implements FinanceRepository {
       activeMappingRuleRows: (results[3] as List<dynamic>)
           .cast<Map<String, dynamic>>(),
       capRows: (results[4] as List<dynamic>).cast<Map<String, dynamic>>(),
+    );
+  }
+
+  @override
+  Future<List<LabelOption>> fetchLabels({required String householdId}) async {
+    final rows = await _client
+        .from('labels')
+        .select('id, name')
+        .eq('household_id', householdId)
+        .order('name');
+
+    return rows.map(LabelOption.fromJson).toList(growable: false);
+  }
+
+  @override
+  Future<LabelManagerSnapshot> fetchLabelManagerSnapshot({
+    required String householdId,
+  }) async {
+    final rows = await _client
+        .from('v_label_usage')
+        .select('id, name, transaction_count, recent_used_at')
+        .eq('household_id', householdId)
+        .order('name');
+
+    return LabelManagerSnapshot(
+      labels: rows.map(LabelUsageSummary.fromJson).toList(growable: false),
     );
   }
 
@@ -2546,11 +2719,25 @@ final class SupabaseFinanceRepository implements FinanceRepository {
       householdId: query.householdId,
       sourceAccountType: query.sourceAccountType,
     );
+    final labelTransactionIds = query.labelId == null
+        ? const <String>[]
+        : await _transactionIdsForLabel(
+            householdId: query.householdId,
+            labelId: query.labelId!,
+          );
 
     if (query.sourceAccountType != null &&
         (sourceAccountIds.isEmpty ||
             (query.sourceAccountId != null &&
                 !sourceAccountIds.contains(query.sourceAccountId)))) {
+      return PagedTransactions(
+        items: const [],
+        page: query.page,
+        pageSize: query.pageSize,
+      );
+    }
+
+    if (query.labelId != null && labelTransactionIds.isEmpty) {
       return PagedTransactions(
         items: const [],
         page: query.page,
@@ -2581,6 +2768,10 @@ final class SupabaseFinanceRepository implements FinanceRepository {
       request = request.eq('subcategory_id', query.subcategoryId!);
     }
 
+    if (query.labelId != null) {
+      request = request.inFilter('id', labelTransactionIds);
+    }
+
     if (query.sourceAccountId != null) {
       request = request.eq('source_account_id', query.sourceAccountId!);
     } else if (sourceAccountIds.isNotEmpty) {
@@ -2601,21 +2792,81 @@ final class SupabaseFinanceRepository implements FinanceRepository {
         .order('transaction_date', ascending: false)
         .order('created_at', ascending: false)
         .range(from, to);
+    final transactionRows = rows.cast<Map<String, dynamic>>();
+    final labelsByTransactionId = await _fetchLabelsByTransactionIds(
+      householdId: query.householdId,
+      transactionIds: [for (final row in transactionRows) row['id'] as String],
+    );
 
     return PagedTransactions(
-      items: rows
+      items: transactionRows
           .map(
             (row) => FinanceTransaction.fromJson(
               row,
               categoryNamesById: categoryNamesById,
               subcategoryNamesById: subcategoryNamesById,
               merchantNamesById: merchantNamesById,
+              labels: labelsByTransactionId[row['id']] ?? const [],
             ),
           )
           .toList(growable: false),
       page: query.page,
       pageSize: query.pageSize,
     );
+  }
+
+  @override
+  Future<TransactionLabelsSetResult> setTransactionLabels(
+    TransactionLabelsSetRequest request,
+  ) async {
+    final rows = await _client.rpc<List<dynamic>>(
+      'set_transaction_labels',
+      params: {
+        'p_household_id': request.householdId,
+        'p_transaction_id': request.transactionId,
+        'p_label_ids': request.labelIds,
+        'p_new_label_names': request.newLabelNames,
+      },
+    );
+
+    return TransactionLabelsSetResult.fromRows(rows);
+  }
+
+  @override
+  Future<LabelOption> renameHouseholdLabel(LabelRenameRequest request) async {
+    final rows = await _client.rpc<List<dynamic>>(
+      'rename_household_label',
+      params: {
+        'p_household_id': request.householdId,
+        'p_label_id': request.labelId,
+        'p_name': request.name,
+      },
+    );
+
+    if (rows.isEmpty) {
+      throw StateError('Label rename did not return a result.');
+    }
+
+    return LabelOption.fromJson(rows.first as Map<String, dynamic>);
+  }
+
+  @override
+  Future<LabelDeleteResult> deleteHouseholdLabel(
+    LabelDeleteRequest request,
+  ) async {
+    final rows = await _client.rpc<List<dynamic>>(
+      'delete_household_label',
+      params: {
+        'p_household_id': request.householdId,
+        'p_label_id': request.labelId,
+      },
+    );
+
+    if (rows.isEmpty) {
+      throw StateError('Label deletion did not return a result.');
+    }
+
+    return LabelDeleteResult.fromJson(rows.first as Map<String, dynamic>);
   }
 
   @override
@@ -2881,6 +3132,65 @@ final class SupabaseFinanceRepository implements FinanceRepository {
     return rows.cast<Map<String, dynamic>>();
   }
 
+  Future<List<String>> _transactionIdsForLabel({
+    required String householdId,
+    required String labelId,
+  }) async {
+    final rows = await _client
+        .from('transaction_labels')
+        .select('transaction_id')
+        .eq('household_id', householdId)
+        .eq('label_id', labelId);
+
+    return rows
+        .map((row) => row['transaction_id'] as String)
+        .toList(growable: false);
+  }
+
+  Future<Map<String, List<LabelOption>>> _fetchLabelsByTransactionIds({
+    required String householdId,
+    required List<String> transactionIds,
+  }) async {
+    if (transactionIds.isEmpty) return const {};
+
+    final assignmentRows = await _client
+        .from('transaction_labels')
+        .select('transaction_id, label_id')
+        .eq('household_id', householdId)
+        .inFilter('transaction_id', transactionIds);
+    final labelIds = assignmentRows
+        .map((row) => row['label_id'] as String)
+        .toSet()
+        .toList(growable: false);
+    if (labelIds.isEmpty) return const {};
+
+    final labelRows = await _client
+        .from('labels')
+        .select('id, name')
+        .eq('household_id', householdId)
+        .inFilter('id', labelIds);
+    final labelsById = {
+      for (final row in labelRows)
+        row['id'] as String: LabelOption.fromJson(row),
+    };
+
+    final labelsByTransactionId = <String, List<LabelOption>>{};
+    for (final row in assignmentRows) {
+      final label = labelsById[row['label_id']];
+      if (label == null) continue;
+
+      labelsByTransactionId
+          .putIfAbsent(row['transaction_id'] as String, () => [])
+          .add(label);
+    }
+
+    for (final labels in labelsByTransactionId.values) {
+      labels.sort(_compareLabels);
+    }
+
+    return labelsByTransactionId;
+  }
+
   Future<List<String>> _sourceAccountIdsForType({
     required String householdId,
     required String? sourceAccountType,
@@ -2976,6 +3286,18 @@ final class DisabledFinanceRepository implements FinanceRepository {
 
   @override
   Future<CategoryManagerSnapshot> fetchCategoryManagerSnapshot({
+    required String householdId,
+  }) {
+    throw const SupabaseNotConfiguredException();
+  }
+
+  @override
+  Future<List<LabelOption>> fetchLabels({required String householdId}) {
+    throw const SupabaseNotConfiguredException();
+  }
+
+  @override
+  Future<LabelManagerSnapshot> fetchLabelManagerSnapshot({
     required String householdId,
   }) {
     throw const SupabaseNotConfiguredException();
@@ -3096,6 +3418,23 @@ final class DisabledFinanceRepository implements FinanceRepository {
 
   @override
   Future<PagedTransactions> fetchTransactions(TransactionQuery query) {
+    throw const SupabaseNotConfiguredException();
+  }
+
+  @override
+  Future<TransactionLabelsSetResult> setTransactionLabels(
+    TransactionLabelsSetRequest request,
+  ) {
+    throw const SupabaseNotConfiguredException();
+  }
+
+  @override
+  Future<LabelOption> renameHouseholdLabel(LabelRenameRequest request) {
+    throw const SupabaseNotConfiguredException();
+  }
+
+  @override
+  Future<LabelDeleteResult> deleteHouseholdLabel(LabelDeleteRequest request) {
     throw const SupabaseNotConfiguredException();
   }
 
@@ -3426,6 +3765,16 @@ String? _monthKey(DateTime? date) {
 
 String? _dateKey(DateTime? date) {
   return date == null ? null : dateString(date);
+}
+
+int _compareLabels(LabelOption a, LabelOption b) {
+  final lowerComparison = a.name.toLowerCase().compareTo(b.name.toLowerCase());
+  if (lowerComparison != 0) return lowerComparison;
+
+  final nameComparison = a.name.compareTo(b.name);
+  if (nameComparison != 0) return nameComparison;
+
+  return a.id.compareTo(b.id);
 }
 
 String _labelFromCode(String code) {

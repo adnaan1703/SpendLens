@@ -4,19 +4,17 @@ Use this file to coordinate work across multiple implementation sessions. Update
 
 ## Current Status
 
-- Current milestone: None. Milestone 25 was started and completed on
-  2026-06-11 after the user explicitly deferred Milestones 18-21. On
-  2026-06-12, the transaction labels plan for Milestones 26-28 was documented;
-  implementation has not started.
-- Last completed milestone: Milestone 25, Category Management Regression, Docs,
-  and Cleanup.
-- Current implementation state: Flutter Android app scaffold exists in `apps/mobile` with SpendLens Google sign-in, route protection, authenticated shell, RLS-safe profile/default-household bootstrap, household loading/error states, sign-out, package `com.olympus.spendlens`, core packages, environment templates, tests, and Supabase folder structure. Supabase local config applies migrations for schema, RLS, views, workbook-derived default categories, merchant review corrections, piggy-bank entry validation, Gmail connector ingestion, production-readiness monitoring views, AI feature settings/usage/jobs/transaction metadata suggestions, pgTAP database tests, and the Android auth redirect URL. Milestone 3 adds a local workbook importer under `tools/workbook-import`, fixture tests, and rerun documentation in `docs/implementation-plan/WORKBOOK_IMPORT.md`. Milestone 5 adds Supabase-backed finance repository reads/writes, dashboard KPIs, reporting-month selection, monthly category cap setup/editing, category and merchant summaries, transaction search/filter pagination, and transaction detail panels. Milestone 6 adds merchant review queue UI, correction RPC/rule persistence, historical reclassification, review resolution, transaction classification audit metadata, and future-import rule application. Milestone 7 adds Supabase-backed piggy-bank list/detail UI, create/edit forms, ledger entry creation, ledger-derived balance/progress reads, no-overdraft withdrawal validation, and regression tests. Milestone 8 adds filtered monthly trend reports, gross/refund/net reporting, category trend tables, merchant summary tables, and filtered transaction CSV copy from the Trends screen. Milestone 9 adds Vault-backed Gmail OAuth connector state, Pub/Sub webhook job dedupe, Gmail sync/backfill/watch-renewal Edge Functions, HDFC credit-card debit parsing from anonymized fixtures, SQL ingestion RPCs, and Settings connector status/connect/disconnect UI. Milestone 10 adds HDFC Bank UPI debit parsing from anonymized fixtures, UPI-aware Gmail backfill search and fingerprinting, UPI ingestion pgTAP coverage, and source-type filters for credit card vs UPI on transaction/trend screens. Milestone 11 adds production-readiness runbooks, local smoke automation, service-role ingestion/parser health views, structured Edge Function operational logs, Android release signing/shrinking configuration, and staging/production Edge Function secret templates. Milestone 12 adds Gemini-backed expense Q&A, transaction metadata suggestions, AI usage/budget status, backend-only LLM calls, and free-tier-only dev/staging controls. Milestone 13 adds a service-only May 2026 Gmail range backfill function, range-aware Gmail sync search/date filtering, OAuth account selection for mailbox choice, deployment tooling updates, and a hosted dev/staging runbook. Milestone 14 adds authenticated in-app creation of a category plus first subcategory from Settings and Merchant Review through an RLS-safe `create_household_category` RPC. Milestone 15 adds authenticated transaction metadata editing from Review and Transactions through an RLS-safe `apply_transaction_metadata_correction` RPC, a shared Flutter metadata editor, confidence editing, exact normalized merchant reclassification, future mapping-rule updates, and regression coverage. Milestone 16 retires the legacy AI lookup path, keeps expense Q&A plus transaction metadata Suggest, renames Suggest budget/search flags, removes the obsolete Edge Function and Flutter models, and keeps historical AI audit rows. Milestone 17 adds shared All dates/month/custom period filters to Transactions and Trends, backed by available reporting months from `v_monthly_spend` and mapped onto the existing `startDate`/`endDate` query fields. Milestone 22 replaces the compact Settings category list with a grouped category manager, category/subcategory usage snapshots, selected recent transaction previews, and rename/add taxonomy editing through an RLS-safe `update_household_category_taxonomy` RPC. Milestone 23 adds RLS-safe category/subcategory deletion with Review requeue, guarded direct DELETE policies for already-unused taxonomy only, delete confirmation impact previews, and regression coverage. Milestone 24 adds RLS-safe category merge with explicit source subcategory mapping, destination subcategory creation, taxonomy reference repointing, cap merging, Settings merge UI, and regression coverage. Milestone 25 adds category-management regression/docs cleanup with Settings category-detail transaction drilldown, empty/error/narrow viewport polish, focused Settings tests, and durable final behavior docs. Milestones 26-28 are planned for household-shared transaction labels but have no schema, repository, or UI implementation yet. Milestones 18-21 remain planned and deferred by user request.
+- Current milestone: None. Milestone 26 was started and completed on
+  2026-06-12 after the user explicitly deferred Milestones 18-21.
+- Last completed milestone: Milestone 26, Labels Data Model and Repository
+  Foundation.
+- Current implementation state: Flutter Android app scaffold exists in `apps/mobile` with SpendLens Google sign-in, route protection, authenticated shell, RLS-safe profile/default-household bootstrap, household loading/error states, sign-out, package `com.olympus.spendlens`, core packages, environment templates, tests, and Supabase folder structure. Supabase local config applies migrations for schema, RLS, views, workbook-derived default categories, merchant review corrections, piggy-bank entry validation, Gmail connector ingestion, production-readiness monitoring views, AI feature settings/usage/jobs/transaction metadata suggestions, pgTAP database tests, and the Android auth redirect URL. Milestone 3 adds a local workbook importer under `tools/workbook-import`, fixture tests, and rerun documentation in `docs/implementation-plan/WORKBOOK_IMPORT.md`. Milestone 5 adds Supabase-backed finance repository reads/writes, dashboard KPIs, reporting-month selection, monthly category cap setup/editing, category and merchant summaries, transaction search/filter pagination, and transaction detail panels. Milestone 6 adds merchant review queue UI, correction RPC/rule persistence, historical reclassification, review resolution, transaction classification audit metadata, and future-import rule application. Milestone 7 adds Supabase-backed piggy-bank list/detail UI, create/edit forms, ledger entry creation, ledger-derived balance/progress reads, no-overdraft withdrawal validation, and regression tests. Milestone 8 adds filtered monthly trend reports, gross/refund/net reporting, category trend tables, merchant summary tables, and filtered transaction CSV copy from the Trends screen. Milestone 9 adds Vault-backed Gmail OAuth connector state, Pub/Sub webhook job dedupe, Gmail sync/backfill/watch-renewal Edge Functions, HDFC credit-card debit parsing from anonymized fixtures, SQL ingestion RPCs, and Settings connector status/connect/disconnect UI. Milestone 10 adds HDFC Bank UPI debit parsing from anonymized fixtures, UPI-aware Gmail backfill search and fingerprinting, UPI ingestion pgTAP coverage, and source-type filters for credit card vs UPI on transaction/trend screens. Milestone 11 adds production-readiness runbooks, local smoke automation, service-role ingestion/parser health views, structured Edge Function operational logs, Android release signing/shrinking configuration, and staging/production Edge Function secret templates. Milestone 12 adds Gemini-backed expense Q&A, transaction metadata suggestions, AI usage/budget status, backend-only LLM calls, and free-tier-only dev/staging controls. Milestone 13 adds a service-only May 2026 Gmail range backfill function, range-aware Gmail sync search/date filtering, OAuth account selection for mailbox choice, deployment tooling updates, and a hosted dev/staging runbook. Milestone 14 adds authenticated in-app creation of a category plus first subcategory from Settings and Merchant Review through an RLS-safe `create_household_category` RPC. Milestone 15 adds authenticated transaction metadata editing from Review and Transactions through an RLS-safe `apply_transaction_metadata_correction` RPC, a shared Flutter metadata editor, confidence editing, exact normalized merchant reclassification, future mapping-rule updates, and regression coverage. Milestone 16 retires the legacy AI lookup path, keeps expense Q&A plus transaction metadata Suggest, renames Suggest budget/search flags, removes the obsolete Edge Function and Flutter models, and keeps historical AI audit rows. Milestone 17 adds shared All dates/month/custom period filters to Transactions and Trends, backed by available reporting months from `v_monthly_spend` and mapped onto the existing `startDate`/`endDate` query fields. Milestone 22 replaces the compact Settings category list with a grouped category manager, category/subcategory usage snapshots, selected recent transaction previews, and rename/add taxonomy editing through an RLS-safe `update_household_category_taxonomy` RPC. Milestone 23 adds RLS-safe category/subcategory deletion with Review requeue, guarded direct DELETE policies for already-unused taxonomy only, delete confirmation impact previews, and regression coverage. Milestone 24 adds RLS-safe category merge with explicit source subcategory mapping, destination subcategory creation, taxonomy reference repointing, cap merging, Settings merge UI, and regression coverage. Milestone 25 adds category-management regression/docs cleanup with Settings category-detail transaction drilldown, empty/error/narrow viewport polish, focused Settings tests, and durable final behavior docs. Milestone 26 adds household-scoped label tables, RLS, authenticated grants, a label usage view, app-facing label RPCs, repository label models/methods, transaction label hydration/filter support, and focused pgTAP/Flutter repository contract tests. Milestones 27-28 remain planned for transaction-label UI and Settings label management. Milestones 18-21 remain planned and deferred by user request.
 - Remote deployment state: On 2026-06-08, user confirmed Supabase project `bslsitzdvrdosubbdxpd` as the intended dev/staging target. All local migrations through `20260607174515_ai_ready_layer_llm_features.sql` were pushed there, hosted expense Q&A and the now-retired legacy AI lookup function were active with JWT verification, and `GEMINI_API_KEY` was present in hosted Edge Function secrets by name. After the user signed in through the Android emulator, hosted profile/household bootstrap and authenticated Gemini Edge Function smoke passed. On 2026-06-08 for Milestone 13, `gmail-oauth-start` was deployed as version 2 with JWT verification, `gmail-sync` was deployed as version 2 without JWT verification, and new `gmail-backfill-range` was deployed as version 1 without JWT verification. Hosted `gmail-backfill-range` `OPTIONS` smoke returned 200, and an unauthenticated POST returned the expected service-key error. The live May Gmail backfill itself was not run because it requires the user to connect the target Gmail mailbox and invoke the runbook with a Supabase secret key from a local/platform secret store. On 2026-06-09, M16 deleted the hosted legacy AI lookup function from `bslsitzdvrdosubbdxpd` and a follow-up function list verified it absent. The M16 database migration and updated active Suggest function were verified locally but not pushed/deployed to hosted in this implementation session.
-- Next recommended milestone: Milestone 26, Labels Data Model and Repository
-  Foundation. Milestones 18-21 remain deferred for later push-notification work
+- Next recommended milestone: Milestone 27, Transaction Labeling UX. Milestones
+  18-21 remain deferred for later push-notification work
   unless the user resumes them. If continuing hosted rollout separately, push the
-  M16 migration and deploy `transaction-metadata-suggest`; iOS and web remain
-  deferred future milestones unless explicitly resumed.
+  M16 and M26 migrations and deploy `transaction-metadata-suggest`; iOS and web
+  remain deferred future milestones unless explicitly resumed.
 - Documentation state: completed-only companion execution plans for transaction
   metadata editing and category management were retired from `docs/` on
   2026-06-12. Durable behavior is now captured in `DATA_MODEL.md`,
@@ -122,7 +120,7 @@ Do not ask the user to perform all setup at once. Ask only when the relevant mil
 - Milestone 23, Taxonomy Delete and Review Requeue: completed.
 - Milestone 24, Category Merge with Explicit Subcategory Mapping: completed.
 - Milestone 25, Category Management Regression, Docs, and Cleanup: completed.
-- Milestone 26, Labels Data Model and Repository Foundation: planned.
+- Milestone 26, Labels Data Model and Repository Foundation: completed.
 - Milestone 27, Transaction Labeling UX: planned.
 - Milestone 28, Settings Label Manager and Regression: planned.
 
@@ -1194,3 +1192,67 @@ When an architecture decision changes:
   - None.
 - Mocks used:
   - None.
+
+## Milestone 26 Completion Notes
+
+- Started on 2026-06-12 after Milestone 25 and the transaction-labels planning
+  update completed. Milestones 18-21 remained deferred by explicit user request.
+- Completed on 2026-06-12.
+- Added household-scoped `public.labels` and `public.transaction_labels` with
+  composite household ownership constraints, case-insensitive label uniqueness,
+  RLS policies, authenticated-only table grants, and label assignment indexes.
+- Added `public.v_label_usage` as a `security_invoker` Settings read path for
+  label usage counts and recent use timestamps.
+- Added app-facing `security invoker` RPCs:
+  `set_transaction_labels`, `rename_household_label`, and
+  `delete_household_label`.
+- Extended the Flutter finance repository contract with label options, label
+  manager snapshots, label mutation request/result types,
+  `TransactionQuery.labelId`, transaction label lists, label mutation methods,
+  and two-step label hydration for fetched transaction pages.
+- Added focused pgTAP coverage for label creation/reuse, selected-transaction
+  assignment replacement, duplicate-name handling, rename/delete semantics,
+  viewer/non-member/cross-household rejection, and direct RLS isolation.
+- Added focused Flutter repository-contract coverage for label query equality,
+  fake label mutations, label filtering, rename usage snapshots, and delete
+  detach behavior.
+- Deferred by scope: Milestone 27 transaction labeling UI, Milestone 28 Settings
+  label manager UI/regression, bulk labeling, label colors/icons, AI label
+  suggestions, label reports, automatic workbook/Gmail labels, and all
+  Milestone 18-21 push-notification work.
+- Verification run:
+  - `supabase --version` -> `2.105.0`
+  - `supabase migration --help`
+  - Supabase changelog/docs scan for relevant breaking changes before schema
+    edits.
+  - `supabase migration new labels_foundation`
+  - `supabase db reset --local` attempted four times; each attempt applied all
+    migrations including `20260612130532_labels_foundation.sql`, then failed
+    after container restart while the CLI queried local Storage/Kong at
+    `127.0.0.1:54321`.
+  - `supabase test db --local supabase/tests/transaction_labels.sql`
+  - `supabase test db --local supabase/tests`
+  - `supabase db lint --local --schema app_private,public --fail-on error`
+  - `supabase db advisors --local --type security --level warn --fail-on none`
+  - `supabase db advisors --local --type performance --level warn --fail-on none`
+  - Local privilege queries confirmed no `anon` access to `labels`,
+    `transaction_labels`, or `v_label_usage`, and only `labels.name` has
+    authenticated update privilege.
+  - `cd apps/mobile && dart format lib/src/data/repositories/finance_repository.dart test/finance_features_test.dart`
+  - `cd apps/mobile && flutter analyze`
+  - `cd apps/mobile && flutter test test/finance_features_test.dart`
+  - `git diff --check`
+- Known gaps:
+  - The local Supabase reset command did not exit cleanly because local Kong and
+    several non-DB services remained stopped after database recreation. Local DB
+    tests, lint, and advisors passed after the migration applied.
+  - No hosted Supabase migration push or Android-emulator manual smoke was run.
+- Assumptions made:
+  - Label rows are household-shared, app-facing, and independent from taxonomy,
+    merchant rules, review rows, budgets, workbook import, and Gmail import.
+  - Label assignment replacement is scoped to one selected transaction.
+- Mocks created:
+  - None.
+- Mocks used:
+  - Existing fake finance repository/widget-test data, extended for M26 label
+    repository contracts and filtering behavior.

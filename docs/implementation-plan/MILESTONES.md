@@ -1127,7 +1127,7 @@ verify cross-feature consistency after rename, add, delete, and merge.
 
 ### Status
 
-Planned. See [Transaction Labels](TRANSACTION_LABELS.md#m26---labels-data-model-and-repository-foundation).
+Completed on 2026-06-12.
 
 ### Objective
 
