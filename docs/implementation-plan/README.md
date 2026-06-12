@@ -11,11 +11,13 @@ Read these documents in order at the start of every new implementation thread:
 5. [External Setup Checklist](EXTERNAL_SETUP.md)
 6. [Gmail Connector](GMAIL_CONNECTOR.md)
 7. [Production Readiness](PRODUCTION_READINESS.md)
-8. [Transaction Metadata Editing](TRANSACTION_METADATA_EDITING.md)
-9. [Push Notifications](PUSH_NOTIFICATIONS.md)
-10. [Category Management](CATEGORY_MANAGEMENT.md)
-11. [Transaction Labels](TRANSACTION_LABELS.md)
-12. [Session Handoff](SESSION_HANDOFF.md)
+8. [Push Notifications](PUSH_NOTIFICATIONS.md) when executing Milestones 18-21
+9. [Transaction Labels](TRANSACTION_LABELS.md) when executing Milestones 26-28
+10. [Session Handoff](SESSION_HANDOFF.md)
+
+Completed-only companion execution plans are removed after their durable
+behavior has been folded into this README, [Data Model](DATA_MODEL.md),
+[Milestones](MILESTONES.md), and [Session Handoff](SESSION_HANDOFF.md).
 
 ## Product Summary
 

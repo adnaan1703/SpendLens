@@ -608,8 +608,10 @@ the Android app without privileged client credentials.
 
 ### Deferred Scope
 
-- Category rename, delete, reorder, merge, historical reclassification, and
-  standalone subcategory management remain future taxonomy-admin work.
+- Category rename/add/delete/merge behavior is handled by Milestones 22-25.
+  Remaining future taxonomy-admin work includes reorder, moving subcategories
+  between categories, category icons/colors, category audit timeline UI,
+  cross-household templates, and bulk AI recategorization.
 
 ## Milestone 15: Transaction Metadata Editing
 
@@ -672,8 +674,11 @@ ingestion rules consistent.
   raw statement merchant, Gmail source metadata, or parser diagnostics.
 - Merchant-group-wide alias merging beyond the edited normalized statement
   merchant rule.
-- Category rename, delete, reorder, merge, and standalone subcategory
-  management.
+- Category taxonomy mutation is handled by Milestones 14 and 22-25, not by the
+  transaction metadata correction RPC. Remaining future taxonomy-admin work
+  includes reorder, moving subcategories between categories, category
+  icons/colors, category audit timeline UI, cross-household templates, and bulk
+  AI recategorization.
 - iOS and web work.
 
 ## Milestone 16: Merchant Research Retirement
@@ -942,7 +947,7 @@ visibility, and production runbooks.
 
 ### Status
 
-Planned. See [Category Management](CATEGORY_MANAGEMENT.md#m22---category-manager-foundation-and-usage-preview).
+Completed on 2026-06-11.
 
 ### Objective
 
@@ -987,7 +992,7 @@ non-destructive editing.
 
 ### Status
 
-Planned. See [Category Management](CATEGORY_MANAGEMENT.md#m23---taxonomy-delete-and-review-requeue).
+Completed on 2026-06-11.
 
 ### Objective
 
@@ -1032,7 +1037,7 @@ affected rows back into the existing Review workflow.
 
 ### Status
 
-Planned. See [Category Management](CATEGORY_MANAGEMENT.md#m24---category-merge-with-explicit-subcategory-mapping).
+Completed on 2026-06-11.
 
 ### Objective
 
@@ -1079,7 +1084,7 @@ subcategory to a destination subcategory.
 
 ### Status
 
-Planned. See [Category Management](CATEGORY_MANAGEMENT.md#m25---category-management-regression-docs-and-cleanup).
+Completed on 2026-06-11.
 
 ### Objective
 

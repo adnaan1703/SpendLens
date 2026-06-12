@@ -17,6 +17,10 @@ Use this file to coordinate work across multiple implementation sessions. Update
   unless the user resumes them. If continuing hosted rollout separately, push the
   M16 migration and deploy `transaction-metadata-suggest`; iOS and web remain
   deferred future milestones unless explicitly resumed.
+- Documentation state: completed-only companion execution plans for transaction
+  metadata editing and category management were retired from `docs/` on
+  2026-06-12. Durable behavior is now captured in `DATA_MODEL.md`,
+  `MILESTONES.md`, and this handoff.
 
 ## Required Reading for New Threads
 
@@ -27,11 +31,9 @@ At the start of a new implementation thread, read:
 3. `docs/implementation-plan/DATA_MODEL.md`
 4. `docs/implementation-plan/INGESTION.md`
 5. The target milestone section in `docs/implementation-plan/MILESTONES.md`
-6. `docs/implementation-plan/TRANSACTION_METADATA_EDITING.md` when executing Milestone 15
-7. `docs/implementation-plan/PUSH_NOTIFICATIONS.md` when executing Milestone 18, 19, 20, or 21
-8. `docs/implementation-plan/CATEGORY_MANAGEMENT.md` when executing Milestone 22, 23, 24, or 25
-9. `docs/implementation-plan/TRANSACTION_LABELS.md` when executing Milestone 26, 27, or 28
-10. This handoff file
+6. `docs/implementation-plan/PUSH_NOTIFICATIONS.md` when executing Milestone 18, 19, 20, or 21
+7. `docs/implementation-plan/TRANSACTION_LABELS.md` when executing Milestone 26, 27, or 28
+8. This handoff file
 
 ## Current Assumptions
 
@@ -647,7 +649,11 @@ When an architecture decision changes:
 - Known gaps:
   - Hosted dev/staging migration push was not performed in this session.
   - No Android-emulator manual smoke was run.
-  - Category rename, delete, reorder, merge, historical reclassification, and standalone subcategory management remain deferred taxonomy-admin work.
+  - Category rename/add/delete/merge was later implemented through M22-M25.
+    Remaining future taxonomy-admin work includes reorder, moving
+    subcategories between categories, category icons/colors, category audit
+    timeline UI, cross-household templates, bulk AI recategorization, and
+    subcategory-specific Transactions filters.
 - Assumptions made:
   - The first in-app creation slice should create a category plus one initial subcategory together.
   - The creation entry points should be Settings and Merchant Review.
@@ -876,15 +882,18 @@ When an architecture decision changes:
 ## Category Management Plan Creation Notes
 
 - Completed on 2026-06-11.
-- Added `docs/implementation-plan/CATEGORY_MANAGEMENT.md` as the detailed
-  implementation plan for Milestones 22-25.
-- Updated `docs/implementation-plan/MILESTONES.md` with planned entries for:
+- Added a detailed companion implementation plan for Milestones 22-25. That
+  completed-only plan was retired during docs cleanup on 2026-06-12 after the
+  final category-management behavior was folded into `DATA_MODEL.md`,
+  `MILESTONES.md`, and this handoff.
+- Originally updated `docs/implementation-plan/MILESTONES.md` with planned
+  entries for:
   - Milestone 22, Category Manager Foundation and Usage Preview.
   - Milestone 23, Taxonomy Delete and Review Requeue.
   - Milestone 24, Category Merge with Explicit Subcategory Mapping.
   - Milestone 25, Category Management Regression, Docs, and Cleanup.
-- Updated implementation-plan README and this handoff to point future sessions
-  at the category-management plan.
+- M22-M25 were later completed, and the active new-session routing no longer
+  points at the retired companion plan.
 - At plan-creation time, implementation remained planned and Milestone 22 had
   not started. Milestone 22 has since been completed; see the completion notes
   below.
@@ -894,8 +903,9 @@ When an architecture decision changes:
   - Existing Flutter Settings, category creation, finance repository, and test
     surface inspection.
 - Assumptions made:
-  - Category management should be planned after the existing M18-M21 push
-    notification sequence unless the user explicitly reprioritizes it.
+  - Category management was originally planned after the existing M18-M21 push
+    notification sequence unless the user explicitly reprioritized it. The user
+    later deferred M18-M21, and M22-M25 were completed.
   - Delete means remove taxonomy rows, never transactions.
   - Deleted category transactions should return to Review for reclassification.
   - Category merge requires explicit source-subcategory mapping before save.
@@ -1149,6 +1159,37 @@ When an architecture decision changes:
   - V1 edits one transaction at a time and does not include bulk label selection.
   - Used-label deletion detaches the label from all transactions after
     confirmation.
+- Mocks created:
+  - None.
+- Mocks used:
+  - None.
+
+## Docs Cleanup Notes
+
+- Completed on 2026-06-12 as a documentation-only cleanup.
+- Removed completed-only companion execution plans:
+  - `docs/implementation-plan/CATEGORY_MANAGEMENT.md`
+  - `docs/implementation-plan/TRANSACTION_METADATA_EDITING.md`
+- Kept active/deferred companion plans and runbooks:
+  - `docs/implementation-plan/PUSH_NOTIFICATIONS.md`
+  - `docs/implementation-plan/TRANSACTION_LABELS.md`
+  - `docs/implementation-plan/GMAIL_CONNECTOR.md`
+  - `docs/implementation-plan/PRODUCTION_READINESS.md`
+  - `docs/implementation-plan/WORKBOOK_IMPORT.md`
+- Updated `docs/implementation-plan/README.md`,
+  `docs/implementation-plan/MILESTONES.md`, and this handoff so new-session
+  routing no longer points at removed files and M22-M25 are marked completed in
+  the milestone ledger.
+- Verification run:
+  - `git diff --check`
+  - Active-link and routing scan for the removed filenames; only this cleanup
+    note should retain those paths.
+  - Conflict-marker scan over `docs/`.
+  - `find docs -maxdepth 3 -type f | sort`
+- Assumptions made:
+  - Completed-only execution plans can be retired once their durable behavior is
+    represented in `README.md`, `DATA_MODEL.md`, `MILESTONES.md`, and this
+    handoff.
 - Mocks created:
   - None.
 - Mocks used:
