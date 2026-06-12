@@ -12,6 +12,7 @@ import '../transaction_metadata/transaction_metadata_editor.dart';
 final class TransactionInitialFilters {
   const TransactionInitialFilters({
     this.categoryId,
+    this.labelId,
     this.merchantSearchText,
     this.startDate,
     this.endDate,
@@ -20,6 +21,7 @@ final class TransactionInitialFilters {
   factory TransactionInitialFilters.fromUri(Uri uri) {
     return TransactionInitialFilters(
       categoryId: _nonEmptyQueryParam(uri.queryParameters['categoryId']),
+      labelId: _nonEmptyQueryParam(uri.queryParameters['labelId']),
       merchantSearchText: _nonEmptyQueryParam(uri.queryParameters['merchant']),
       startDate: _dateQueryParam(uri.queryParameters['startDate']),
       endDate: _dateQueryParam(uri.queryParameters['endDate']),
@@ -27,6 +29,7 @@ final class TransactionInitialFilters {
   }
 
   final String? categoryId;
+  final String? labelId;
   final String? merchantSearchText;
   final DateTime? startDate;
   final DateTime? endDate;
@@ -35,6 +38,7 @@ final class TransactionInitialFilters {
   bool operator ==(Object other) {
     return other is TransactionInitialFilters &&
         other.categoryId == categoryId &&
+        other.labelId == labelId &&
         other.merchantSearchText == merchantSearchText &&
         _dateKey(other.startDate) == _dateKey(startDate) &&
         _dateKey(other.endDate) == _dateKey(endDate);
@@ -43,6 +47,7 @@ final class TransactionInitialFilters {
   @override
   int get hashCode => Object.hash(
     categoryId,
+    labelId,
     merchantSearchText,
     _dateKey(startDate),
     _dateKey(endDate),
@@ -85,6 +90,7 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
   final _searchController = TextEditingController();
   String _searchText = '';
   String? _categoryId;
+  String? _labelId;
   String? _sourceAccountType;
   String? _sourceAccountId;
   DateTimeRange? _dateRange;
@@ -125,6 +131,9 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
     final sourceAccounts = householdId == null
         ? const AsyncValue<List<SourceAccountOption>>.loading()
         : ref.watch(transactionSourceAccountsProvider(householdId));
+    final labels = householdId == null
+        ? const AsyncValue<List<LabelOption>>.loading()
+        : ref.watch(transactionLabelsProvider(householdId));
     final availableMonths = householdId == null
         ? const AsyncValue<List<DateTime>>.loading()
         : ref.watch(availableMonthsProvider(householdId));
@@ -134,6 +143,7 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
             householdId: householdId,
             searchText: _searchText,
             categoryId: _categoryId,
+            labelId: _labelId,
             sourceAccountType: _sourceAccountType,
             sourceAccountId: _sourceAccountId,
             startDate: _dateRange?.start,
@@ -155,6 +165,8 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
             searchText: _searchText,
             categories: categories.value ?? const [],
             selectedCategoryId: _categoryId,
+            labels: labels.value ?? const [],
+            selectedLabelId: _labelId,
             sourceAccounts: sourceAccounts.value ?? const [],
             selectedSourceAccountType: _sourceAccountType,
             selectedSourceAccountId: _sourceAccountId,
@@ -169,6 +181,12 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
             onCategoryChanged: (value) {
               setState(() {
                 _categoryId = value;
+                _page = 0;
+              });
+            },
+            onLabelChanged: (value) {
+              setState(() {
+                _labelId = value;
                 _page = 0;
               });
             },
@@ -226,6 +244,15 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
                         subcategories: subcategories.value ?? const [],
                       );
                     },
+              onEditLabels: householdContext == null || !labels.hasValue
+                  ? null
+                  : (transaction) {
+                      _showLabelEditor(
+                        householdContext: householdContext,
+                        transaction: transaction,
+                        labels: labels.value ?? const [],
+                      );
+                    },
             ),
             AsyncValue(hasError: true, :final error) => EmptyState(
               icon: Icons.error_outline,
@@ -278,6 +305,7 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
       _searchController.clear();
       _searchText = '';
       _categoryId = null;
+      _labelId = null;
       _sourceAccountType = null;
       _sourceAccountId = null;
       _dateRange = null;
@@ -300,6 +328,7 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
     final endDate = filters.endDate;
     _searchText = merchantSearchText;
     _categoryId = filters.categoryId;
+    _labelId = filters.labelId;
     _dateRange =
         startDate == null || endDate == null || startDate.isAfter(endDate)
         ? null
@@ -348,6 +377,32 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
       );
     }
   }
+
+  Future<void> _showLabelEditor({
+    required HouseholdContext householdContext,
+    required FinanceTransaction transaction,
+    required List<LabelOption> labels,
+  }) async {
+    final result = await showTransactionLabelEditor(
+      context: context,
+      ref: ref,
+      householdId: householdContext.household.id,
+      transaction: transaction,
+      labels: labels,
+    );
+
+    if (result == null) return;
+
+    ref.invalidate(transactionsProvider);
+    ref.invalidate(transactionLabelsProvider(householdContext.household.id));
+    ref.invalidate(labelManagerSnapshotProvider(householdContext.household.id));
+
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Saved ${result.labels.length} labels')),
+      );
+    }
+  }
 }
 
 class _TransactionFilters extends StatelessWidget {
@@ -356,6 +411,8 @@ class _TransactionFilters extends StatelessWidget {
     required this.searchText,
     required this.categories,
     required this.selectedCategoryId,
+    required this.labels,
+    required this.selectedLabelId,
     required this.sourceAccounts,
     required this.selectedSourceAccountType,
     required this.selectedSourceAccountId,
@@ -363,6 +420,7 @@ class _TransactionFilters extends StatelessWidget {
     required this.dateRange,
     required this.onSearchChanged,
     required this.onCategoryChanged,
+    required this.onLabelChanged,
     required this.onSourceAccountTypeChanged,
     required this.onSourceAccountChanged,
     required this.onPeriodChanged,
@@ -373,6 +431,8 @@ class _TransactionFilters extends StatelessWidget {
   final String searchText;
   final List<CategoryOption> categories;
   final String? selectedCategoryId;
+  final List<LabelOption> labels;
+  final String? selectedLabelId;
   final List<SourceAccountOption> sourceAccounts;
   final String? selectedSourceAccountType;
   final String? selectedSourceAccountId;
@@ -380,6 +440,7 @@ class _TransactionFilters extends StatelessWidget {
   final DateTimeRange? dateRange;
   final ValueChanged<String> onSearchChanged;
   final ValueChanged<String?> onCategoryChanged;
+  final ValueChanged<String?> onLabelChanged;
   final ValueChanged<String?> onSourceAccountTypeChanged;
   final ValueChanged<String?> onSourceAccountChanged;
   final ValueChanged<PeriodFilterSelection> onPeriodChanged;
@@ -390,12 +451,16 @@ class _TransactionFilters extends StatelessWidget {
     final hasFilters =
         searchText.isNotEmpty ||
         selectedCategoryId != null ||
+        selectedLabelId != null ||
         selectedSourceAccountType != null ||
         selectedSourceAccountId != null ||
         dateRange != null;
     final hasSelectedCategory =
         selectedCategoryId == null ||
         categories.any((category) => category.id == selectedCategoryId);
+    final hasSelectedLabel =
+        selectedLabelId == null ||
+        labels.any((label) => label.id == selectedLabelId);
     final filteredSourceAccounts = selectedSourceAccountType == null
         ? sourceAccounts
         : sourceAccounts
@@ -486,6 +551,29 @@ class _TransactionFilters extends StatelessWidget {
             onChanged: onSourceAccountChanged,
           ),
         ),
+        SizedBox(
+          width: 260,
+          child: DropdownButtonFormField<String>(
+            key: ValueKey('label-$selectedLabelId'),
+            isExpanded: true,
+            initialValue: selectedLabelId,
+            decoration: const InputDecoration(
+              labelText: 'Label',
+              prefixIcon: Icon(Icons.label_outline),
+            ),
+            items: [
+              const DropdownMenuItem(value: null, child: Text('All labels')),
+              if (!hasSelectedLabel)
+                DropdownMenuItem(
+                  value: selectedLabelId,
+                  child: const Text('Selected label'),
+                ),
+              for (final label in labels)
+                DropdownMenuItem(value: label.id, child: Text(label.name)),
+            ],
+            onChanged: onLabelChanged,
+          ),
+        ),
         PeriodFilterDropdown(
           availableMonths: availableMonths,
           selectedRange: dateRange,
@@ -507,12 +595,14 @@ class _TransactionList extends StatelessWidget {
     required this.onPreviousPage,
     required this.onNextPage,
     required this.onEdit,
+    required this.onEditLabels,
   });
 
   final PagedTransactions page;
   final VoidCallback? onPreviousPage;
   final VoidCallback? onNextPage;
   final ValueChanged<FinanceTransaction>? onEdit;
+  final ValueChanged<FinanceTransaction>? onEditLabels;
 
   @override
   Widget build(BuildContext context) {
@@ -529,7 +619,11 @@ class _TransactionList extends StatelessWidget {
         for (final transaction in page.items)
           Padding(
             padding: const EdgeInsets.only(bottom: 8),
-            child: _TransactionCard(transaction: transaction, onEdit: onEdit),
+            child: _TransactionCard(
+              transaction: transaction,
+              onEdit: onEdit,
+              onEditLabels: onEditLabels,
+            ),
           ),
         const SizedBox(height: 8),
         Row(
@@ -555,10 +649,15 @@ class _TransactionList extends StatelessWidget {
 }
 
 class _TransactionCard extends StatelessWidget {
-  const _TransactionCard({required this.transaction, required this.onEdit});
+  const _TransactionCard({
+    required this.transaction,
+    required this.onEdit,
+    required this.onEditLabels,
+  });
 
   final FinanceTransaction transaction;
   final ValueChanged<FinanceTransaction>? onEdit;
+  final ValueChanged<FinanceTransaction>? onEditLabels;
 
   @override
   Widget build(BuildContext context) {
@@ -577,7 +676,10 @@ class _TransactionCard extends StatelessWidget {
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
         ),
-        subtitle: Text(_subtitleFor(transaction)),
+        subtitle: _TransactionSubtitle(
+          text: _subtitleFor(transaction),
+          labels: transaction.labels,
+        ),
         trailing: Text(
           formatMoney(transaction.netExpense),
           style: theme.textTheme.titleMedium?.copyWith(color: amountColor),
@@ -683,19 +785,33 @@ class _TransactionCard extends StatelessWidget {
                 if (transaction.notes != null &&
                     transaction.notes!.trim().isNotEmpty)
                   _DetailRow(label: 'Notes', value: transaction.notes!),
+                _DetailLabelRow(labels: transaction.labels),
                 const SizedBox(height: 8),
-                Align(
-                  alignment: Alignment.centerRight,
-                  child: FilledButton.icon(
-                    onPressed: onEdit == null
-                        ? null
-                        : () {
-                            Navigator.of(context).pop();
-                            onEdit!(transaction);
-                          },
-                    icon: const Icon(Icons.edit_outlined),
-                    label: const Text('Edit'),
-                  ),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    OutlinedButton.icon(
+                      onPressed: onEditLabels == null
+                          ? null
+                          : () {
+                              Navigator.of(context).pop();
+                              onEditLabels!(transaction);
+                            },
+                      icon: const Icon(Icons.label_outline),
+                      label: const Text('Edit labels'),
+                    ),
+                    const SizedBox(width: 12),
+                    FilledButton.icon(
+                      onPressed: onEdit == null
+                          ? null
+                          : () {
+                              Navigator.of(context).pop();
+                              onEdit!(transaction);
+                            },
+                      icon: const Icon(Icons.edit_outlined),
+                      label: const Text('Edit'),
+                    ),
+                  ],
                 ),
               ],
             ),
@@ -729,5 +845,360 @@ class _DetailRow extends StatelessWidget {
         ],
       ),
     );
+  }
+}
+
+class _TransactionSubtitle extends StatelessWidget {
+  const _TransactionSubtitle({required this.text, required this.labels});
+
+  final String text;
+  final List<LabelOption> labels;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(text, maxLines: 2, overflow: TextOverflow.ellipsis),
+        if (labels.isNotEmpty) ...[
+          const SizedBox(height: 6),
+          _LabelChips(labels: labels, maxVisible: 2, compact: true),
+        ],
+      ],
+    );
+  }
+}
+
+class _DetailLabelRow extends StatelessWidget {
+  const _DetailLabelRow({required this.labels});
+
+  final List<LabelOption> labels;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 120,
+            child: Text('Labels', style: theme.textTheme.labelLarge),
+          ),
+          Expanded(
+            child: labels.isEmpty
+                ? const Text('None')
+                : _LabelChips(labels: labels),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _LabelChips extends StatelessWidget {
+  const _LabelChips({
+    required this.labels,
+    this.maxVisible,
+    this.compact = false,
+  });
+
+  final List<LabelOption> labels;
+  final int? maxVisible;
+  final bool compact;
+
+  @override
+  Widget build(BuildContext context) {
+    final visibleCount = maxVisible == null
+        ? labels.length
+        : labels.length.clamp(0, maxVisible!);
+    final visibleLabels = labels.take(visibleCount);
+    final overflowCount = labels.length - visibleCount;
+
+    return Wrap(
+      spacing: compact ? 4 : 6,
+      runSpacing: compact ? 4 : 6,
+      children: [
+        for (final label in visibleLabels)
+          Chip(
+            visualDensity: compact ? VisualDensity.compact : null,
+            materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            labelPadding: EdgeInsets.symmetric(horizontal: compact ? 4 : 8),
+            label: ConstrainedBox(
+              constraints: BoxConstraints(maxWidth: compact ? 120 : 220),
+              child: Text(
+                label.name,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+          ),
+        if (overflowCount > 0)
+          Chip(
+            visualDensity: VisualDensity.compact,
+            materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            label: Text('+$overflowCount'),
+          ),
+      ],
+    );
+  }
+}
+
+Future<TransactionLabelsSetResult?> showTransactionLabelEditor({
+  required BuildContext context,
+  required WidgetRef ref,
+  required String householdId,
+  required FinanceTransaction transaction,
+  required List<LabelOption> labels,
+}) {
+  final newLabelController = TextEditingController();
+  final initialLabelIds = transaction.labels.map((label) => label.id).toSet();
+  final selectedLabelIds = {...initialLabelIds};
+  var availableLabels = _mergeLabels(labels, transaction.labels);
+  var newLabelNames = <String>[];
+  var isSaving = false;
+  String? errorMessage;
+
+  return showModalBottomSheet<TransactionLabelsSetResult>(
+    context: context,
+    isScrollControlled: true,
+    showDragHandle: true,
+    builder: (sheetContext) {
+      return StatefulBuilder(
+        builder: (context, setSheetState) {
+          final keyboardBottom = MediaQuery.viewInsetsOf(context).bottom;
+          final hasChanges =
+              !_sameStringSet(initialLabelIds, selectedLabelIds) ||
+              newLabelNames.isNotEmpty;
+
+          void addNewLabel() {
+            final name = newLabelController.text.trim();
+            if (name.isEmpty) return;
+
+            final existing = availableLabels
+                .where(
+                  (label) => label.name.toLowerCase() == name.toLowerCase(),
+                )
+                .firstOrNull;
+            setSheetState(() {
+              if (existing != null) {
+                selectedLabelIds.add(existing.id);
+              } else if (!newLabelNames.any(
+                (candidate) => candidate.toLowerCase() == name.toLowerCase(),
+              )) {
+                newLabelNames = [...newLabelNames, name]
+                  ..sort((a, b) => a.toLowerCase().compareTo(b.toLowerCase()));
+              }
+              errorMessage = null;
+              newLabelController.clear();
+            });
+          }
+
+          return SafeArea(
+            child: Padding(
+              padding: EdgeInsets.fromLTRB(24, 8, 24, keyboardBottom + 24),
+              child: SingleChildScrollView(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      'Edit labels',
+                      style: Theme.of(context).textTheme.headlineSmall,
+                    ),
+                    const SizedBox(height: 4),
+                    Text(transaction.statementMerchant),
+                    const SizedBox(height: 12),
+                    Text(
+                      'Labels apply only to this transaction. They do not change merchant rules, categories, or matching transactions.',
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
+                    const SizedBox(height: 16),
+                    if (availableLabels.isEmpty)
+                      const Text('No existing labels yet.')
+                    else
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: [
+                          for (final label in availableLabels)
+                            FilterChip(
+                              label: Text(label.name),
+                              selected: selectedLabelIds.contains(label.id),
+                              onSelected: isSaving
+                                  ? null
+                                  : (selected) {
+                                      setSheetState(() {
+                                        if (selected) {
+                                          selectedLabelIds.add(label.id);
+                                        } else {
+                                          selectedLabelIds.remove(label.id);
+                                        }
+                                        errorMessage = null;
+                                      });
+                                    },
+                            ),
+                        ],
+                      ),
+                    if (newLabelNames.isNotEmpty) ...[
+                      const SizedBox(height: 12),
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: [
+                          for (final name in newLabelNames)
+                            InputChip(
+                              label: Text(name),
+                              onDeleted: isSaving
+                                  ? null
+                                  : () {
+                                      setSheetState(() {
+                                        newLabelNames = [
+                                          for (final candidate in newLabelNames)
+                                            if (candidate != name) candidate,
+                                        ];
+                                        errorMessage = null;
+                                      });
+                                    },
+                            ),
+                        ],
+                      ),
+                    ],
+                    const SizedBox(height: 16),
+                    TextField(
+                      controller: newLabelController,
+                      enabled: !isSaving,
+                      textInputAction: TextInputAction.done,
+                      decoration: InputDecoration(
+                        labelText: 'New label',
+                        prefixIcon: const Icon(Icons.add),
+                        suffixIcon: IconButton(
+                          tooltip: 'Add label',
+                          onPressed: isSaving ? null : addNewLabel,
+                          icon: const Icon(Icons.check),
+                        ),
+                      ),
+                      onSubmitted: (_) => isSaving ? null : addNewLabel(),
+                    ),
+                    if (errorMessage != null) ...[
+                      const SizedBox(height: 12),
+                      Text(
+                        errorMessage!,
+                        style: TextStyle(
+                          color: Theme.of(context).colorScheme.error,
+                        ),
+                      ),
+                    ],
+                    const SizedBox(height: 20),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      children: [
+                        TextButton(
+                          onPressed: isSaving
+                              ? null
+                              : () => Navigator.of(sheetContext).pop(),
+                          child: const Text('Cancel'),
+                        ),
+                        const SizedBox(width: 12),
+                        FilledButton.icon(
+                          onPressed: isSaving || !hasChanges
+                              ? null
+                              : () async {
+                                  setSheetState(() {
+                                    isSaving = true;
+                                    errorMessage = null;
+                                  });
+
+                                  try {
+                                    final result = await ref
+                                        .read(financeRepositoryProvider)
+                                        .setTransactionLabels(
+                                          TransactionLabelsSetRequest(
+                                            householdId: householdId,
+                                            transactionId: transaction.id,
+                                            labelIds: selectedLabelIds.toList()
+                                              ..sort(),
+                                            newLabelNames: newLabelNames,
+                                          ),
+                                        );
+
+                                    availableLabels = _mergeLabels(
+                                      availableLabels,
+                                      result.labels,
+                                    );
+                                    if (sheetContext.mounted) {
+                                      Navigator.of(sheetContext).pop(result);
+                                    }
+                                  } catch (error) {
+                                    setSheetState(() {
+                                      isSaving = false;
+                                      errorMessage = error.toString();
+                                    });
+                                    if (sheetContext.mounted) {
+                                      ScaffoldMessenger.of(
+                                        sheetContext,
+                                      ).showSnackBar(
+                                        SnackBar(
+                                          content: Text(error.toString()),
+                                        ),
+                                      );
+                                    }
+                                  }
+                                },
+                          icon: isSaving
+                              ? const SizedBox.square(
+                                  dimension: 18,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                  ),
+                                )
+                              : const Icon(Icons.check),
+                          label: const Text('Save'),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          );
+        },
+      );
+    },
+  );
+}
+
+List<LabelOption> _mergeLabels(
+  List<LabelOption> primary,
+  List<LabelOption> secondary,
+) {
+  final labelsById = <String, LabelOption>{};
+  for (final label in [...primary, ...secondary]) {
+    labelsById[label.id] = label;
+  }
+
+  return labelsById.values.toList(growable: false)..sort(_compareLabelsByName);
+}
+
+int _compareLabelsByName(LabelOption a, LabelOption b) {
+  final lowerComparison = a.name.toLowerCase().compareTo(b.name.toLowerCase());
+  if (lowerComparison != 0) return lowerComparison;
+
+  return a.id.compareTo(b.id);
+}
+
+bool _sameStringSet(Set<String> a, Set<String> b) {
+  return a.length == b.length && a.every(b.contains);
+}
+
+extension _IterableFirstOrNull<T> on Iterable<T> {
+  T? get firstOrNull {
+    final iterator = this.iterator;
+    if (iterator.moveNext()) return iterator.current;
+
+    return null;
   }
 }

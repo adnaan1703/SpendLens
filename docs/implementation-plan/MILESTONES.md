@@ -1174,7 +1174,8 @@ household-shared transaction labels.
 
 ### Status
 
-Planned. See [Transaction Labels](TRANSACTION_LABELS.md#m27---transaction-labeling-ux).
+Completed on 2026-06-12. See
+[Transaction Labels](TRANSACTION_LABELS.md#m27---transaction-labeling-ux).
 
 ### Objective
 

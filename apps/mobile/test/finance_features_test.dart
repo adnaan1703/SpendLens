@@ -384,6 +384,149 @@ void main() {
     expect(repository.lastQuery?.page, 0);
   });
 
+  testWidgets('transactions show label chips and label route filters query', (
+    tester,
+  ) async {
+    final repository = _FakeFinanceRepository();
+    final router = _financeTestRouter(
+      initialLocation: '/transactions?labelId=label-reimburse',
+    );
+    addTearDown(router.dispose);
+
+    await tester.pumpWidget(
+      _financeRouterTestApp(repository: repository, router: router),
+    );
+    await tester.pumpAndSettle();
+
+    expect(repository.lastQuery?.labelId, 'label-reimburse');
+    expect(find.text('Reimburse'), findsWidgets);
+    expect(find.text('Swiggy Instamart'), findsNothing);
+
+    await tester.tap(find.byTooltip('Clear filters'));
+    await tester.pumpAndSettle();
+
+    expect(router.routeInformationProvider.value.uri.queryParameters, isEmpty);
+    expect(repository.lastQuery?.labelId, isNull);
+    expect(find.text('Groceries'), findsWidgets);
+    expect(find.text('Reimburse'), findsWidgets);
+  });
+
+  testWidgets(
+    'transaction detail opens label editor and saves existing label',
+    (tester) async {
+      final repository = _FakeFinanceRepository();
+
+      await tester.pumpWidget(
+        _financeTestApp(
+          repository: repository,
+          child: const TransactionsScreen(),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('Amazon Shopping'));
+      await tester.pumpAndSettle();
+      await tester.ensureVisible(
+        find.widgetWithText(OutlinedButton, 'Edit labels'),
+      );
+      await tester.tap(find.widgetWithText(OutlinedButton, 'Edit labels'));
+      await tester.pumpAndSettle();
+
+      expect(
+        find.textContaining('Labels apply only to this transaction'),
+        findsOneWidget,
+      );
+
+      await tester.tap(find.widgetWithText(FilterChip, 'Reimburse'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.widgetWithText(FilledButton, 'Save'));
+      await tester.pumpAndSettle();
+
+      expect(repository.labelSetRequests.single.transactionId, 'txn-2');
+      expect(repository.labelSetRequests.single.labelIds, ['label-reimburse']);
+      expect(repository.labelSetRequests.single.newLabelNames, isEmpty);
+      expect(
+        repository.transactions
+            .where((transaction) => transaction.id == 'txn-1')
+            .single
+            .labels
+            .map((label) => label.id),
+        ['label-grocery'],
+      );
+    },
+  );
+
+  testWidgets('transaction label editor creates and removes labels', (
+    tester,
+  ) async {
+    final repository = _FakeFinanceRepository();
+
+    await tester.pumpWidget(
+      _financeTestApp(
+        repository: repository,
+        child: const TransactionsScreen(),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Swiggy Instamart').first);
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(
+      find.widgetWithText(OutlinedButton, 'Edit labels'),
+    );
+    await tester.tap(find.widgetWithText(OutlinedButton, 'Edit labels'));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.widgetWithText(FilterChip, 'Groceries'));
+    await tester.enterText(find.widgetWithText(TextField, 'New label'), 'Trip');
+    await tester.tap(find.byTooltip('Add label'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(FilledButton, 'Save'));
+    await tester.pumpAndSettle();
+
+    expect(repository.labelSetRequests.single.transactionId, 'txn-1');
+    expect(repository.labelSetRequests.single.labelIds, isEmpty);
+    expect(repository.labelSetRequests.single.newLabelNames, ['Trip']);
+    expect(
+      repository.transactions
+          .where((transaction) => transaction.id == 'txn-1')
+          .single
+          .labels
+          .map((label) => label.name),
+      ['Trip'],
+    );
+  });
+
+  testWidgets('transaction list caps visible labels with overflow chip', (
+    tester,
+  ) async {
+    final repository = _FakeFinanceRepository()
+      ..labels.addAll(const [
+        LabelOption(id: 'label-family', name: 'Family'),
+        LabelOption(id: 'label-tax', name: 'Tax'),
+      ])
+      ..transactions[0] = _copyTransaction(
+        _FakeFinanceRepository().transactions[0],
+        labels: const [
+          LabelOption(id: 'label-grocery', name: 'Groceries'),
+          LabelOption(id: 'label-family', name: 'Family'),
+          LabelOption(id: 'label-tax', name: 'Tax'),
+        ],
+      );
+
+    await tester.pumpWidget(
+      _financeTestApp(
+        repository: repository,
+        child: const TransactionsScreen(),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Groceries'), findsWidgets);
+    expect(find.text('Family'), findsWidgets);
+    expect(find.text('+1'), findsOneWidget);
+  });
+
   testWidgets('transactions source type filter separates UPI from cards', (
     tester,
   ) async {

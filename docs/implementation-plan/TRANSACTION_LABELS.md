@@ -326,6 +326,43 @@ Completion summary requirements:
 - Mocks created
 - Mocks used
 
+Completion notes:
+
+- Completed on 2026-06-12 from the existing partial M27 local patch.
+- Transaction list rows now show compact label chips with overflow, and
+  transaction detail shows all labels with an Edit labels action.
+- The transaction label editor saves through `setTransactionLabels`, supports
+  existing-label selection, inline new-label creation, removal, disabled save
+  states, and user-visible errors.
+- Transactions supports a single-label filter through route query param
+  `labelId`; Clear filters removes the label filter and resets route query
+  parameters.
+- Label saves refresh the current transaction query plus label lookup/manager
+  providers.
+- Focused widget tests cover display/overflow, detail editor opening, existing
+  label save to one transaction, inline new-label creation, label removal,
+  `labelId` route/filter behavior, and clear-filter behavior.
+- Verification run:
+  - `cd apps/mobile && dart format lib/src/features/transactions/transactions_screen.dart test/finance_features_test.dart`
+  - `cd apps/mobile && flutter analyze`
+  - `cd apps/mobile && flutter test test/finance_features_test.dart`
+  - `cd apps/mobile && flutter test`
+  - `cd apps/mobile && flutter build apk --debug --no-pub`
+  - `git diff --check`
+- Assumptions made:
+  - M27 is UI-only on top of the M26 label repository/database contract.
+  - Label edits are scoped to exactly one selected transaction and do not update
+    merchant/category mappings.
+- Mocks created:
+  - None.
+- Mocks used:
+  - Existing fake finance repository/widget-test data, extended for M27 label UI
+    and filtering coverage.
+- Deferred by scope:
+  - M28 Settings label management, bulk labeling, label colors/icons, label
+    reports, dashboard/trend label summaries, AI label suggestions, automatic
+    workbook/Gmail labels, Supabase changes, and M18-M21 push notifications.
+
 ## M28 - Settings Label Manager And Regression
 
 Purpose: Add household label vocabulary management in Settings and harden the
