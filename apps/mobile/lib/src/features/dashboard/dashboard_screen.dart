@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
@@ -59,15 +58,33 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
           snapshot: value,
           backendLabel: _backendLabel(bootstrap.supabaseStatus),
           isSupabaseReady: bootstrap.isSupabaseReady,
-          onEditCap: householdContext == null
+          onAddCap: householdContext == null
               ? null
-              : (category, existingCap) {
+              : () {
                   _showCapDialog(
                     context: context,
                     householdContext: householdContext,
                     snapshot: value,
-                    category: category,
-                    existingCap: existingCap,
+                  );
+                },
+          onEditCap: householdContext == null
+              ? null
+              : (cap) {
+                  _showCapDialog(
+                    context: context,
+                    householdContext: householdContext,
+                    snapshot: value,
+                    existingCap: cap,
+                  );
+                },
+          onDeleteCap: householdContext == null
+              ? null
+              : (cap) {
+                  _confirmDeleteCap(
+                    context: context,
+                    householdContext: householdContext,
+                    snapshot: value,
+                    cap: cap,
                   );
                 },
           onOpenCategory: (category) {
@@ -105,54 +122,22 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     required BuildContext context,
     required HouseholdContext householdContext,
     required DashboardSnapshot snapshot,
-    required CategoryOption category,
-    required MonthlyCapProgress? existingCap,
+    MonthlyCapProgress? existingCap,
   }) async {
-    var amountText = existingCap == null
-        ? ''
-        : existingCap.capAmount.round().toString();
-
-    final amount = await showDialog<double>(
+    final formValue = await showModalBottomSheet<_CapFormValue>(
       context: context,
+      isScrollControlled: true,
+      showDragHandle: true,
       builder: (context) {
-        return AlertDialog(
-          title: Text('${category.name} cap'),
-          content: TextFormField(
-            initialValue: amountText,
-            autofocus: true,
-            keyboardType: const TextInputType.numberWithOptions(decimal: true),
-            inputFormatters: [
-              FilteringTextInputFormatter.allow(RegExp(r'[0-9.]')),
-            ],
-            onChanged: (value) {
-              amountText = value;
-            },
-            decoration: const InputDecoration(
-              labelText: 'Monthly cap',
-              prefixText: 'INR ',
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: const Text('Cancel'),
-            ),
-            FilledButton.icon(
-              onPressed: () {
-                final parsed = double.tryParse(amountText.trim());
-                if (parsed == null || parsed < 0) return;
-
-                Navigator.of(context).pop(parsed);
-              },
-              icon: const Icon(Icons.check),
-              label: const Text('Save'),
-            ),
-          ],
+        return _CapFormSheet(
+          categories: snapshot.categoryOptions,
+          labels: snapshot.labelOptions,
+          existingCap: existingCap,
         );
       },
     );
 
-    if (amount == null) return;
+    if (formValue == null) return;
 
     await ref
         .read(financeRepositoryProvider)
@@ -160,16 +145,74 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
           MonthlyCapUpsertRequest(
             householdId: householdContext.household.id,
             monthlyCapId: existingCap?.monthlyCapId,
-            name: category.name,
+            name: formValue.name,
             periodMonth: snapshot.selectedMonth,
-            capAmount: amount,
-            categoryIds: [category.id],
+            capAmount: formValue.amount,
+            categoryIds: formValue.categoryIds,
+            labelIds: formValue.labelIds,
           ),
         );
 
+    _refreshDashboard(householdContext, snapshot.selectedMonth);
+
+    if (context.mounted) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('${formValue.name} cap saved')));
+    }
+  }
+
+  Future<void> _confirmDeleteCap({
+    required BuildContext context,
+    required HouseholdContext householdContext,
+    required DashboardSnapshot snapshot,
+    required MonthlyCapProgress cap,
+  }) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: Text('Delete ${cap.name}?'),
+          content: const Text('This removes only the cap and its targets.'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: const Text('Cancel'),
+            ),
+            FilledButton.icon(
+              onPressed: () => Navigator.of(context).pop(true),
+              icon: const Icon(Icons.delete_outline),
+              label: const Text('Delete'),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (confirmed != true) return;
+
+    await ref
+        .read(financeRepositoryProvider)
+        .deleteMonthlyCap(
+          MonthlyCapDeleteRequest(
+            householdId: householdContext.household.id,
+            monthlyCapId: cap.monthlyCapId,
+          ),
+        );
+
+    _refreshDashboard(householdContext, snapshot.selectedMonth);
+
+    if (context.mounted) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('${cap.name} cap deleted')));
+    }
+  }
+
+  void _refreshDashboard(HouseholdContext householdContext, DateTime month) {
     if (mounted) {
       setState(() {
-        _selectedMonth = snapshot.selectedMonth;
+        _selectedMonth = month;
       });
     }
 
@@ -177,16 +220,10 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
       dashboardSnapshotProvider(
         FinanceMonthRequest(
           householdId: householdContext.household.id,
-          month: snapshot.selectedMonth,
+          month: month,
         ),
       ),
     );
-
-    if (context.mounted) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('${category.name} cap saved')));
-    }
   }
 
   void _openTransactionsDrilldown({
@@ -220,7 +257,9 @@ class _DashboardContent extends StatelessWidget {
     required this.snapshot,
     required this.backendLabel,
     required this.isSupabaseReady,
+    required this.onAddCap,
     required this.onEditCap,
+    required this.onDeleteCap,
     required this.onOpenCategory,
     required this.onOpenMerchant,
   });
@@ -228,8 +267,9 @@ class _DashboardContent extends StatelessWidget {
   final DashboardSnapshot snapshot;
   final String backendLabel;
   final bool isSupabaseReady;
-  final void Function(CategoryOption category, MonthlyCapProgress? existingCap)?
-  onEditCap;
+  final VoidCallback? onAddCap;
+  final ValueChanged<MonthlyCapProgress>? onEditCap;
+  final ValueChanged<MonthlyCapProgress>? onDeleteCap;
   final ValueChanged<CategorySpend> onOpenCategory;
   final ValueChanged<MerchantSpend> onOpenMerchant;
 
@@ -284,7 +324,12 @@ class _DashboardContent extends StatelessWidget {
           ],
         ),
         const SizedBox(height: 28),
-        _BudgetSection(snapshot: snapshot, onEditCap: onEditCap),
+        _BudgetSection(
+          snapshot: snapshot,
+          onAddCap: onAddCap,
+          onEditCap: onEditCap,
+          onDeleteCap: onDeleteCap,
+        ),
         const SizedBox(height: 28),
         _SummaryGrid(
           snapshot: snapshot,
@@ -336,11 +381,17 @@ class _MonthSelector extends StatelessWidget {
 }
 
 class _BudgetSection extends StatelessWidget {
-  const _BudgetSection({required this.snapshot, required this.onEditCap});
+  const _BudgetSection({
+    required this.snapshot,
+    required this.onAddCap,
+    required this.onEditCap,
+    required this.onDeleteCap,
+  });
 
   final DashboardSnapshot snapshot;
-  final void Function(CategoryOption category, MonthlyCapProgress? existingCap)?
-  onEditCap;
+  final VoidCallback? onAddCap;
+  final ValueChanged<MonthlyCapProgress>? onEditCap;
+  final ValueChanged<MonthlyCapProgress>? onDeleteCap;
 
   @override
   Widget build(BuildContext context) {
@@ -349,13 +400,24 @@ class _BudgetSection extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('Monthly caps', style: theme.textTheme.titleLarge),
+        Row(
+          children: [
+            Expanded(
+              child: Text('Monthly caps', style: theme.textTheme.titleLarge),
+            ),
+            FilledButton.icon(
+              onPressed: onAddCap,
+              icon: const Icon(Icons.add),
+              label: const Text('Add cap'),
+            ),
+          ],
+        ),
         const SizedBox(height: 12),
         if (snapshot.monthlyCapProgress.isEmpty)
           const EmptyState(
             icon: Icons.speed_outlined,
             title: 'No caps set',
-            message: 'Categories without caps are listed below.',
+            message: 'Add a category or label cap for this month.',
           )
         else
           Column(
@@ -365,51 +427,29 @@ class _BudgetSection extends StatelessWidget {
                   padding: const EdgeInsets.only(bottom: 8),
                   child: _MonthlyCapProgressRow(
                     cap: cap,
-                    onEdit: onEditCap == null
+                    onEdit: onEditCap == null ? null : () => onEditCap!(cap),
+                    onDelete: onDeleteCap == null
                         ? null
-                        : () {
-                            final categoryTarget = cap.singleCategoryTarget;
-                            if (categoryTarget == null) return;
-
-                            onEditCap!(
-                              CategoryOption(
-                                id: categoryTarget.id,
-                                name: categoryTarget.name,
-                              ),
-                              cap,
-                            );
-                          },
+                        : () => onDeleteCap!(cap),
                   ),
                 ),
             ],
           ),
-        if (snapshot.uncappedCategories.isNotEmpty) ...[
-          const SizedBox(height: 12),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: [
-              for (final category in snapshot.uncappedCategories.take(10))
-                ActionChip(
-                  avatar: const Icon(Icons.add, size: 18),
-                  label: Text(category.name),
-                  onPressed: onEditCap == null
-                      ? null
-                      : () => onEditCap!(category, null),
-                ),
-            ],
-          ),
-        ],
       ],
     );
   }
 }
 
 class _MonthlyCapProgressRow extends StatelessWidget {
-  const _MonthlyCapProgressRow({required this.cap, required this.onEdit});
+  const _MonthlyCapProgressRow({
+    required this.cap,
+    required this.onEdit,
+    required this.onDelete,
+  });
 
   final MonthlyCapProgress cap;
   final VoidCallback? onEdit;
+  final VoidCallback? onDelete;
 
   @override
   Widget build(BuildContext context) {
@@ -418,7 +458,9 @@ class _MonthlyCapProgressRow extends StatelessWidget {
     final color = cap.isOverBudget
         ? theme.colorScheme.error
         : theme.colorScheme.primary;
-    final categoryTarget = cap.singleCategoryTarget;
+    final percentText = cap.percentUsed == null
+        ? '0%'
+        : formatPercent(cap.percentUsed!);
 
     return Card(
       child: Padding(
@@ -429,12 +471,21 @@ class _MonthlyCapProgressRow extends StatelessWidget {
             Row(
               children: [
                 Expanded(
-                  child: Text(cap.name, style: theme.textTheme.titleMedium),
+                  child: Text(
+                    cap.name,
+                    softWrap: true,
+                    style: theme.textTheme.titleMedium,
+                  ),
                 ),
                 IconButton(
                   tooltip: 'Edit cap',
-                  onPressed: categoryTarget == null ? null : onEdit,
+                  onPressed: onEdit,
                   icon: const Icon(Icons.edit_outlined),
+                ),
+                IconButton(
+                  tooltip: 'Delete cap',
+                  onPressed: onDelete,
+                  icon: const Icon(Icons.delete_outline),
                 ),
               ],
             ),
@@ -455,13 +506,305 @@ class _MonthlyCapProgressRow extends StatelessWidget {
                     color: cap.isOverBudget ? theme.colorScheme.error : null,
                   ),
                 ),
+                Text(percentText),
+                Text('${cap.matchedTransactionCount} matched'),
               ],
             ),
+            if (cap.categoryTargets.isNotEmpty ||
+                cap.labelTargets.isNotEmpty) ...[
+              const SizedBox(height: 10),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  for (final category in cap.categoryTargets)
+                    _TargetChip(
+                      icon: Icons.category_outlined,
+                      label: category.name,
+                    ),
+                  for (final label in cap.labelTargets)
+                    _TargetChip(icon: Icons.label_outline, label: label.name),
+                ],
+              ),
+            ],
           ],
         ),
       ),
     );
   }
+}
+
+final class _CapFormValue {
+  const _CapFormValue({
+    required this.name,
+    required this.amount,
+    required this.categoryIds,
+    required this.labelIds,
+  });
+
+  final String name;
+  final double amount;
+  final List<String> categoryIds;
+  final List<String> labelIds;
+}
+
+class _CapFormSheet extends StatefulWidget {
+  const _CapFormSheet({
+    required this.categories,
+    required this.labels,
+    required this.existingCap,
+  });
+
+  final List<CategoryOption> categories;
+  final List<LabelOption> labels;
+  final MonthlyCapProgress? existingCap;
+
+  @override
+  State<_CapFormSheet> createState() => _CapFormSheetState();
+}
+
+class _CapFormSheetState extends State<_CapFormSheet> {
+  late final TextEditingController _nameController;
+  late final TextEditingController _amountController;
+  late final Set<String> _selectedCategoryIds;
+  late final Set<String> _selectedLabelIds;
+
+  @override
+  void initState() {
+    super.initState();
+    final existingCap = widget.existingCap;
+    _nameController = TextEditingController(text: existingCap?.name ?? '');
+    _amountController = TextEditingController(
+      text: existingCap == null ? '' : _amountText(existingCap.capAmount),
+    );
+    _selectedCategoryIds = {
+      for (final target in existingCap?.categoryTargets ?? const []) target.id,
+    };
+    _selectedLabelIds = {
+      for (final target in existingCap?.labelTargets ?? const []) target.id,
+    };
+  }
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    _amountController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final bottomInset = MediaQuery.viewInsetsOf(context).bottom;
+    final name = _nameController.text.trim();
+    final amount = double.tryParse(_amountController.text.trim());
+    final hasTargets =
+        _selectedCategoryIds.isNotEmpty || _selectedLabelIds.isNotEmpty;
+    final isValid =
+        name.isNotEmpty && amount != null && amount >= 0 && hasTargets;
+
+    return AnimatedPadding(
+      duration: const Duration(milliseconds: 180),
+      curve: Curves.easeOut,
+      padding: EdgeInsets.only(bottom: bottomInset),
+      child: SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                widget.existingCap == null ? 'Add cap' : 'Edit cap',
+                style: theme.textTheme.titleLarge,
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                key: const ValueKey('cap-name-field'),
+                controller: _nameController,
+                autofocus: widget.existingCap == null,
+                decoration: InputDecoration(
+                  labelText: 'Name',
+                  errorText: name.isEmpty ? 'Name is required' : null,
+                ),
+                textInputAction: TextInputAction.next,
+                onChanged: (_) => setState(() {}),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                key: const ValueKey('cap-amount-field'),
+                controller: _amountController,
+                keyboardType: const TextInputType.numberWithOptions(
+                  decimal: true,
+                ),
+                decoration: InputDecoration(
+                  labelText: 'Monthly amount',
+                  prefixText: 'INR ',
+                  errorText: amount == null || amount < 0
+                      ? 'Enter a valid amount'
+                      : null,
+                ),
+                textInputAction: TextInputAction.done,
+                onChanged: (_) => setState(() {}),
+              ),
+              const SizedBox(height: 16),
+              Text('Categories', style: theme.textTheme.titleSmall),
+              const SizedBox(height: 8),
+              _TargetSelector<CategoryOption>(
+                options: widget.categories,
+                selectedIds: _selectedCategoryIds,
+                icon: Icons.category_outlined,
+                nameFor: (category) => category.name,
+                idFor: (category) => category.id,
+                onToggle: (id) =>
+                    setState(() => _toggle(_selectedCategoryIds, id)),
+              ),
+              const SizedBox(height: 16),
+              Text('Labels', style: theme.textTheme.titleSmall),
+              const SizedBox(height: 8),
+              _TargetSelector<LabelOption>(
+                options: widget.labels,
+                selectedIds: _selectedLabelIds,
+                icon: Icons.label_outline,
+                nameFor: (label) => label.name,
+                idFor: (label) => label.id,
+                onToggle: (id) =>
+                    setState(() => _toggle(_selectedLabelIds, id)),
+              ),
+              if (!hasTargets) ...[
+                const SizedBox(height: 8),
+                Text(
+                  'Choose at least one target',
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: theme.colorScheme.error,
+                  ),
+                ),
+              ],
+              const SizedBox(height: 20),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  TextButton(
+                    onPressed: () => Navigator.of(context).pop(),
+                    child: const Text('Cancel'),
+                  ),
+                  const SizedBox(width: 8),
+                  FilledButton.icon(
+                    onPressed: isValid
+                        ? () => Navigator.of(context).pop(
+                            _CapFormValue(
+                              name: name,
+                              amount: amount,
+                              categoryIds: _orderedSelectedIds(
+                                widget.categories,
+                                _selectedCategoryIds,
+                                (category) => category.id,
+                              ),
+                              labelIds: _orderedSelectedIds(
+                                widget.labels,
+                                _selectedLabelIds,
+                                (label) => label.id,
+                              ),
+                            ),
+                          )
+                        : null,
+                    icon: const Icon(Icons.check),
+                    label: const Text('Save'),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _toggle(Set<String> selectedIds, String id) {
+    if (!selectedIds.add(id)) selectedIds.remove(id);
+  }
+}
+
+class _TargetSelector<T> extends StatelessWidget {
+  const _TargetSelector({
+    required this.options,
+    required this.selectedIds,
+    required this.icon,
+    required this.nameFor,
+    required this.idFor,
+    required this.onToggle,
+  });
+
+  final List<T> options;
+  final Set<String> selectedIds;
+  final IconData icon;
+  final String Function(T option) nameFor;
+  final String Function(T option) idFor;
+  final ValueChanged<String> onToggle;
+
+  @override
+  Widget build(BuildContext context) {
+    if (options.isEmpty) {
+      return const Text('None');
+    }
+
+    return Wrap(
+      spacing: 8,
+      runSpacing: 8,
+      children: [
+        for (final option in options)
+          ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 220),
+            child: FilterChip(
+              avatar: Icon(icon, size: 18),
+              label: Text(
+                nameFor(option),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+              selected: selectedIds.contains(idFor(option)),
+              onSelected: (_) => onToggle(idFor(option)),
+            ),
+          ),
+      ],
+    );
+  }
+}
+
+class _TargetChip extends StatelessWidget {
+  const _TargetChip({required this.icon, required this.label});
+
+  final IconData icon;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return ConstrainedBox(
+      constraints: const BoxConstraints(maxWidth: 220),
+      child: Chip(
+        avatar: Icon(icon, size: 18),
+        label: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis),
+        materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+      ),
+    );
+  }
+}
+
+List<String> _orderedSelectedIds<T>(
+  List<T> options,
+  Set<String> selectedIds,
+  String Function(T option) idFor,
+) {
+  return [
+    for (final option in options)
+      if (selectedIds.contains(idFor(option))) idFor(option),
+  ];
+}
+
+String _amountText(double amount) {
+  if (amount == amount.roundToDouble()) return amount.round().toString();
+
+  return amount.toStringAsFixed(2);
 }
 
 class _SummaryGrid extends StatelessWidget {

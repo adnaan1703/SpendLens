@@ -174,9 +174,7 @@ void main() {
     expect(emptyPage.items, isEmpty);
   });
 
-  testWidgets('dashboard shows net spend and saves category caps', (
-    tester,
-  ) async {
+  testWidgets('dashboard creates a category-only monthly cap', (tester) async {
     final repository = _FakeFinanceRepository();
 
     await tester.pumpWidget(
@@ -187,23 +185,230 @@ void main() {
     expect(find.text('Mar 2026 net'), findsOneWidget);
     expect(find.text('INR 42,000'), findsWidgets);
     expect(find.text('+INR 2,000'), findsOneWidget);
-    expect(find.text('Food'), findsWidgets);
-    expect(find.text('Fuel'), findsOneWidget);
+    expect(find.text('Add cap'), findsOneWidget);
 
-    await tester.ensureVisible(find.text('Fuel'));
-    await tester.tap(find.text('Fuel'));
-    await tester.pumpAndSettle();
-    await tester.enterText(find.byType(TextFormField), '5000');
-    await tester.tap(find.text('Save'));
-    await tester.pumpAndSettle();
+    await _openAddCapSheet(tester);
+    await _fillCapNameAndAmount(tester, name: 'Fuel cap', amount: '5000');
+    await _tapTargetChip(tester, 'Fuel');
+    await _saveCapSheet(tester);
 
     expect(repository.monthlyCapUpsertRequests, hasLength(1));
-    expect(repository.monthlyCapUpsertRequests.single.name, 'Fuel');
+    expect(repository.monthlyCapUpsertRequests.single.name, 'Fuel cap');
     expect(repository.monthlyCapUpsertRequests.single.categoryIds, [
       'cat-fuel',
     ]);
     expect(repository.monthlyCapUpsertRequests.single.labelIds, isEmpty);
     expect(repository.monthlyCapUpsertRequests.single.capAmount, 5000);
+  });
+
+  testWidgets('dashboard creates a label-only monthly cap', (tester) async {
+    final repository = _FakeFinanceRepository();
+
+    await tester.pumpWidget(
+      _financeTestApp(repository: repository, child: const DashboardScreen()),
+    );
+    await tester.pumpAndSettle();
+
+    await _openAddCapSheet(tester);
+    await _fillCapNameAndAmount(tester, name: 'Reimbursements', amount: '2500');
+    await _tapTargetChip(tester, 'Reimburse');
+    await _saveCapSheet(tester);
+
+    expect(repository.monthlyCapUpsertRequests, hasLength(1));
+    expect(repository.monthlyCapUpsertRequests.single.name, 'Reimbursements');
+    expect(repository.monthlyCapUpsertRequests.single.categoryIds, isEmpty);
+    expect(repository.monthlyCapUpsertRequests.single.labelIds, [
+      'label-reimburse',
+    ]);
+    expect(repository.monthlyCapUpsertRequests.single.capAmount, 2500);
+  });
+
+  testWidgets('dashboard creates a mixed category and label monthly cap', (
+    tester,
+  ) async {
+    final repository = _FakeFinanceRepository();
+
+    await tester.pumpWidget(
+      _financeTestApp(repository: repository, child: const DashboardScreen()),
+    );
+    await tester.pumpAndSettle();
+
+    await _openAddCapSheet(tester);
+    await _fillCapNameAndAmount(tester, name: 'Essentials', amount: '12500');
+    await _tapTargetChip(tester, 'Fuel');
+    await _tapTargetChip(tester, 'Groceries');
+    await _saveCapSheet(tester);
+
+    expect(repository.monthlyCapUpsertRequests, hasLength(1));
+    expect(repository.monthlyCapUpsertRequests.single.name, 'Essentials');
+    expect(repository.monthlyCapUpsertRequests.single.categoryIds, [
+      'cat-fuel',
+    ]);
+    expect(repository.monthlyCapUpsertRequests.single.labelIds, [
+      'label-grocery',
+    ]);
+    expect(repository.monthlyCapUpsertRequests.single.capAmount, 12500);
+  });
+
+  testWidgets('dashboard cap form validates required name', (tester) async {
+    final repository = _FakeFinanceRepository();
+
+    await tester.pumpWidget(
+      _financeTestApp(repository: repository, child: const DashboardScreen()),
+    );
+    await tester.pumpAndSettle();
+
+    await _openAddCapSheet(tester);
+    await _fillCapNameAndAmount(tester, name: '', amount: '1000');
+    await _tapTargetChip(tester, 'Fuel');
+
+    expect(find.text('Name is required'), findsOneWidget);
+    expect(_capSaveButton(tester).enabled, isFalse);
+    expect(repository.monthlyCapUpsertRequests, isEmpty);
+  });
+
+  testWidgets('dashboard cap form validates at least one target', (
+    tester,
+  ) async {
+    final repository = _FakeFinanceRepository();
+
+    await tester.pumpWidget(
+      _financeTestApp(repository: repository, child: const DashboardScreen()),
+    );
+    await tester.pumpAndSettle();
+
+    await _openAddCapSheet(tester);
+    await _fillCapNameAndAmount(tester, name: 'Loose cap', amount: '1000');
+
+    expect(find.text('Choose at least one target'), findsOneWidget);
+    expect(_capSaveButton(tester).enabled, isFalse);
+    expect(repository.monthlyCapUpsertRequests, isEmpty);
+  });
+
+  testWidgets('dashboard edits caps while preserving and changing targets', (
+    tester,
+  ) async {
+    final repository = _FakeFinanceRepository();
+
+    await tester.pumpWidget(
+      _financeTestApp(repository: repository, child: const DashboardScreen()),
+    );
+    await tester.pumpAndSettle();
+
+    final firstEditButton = find.byTooltip('Edit cap').first;
+    await tester.ensureVisible(firstEditButton);
+    await tester.tap(firstEditButton);
+    await tester.pumpAndSettle();
+    await _saveCapSheet(tester);
+
+    expect(repository.monthlyCapUpsertRequests, hasLength(1));
+    expect(repository.monthlyCapUpsertRequests.single.monthlyCapId, 'cap-food');
+    expect(repository.monthlyCapUpsertRequests.single.name, 'Food');
+    expect(repository.monthlyCapUpsertRequests.single.categoryIds, [
+      'cat-food',
+    ]);
+    expect(repository.monthlyCapUpsertRequests.single.labelIds, isEmpty);
+
+    final updatedEditButton = find.byTooltip('Edit cap').first;
+    await tester.ensureVisible(updatedEditButton);
+    await tester.tap(updatedEditButton);
+    await tester.pumpAndSettle();
+    await tester.enterText(
+      find.byKey(const ValueKey('cap-name-field')),
+      'Fuel and groceries',
+    );
+    await tester.enterText(
+      find.byKey(const ValueKey('cap-amount-field')),
+      '30000',
+    );
+    await _tapTargetChip(tester, 'Food');
+    await _tapTargetChip(tester, 'Fuel');
+    await _tapTargetChip(tester, 'Groceries');
+    await _saveCapSheet(tester);
+
+    final changedRequest = repository.monthlyCapUpsertRequests.last;
+    expect(changedRequest.monthlyCapId, 'cap-food');
+    expect(changedRequest.name, 'Fuel and groceries');
+    expect(changedRequest.categoryIds, ['cat-fuel']);
+    expect(changedRequest.labelIds, ['label-grocery']);
+    expect(changedRequest.capAmount, 30000);
+  });
+
+  testWidgets('dashboard deletes caps after confirmation', (tester) async {
+    final repository = _FakeFinanceRepository();
+
+    await tester.pumpWidget(
+      _financeTestApp(repository: repository, child: const DashboardScreen()),
+    );
+    await tester.pumpAndSettle();
+
+    final firstDeleteButton = find.byTooltip('Delete cap').first;
+    await tester.ensureVisible(firstDeleteButton);
+    await tester.tap(firstDeleteButton);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Cancel').last);
+    await tester.pumpAndSettle();
+
+    expect(repository.monthlyCapDeleteRequests, isEmpty);
+
+    final confirmedDeleteButton = find.byTooltip('Delete cap').first;
+    await tester.ensureVisible(confirmedDeleteButton);
+    await tester.tap(confirmedDeleteButton);
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(FilledButton, 'Delete'));
+    await tester.pumpAndSettle();
+
+    expect(repository.monthlyCapDeleteRequests, hasLength(1));
+    expect(repository.monthlyCapDeleteRequests.single.monthlyCapId, 'cap-food');
+  });
+
+  testWidgets('dashboard renders cap progress and target chips', (
+    tester,
+  ) async {
+    final repository = _FakeFinanceRepository()
+      ..monthlyCapProgress.add(
+        MonthlyCapProgress(
+          monthlyCapId: 'cap-mixed',
+          householdId: 'household-1',
+          name: 'Very long category and label cap name for a narrow screen',
+          periodMonth: DateTime(2026, 3),
+          capAmount: 12000,
+          spentAmount: 3000,
+          remainingAmount: 9000,
+          percentUsed: 0.25,
+          isOverBudget: false,
+          matchedTransactionCount: 3,
+          categoryTargets: const [
+            MonthlyCapCategoryTarget(id: 'cat-fuel', name: 'Fuel'),
+          ],
+          labelTargets: const [
+            MonthlyCapLabelTarget(
+              id: 'label-grocery',
+              name: 'Groceries with a very long target name',
+            ),
+          ],
+        ),
+      );
+
+    await tester.binding.setSurfaceSize(const Size(390, 900));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    await tester.pumpWidget(
+      _financeTestApp(repository: repository, child: const DashboardScreen()),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Spent INR 42,000'), findsOneWidget);
+    expect(find.text('Cap INR 50,000'), findsOneWidget);
+    expect(find.text('Left INR 8,000'), findsOneWidget);
+    expect(find.text('84%'), findsOneWidget);
+    expect(find.text('8 matched'), findsOneWidget);
+    expect(find.text('Over INR 12,937'), findsOneWidget);
+    expect(find.text('113%'), findsOneWidget);
+    expect(find.text('Food'), findsWidgets);
+    expect(find.text('Shopping'), findsWidgets);
+    expect(find.text('Groceries with a very long target name'), findsOneWidget);
+    expect(tester.takeException(), isNull);
   });
 
   testWidgets('dashboard top category drills into monthly transactions', (
@@ -218,8 +423,12 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    await tester.ensureVisible(find.widgetWithText(InkWell, 'Food'));
-    await tester.tap(find.widgetWithText(InkWell, 'Food'));
+    final categoryRow = find.ancestor(
+      of: find.text('8 transactions'),
+      matching: find.byType(InkWell),
+    );
+    await tester.ensureVisible(categoryRow);
+    await tester.tap(categoryRow);
     await tester.pumpAndSettle();
 
     expect(router.routeInformationProvider.value.uri.path, '/transactions');
@@ -242,10 +451,12 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    await tester.ensureVisible(
-      find.widgetWithText(InkWell, 'Swiggy Instamart'),
+    final merchantRow = find.ancestor(
+      of: find.text('4 transactions'),
+      matching: find.byType(InkWell),
     );
-    await tester.tap(find.widgetWithText(InkWell, 'Swiggy Instamart'));
+    await tester.ensureVisible(merchantRow);
+    await tester.tap(merchantRow);
     await tester.pumpAndSettle();
 
     expect(router.routeInformationProvider.value.uri.path, '/transactions');
@@ -1619,6 +1830,41 @@ GoRouter _financeTestRouter({
       ),
     ],
   );
+}
+
+Future<void> _openAddCapSheet(WidgetTester tester) async {
+  await tester.ensureVisible(find.text('Add cap'));
+  await tester.tap(find.text('Add cap'));
+  await tester.pumpAndSettle();
+}
+
+Future<void> _fillCapNameAndAmount(
+  WidgetTester tester, {
+  required String name,
+  required String amount,
+}) async {
+  await tester.enterText(find.byKey(const ValueKey('cap-name-field')), name);
+  await tester.enterText(
+    find.byKey(const ValueKey('cap-amount-field')),
+    amount,
+  );
+  await tester.pumpAndSettle();
+}
+
+Future<void> _tapTargetChip(WidgetTester tester, String label) async {
+  final chip = find.widgetWithText(FilterChip, label);
+  await tester.ensureVisible(chip);
+  await tester.tap(chip);
+  await tester.pumpAndSettle();
+}
+
+Future<void> _saveCapSheet(WidgetTester tester) async {
+  await tester.tap(find.widgetWithText(FilledButton, 'Save'));
+  await tester.pumpAndSettle();
+}
+
+FilledButton _capSaveButton(WidgetTester tester) {
+  return tester.widget<FilledButton>(find.widgetWithText(FilledButton, 'Save'));
 }
 
 const _householdContext = HouseholdContext(
