@@ -201,6 +201,20 @@ void main() {
     expect(repository.monthlyCapUpsertRequests.single.capAmount, 5000);
   });
 
+  testWidgets('dashboard cap metric includes category and label targets', (
+    tester,
+  ) async {
+    final repository = _FakeFinanceRepository();
+
+    await tester.pumpWidget(
+      _financeTestApp(repository: repository, child: const DashboardScreen()),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Monthly caps'), findsWidgets);
+    expect(find.text('3 targets without caps'), findsOneWidget);
+  });
+
   testWidgets('dashboard creates a label-only monthly cap', (tester) async {
     final repository = _FakeFinanceRepository();
 

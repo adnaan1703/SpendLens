@@ -212,9 +212,11 @@ with the selected category filter applied. Subcategory detail keeps its
 subcategory context in Settings; M25 does not introduce a subcategory-specific
 Transactions filter.
 
-### `category_caps` (legacy until M29-M31)
+### `category_caps` (legacy migrated history)
 
-Monthly cap per category.
+Legacy monthly cap per category. The app-facing cap model is now
+`monthly_caps` with category and label targets; `category_caps` remains in
+the migration history for backfill and compatibility only.
 
 Important fields:
 
@@ -230,15 +232,17 @@ Important fields:
 Rules:
 
 - `period_month` is the first day of the month.
-- Caps are category-level until Milestones 29-31 replace the app-facing cap
-  model with named category/label targets.
-- A missing cap means no cap has been set.
+- Active app reads and writes use `monthly_caps`, `monthly_cap_categories`,
+  `monthly_cap_labels`, `upsert_monthly_cap`, `delete_monthly_cap`, and
+  `v_monthly_cap_progress`.
+- `v_budget_progress` is retained only as a category-only compatibility view
+  over monthly caps.
 
 Unique constraint:
 
 - `(household_id, category_id, period_month)`
 
-### `monthly_caps` (planned M29-M31)
+### `monthly_caps`
 
 Named monthly cap definition.
 
@@ -268,7 +272,7 @@ Rules:
 - Cap edits do not change transaction categories, labels, merchant mappings,
   review state, importer behavior, or future Gmail classification.
 
-### `monthly_cap_categories` (planned M29-M31)
+### `monthly_cap_categories`
 
 Many-to-many target list between monthly caps and top-level categories.
 
@@ -287,7 +291,7 @@ Rules:
 - Category merge repoints source category targets to the surviving category and
   dedupes targets; independent named caps are not summed.
 
-### `monthly_cap_labels` (planned M29-M31)
+### `monthly_cap_labels`
 
 Many-to-many target list between monthly caps and transaction labels.
 
@@ -825,9 +829,10 @@ Create these views for app reads:
 
 - `v_monthly_spend`: monthly gross, refunds, net spend, bill payments.
 - `v_category_monthly_spend`: category spend per month.
-- `v_budget_progress`: legacy category cap, spent, remaining, percent used, over-budget flag.
-- `v_monthly_cap_progress` (planned M29-M31): named cap progress for category
-  and label targets, with each transaction counted once per cap.
+- `v_budget_progress`: legacy category-only compatibility cap progress over
+  monthly caps.
+- `v_monthly_cap_progress`: named cap progress for category and label targets,
+  with each transaction counted once per cap.
 - `v_merchant_summary`: merchant spend, refunds, net, transaction counts.
 - `v_review_queue`: open review items with transaction and suggestions.
 - `v_piggy_bank_balances`: piggy-bank balance and target progress.

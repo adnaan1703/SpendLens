@@ -410,17 +410,26 @@ final class DashboardSnapshot {
   final List<CategorySpend> topCategories;
   final List<MerchantSpend> topMerchants;
 
-  int get cappedCategoryCount => monthlyCapProgress.length;
+  int get monthlyCapCount => monthlyCapProgress.length;
 
-  List<CategoryOption> get uncappedCategories {
+  int get uncappedTargetCount {
     final targetedCategoryIds = {
       for (final cap in monthlyCapProgress)
         for (final target in cap.categoryTargets) target.id,
     };
+    final targetedLabelIds = {
+      for (final cap in monthlyCapProgress)
+        for (final target in cap.labelTargets) target.id,
+    };
 
-    return categoryOptions
-        .where((category) => !targetedCategoryIds.contains(category.id))
-        .toList(growable: false);
+    final categoriesWithoutCaps = categoryOptions.where(
+      (category) => !targetedCategoryIds.contains(category.id),
+    );
+    final labelsWithoutCaps = labelOptions.where(
+      (label) => !targetedLabelIds.contains(label.id),
+    );
+
+    return categoriesWithoutCaps.length + labelsWithoutCaps.length;
   }
 
   double get monthOverMonthChange {

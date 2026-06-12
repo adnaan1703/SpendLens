@@ -3,7 +3,7 @@ begin;
 create extension if not exists pgtap with schema extensions;
 set search_path = public, extensions;
 
-select plan(20);
+select plan(24);
 
 insert into auth.users (id)
 values
@@ -272,6 +272,66 @@ select is(
   ),
   1000.00::numeric(14,2),
   'category-only cap progress excludes other categories and months'
+);
+
+update public.categories
+set name = 'Meals'
+where id = '59000000-0000-0000-0000-000000000001';
+
+select is(
+  (
+    select category_target_names[1]
+    from public.v_monthly_cap_progress
+    where monthly_cap_id = (select monthly_cap_id from mixed_cap)
+  ),
+  'Meals',
+  'monthly cap progress reflects category target renames'
+);
+
+create temporary table renamed_grocery_label as
+select *
+from public.rename_household_label(
+  '39000000-0000-0000-0000-000000000001',
+  '89000000-0000-0000-0000-000000000001',
+  'Pantry'
+);
+
+select is(
+  (
+    select label_target_names[1]
+    from public.v_monthly_cap_progress
+    where monthly_cap_id = (select monthly_cap_id from label_cap)
+  ),
+  'Pantry',
+  'monthly cap progress reflects label target renames'
+);
+
+create temporary table travel_label_assignment as
+select *
+from public.set_transaction_labels(
+  p_household_id => '39000000-0000-0000-0000-000000000001',
+  p_transaction_id => '79000000-0000-0000-0000-000000000002',
+  p_label_ids => array['89000000-0000-0000-0000-000000000001'::uuid]
+);
+
+select is(
+  (
+    select matched_transaction_count
+    from public.v_monthly_cap_progress
+    where monthly_cap_id = (select monthly_cap_id from label_cap)
+  ),
+  2,
+  'label-only cap progress follows transaction label assignment changes'
+);
+
+select is(
+  (
+    select spent_amount
+    from public.v_monthly_cap_progress
+    where monthly_cap_id = (select monthly_cap_id from label_cap)
+  ),
+  1500.00::numeric(14,2),
+  'label-only cap spent follows transaction label assignment changes'
 );
 
 create temporary table updated_cap as

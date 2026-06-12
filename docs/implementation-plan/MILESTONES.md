@@ -1267,7 +1267,7 @@ workflow.
 
 ### Status
 
-Planned. See
+Completed on 2026-06-12. See
 [Monthly Caps](MONTHLY_CAPS.md#m29---monthly-cap-data-model-and-repository-foundation).
 
 ### Objective
@@ -1314,7 +1314,7 @@ target categories and labels.
 
 ### Status
 
-Planned. See
+Completed on 2026-06-12. See
 [Monthly Caps](MONTHLY_CAPS.md#m30---dashboard-multi-target-cap-ux).
 
 ### Objective
@@ -1354,7 +1354,7 @@ Expose named category/label caps from the Dashboard.
 
 ### Status
 
-Planned. See
+Completed on 2026-06-12. See
 [Monthly Caps](MONTHLY_CAPS.md#m31---monthly-caps-regression-docs-and-cleanup).
 
 ### Objective

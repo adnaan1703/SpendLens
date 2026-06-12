@@ -24,7 +24,7 @@ behavior has been folded into this README, [Data Model](DATA_MODEL.md),
 
 SpendLens is a personal and household expense intelligence app. The current implementation plan is Android-first: build the Flutter Android app first and defer iOS and web until later.
 
-The app imports historical credit-card analysis from `docs/Credit Card Spend Analysis - FY 2025-26.xlsx`, then moves to ongoing ingestion from Gmail transaction emails for credit cards and UPI. It presents spend by category, monthly category caps, transaction details, merchant review workflows, trends, manual piggy-bank ledgers for future goals, backend-mediated Gemini expense Q&A, household category management, transaction labels, planned multi-target monthly caps, and planned Android push notifications for newly processed transactions.
+The app imports historical credit-card analysis from `docs/Credit Card Spend Analysis - FY 2025-26.xlsx`, then moves to ongoing ingestion from Gmail transaction emails for credit cards and UPI. It presents spend by category, named monthly caps with category and label targets, transaction details, merchant review workflows, trends, manual piggy-bank ledgers for future goals, backend-mediated Gemini expense Q&A, household category management, transaction labels, and planned Android push notifications for newly processed transactions.
 
 ## Architecture Decision
 

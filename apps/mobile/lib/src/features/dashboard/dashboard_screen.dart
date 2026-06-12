@@ -307,11 +307,11 @@ class _DashboardContent extends StatelessWidget {
             ),
             MetricCard(
               label: 'Monthly caps',
-              value: snapshot.cappedCategoryCount.toString(),
+              value: snapshot.monthlyCapCount.toString(),
               icon: Icons.speed_outlined,
-              supportingText: snapshot.uncappedCategories.isEmpty
-                  ? 'All categories capped'
-                  : '${snapshot.uncappedCategories.length} uncapped',
+              supportingText: snapshot.uncappedTargetCount == 0
+                  ? 'All cap targets covered'
+                  : '${snapshot.uncappedTargetCount} targets without caps',
             ),
             MetricCard(
               label: 'Backend',

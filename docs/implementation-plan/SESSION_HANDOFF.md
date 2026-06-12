@@ -4,23 +4,22 @@ Use this file to coordinate work across multiple implementation sessions. Update
 
 ## Current Status
 
-- Current milestone: None. Milestone 30 was completed on 2026-06-12.
-  Milestone 31 remains planned for monthly-cap regression/docs cleanup. The user
+- Current milestone: None. Milestone 31 was completed on 2026-06-12. The user
   explicitly kept Milestones 18-21 deferred.
-- Last completed milestone: Milestone 30, Dashboard Multi-Target Cap UX.
-- Current implementation state: Flutter Android app scaffold exists in `apps/mobile` with SpendLens Google sign-in, route protection, authenticated shell, RLS-safe profile/default-household bootstrap, household loading/error states, sign-out, package `com.olympus.spendlens`, core packages, environment templates, tests, and Supabase folder structure. Supabase local config applies migrations for schema, RLS, views, workbook-derived default categories, merchant review corrections, piggy-bank entry validation, Gmail connector ingestion, production-readiness monitoring views, AI feature settings/usage/jobs/transaction metadata suggestions, pgTAP database tests, and the Android auth redirect URL. Milestone 3 adds a local workbook importer under `tools/workbook-import`, fixture tests, and rerun documentation in `docs/implementation-plan/WORKBOOK_IMPORT.md`. Milestone 5 adds Supabase-backed finance repository reads/writes, dashboard KPIs, reporting-month selection, monthly category cap setup/editing, category and merchant summaries, transaction search/filter pagination, and transaction detail panels. Milestone 6 adds merchant review queue UI, correction RPC/rule persistence, historical reclassification, review resolution, transaction classification audit metadata, and future-import rule application. Milestone 7 adds Supabase-backed piggy-bank list/detail UI, create/edit forms, ledger entry creation, ledger-derived balance/progress reads, no-overdraft withdrawal validation, and regression tests. Milestone 8 adds filtered monthly trend reports, gross/refund/net reporting, category trend tables, merchant summary tables, and filtered transaction CSV copy from the Trends screen. Milestone 9 adds Vault-backed Gmail OAuth connector state, Pub/Sub webhook job dedupe, Gmail sync/backfill/watch-renewal Edge Functions, HDFC credit-card debit parsing from anonymized fixtures, SQL ingestion RPCs, and Settings connector status/connect/disconnect UI. Milestone 10 adds HDFC Bank UPI debit parsing from anonymized fixtures, UPI-aware Gmail backfill search and fingerprinting, UPI ingestion pgTAP coverage, and source-type filters for credit card vs UPI on transaction/trend screens. Milestone 11 adds production-readiness runbooks, local smoke automation, service-role ingestion/parser health views, structured Edge Function operational logs, Android release signing/shrinking configuration, and staging/production Edge Function secret templates. Milestone 12 adds Gemini-backed expense Q&A, transaction metadata suggestions, AI usage/budget status, backend-only LLM calls, and free-tier-only dev/staging controls. Milestone 13 adds a service-only May 2026 Gmail range backfill function, range-aware Gmail sync search/date filtering, OAuth account selection for mailbox choice, deployment tooling updates, and a hosted dev/staging runbook. Milestone 14 adds authenticated in-app creation of a category plus first subcategory from Settings and Merchant Review through an RLS-safe `create_household_category` RPC. Milestone 15 adds authenticated transaction metadata editing from Review and Transactions through an RLS-safe `apply_transaction_metadata_correction` RPC, a shared Flutter metadata editor, confidence editing, exact normalized merchant reclassification, future mapping-rule updates, and regression coverage. Milestone 16 retires the legacy AI lookup path, keeps expense Q&A plus transaction metadata Suggest, renames Suggest budget/search flags, removes the obsolete Edge Function and Flutter models, and keeps historical AI audit rows. Milestone 17 adds shared All dates/month/custom period filters to Transactions and Trends, backed by available reporting months from `v_monthly_spend` and mapped onto the existing `startDate`/`endDate` query fields. Milestone 22 replaces the compact Settings category list with a grouped category manager, category/subcategory usage snapshots, selected recent transaction previews, and rename/add taxonomy editing through an RLS-safe `update_household_category_taxonomy` RPC. Milestone 23 adds RLS-safe category/subcategory deletion with Review requeue, guarded direct DELETE policies for already-unused taxonomy only, delete confirmation impact previews, and regression coverage. Milestone 24 adds RLS-safe category merge with explicit source subcategory mapping, destination subcategory creation, taxonomy reference repointing, cap merging, Settings merge UI, and regression coverage. Milestone 25 adds category-management regression/docs cleanup with Settings category-detail transaction drilldown, empty/error/narrow viewport polish, focused Settings tests, and durable final behavior docs. Milestone 26 adds household-scoped label tables, RLS, authenticated grants, a label usage view, app-facing label RPCs, repository label models/methods, transaction label hydration/filter support, and focused pgTAP/Flutter repository contract tests. Milestone 27 adds transaction-list/detail label chips, one-transaction label editing, inline label creation/removal, provider refresh after saves, and a single-label Transactions filter. Milestone 28 adds Settings label vocabulary management with create, rename, delete, usage counts, delete impact confirmation, active deleted-label filter clearing, and regression coverage. Milestone 29 adds named monthly-cap tables with category/label targets, RLS, RPC-backed upsert/delete, progress views, category/label dependency cleanup, repository contracts, and regression tests. Milestone 30 adds Dashboard multi-target cap create/edit/delete UX for category-only, label-only, and mixed caps, progress rows with target chips, and regression coverage while preserving top category/merchant drilldowns. Milestones 18-21 remain planned and deferred by user request.
-- Remote deployment state: On 2026-06-08, user confirmed Supabase project `bslsitzdvrdosubbdxpd` as the intended dev/staging target. All local migrations through `20260607174515_ai_ready_layer_llm_features.sql` were pushed there, hosted expense Q&A and the now-retired legacy AI lookup function were active with JWT verification, and `GEMINI_API_KEY` was present in hosted Edge Function secrets by name. After the user signed in through the Android emulator, hosted profile/household bootstrap and authenticated Gemini Edge Function smoke passed. On 2026-06-08 for Milestone 13, `gmail-oauth-start` was deployed as version 2 with JWT verification, `gmail-sync` was deployed as version 2 without JWT verification, and new `gmail-backfill-range` was deployed as version 1 without JWT verification. Hosted `gmail-backfill-range` `OPTIONS` smoke returned 200, and an unauthenticated POST returned the expected service-key error. The live May Gmail backfill itself was not run because it requires the user to connect the target Gmail mailbox and invoke the runbook with a Supabase secret key from a local/platform secret store. On 2026-06-09, M16 deleted the hosted legacy AI lookup function from `bslsitzdvrdosubbdxpd` and a follow-up function list verified it absent. The M16 database migration and updated active Suggest function were verified locally but not pushed/deployed to hosted in this implementation session.
-- Next recommended milestone: Milestone 31, Monthly Caps Regression, Docs, and
+- Last completed milestone: Milestone 31, Monthly Caps Regression, Docs, and
   Cleanup.
-  Milestones 18-21 remain deferred for later push-notification work unless the
-  user resumes them. If continuing hosted rollout separately, push the M16, M26,
-  and M29 migrations and deploy
+- Current implementation state: Flutter Android app scaffold exists in `apps/mobile` with SpendLens Google sign-in, route protection, authenticated shell, RLS-safe profile/default-household bootstrap, household loading/error states, sign-out, package `com.olympus.spendlens`, core packages, environment templates, tests, and Supabase folder structure. Supabase local config applies migrations for schema, RLS, views, workbook-derived default categories, merchant review corrections, piggy-bank entry validation, Gmail connector ingestion, production-readiness monitoring views, AI feature settings/usage/jobs/transaction metadata suggestions, pgTAP database tests, and the Android auth redirect URL. Milestone 3 adds a local workbook importer under `tools/workbook-import`, fixture tests, and rerun documentation in `docs/implementation-plan/WORKBOOK_IMPORT.md`. Milestone 5 adds Supabase-backed finance repository reads/writes, dashboard KPIs, reporting-month selection, monthly category cap setup/editing, category and merchant summaries, transaction search/filter pagination, and transaction detail panels. Milestone 6 adds merchant review queue UI, correction RPC/rule persistence, historical reclassification, review resolution, transaction classification audit metadata, and future-import rule application. Milestone 7 adds Supabase-backed piggy-bank list/detail UI, create/edit forms, ledger entry creation, ledger-derived balance/progress reads, no-overdraft withdrawal validation, and regression tests. Milestone 8 adds filtered monthly trend reports, gross/refund/net reporting, category trend tables, merchant summary tables, and filtered transaction CSV copy from the Trends screen. Milestone 9 adds Vault-backed Gmail OAuth connector state, Pub/Sub webhook job dedupe, Gmail sync/backfill/watch-renewal Edge Functions, HDFC credit-card debit parsing from anonymized fixtures, SQL ingestion RPCs, and Settings connector status/connect/disconnect UI. Milestone 10 adds HDFC Bank UPI debit parsing from anonymized fixtures, UPI-aware Gmail backfill search and fingerprinting, UPI ingestion pgTAP coverage, and source-type filters for credit card vs UPI on transaction/trend screens. Milestone 11 adds production-readiness runbooks, local smoke automation, service-role ingestion/parser health views, structured Edge Function operational logs, Android release signing/shrinking configuration, and staging/production Edge Function secret templates. Milestone 12 adds Gemini-backed expense Q&A, transaction metadata suggestions, AI usage/budget status, backend-only LLM calls, and free-tier-only dev/staging controls. Milestone 13 adds a service-only May 2026 Gmail range backfill function, range-aware Gmail sync search/date filtering, OAuth account selection for mailbox choice, deployment tooling updates, and a hosted dev/staging runbook. Milestone 14 adds authenticated in-app creation of a category plus first subcategory from Settings and Merchant Review through an RLS-safe `create_household_category` RPC. Milestone 15 adds authenticated transaction metadata editing from Review and Transactions through an RLS-safe `apply_transaction_metadata_correction` RPC, a shared Flutter metadata editor, confidence editing, exact normalized merchant reclassification, future mapping-rule updates, and regression coverage. Milestone 16 retires the legacy AI lookup path, keeps expense Q&A plus transaction metadata Suggest, renames Suggest budget/search flags, removes the obsolete Edge Function and Flutter models, and keeps historical AI audit rows. Milestone 17 adds shared All dates/month/custom period filters to Transactions and Trends, backed by available reporting months from `v_monthly_spend` and mapped onto the existing `startDate`/`endDate` query fields. Milestone 22 replaces the compact Settings category list with a grouped category manager, category/subcategory usage snapshots, selected recent transaction previews, and rename/add taxonomy editing through an RLS-safe `update_household_category_taxonomy` RPC. Milestone 23 adds RLS-safe category/subcategory deletion with Review requeue, guarded direct DELETE policies for already-unused taxonomy only, delete confirmation impact previews, and regression coverage. Milestone 24 adds RLS-safe category merge with explicit source subcategory mapping, destination subcategory creation, taxonomy reference repointing, cap merging, Settings merge UI, and regression coverage. Milestone 25 adds category-management regression/docs cleanup with Settings category-detail transaction drilldown, empty/error/narrow viewport polish, focused Settings tests, and durable final behavior docs. Milestone 26 adds household-scoped label tables, RLS, authenticated grants, a label usage view, app-facing label RPCs, repository label models/methods, transaction label hydration/filter support, and focused pgTAP/Flutter repository contract tests. Milestone 27 adds transaction-list/detail label chips, one-transaction label editing, inline label creation/removal, provider refresh after saves, and a single-label Transactions filter. Milestone 28 adds Settings label vocabulary management with create, rename, delete, usage counts, delete impact confirmation, active deleted-label filter clearing, and regression coverage. Milestone 29 adds named monthly-cap tables with category/label targets, RLS, RPC-backed upsert/delete, progress views, category/label dependency cleanup, repository contracts, and regression tests. Milestone 30 adds Dashboard multi-target cap create/edit/delete UX for category-only, label-only, and mixed caps, progress rows with target chips, and regression coverage while preserving top category/merchant drilldowns. Milestone 31 hardens monthly-cap regression coverage, removes remaining active category-only Dashboard copy/helpers, and folds final cap behavior into durable docs. Milestones 18-21 remain planned and deferred by user request.
+- Remote deployment state: On 2026-06-08, user confirmed Supabase project `bslsitzdvrdosubbdxpd` as the intended dev/staging target. All local migrations through `20260607174515_ai_ready_layer_llm_features.sql` were pushed there, hosted expense Q&A and the now-retired legacy AI lookup function were active with JWT verification, and `GEMINI_API_KEY` was present in hosted Edge Function secrets by name. After the user signed in through the Android emulator, hosted profile/household bootstrap and authenticated Gemini Edge Function smoke passed. On 2026-06-08 for Milestone 13, `gmail-oauth-start` was deployed as version 2 with JWT verification, `gmail-sync` was deployed as version 2 without JWT verification, and new `gmail-backfill-range` was deployed as version 1 without JWT verification. Hosted `gmail-backfill-range` `OPTIONS` smoke returned 200, and an unauthenticated POST returned the expected service-key error. The live May Gmail backfill itself was not run because it requires the user to connect the target Gmail mailbox and invoke the runbook with a Supabase secret key from a local/platform secret store. On 2026-06-09, M16 deleted the hosted legacy AI lookup function from `bslsitzdvrdosubbdxpd` and a follow-up function list verified it absent. The M16 database migration and updated active Suggest function were verified locally but not pushed/deployed to hosted in this implementation session.
+- Next recommended milestone: None selected. Milestones 18-21 remain deferred
+  for later push-notification work unless the user resumes them. If continuing
+  hosted rollout separately, push the M16, M26, and M29 migrations and deploy
   `transaction-metadata-suggest`; iOS and web remain deferred future milestones
   unless explicitly resumed.
 - Documentation state: completed-only companion execution plans for transaction
   metadata editing and category management were retired from `docs/` on
-  2026-06-12. `docs/implementation-plan/MONTHLY_CAPS.md` is the active
-  companion plan for Milestones 29-31.
+  2026-06-12. `docs/implementation-plan/MONTHLY_CAPS.md` remains as the
+  completed companion plan for Milestones 29-31 until it is folded into only
+  the durable entrypoints and retired.
 
 ## Required Reading for New Threads
 
@@ -44,9 +43,11 @@ At the start of a new implementation thread, read:
 - Supabase is the v1 backend platform.
 - Architecture is serverless-first, not backend-less.
 - Gmail ingestion starts with Gmail API watch plus Pub/Sub.
-- Monthly caps use required named cap rows with category and/or label targets at
-  the data model and repository layer. Dashboard multi-target UX and cleanup
-  remain planned for Milestones 30-31.
+- Monthly caps use required named cap rows with category and/or label targets.
+  A transaction matches a cap when any selected category or label target matches,
+  counts once within that cap, and may count toward other overlapping caps.
+  Legacy `category_caps` remains as migrated history only, and
+  `v_budget_progress` remains as a category-only compatibility view.
 - Piggy banks are manual ledgers.
 - Merchant corrections apply to past and future matching transactions.
 - Transaction metadata edits should apply to matching past transactions and the
@@ -136,7 +137,7 @@ Do not ask the user to perform all setup at once. Ask only when the relevant mil
 - Milestone 28, Settings Label Manager and Regression: completed.
 - Milestone 29, Monthly Cap Data Model and Repository Foundation: completed.
 - Milestone 30, Dashboard Multi-Target Cap UX: completed.
-- Milestone 31, Monthly Caps Regression, Docs, and Cleanup: planned.
+- Milestone 31, Monthly Caps Regression, Docs, and Cleanup: completed.
 
 ## Update Rules
 
@@ -1360,6 +1361,62 @@ When an architecture decision changes:
 - Mocks used:
   - Existing fake finance repository/widget-test data, extended for Settings
     label create, rename, delete, detach, and active-filter regression coverage.
+
+## Milestone 31 Completion Notes
+
+- Completed on 2026-06-12. Milestones 18-21 remained deferred and were not
+  started.
+- Removed the remaining active Dashboard category-only cap assumption by
+  replacing the old capped-category helper/copy with target-neutral monthly cap
+  count and category-or-label target coverage text.
+- Added monthly-cap pgTAP coverage for category target rename, label target
+  rename, and transaction label assignment changes. Existing M29-M30 coverage
+  continues to cover category delete, category merge, label delete, mixed-cap
+  no-double-counting, allowed overlap, and Dashboard create/edit/delete flows.
+- Updated durable docs to describe monthly caps as required named category/label
+  target groups with OR matching, one-count-per-cap semantics, and allowed
+  overlap. `category_caps` remains documented as migrated history, and
+  `v_budget_progress` remains a category-only compatibility view.
+- Verification run:
+  - `supabase --version`
+  - `supabase --help`
+  - `supabase db --help`
+  - `supabase test db --help`
+  - `supabase db reset --help`
+  - `supabase db lint --help`
+  - `supabase db advisors --help`
+  - Supabase changelog scan before Supabase verification.
+  - `supabase db reset --local`
+  - `supabase test db --local supabase/tests/monthly_caps.sql`
+  - `supabase test db --local supabase/tests`
+  - `supabase db lint --local --schema app_private,public --fail-on error`
+  - `supabase db advisors --local --type security --level warn --fail-on none`
+  - `supabase db advisors --local --type performance --level warn --fail-on none`
+  - `cd apps/mobile && dart format --set-exit-if-changed lib/src/data/repositories/finance_repository.dart lib/src/features/dashboard/dashboard_screen.dart test/finance_features_test.dart`
+  - `cd apps/mobile && flutter analyze`
+  - `cd apps/mobile && flutter test test/finance_features_test.dart`
+  - `cd apps/mobile && flutter test`
+  - `cd apps/mobile && flutter build apk --debug --no-pub`
+  - `git diff --check`
+  - `rg -n "cappedCategoryCount|uncappedCategories|All categories capped|saveCategoryCap|BudgetProgress" apps/mobile`
+- Known gaps:
+  - `supabase db reset --local` applied all migrations through
+    `20260612174258_monthly_cap_data_model_repository_foundation.sql`, then
+    exited during container restart because the local Storage API at
+    `127.0.0.1:54321` refused connection. Database tests, lint, and advisors
+    passed afterward against the freshly reset local database.
+  - No hosted Supabase migration push or Android-emulator manual smoke was run.
+- Assumptions made:
+  - Legacy `category_caps` and `v_budget_progress` should stay as compatibility
+    history because migrations, compatibility tests, and older docs still
+    intentionally reference them.
+  - The Dashboard cap metric should count uncovered category and label target
+    options together rather than exposing separate category-only wording.
+- Mocks created:
+  - None.
+- Mocks used:
+  - Existing fake finance repository/widget-test data, extended for the
+    Dashboard category-or-label target coverage metric.
 
 ## Milestone 30 Completion Notes
 
