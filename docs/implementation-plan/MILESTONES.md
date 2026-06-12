@@ -1221,7 +1221,8 @@ surfaces one transaction at a time.
 
 ### Status
 
-Planned. See [Transaction Labels](TRANSACTION_LABELS.md#m28---settings-label-manager-and-regression).
+Completed on 2026-06-12. See
+[Transaction Labels](TRANSACTION_LABELS.md#m28---settings-label-manager-and-regression).
 
 ### Objective
 

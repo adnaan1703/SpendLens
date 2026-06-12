@@ -95,6 +95,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             const SizedBox(height: 16),
             _CategoryManagerCard(householdId: householdContext.household.id),
             const SizedBox(height: 16),
+            _LabelManagerCard(householdId: householdContext.household.id),
+            const SizedBox(height: 16),
             _GmailConnectorCard(householdId: householdContext.household.id),
             const SizedBox(height: 16),
             _AiSettingsCard(householdId: householdContext.household.id),
@@ -209,6 +211,275 @@ class _AiSettingsCard extends ConsumerWidget {
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+class _LabelManagerCard extends ConsumerWidget {
+  const _LabelManagerCard({required this.householdId});
+
+  final String householdId;
+
+  Future<void> _createLabel(BuildContext context, WidgetRef ref) async {
+    final label = await showDialog<LabelOption>(
+      context: context,
+      builder: (context) {
+        return _LabelNameDialog(
+          title: 'Create label',
+          actionLabel: 'Create',
+          onSave: (name) {
+            return ref
+                .read(financeRepositoryProvider)
+                .createHouseholdLabel(
+                  LabelCreateRequest(householdId: householdId, name: name),
+                );
+          },
+        );
+      },
+    );
+    if (label == null) return;
+
+    _refreshLabelLookups(ref, householdId);
+
+    if (context.mounted) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Created ${label.name}')));
+    }
+  }
+
+  Future<void> _renameLabel({
+    required BuildContext context,
+    required WidgetRef ref,
+    required LabelOption label,
+  }) async {
+    final renamed = await showDialog<LabelOption>(
+      context: context,
+      builder: (context) {
+        return _LabelNameDialog(
+          title: 'Rename label',
+          actionLabel: 'Save',
+          initialName: label.name,
+          onSave: (name) {
+            return ref
+                .read(financeRepositoryProvider)
+                .renameHouseholdLabel(
+                  LabelRenameRequest(
+                    householdId: householdId,
+                    labelId: label.id,
+                    name: name,
+                  ),
+                );
+          },
+        );
+      },
+    );
+    if (renamed == null) return;
+
+    _refreshLabelLookups(ref, householdId);
+
+    if (context.mounted) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Renamed ${renamed.name}')));
+    }
+  }
+
+  Future<void> _deleteLabel({
+    required BuildContext context,
+    required WidgetRef ref,
+    required LabelUsageSummary usage,
+  }) async {
+    final result = await _showLabelDeleteDialog(
+      context: context,
+      label: usage.label,
+      transactionCount: usage.transactionCount,
+      onDelete: () {
+        return ref
+            .read(financeRepositoryProvider)
+            .deleteHouseholdLabel(
+              LabelDeleteRequest(
+                householdId: householdId,
+                labelId: usage.label.id,
+              ),
+            );
+      },
+    );
+    if (result == null) return;
+
+    _refreshLabelLookups(ref, householdId);
+
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Deleted ${usage.label.name}; detached ${_countLabel(result.detachedTransactionCount, 'transaction')}',
+          ),
+        ),
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final textTheme = Theme.of(context).textTheme;
+    final snapshot = ref.watch(labelManagerSnapshotProvider(householdId));
+
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            _SettingsSectionHeader(
+              icon: Icons.label_outline,
+              title: 'Labels',
+              action: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  IconButton(
+                    tooltip: 'Refresh labels',
+                    onPressed: () => _refreshLabelLookups(ref, householdId),
+                    icon: const Icon(Icons.refresh),
+                  ),
+                  const SizedBox(width: 8),
+                  FilledButton.tonalIcon(
+                    onPressed: snapshot.isLoading
+                        ? null
+                        : () => _createLabel(context, ref),
+                    icon: const Icon(Icons.add),
+                    label: const Text('Create'),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
+            switch (snapshot) {
+              AsyncValue(:final value?) => _LabelManager(
+                snapshot: value,
+                onRename: (label) =>
+                    _renameLabel(context: context, ref: ref, label: label),
+                onDelete: (usage) =>
+                    _deleteLabel(context: context, ref: ref, usage: usage),
+              ),
+              AsyncValue(hasError: true, :final error) => Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Text('Labels unavailable', style: textTheme.titleSmall),
+                  const SizedBox(height: 6),
+                  Text(error.toString(), style: textTheme.bodySmall),
+                ],
+              ),
+              _ => const Center(child: CircularProgressIndicator()),
+            },
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _LabelManager extends StatelessWidget {
+  const _LabelManager({
+    required this.snapshot,
+    required this.onRename,
+    required this.onDelete,
+  });
+
+  final LabelManagerSnapshot snapshot;
+  final ValueChanged<LabelOption> onRename;
+  final ValueChanged<LabelUsageSummary> onDelete;
+
+  @override
+  Widget build(BuildContext context) {
+    final textTheme = Theme.of(context).textTheme;
+
+    if (snapshot.isEmpty) {
+      return Padding(
+        padding: const EdgeInsets.symmetric(vertical: 16),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              Icons.label_outline,
+              color: Theme.of(context).colorScheme.outline,
+            ),
+            const SizedBox(height: 8),
+            Text('No labels yet', style: textTheme.bodyMedium),
+          ],
+        ),
+      );
+    }
+
+    return Column(
+      children: [
+        for (final usage in snapshot.labels) ...[
+          _LabelUsageRow(
+            usage: usage,
+            onRename: () => onRename(usage.label),
+            onDelete: () => onDelete(usage),
+          ),
+          if (usage != snapshot.labels.last) const Divider(height: 12),
+        ],
+      ],
+    );
+  }
+}
+
+class _LabelUsageRow extends StatelessWidget {
+  const _LabelUsageRow({
+    required this.usage,
+    required this.onRename,
+    required this.onDelete,
+  });
+
+  final LabelUsageSummary usage;
+  final VoidCallback onRename;
+  final VoidCallback onDelete;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        children: [
+          const Icon(Icons.label_outline),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  usage.label.name,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: theme.textTheme.titleSmall,
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  _labelUsageText(usage),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: theme.textTheme.bodySmall,
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 8),
+          IconButton(
+            tooltip: 'Rename label',
+            onPressed: onRename,
+            icon: const Icon(Icons.edit_outlined),
+          ),
+          IconButton(
+            tooltip: 'Delete label',
+            onPressed: onDelete,
+            icon: const Icon(Icons.delete_outline),
+          ),
+        ],
       ),
     );
   }
@@ -994,6 +1265,221 @@ Future<TaxonomyDeleteResult?> _showTaxonomyDeleteDialog({
                             Navigator.of(dialogContext).pop(result);
                           }
                         } catch (error) {
+                          if (!dialogContext.mounted) return;
+
+                          setDialogState(() {
+                            isDeleting = false;
+                          });
+                          ScaffoldMessenger.of(dialogContext).showSnackBar(
+                            SnackBar(content: Text(error.toString())),
+                          );
+                        }
+                      },
+                icon: isDeleting
+                    ? const SizedBox.square(
+                        dimension: 18,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.delete_outline),
+                label: const Text('Delete'),
+              ),
+            ],
+          );
+        },
+      );
+    },
+  );
+}
+
+class _LabelNameDialog extends StatefulWidget {
+  const _LabelNameDialog({
+    required this.title,
+    required this.actionLabel,
+    required this.onSave,
+    this.initialName = '',
+  });
+
+  final String title;
+  final String actionLabel;
+  final String initialName;
+  final Future<LabelOption> Function(String name) onSave;
+
+  @override
+  State<_LabelNameDialog> createState() => _LabelNameDialogState();
+}
+
+class _LabelNameDialogState extends State<_LabelNameDialog> {
+  final _formKey = GlobalKey<FormState>();
+  late final TextEditingController _controller;
+  bool _isSaving = false;
+  String? _errorMessage;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = TextEditingController(text: widget.initialName);
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  Future<void> _save() async {
+    if (!_formKey.currentState!.validate()) return;
+
+    setState(() {
+      _isSaving = true;
+      _errorMessage = null;
+    });
+
+    try {
+      final result = await widget.onSave(_controller.text.trim());
+      if (mounted) {
+        Navigator.of(context).pop(result);
+      }
+    } catch (error) {
+      if (mounted) {
+        setState(() {
+          _isSaving = false;
+          _errorMessage = error.toString();
+        });
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return AlertDialog(
+      title: Text(widget.title),
+      content: SizedBox(
+        width: 420,
+        child: Form(
+          key: _formKey,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              TextFormField(
+                key: const ValueKey('label-name-field'),
+                controller: _controller,
+                autofocus: true,
+                enabled: !_isSaving,
+                decoration: const InputDecoration(
+                  labelText: 'Label name',
+                  prefixIcon: Icon(Icons.label_outline),
+                ),
+                validator: (value) {
+                  if ((value ?? '').trim().isEmpty) {
+                    return 'Label name is required';
+                  }
+
+                  return null;
+                },
+                onFieldSubmitted: (_) => _isSaving ? null : _save(),
+              ),
+              if (_errorMessage != null) ...[
+                const SizedBox(height: 12),
+                Text(
+                  _errorMessage!,
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: theme.colorScheme.error,
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: _isSaving ? null : () => Navigator.of(context).pop(),
+          child: const Text('Cancel'),
+        ),
+        FilledButton.icon(
+          onPressed: _isSaving ? null : _save,
+          icon: _isSaving
+              ? const SizedBox.square(
+                  dimension: 18,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : const Icon(Icons.check),
+          label: Text(widget.actionLabel),
+        ),
+      ],
+    );
+  }
+}
+
+Future<LabelDeleteResult?> _showLabelDeleteDialog({
+  required BuildContext context,
+  required LabelOption label,
+  required int transactionCount,
+  required Future<LabelDeleteResult> Function() onDelete,
+}) {
+  return showDialog<LabelDeleteResult>(
+    context: context,
+    builder: (dialogContext) {
+      var isDeleting = false;
+
+      return StatefulBuilder(
+        builder: (context, setDialogState) {
+          return AlertDialog(
+            title: const Text('Delete label'),
+            content: SizedBox(
+              width: 480,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Text(
+                    label.name,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context).textTheme.titleMedium,
+                  ),
+                  const SizedBox(height: 12),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: [
+                      _ImpactChip(
+                        icon: Icons.receipt_long_outlined,
+                        label: _countLabel(transactionCount, 'transaction'),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  const Text(
+                    'Deleting detaches this label from those transactions. Transactions stay intact.',
+                  ),
+                ],
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: isDeleting
+                    ? null
+                    : () => Navigator.of(dialogContext).pop(),
+                child: const Text('Cancel'),
+              ),
+              FilledButton.icon(
+                onPressed: isDeleting
+                    ? null
+                    : () async {
+                        setDialogState(() {
+                          isDeleting = true;
+                        });
+
+                        try {
+                          final result = await onDelete();
+                          if (dialogContext.mounted) {
+                            Navigator.of(dialogContext).pop(result);
+                          }
+                        } catch (error) {
                           setDialogState(() {
                             isDeleting = false;
                           });
@@ -1734,6 +2220,20 @@ String _usageLabel(CategoryUsageSummary usage) {
 
 String _countLabel(int count, String singular) {
   return count == 1 ? '1 $singular' : '$count ${singular}s';
+}
+
+String _labelUsageText(LabelUsageSummary usage) {
+  final countLabel = _countLabel(usage.transactionCount, 'transaction');
+  final recent = usage.recentUsedAt;
+  if (recent == null) return countLabel;
+
+  return '$countLabel - last used ${dateString(recent)}';
+}
+
+void _refreshLabelLookups(WidgetRef ref, String householdId) {
+  ref.invalidate(labelManagerSnapshotProvider(householdId));
+  ref.invalidate(transactionLabelsProvider(householdId));
+  ref.invalidate(transactionsProvider);
 }
 
 extension _SettingsFirstOrNull<T> on Iterable<T> {

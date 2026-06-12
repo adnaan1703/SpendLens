@@ -412,6 +412,42 @@ void main() {
   });
 
   testWidgets(
+    'transactions clear active label filter after selected label is deleted',
+    (tester) async {
+      final repository = _FakeFinanceRepository();
+      final router = _financeTestRouter(
+        initialLocation: '/transactions?labelId=label-grocery',
+      );
+      addTearDown(router.dispose);
+
+      await tester.pumpWidget(
+        _financeRouterTestApp(repository: repository, router: router),
+      );
+      await tester.pumpAndSettle();
+
+      expect(repository.lastQuery?.labelId, 'label-grocery');
+      expect(find.text('Swiggy Instamart'), findsWidgets);
+
+      await repository.deleteHouseholdLabel(
+        const LabelDeleteRequest(
+          householdId: 'household-1',
+          labelId: 'label-grocery',
+        ),
+      );
+      await tester.pumpWidget(const SizedBox());
+      await tester.pump();
+      await tester.pumpWidget(
+        _financeRouterTestApp(repository: repository, router: router),
+      );
+      await tester.pumpAndSettle();
+
+      expect(repository.lastQuery?.labelId, isNull);
+      expect(find.text('Amazon Shopping'), findsOneWidget);
+      expect(find.text('CRED Club'), findsOneWidget);
+    },
+  );
+
+  testWidgets(
     'transaction detail opens label editor and saves existing label',
     (tester) async {
       final repository = _FakeFinanceRepository();
@@ -949,6 +985,102 @@ void main() {
     expect(find.text('Travel'), findsWidgets);
     expect(find.text('Flights'), findsOneWidget);
     expect(find.text('Created Travel'), findsOneWidget);
+  });
+
+  testWidgets('settings creates, renames, and deletes labels with impact', (
+    tester,
+  ) async {
+    final repository = _FakeFinanceRepository();
+
+    await tester.pumpWidget(
+      _financeTestApp(repository: repository, child: const SettingsScreen()),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.ensureVisible(find.text('Labels'));
+    expect(find.text('Groceries'), findsWidgets);
+    expect(find.text('1 transaction - last used 2026-03-12'), findsOneWidget);
+
+    await tester.tap(find.widgetWithText(FilledButton, 'Create').last);
+    await tester.pumpAndSettle();
+    await tester.enterText(
+      find.byKey(const ValueKey('label-name-field')),
+      'Office',
+    );
+    await tester.tap(find.widgetWithText(FilledButton, 'Create').last);
+    await tester.pumpAndSettle();
+
+    expect(repository.labelCreateRequests, hasLength(1));
+    expect(repository.labelCreateRequests.single.name, 'Office');
+    expect(find.text('Office'), findsOneWidget);
+    expect(find.text('Created Office'), findsOneWidget);
+
+    await tester.tap(find.byTooltip('Rename label').at(1));
+    await tester.pumpAndSettle();
+    await tester.enterText(
+      find.byKey(const ValueKey('label-name-field')),
+      'Work reimburse',
+    );
+    await tester.tap(find.widgetWithText(FilledButton, 'Save'));
+    await tester.pumpAndSettle();
+
+    expect(repository.labelRenameRequests, hasLength(1));
+    expect(repository.labelRenameRequests.single.name, 'Work reimburse');
+    expect(find.text('Work reimburse'), findsOneWidget);
+
+    await tester.tap(find.byTooltip('Delete label').first);
+    await tester.pumpAndSettle();
+
+    expect(find.text('Delete label'), findsOneWidget);
+    expect(find.text('Groceries'), findsWidgets);
+    expect(find.text('1 transaction'), findsOneWidget);
+    expect(find.textContaining('Transactions stay intact'), findsOneWidget);
+
+    await tester.tap(find.widgetWithText(FilledButton, 'Delete'));
+    await tester.pumpAndSettle();
+
+    expect(repository.labelDeleteRequests, hasLength(1));
+    expect(repository.labelDeleteRequests.single.labelId, 'label-grocery');
+    expect(repository.transactions, hasLength(3));
+    expect(
+      repository.transactions
+          .singleWhere((transaction) => transaction.id == 'txn-1')
+          .labels,
+      isEmpty,
+    );
+    expect(
+      repository.transactions
+          .singleWhere((transaction) => transaction.id == 'txn-1')
+          .categoryId,
+      'cat-food',
+    );
+  });
+
+  testWidgets('settings label manager fits long names in a narrow viewport', (
+    tester,
+  ) async {
+    final repository = _FakeFinanceRepository()
+      ..labels.add(
+        const LabelOption(
+          id: 'label-long',
+          name: 'Quarterly reimbursement and family settlement planning',
+        ),
+      );
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(() {
+      tester.view.resetPhysicalSize();
+      tester.view.resetDevicePixelRatio();
+    });
+
+    await tester.pumpWidget(
+      _financeTestApp(repository: repository, child: const SettingsScreen()),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.ensureVisible(find.text('Labels'));
+    expect(find.text('Labels'), findsOneWidget);
+    expect(tester.takeException(), isNull);
   });
 
   testWidgets('settings category manager shows usage preview', (tester) async {
@@ -1515,6 +1647,7 @@ final class _FakeFinanceRepository implements FinanceRepository {
   final deletedSubcategoryRequests = <TaxonomySubcategoryDeleteRequest>[];
   final deletedCategoryRequests = <TaxonomyCategoryDeleteRequest>[];
   final mergeRequests = <CategoryMergeRequest>[];
+  final labelCreateRequests = <LabelCreateRequest>[];
   final labelSetRequests = <TransactionLabelsSetRequest>[];
   final labelRenameRequests = <LabelRenameRequest>[];
   final labelDeleteRequests = <LabelDeleteRequest>[];
@@ -1889,6 +2022,27 @@ final class _FakeFinanceRepository implements FinanceRepository {
           ),
       ]..sort((a, b) => _compareTestLabels(a.label, b.label)),
     );
+  }
+
+  @override
+  Future<LabelOption> createHouseholdLabel(LabelCreateRequest request) async {
+    labelCreateRequests.add(request);
+    final name = request.name.trim();
+    if (name.isEmpty) {
+      throw ArgumentError.value(
+        request.name,
+        'name',
+        'Label name is required.',
+      );
+    }
+    if (labels.any((label) => label.name.toLowerCase() == name.toLowerCase())) {
+      throw StateError('Label already exists.');
+    }
+
+    final label = LabelOption(id: 'label-${labels.length + 1}', name: name);
+    labels.add(label);
+    labels.sort(_compareTestLabels);
+    return label;
   }
 
   @override

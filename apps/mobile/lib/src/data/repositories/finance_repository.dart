@@ -951,6 +951,13 @@ final class LabelManagerSnapshot {
   }
 }
 
+final class LabelCreateRequest {
+  const LabelCreateRequest({required this.householdId, required this.name});
+
+  final String householdId;
+  final String name;
+}
+
 final class CategoryCreationRequest {
   const CategoryCreationRequest({
     required this.householdId,
@@ -2071,6 +2078,8 @@ abstract interface class FinanceRepository {
     required String householdId,
   });
 
+  Future<LabelOption> createHouseholdLabel(LabelCreateRequest request);
+
   Future<CategoryUsagePreview> fetchCategoryUsagePreview(
     CategoryUsagePreviewRequest request,
   );
@@ -2331,6 +2340,26 @@ final class SupabaseFinanceRepository implements FinanceRepository {
     return LabelManagerSnapshot(
       labels: rows.map(LabelUsageSummary.fromJson).toList(growable: false),
     );
+  }
+
+  @override
+  Future<LabelOption> createHouseholdLabel(LabelCreateRequest request) async {
+    final name = request.name.trim();
+    if (name.isEmpty) {
+      throw ArgumentError.value(
+        request.name,
+        'name',
+        'Label name is required.',
+      );
+    }
+
+    final row = await _client
+        .from('labels')
+        .insert({'household_id': request.householdId, 'name': name})
+        .select('id, name')
+        .single();
+
+    return LabelOption.fromJson(row);
   }
 
   @override
@@ -3300,6 +3329,11 @@ final class DisabledFinanceRepository implements FinanceRepository {
   Future<LabelManagerSnapshot> fetchLabelManagerSnapshot({
     required String householdId,
   }) {
+    throw const SupabaseNotConfiguredException();
+  }
+
+  @override
+  Future<LabelOption> createHouseholdLabel(LabelCreateRequest request) {
     throw const SupabaseNotConfiguredException();
   }
 

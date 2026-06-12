@@ -451,3 +451,43 @@ Completion summary requirements:
 - Assumptions made
 - Mocks created
 - Mocks used
+
+Completion notes:
+
+- Completed on 2026-06-12.
+- Settings now exposes a Labels manager with usage counts, refresh, create,
+  rename, and delete actions.
+- Settings label create accepts one trimmed label name and uses the existing
+  RLS-protected `labels` insert contract; duplicate/blank validation remains
+  enforced by the repository/database path.
+- Settings label rename preserves the label ID through `renameHouseholdLabel`
+  and refreshes label lookup, label-manager, and transaction-query providers.
+- Settings label delete shows attached transaction count before deletion,
+  detaches that label from all transactions through `deleteHouseholdLabel`, and
+  refreshes label lookup, label-manager, and transaction-query providers.
+- Transactions clears an active label filter after label lookup refresh if the
+  selected label no longer exists.
+- Focused widget tests cover Settings create/rename/delete with impact
+  confirmation, used-label detach while preserving transaction classification,
+  active deleted-label filter clearing, and narrow-viewport long-label layout.
+- Verification run:
+  - `cd apps/mobile && dart format lib/src/data/repositories/finance_repository.dart lib/src/features/settings/settings_screen.dart lib/src/features/transactions/transactions_screen.dart test/finance_features_test.dart`
+  - `cd apps/mobile && flutter analyze`
+  - `cd apps/mobile && flutter test test/finance_features_test.dart`
+  - `cd apps/mobile && flutter test`
+  - `cd apps/mobile && flutter build apk --debug --no-pub`
+  - `git diff --check`
+- Assumptions made:
+  - M28 could use the existing authenticated `labels` insert RLS contract for
+    Settings-created unattached labels instead of adding a new Supabase RPC.
+  - Deleting the active label filter should clear the stale filter after label
+    lookup refresh instead of leaving an empty/stale selected-label state.
+- Mocks created:
+  - None.
+- Mocks used:
+  - Existing fake finance repository/widget-test data, extended for Settings
+    label create, rename, delete, detach, and active-filter regression coverage.
+- Deferred by scope:
+  - Label colors/icons, label reports, dashboard/trend label summaries, bulk
+    labeling, AI label suggestions, automatic workbook/Gmail labels, Supabase
+    schema/RPC changes, and M18-M21 push notifications.

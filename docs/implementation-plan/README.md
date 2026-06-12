@@ -58,8 +58,10 @@ This is not a "no backend" architecture. It is a backend without a permanently r
   deletion requeues affected transactions for Review; category merge requires
   explicit subcategory mapping.
 - Transaction labels: household-shared reusable labels attach only to selected
-  transaction rows; label changes do not alter merchant mapping, categories,
-  review state, budgets, summaries, or future imports.
+  transaction rows; Settings manages the shared label vocabulary with usage
+  counts and delete-with-detach confirmation. Label changes do not alter
+  merchant mapping, categories, review state, budgets, summaries, or future
+  imports.
 - Email retention: store minimal parsed data only; do not retain raw email bodies by default.
 - AI: backend-mediated Gemini expense Q&A and transaction metadata suggestions; dev/staging use free-tier-only mode with Suggest search disabled by default.
 - Android push notifications: Firebase Cloud Messaging delivery, Supabase

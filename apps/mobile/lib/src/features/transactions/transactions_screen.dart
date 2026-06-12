@@ -134,6 +134,19 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
     final labels = householdId == null
         ? const AsyncValue<List<LabelOption>>.loading()
         : ref.watch(transactionLabelsProvider(householdId));
+    final labelOptions = labels.value ?? const [];
+    if (_labelId != null &&
+        labels.hasValue &&
+        !labelOptions.any((label) => label.id == _labelId)) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted || _labelId == null) return;
+
+        setState(() {
+          _labelId = null;
+          _page = 0;
+        });
+      });
+    }
     final availableMonths = householdId == null
         ? const AsyncValue<List<DateTime>>.loading()
         : ref.watch(availableMonthsProvider(householdId));
@@ -165,7 +178,7 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
             searchText: _searchText,
             categories: categories.value ?? const [],
             selectedCategoryId: _categoryId,
-            labels: labels.value ?? const [],
+            labels: labelOptions,
             selectedLabelId: _labelId,
             sourceAccounts: sourceAccounts.value ?? const [],
             selectedSourceAccountType: _sourceAccountType,

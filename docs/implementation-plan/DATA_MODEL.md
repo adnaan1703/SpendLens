@@ -409,6 +409,8 @@ Rules:
 - Names are trimmed and nonblank.
 - Names are case-insensitively unique within a household.
 - Labels are household-shared, not per-profile private.
+- Household writers can create labels from Settings or while editing one
+  transaction; Settings-created labels can remain unattached until used.
 - Renaming a label preserves its ID and updates visible label text wherever that
   label is attached.
 
@@ -436,7 +438,8 @@ Rules:
   `merchant_mapping_rules`, Review rows, category caps, source metadata, money
   fields, or future import behavior.
 - Deleting a label detaches it from all transactions and preserves every
-  transaction row.
+  transaction row. If a deleted label was the active Transactions filter, the
+  app clears that stale filter after label lookup refresh.
 
 ### `transaction_sources`
 
