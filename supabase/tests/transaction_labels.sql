@@ -3,7 +3,7 @@ begin;
 create extension if not exists pgtap with schema extensions;
 set search_path = public, extensions;
 
-select plan(23);
+select plan(25);
 
 insert into auth.users (id)
 values
@@ -299,6 +299,34 @@ select is(
   'label usage view reports attached transaction counts'
 );
 
+insert into public.monthly_caps (
+  id,
+  household_id,
+  name,
+  period_month,
+  cap_amount,
+  created_by
+)
+values (
+  '87000000-0000-0000-0000-000000000001',
+  '36000000-0000-0000-0000-000000000001',
+  'Travel cap',
+  '2026-04-01',
+  5000.00,
+  '26000000-0000-0000-0000-000000000001'
+);
+
+insert into public.monthly_cap_labels (
+  household_id,
+  monthly_cap_id,
+  label_id
+)
+values (
+  '36000000-0000-0000-0000-000000000001',
+  '87000000-0000-0000-0000-000000000001',
+  (select travel_id from label_ids)
+);
+
 create temporary table delete_result as
 select *
 from public.delete_household_label(
@@ -321,6 +349,27 @@ select is(
   ),
   0,
   'delete_household_label detaches assignments'
+);
+
+select is(
+  (
+    select count(*)::integer
+    from public.monthly_cap_labels
+    where household_id = '36000000-0000-0000-0000-000000000001'
+      and label_id = (select travel_id from label_ids)
+  ),
+  0,
+  'delete_household_label removes monthly cap label targets'
+);
+
+select is(
+  (
+    select count(*)::integer
+    from public.monthly_caps
+    where id = '87000000-0000-0000-0000-000000000001'
+  ),
+  0,
+  'delete_household_label removes caps left with no targets'
 );
 
 select is(

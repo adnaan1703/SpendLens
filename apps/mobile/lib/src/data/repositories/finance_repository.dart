@@ -392,8 +392,9 @@ final class DashboardSnapshot {
     required this.monthlySpend,
     required this.previousMonthSpend,
     required this.reviewQueueCount,
-    required this.budgetProgress,
-    required this.uncappedCategories,
+    required this.monthlyCapProgress,
+    required this.categoryOptions,
+    required this.labelOptions,
     required this.topCategories,
     required this.topMerchants,
   });
@@ -403,12 +404,24 @@ final class DashboardSnapshot {
   final MonthlySpend monthlySpend;
   final MonthlySpend? previousMonthSpend;
   final int reviewQueueCount;
-  final List<BudgetProgress> budgetProgress;
-  final List<CategoryOption> uncappedCategories;
+  final List<MonthlyCapProgress> monthlyCapProgress;
+  final List<CategoryOption> categoryOptions;
+  final List<LabelOption> labelOptions;
   final List<CategorySpend> topCategories;
   final List<MerchantSpend> topMerchants;
 
-  int get cappedCategoryCount => budgetProgress.length;
+  int get cappedCategoryCount => monthlyCapProgress.length;
+
+  List<CategoryOption> get uncappedCategories {
+    final targetedCategoryIds = {
+      for (final cap in monthlyCapProgress)
+        for (final target in cap.categoryTargets) target.id,
+    };
+
+    return categoryOptions
+        .where((category) => !targetedCategoryIds.contains(category.id))
+        .toList(growable: false);
+  }
 
   double get monthOverMonthChange {
     return monthlySpend.netSpend - (previousMonthSpend?.netSpend ?? 0);
@@ -796,29 +809,66 @@ final class CategorySpend {
   }
 }
 
-final class BudgetProgress {
-  const BudgetProgress({
-    required this.categoryId,
-    required this.categoryName,
+final class MonthlyCapCategoryTarget {
+  const MonthlyCapCategoryTarget({required this.id, required this.name});
+
+  final String id;
+  final String name;
+}
+
+final class MonthlyCapLabelTarget {
+  const MonthlyCapLabelTarget({required this.id, required this.name});
+
+  final String id;
+  final String name;
+}
+
+final class MonthlyCapProgress {
+  const MonthlyCapProgress({
+    required this.monthlyCapId,
+    required this.householdId,
+    required this.name,
+    required this.periodMonth,
     required this.capAmount,
     required this.spentAmount,
     required this.remainingAmount,
     required this.percentUsed,
     required this.isOverBudget,
+    required this.matchedTransactionCount,
+    required this.categoryTargets,
+    required this.labelTargets,
   });
 
-  final String categoryId;
-  final String categoryName;
+  final String monthlyCapId;
+  final String householdId;
+  final String name;
+  final DateTime periodMonth;
   final double capAmount;
   final double spentAmount;
   final double remainingAmount;
   final double? percentUsed;
   final bool isOverBudget;
+  final int matchedTransactionCount;
+  final List<MonthlyCapCategoryTarget> categoryTargets;
+  final List<MonthlyCapLabelTarget> labelTargets;
 
-  factory BudgetProgress.fromJson(Map<String, dynamic> json) {
-    return BudgetProgress(
-      categoryId: json['category_id'] as String,
-      categoryName: json['category_name'] as String,
+  MonthlyCapCategoryTarget? get singleCategoryTarget {
+    if (categoryTargets.length != 1 || labelTargets.isNotEmpty) return null;
+
+    return categoryTargets.single;
+  }
+
+  factory MonthlyCapProgress.fromJson(Map<String, dynamic> json) {
+    final categoryIds = _asStringList(json['category_target_ids']);
+    final categoryNames = _asStringList(json['category_target_names']);
+    final labelIds = _asStringList(json['label_target_ids']);
+    final labelNames = _asStringList(json['label_target_names']);
+
+    return MonthlyCapProgress(
+      monthlyCapId: json['monthly_cap_id'] as String,
+      householdId: json['household_id'] as String,
+      name: json['name'] as String,
+      periodMonth: _parseDate(json['period_month'] as String),
       capAmount: _asDouble(json['cap_amount']),
       spentAmount: _asDouble(json['spent_amount']),
       remainingAmount: _asDouble(json['remaining_amount']),
@@ -826,6 +876,21 @@ final class BudgetProgress {
           ? null
           : _asDouble(json['percent_used']),
       isOverBudget: json['is_over_budget'] as bool? ?? false,
+      matchedTransactionCount: _asInt(json['matched_transaction_count']),
+      categoryTargets: [
+        for (var index = 0; index < categoryIds.length; index += 1)
+          MonthlyCapCategoryTarget(
+            id: categoryIds[index],
+            name: index < categoryNames.length ? categoryNames[index] : '',
+          ),
+      ],
+      labelTargets: [
+        for (var index = 0; index < labelIds.length; index += 1)
+          MonthlyCapLabelTarget(
+            id: labelIds[index],
+            name: index < labelNames.length ? labelNames[index] : '',
+          ),
+      ],
     );
   }
 }
@@ -1471,6 +1536,102 @@ final class LabelDeleteResult {
     return LabelDeleteResult(
       labelId: json['label_id'] as String,
       detachedTransactionCount: _asInt(json['detached_transaction_count']),
+    );
+  }
+}
+
+final class MonthlyCapUpsertRequest {
+  const MonthlyCapUpsertRequest({
+    required this.householdId,
+    this.monthlyCapId,
+    required this.name,
+    required this.periodMonth,
+    required this.capAmount,
+    this.categoryIds = const [],
+    this.labelIds = const [],
+  });
+
+  final String householdId;
+  final String? monthlyCapId;
+  final String name;
+  final DateTime periodMonth;
+  final double capAmount;
+  final List<String> categoryIds;
+  final List<String> labelIds;
+}
+
+final class MonthlyCapUpsertResult {
+  const MonthlyCapUpsertResult({
+    required this.monthlyCapId,
+    required this.householdId,
+    required this.name,
+    required this.periodMonth,
+    required this.capAmount,
+    required this.categoryTargets,
+    required this.labelTargets,
+  });
+
+  final String monthlyCapId;
+  final String householdId;
+  final String name;
+  final DateTime periodMonth;
+  final double capAmount;
+  final List<MonthlyCapCategoryTarget> categoryTargets;
+  final List<MonthlyCapLabelTarget> labelTargets;
+
+  factory MonthlyCapUpsertResult.fromRows(List<dynamic> rows) {
+    if (rows.isEmpty) {
+      throw StateError('Monthly cap upsert did not return a result.');
+    }
+
+    final row = rows.first as Map<String, dynamic>;
+    final categoryIds = _asStringList(row['category_target_ids']);
+    final categoryNames = _asStringList(row['category_target_names']);
+    final labelIds = _asStringList(row['label_target_ids']);
+    final labelNames = _asStringList(row['label_target_names']);
+
+    return MonthlyCapUpsertResult(
+      monthlyCapId: row['monthly_cap_id'] as String,
+      householdId: row['household_id'] as String,
+      name: row['name'] as String,
+      periodMonth: _parseDate(row['period_month'] as String),
+      capAmount: _asDouble(row['cap_amount']),
+      categoryTargets: [
+        for (var index = 0; index < categoryIds.length; index += 1)
+          MonthlyCapCategoryTarget(
+            id: categoryIds[index],
+            name: index < categoryNames.length ? categoryNames[index] : '',
+          ),
+      ],
+      labelTargets: [
+        for (var index = 0; index < labelIds.length; index += 1)
+          MonthlyCapLabelTarget(
+            id: labelIds[index],
+            name: index < labelNames.length ? labelNames[index] : '',
+          ),
+      ],
+    );
+  }
+}
+
+final class MonthlyCapDeleteRequest {
+  const MonthlyCapDeleteRequest({
+    required this.householdId,
+    required this.monthlyCapId,
+  });
+
+  final String householdId;
+  final String monthlyCapId;
+}
+
+final class MonthlyCapDeleteResult {
+  const MonthlyCapDeleteResult({required this.monthlyCapId});
+
+  final String monthlyCapId;
+
+  factory MonthlyCapDeleteResult.fromJson(Map<String, dynamic> json) {
+    return MonthlyCapDeleteResult(
+      monthlyCapId: json['monthly_cap_id'] as String,
     );
   }
 }
@@ -2158,13 +2319,13 @@ abstract interface class FinanceRepository {
     TransactionMetadataSuggestionRequest request,
   );
 
-  Future<void> saveCategoryCap({
-    required String householdId,
-    required String profileId,
-    required String categoryId,
-    required DateTime periodMonth,
-    required double capAmount,
-  });
+  Future<MonthlyCapUpsertResult> upsertMonthlyCap(
+    MonthlyCapUpsertRequest request,
+  );
+
+  Future<MonthlyCapDeleteResult> deleteMonthlyCap(
+    MonthlyCapDeleteRequest request,
+  );
 }
 
 final class SupabaseFinanceRepository implements FinanceRepository {
@@ -2195,21 +2356,19 @@ final class SupabaseFinanceRepository implements FinanceRepository {
 
     final results = await Future.wait<Object>([
       _fetchCategorySpend(householdId: householdId, month: selectedMonth),
-      _fetchBudgetProgress(householdId: householdId, month: selectedMonth),
+      _fetchMonthlyCapProgress(householdId: householdId, month: selectedMonth),
       fetchCategories(householdId: householdId),
+      fetchLabels(householdId: householdId),
       _fetchTopMerchants(householdId: householdId, month: selectedMonth),
       _fetchOpenReviewCount(householdId: householdId),
     ]);
 
     final topCategories = results[0] as List<CategorySpend>;
-    final budgetProgress = results[1] as List<BudgetProgress>;
+    final monthlyCapProgress = results[1] as List<MonthlyCapProgress>;
     final categories = results[2] as List<CategoryOption>;
-    final topMerchants = results[3] as List<MerchantSpend>;
-    final reviewQueueCount = results[4] as int;
-    final cappedIds = budgetProgress.map((row) => row.categoryId).toSet();
-    final uncappedCategories = categories
-        .where((category) => !cappedIds.contains(category.id))
-        .toList();
+    final labels = results[3] as List<LabelOption>;
+    final topMerchants = results[4] as List<MerchantSpend>;
+    final reviewQueueCount = results[5] as int;
 
     return DashboardSnapshot(
       availableMonths: availableMonths,
@@ -2217,8 +2376,9 @@ final class SupabaseFinanceRepository implements FinanceRepository {
       monthlySpend: selectedSpend,
       previousMonthSpend: previousSpend,
       reviewQueueCount: reviewQueueCount,
-      budgetProgress: budgetProgress,
-      uncappedCategories: uncappedCategories,
+      monthlyCapProgress: monthlyCapProgress,
+      categoryOptions: categories,
+      labelOptions: labels,
       topCategories: topCategories,
       topMerchants: topMerchants,
     );
@@ -2300,7 +2460,7 @@ final class SupabaseFinanceRepository implements FinanceRepository {
           .eq('household_id', householdId)
           .eq('apply_to_future', true),
       _client
-          .from('category_caps')
+          .from('monthly_cap_categories')
           .select('category_id')
           .eq('household_id', householdId),
     ]);
@@ -2994,20 +3154,42 @@ final class SupabaseFinanceRepository implements FinanceRepository {
   }
 
   @override
-  Future<void> saveCategoryCap({
-    required String householdId,
-    required String profileId,
-    required String categoryId,
-    required DateTime periodMonth,
-    required double capAmount,
-  }) async {
-    await _client.from('category_caps').upsert({
-      'household_id': householdId,
-      'category_id': categoryId,
-      'period_month': dateString(firstDayOfMonth(periodMonth)),
-      'cap_amount': capAmount,
-      'created_by': profileId,
-    }, onConflict: 'household_id,category_id,period_month');
+  Future<MonthlyCapUpsertResult> upsertMonthlyCap(
+    MonthlyCapUpsertRequest request,
+  ) async {
+    final rows = await _client.rpc<List<dynamic>>(
+      'upsert_monthly_cap',
+      params: {
+        'p_household_id': request.householdId,
+        'p_monthly_cap_id': request.monthlyCapId,
+        'p_name': request.name,
+        'p_period_month': dateString(firstDayOfMonth(request.periodMonth)),
+        'p_cap_amount': request.capAmount,
+        'p_category_ids': request.categoryIds,
+        'p_label_ids': request.labelIds,
+      },
+    );
+
+    return MonthlyCapUpsertResult.fromRows(rows);
+  }
+
+  @override
+  Future<MonthlyCapDeleteResult> deleteMonthlyCap(
+    MonthlyCapDeleteRequest request,
+  ) async {
+    final rows = await _client.rpc<List<dynamic>>(
+      'delete_monthly_cap',
+      params: {
+        'p_household_id': request.householdId,
+        'p_monthly_cap_id': request.monthlyCapId,
+      },
+    );
+
+    if (rows.isEmpty) {
+      throw StateError('Monthly cap deletion did not return a result.');
+    }
+
+    return MonthlyCapDeleteResult.fromJson(rows.first as Map<String, dynamic>);
   }
 
   Future<List<MonthlySpend>> _fetchMonthlySpend({
@@ -3043,21 +3225,23 @@ final class SupabaseFinanceRepository implements FinanceRepository {
     return rows.map(CategorySpend.fromJson).toList(growable: false);
   }
 
-  Future<List<BudgetProgress>> _fetchBudgetProgress({
+  Future<List<MonthlyCapProgress>> _fetchMonthlyCapProgress({
     required String householdId,
     required DateTime month,
   }) async {
     final rows = await _client
-        .from('v_budget_progress')
+        .from('v_monthly_cap_progress')
         .select(
-          'category_id, category_name, cap_amount, spent_amount, '
-          'remaining_amount, percent_used, is_over_budget',
+          'monthly_cap_id, household_id, name, period_month, cap_amount, '
+          'spent_amount, remaining_amount, percent_used, is_over_budget, '
+          'matched_transaction_count, category_target_ids, '
+          'category_target_names, label_target_ids, label_target_names',
         )
         .eq('household_id', householdId)
         .eq('period_month', dateString(firstDayOfMonth(month)))
         .order('percent_used', ascending: false, nullsFirst: false);
 
-    return rows.map(BudgetProgress.fromJson).toList(growable: false);
+    return rows.map(MonthlyCapProgress.fromJson).toList(growable: false);
   }
 
   Future<List<MerchantSpend>> _fetchTopMerchants({
@@ -3493,13 +3677,16 @@ final class DisabledFinanceRepository implements FinanceRepository {
   }
 
   @override
-  Future<void> saveCategoryCap({
-    required String householdId,
-    required String profileId,
-    required String categoryId,
-    required DateTime periodMonth,
-    required double capAmount,
-  }) {
+  Future<MonthlyCapUpsertResult> upsertMonthlyCap(
+    MonthlyCapUpsertRequest request,
+  ) {
+    throw const SupabaseNotConfiguredException();
+  }
+
+  @override
+  Future<MonthlyCapDeleteResult> deleteMonthlyCap(
+    MonthlyCapDeleteRequest request,
+  ) {
     throw const SupabaseNotConfiguredException();
   }
 }
@@ -3791,6 +3978,15 @@ int _asInt(Object? value) {
     String() => int.parse(value),
     _ => throw FormatException('Expected integer value, got $value'),
   };
+}
+
+List<String> _asStringList(Object? value) {
+  if (value == null) return const [];
+  if (value is List) {
+    return value.map((item) => item.toString()).toList(growable: false);
+  }
+
+  throw FormatException('Expected list value, got $value');
 }
 
 String? _monthKey(DateTime? date) {

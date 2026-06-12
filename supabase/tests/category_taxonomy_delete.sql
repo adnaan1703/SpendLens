@@ -3,7 +3,7 @@ begin;
 create extension if not exists pgtap with schema extensions;
 set search_path = public, extensions;
 
-select plan(24);
+select plan(25);
 
 insert into auth.users (id)
 values
@@ -156,10 +156,10 @@ values
     'Confirmed marketplace'
   );
 
-insert into public.category_caps (
+insert into public.monthly_caps (
   id,
   household_id,
-  category_id,
+  name,
   period_month,
   cap_amount,
   created_by
@@ -167,10 +167,21 @@ insert into public.category_caps (
 values (
   '86000000-0000-0000-0000-000000000001',
   '36000000-0000-0000-0000-000000000001',
-  '56000000-0000-0000-0000-000000000002',
+  'Shopping',
   '2026-03-01',
   50000.00,
   '26000000-0000-0000-0000-000000000001'
+);
+
+insert into public.monthly_cap_categories (
+  household_id,
+  monthly_cap_id,
+  category_id
+)
+values (
+  '36000000-0000-0000-0000-000000000001',
+  '86000000-0000-0000-0000-000000000001',
+  '56000000-0000-0000-0000-000000000002'
 );
 
 insert into public.transactions (
@@ -374,7 +385,7 @@ from public.delete_household_category(
 select is((select affected_transaction_count from deleted_category), 1, 'category delete reports affected transactions');
 select is((select opened_review_item_count from deleted_category), 1, 'category delete opens review items');
 select is((select deactivated_mapping_rule_count from deleted_category), 1, 'category delete deactivates active mapping rules');
-select is((select deleted_cap_count from deleted_category), 1, 'category delete removes category caps');
+select is((select deleted_cap_count from deleted_category), 1, 'category delete removes caps left without targets');
 
 select is(
   (
@@ -451,11 +462,21 @@ select is(
 select is(
   (
     select count(*)::integer
-    from public.category_caps
+    from public.monthly_cap_categories
     where category_id = '56000000-0000-0000-0000-000000000002'
   ),
   0,
-  'category caps are removed for the deleted category'
+  'category delete removes monthly cap category targets'
+);
+
+select is(
+  (
+    select count(*)::integer
+    from public.monthly_caps
+    where id = '86000000-0000-0000-0000-000000000001'
+  ),
+  0,
+  'category delete removes caps left with no targets'
 );
 
 select is(

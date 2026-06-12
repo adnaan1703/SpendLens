@@ -197,9 +197,13 @@ void main() {
     await tester.tap(find.text('Save'));
     await tester.pumpAndSettle();
 
-    expect(repository.savedCaps, hasLength(1));
-    expect(repository.savedCaps.single.categoryId, 'cat-fuel');
-    expect(repository.savedCaps.single.capAmount, 5000);
+    expect(repository.monthlyCapUpsertRequests, hasLength(1));
+    expect(repository.monthlyCapUpsertRequests.single.name, 'Fuel');
+    expect(repository.monthlyCapUpsertRequests.single.categoryIds, [
+      'cat-fuel',
+    ]);
+    expect(repository.monthlyCapUpsertRequests.single.labelIds, isEmpty);
+    expect(repository.monthlyCapUpsertRequests.single.capAmount, 5000);
   });
 
   testWidgets('dashboard top category drills into monthly transactions', (
@@ -1632,15 +1636,9 @@ const _householdContext = HouseholdContext(
   memberRole: 'owner',
 );
 
-final class _SavedCap {
-  const _SavedCap({required this.categoryId, required this.capAmount});
-
-  final String categoryId;
-  final double capAmount;
-}
-
 final class _FakeFinanceRepository implements FinanceRepository {
-  final savedCaps = <_SavedCap>[];
+  final monthlyCapUpsertRequests = <MonthlyCapUpsertRequest>[];
+  final monthlyCapDeleteRequests = <MonthlyCapDeleteRequest>[];
   final corrections = <TransactionMetadataCorrectionRequest>[];
   final createdCategoryRequests = <CategoryCreationRequest>[];
   final taxonomyUpdates = <CategoryTaxonomyUpdateRequest>[];
@@ -1713,13 +1711,44 @@ final class _FakeFinanceRepository implements FinanceRepository {
     {'category_id': 'cat-shopping', 'subcategory_id': 'sub-marketplace'},
   ];
 
-  final categoryCaps = <Map<String, dynamic>>[
-    {'category_id': 'cat-shopping'},
-  ];
-
   final labels = <LabelOption>[
     LabelOption(id: 'label-grocery', name: 'Groceries'),
     LabelOption(id: 'label-reimburse', name: 'Reimburse'),
+  ];
+
+  final monthlyCapProgress = <MonthlyCapProgress>[
+    MonthlyCapProgress(
+      monthlyCapId: 'cap-food',
+      householdId: 'household-1',
+      name: 'Food',
+      periodMonth: DateTime(2026, 3),
+      capAmount: 50000,
+      spentAmount: 42000,
+      remainingAmount: 8000,
+      percentUsed: 0.84,
+      isOverBudget: false,
+      matchedTransactionCount: 8,
+      categoryTargets: const [
+        MonthlyCapCategoryTarget(id: 'cat-food', name: 'Food'),
+      ],
+      labelTargets: const [],
+    ),
+    MonthlyCapProgress(
+      monthlyCapId: 'cap-shopping',
+      householdId: 'household-1',
+      name: 'Shopping',
+      periodMonth: DateTime(2026, 3),
+      capAmount: 100000,
+      spentAmount: 112937,
+      remainingAmount: -12937,
+      percentUsed: 1.1294,
+      isOverBudget: true,
+      matchedTransactionCount: 1,
+      categoryTargets: const [
+        MonthlyCapCategoryTarget(id: 'cat-shopping', name: 'Shopping'),
+      ],
+      labelTargets: const [],
+    ),
   ];
 
   final transactions = [
@@ -1898,18 +1927,9 @@ final class _FakeFinanceRepository implements FinanceRepository {
         billPayments: 8000,
       ),
       reviewQueueCount: 3,
-      budgetProgress: const [
-        BudgetProgress(
-          categoryId: 'cat-food',
-          categoryName: 'Food',
-          capAmount: 50000,
-          spentAmount: 42000,
-          remainingAmount: 8000,
-          percentUsed: 0.84,
-          isOverBudget: false,
-        ),
-      ],
-      uncappedCategories: const [CategoryOption(id: 'cat-fuel', name: 'Fuel')],
+      monthlyCapProgress: monthlyCapProgress,
+      categoryOptions: categories,
+      labelOptions: labels,
       topCategories: const [
         CategorySpend(
           categoryId: 'cat-food',
@@ -1993,7 +2013,10 @@ final class _FakeFinanceRepository implements FinanceRepository {
             },
       ],
       activeMappingRuleRows: activeMappingRules,
-      capRows: categoryCaps,
+      capRows: [
+        for (final cap in monthlyCapProgress)
+          for (final target in cap.categoryTargets) {'category_id': target.id},
+      ],
     );
   }
 
@@ -2197,8 +2220,12 @@ final class _FakeFinanceRepository implements FinanceRepository {
     final affectedRules = activeMappingRules
         .where((rule) => rule['category_id'] == request.categoryId)
         .length;
-    final affectedCaps = categoryCaps
-        .where((cap) => cap['category_id'] == request.categoryId)
+    final affectedCaps = monthlyCapProgress
+        .where(
+          (cap) => cap.categoryTargets.any(
+            (target) => target.id == request.categoryId,
+          ),
+        )
         .length;
 
     categories.removeWhere((category) => category.id == request.categoryId);
@@ -2208,7 +2235,25 @@ final class _FakeFinanceRepository implements FinanceRepository {
     activeMappingRules.removeWhere(
       (rule) => rule['category_id'] == request.categoryId,
     );
-    categoryCaps.removeWhere((cap) => cap['category_id'] == request.categoryId);
+    for (var index = 0; index < monthlyCapProgress.length; index += 1) {
+      final cap = monthlyCapProgress[index];
+      if (!cap.categoryTargets.any(
+        (target) => target.id == request.categoryId,
+      )) {
+        continue;
+      }
+
+      monthlyCapProgress[index] = _copyMonthlyCapProgress(
+        cap,
+        categoryTargets: [
+          for (final target in cap.categoryTargets)
+            if (target.id != request.categoryId) target,
+        ],
+      );
+    }
+    monthlyCapProgress.removeWhere(
+      (cap) => cap.categoryTargets.isEmpty && cap.labelTargets.isEmpty,
+    );
     for (var index = 0; index < transactions.length; index += 1) {
       final transaction = transactions[index];
       if (transaction.categoryId != request.categoryId) continue;
@@ -2309,12 +2354,30 @@ final class _FakeFinanceRepository implements FinanceRepository {
       rule['subcategory_id'] = mappedSubcategory?.id;
     }
 
-    final affectedCaps = categoryCaps
-        .where((cap) => request.sourceCategoryIds.contains(cap['category_id']))
-        .length;
-    categoryCaps.removeWhere(
-      (cap) => request.sourceCategoryIds.contains(cap['category_id']),
-    );
+    var affectedCaps = 0;
+    for (var index = 0; index < monthlyCapProgress.length; index += 1) {
+      final cap = monthlyCapProgress[index];
+      final hasSourceTarget = cap.categoryTargets.any(
+        (target) => request.sourceCategoryIds.contains(target.id),
+      );
+      if (!hasSourceTarget) continue;
+
+      affectedCaps += cap.categoryTargets
+          .where((target) => request.sourceCategoryIds.contains(target.id))
+          .length;
+      final targetsById = <String, MonthlyCapCategoryTarget>{
+        for (final target in cap.categoryTargets)
+          if (!request.sourceCategoryIds.contains(target.id)) target.id: target,
+        request.destinationCategoryId: MonthlyCapCategoryTarget(
+          id: request.destinationCategoryId,
+          name: destinationCategory.name,
+        ),
+      };
+      monthlyCapProgress[index] = _copyMonthlyCapProgress(
+        cap,
+        categoryTargets: targetsById.values.toList(growable: false),
+      );
+    }
 
     final deletedSubcategoryCount = subcategories
         .where(
@@ -2651,6 +2714,23 @@ final class _FakeFinanceRepository implements FinanceRepository {
     labelDeleteRequests.add(request);
     var detachedCount = 0;
     labels.removeWhere((label) => label.id == request.labelId);
+    for (var index = 0; index < monthlyCapProgress.length; index += 1) {
+      final cap = monthlyCapProgress[index];
+      if (!cap.labelTargets.any((label) => label.id == request.labelId)) {
+        continue;
+      }
+
+      monthlyCapProgress[index] = _copyMonthlyCapProgress(
+        cap,
+        labelTargets: [
+          for (final label in cap.labelTargets)
+            if (label.id != request.labelId) label,
+        ],
+      );
+    }
+    monthlyCapProgress.removeWhere(
+      (cap) => cap.categoryTargets.isEmpty && cap.labelTargets.isEmpty,
+    );
 
     for (var index = 0; index < transactions.length; index += 1) {
       final transaction = transactions[index];
@@ -2749,14 +2829,73 @@ final class _FakeFinanceRepository implements FinanceRepository {
   }
 
   @override
-  Future<void> saveCategoryCap({
-    required String householdId,
-    required String profileId,
-    required String categoryId,
-    required DateTime periodMonth,
-    required double capAmount,
-  }) async {
-    savedCaps.add(_SavedCap(categoryId: categoryId, capAmount: capAmount));
+  Future<MonthlyCapUpsertResult> upsertMonthlyCap(
+    MonthlyCapUpsertRequest request,
+  ) async {
+    monthlyCapUpsertRequests.add(request);
+    final categoryTargets = [
+      for (final categoryId in request.categoryIds)
+        MonthlyCapCategoryTarget(
+          id: categoryId,
+          name: categories
+              .where((category) => category.id == categoryId)
+              .first
+              .name,
+        ),
+    ];
+    final labelTargets = [
+      for (final labelId in request.labelIds)
+        MonthlyCapLabelTarget(
+          id: labelId,
+          name: labels.where((label) => label.id == labelId).first.name,
+        ),
+    ];
+    final monthlyCapId =
+        request.monthlyCapId ??
+        'cap-created-${monthlyCapUpsertRequests.length}';
+    final progress = MonthlyCapProgress(
+      monthlyCapId: monthlyCapId,
+      householdId: request.householdId,
+      name: request.name.trim(),
+      periodMonth: firstDayOfMonth(request.periodMonth),
+      capAmount: request.capAmount,
+      spentAmount: 0,
+      remainingAmount: request.capAmount,
+      percentUsed: request.capAmount == 0 ? null : 0,
+      isOverBudget: false,
+      matchedTransactionCount: 0,
+      categoryTargets: categoryTargets,
+      labelTargets: labelTargets,
+    );
+    final index = monthlyCapProgress.indexWhere(
+      (cap) => cap.monthlyCapId == monthlyCapId,
+    );
+    if (index == -1) {
+      monthlyCapProgress.add(progress);
+    } else {
+      monthlyCapProgress[index] = progress;
+    }
+
+    return MonthlyCapUpsertResult(
+      monthlyCapId: monthlyCapId,
+      householdId: request.householdId,
+      name: request.name.trim(),
+      periodMonth: firstDayOfMonth(request.periodMonth),
+      capAmount: request.capAmount,
+      categoryTargets: categoryTargets,
+      labelTargets: labelTargets,
+    );
+  }
+
+  @override
+  Future<MonthlyCapDeleteResult> deleteMonthlyCap(
+    MonthlyCapDeleteRequest request,
+  ) async {
+    monthlyCapDeleteRequests.add(request);
+    monthlyCapProgress.removeWhere(
+      (cap) => cap.monthlyCapId == request.monthlyCapId,
+    );
+    return MonthlyCapDeleteResult(monthlyCapId: request.monthlyCapId);
   }
 
   PiggyBankSummary _summaryWithCurrentBalance(PiggyBankSummary piggyBank) {
@@ -2845,6 +2984,27 @@ FinanceTransaction _copyTransaction(
     cardholderName: transaction.cardholderName,
     notes: transaction.notes,
     labels: labels ?? transaction.labels,
+  );
+}
+
+MonthlyCapProgress _copyMonthlyCapProgress(
+  MonthlyCapProgress cap, {
+  List<MonthlyCapCategoryTarget>? categoryTargets,
+  List<MonthlyCapLabelTarget>? labelTargets,
+}) {
+  return MonthlyCapProgress(
+    monthlyCapId: cap.monthlyCapId,
+    householdId: cap.householdId,
+    name: cap.name,
+    periodMonth: cap.periodMonth,
+    capAmount: cap.capAmount,
+    spentAmount: cap.spentAmount,
+    remainingAmount: cap.remainingAmount,
+    percentUsed: cap.percentUsed,
+    isOverBudget: cap.isOverBudget,
+    matchedTransactionCount: cap.matchedTransactionCount,
+    categoryTargets: categoryTargets ?? cap.categoryTargets,
+    labelTargets: labelTargets ?? cap.labelTargets,
   );
 }
 

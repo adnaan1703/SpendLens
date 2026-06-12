@@ -61,13 +61,13 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
           isSupabaseReady: bootstrap.isSupabaseReady,
           onEditCap: householdContext == null
               ? null
-              : (category, existingAmount) {
+              : (category, existingCap) {
                   _showCapDialog(
                     context: context,
                     householdContext: householdContext,
                     snapshot: value,
                     category: category,
-                    existingAmount: existingAmount,
+                    existingCap: existingCap,
                   );
                 },
           onOpenCategory: (category) {
@@ -106,11 +106,11 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     required HouseholdContext householdContext,
     required DashboardSnapshot snapshot,
     required CategoryOption category,
-    required double? existingAmount,
+    required MonthlyCapProgress? existingCap,
   }) async {
-    var amountText = existingAmount == null
+    var amountText = existingCap == null
         ? ''
-        : existingAmount.round().toString();
+        : existingCap.capAmount.round().toString();
 
     final amount = await showDialog<double>(
       context: context,
@@ -156,12 +156,15 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
 
     await ref
         .read(financeRepositoryProvider)
-        .saveCategoryCap(
-          householdId: householdContext.household.id,
-          profileId: householdContext.profile.id,
-          categoryId: category.id,
-          periodMonth: snapshot.selectedMonth,
-          capAmount: amount,
+        .upsertMonthlyCap(
+          MonthlyCapUpsertRequest(
+            householdId: householdContext.household.id,
+            monthlyCapId: existingCap?.monthlyCapId,
+            name: category.name,
+            periodMonth: snapshot.selectedMonth,
+            capAmount: amount,
+            categoryIds: [category.id],
+          ),
         );
 
     if (mounted) {
@@ -225,7 +228,7 @@ class _DashboardContent extends StatelessWidget {
   final DashboardSnapshot snapshot;
   final String backendLabel;
   final bool isSupabaseReady;
-  final void Function(CategoryOption category, double? existingAmount)?
+  final void Function(CategoryOption category, MonthlyCapProgress? existingCap)?
   onEditCap;
   final ValueChanged<CategorySpend> onOpenCategory;
   final ValueChanged<MerchantSpend> onOpenMerchant;
@@ -336,7 +339,7 @@ class _BudgetSection extends StatelessWidget {
   const _BudgetSection({required this.snapshot, required this.onEditCap});
 
   final DashboardSnapshot snapshot;
-  final void Function(CategoryOption category, double? existingAmount)?
+  final void Function(CategoryOption category, MonthlyCapProgress? existingCap)?
   onEditCap;
 
   @override
@@ -348,7 +351,7 @@ class _BudgetSection extends StatelessWidget {
       children: [
         Text('Monthly caps', style: theme.textTheme.titleLarge),
         const SizedBox(height: 12),
-        if (snapshot.budgetProgress.isEmpty)
+        if (snapshot.monthlyCapProgress.isEmpty)
           const EmptyState(
             icon: Icons.speed_outlined,
             title: 'No caps set',
@@ -357,20 +360,23 @@ class _BudgetSection extends StatelessWidget {
         else
           Column(
             children: [
-              for (final budget in snapshot.budgetProgress)
+              for (final cap in snapshot.monthlyCapProgress)
                 Padding(
                   padding: const EdgeInsets.only(bottom: 8),
-                  child: _BudgetProgressRow(
-                    budget: budget,
+                  child: _MonthlyCapProgressRow(
+                    cap: cap,
                     onEdit: onEditCap == null
                         ? null
                         : () {
+                            final categoryTarget = cap.singleCategoryTarget;
+                            if (categoryTarget == null) return;
+
                             onEditCap!(
                               CategoryOption(
-                                id: budget.categoryId,
-                                name: budget.categoryName,
+                                id: categoryTarget.id,
+                                name: categoryTarget.name,
                               ),
-                              budget.capAmount,
+                              cap,
                             );
                           },
                   ),
@@ -399,19 +405,20 @@ class _BudgetSection extends StatelessWidget {
   }
 }
 
-class _BudgetProgressRow extends StatelessWidget {
-  const _BudgetProgressRow({required this.budget, required this.onEdit});
+class _MonthlyCapProgressRow extends StatelessWidget {
+  const _MonthlyCapProgressRow({required this.cap, required this.onEdit});
 
-  final BudgetProgress budget;
+  final MonthlyCapProgress cap;
   final VoidCallback? onEdit;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final progress = (budget.percentUsed ?? 0).clamp(0, 1).toDouble();
-    final color = budget.isOverBudget
+    final progress = (cap.percentUsed ?? 0).clamp(0, 1).toDouble();
+    final color = cap.isOverBudget
         ? theme.colorScheme.error
         : theme.colorScheme.primary;
+    final categoryTarget = cap.singleCategoryTarget;
 
     return Card(
       child: Padding(
@@ -422,14 +429,11 @@ class _BudgetProgressRow extends StatelessWidget {
             Row(
               children: [
                 Expanded(
-                  child: Text(
-                    budget.categoryName,
-                    style: theme.textTheme.titleMedium,
-                  ),
+                  child: Text(cap.name, style: theme.textTheme.titleMedium),
                 ),
                 IconButton(
                   tooltip: 'Edit cap',
-                  onPressed: onEdit,
+                  onPressed: categoryTarget == null ? null : onEdit,
                   icon: const Icon(Icons.edit_outlined),
                 ),
               ],
@@ -441,14 +445,14 @@ class _BudgetProgressRow extends StatelessWidget {
               spacing: 12,
               runSpacing: 4,
               children: [
-                Text('Spent ${formatMoney(budget.spentAmount)}'),
-                Text('Cap ${formatMoney(budget.capAmount)}'),
+                Text('Spent ${formatMoney(cap.spentAmount)}'),
+                Text('Cap ${formatMoney(cap.capAmount)}'),
                 Text(
-                  budget.isOverBudget
-                      ? 'Over ${formatMoney(budget.remainingAmount.abs())}'
-                      : 'Left ${formatMoney(budget.remainingAmount)}',
+                  cap.isOverBudget
+                      ? 'Over ${formatMoney(cap.remainingAmount.abs())}'
+                      : 'Left ${formatMoney(cap.remainingAmount)}',
                   style: TextStyle(
-                    color: budget.isOverBudget ? theme.colorScheme.error : null,
+                    color: cap.isOverBudget ? theme.colorScheme.error : null,
                   ),
                 ),
               ],

@@ -3,7 +3,7 @@ begin;
 create extension if not exists pgtap with schema extensions;
 set search_path = public, extensions;
 
-select plan(22);
+select plan(23);
 
 insert into auth.users (id)
 values
@@ -159,19 +159,30 @@ values
     'Confirmed marketplace'
   );
 
-insert into public.category_caps (
+insert into public.monthly_caps (
   id,
   household_id,
-  category_id,
+  name,
   period_month,
   cap_amount,
   created_by
 )
 values
-  ('88000000-0000-0000-0000-000000000001', '38000000-0000-0000-0000-000000000001', '58000000-0000-0000-0000-000000000001', '2026-03-01', 10000.00, '28000000-0000-0000-0000-000000000001'),
-  ('88000000-0000-0000-0000-000000000002', '38000000-0000-0000-0000-000000000001', '58000000-0000-0000-0000-000000000002', '2026-03-01', 5000.00, '28000000-0000-0000-0000-000000000001'),
-  ('88000000-0000-0000-0000-000000000003', '38000000-0000-0000-0000-000000000001', '58000000-0000-0000-0000-000000000003', '2026-03-01', 2000.00, '28000000-0000-0000-0000-000000000001'),
-  ('88000000-0000-0000-0000-000000000004', '38000000-0000-0000-0000-000000000001', '58000000-0000-0000-0000-000000000003', '2026-04-01', 3000.00, '28000000-0000-0000-0000-000000000001');
+  ('88000000-0000-0000-0000-000000000001', '38000000-0000-0000-0000-000000000001', 'Destination cap', '2026-03-01', 10000.00, '28000000-0000-0000-0000-000000000001'),
+  ('88000000-0000-0000-0000-000000000002', '38000000-0000-0000-0000-000000000001', 'Source grocery', '2026-03-01', 5000.00, '28000000-0000-0000-0000-000000000001'),
+  ('88000000-0000-0000-0000-000000000003', '38000000-0000-0000-0000-000000000001', 'Source marketplace', '2026-03-01', 2000.00, '28000000-0000-0000-0000-000000000001'),
+  ('88000000-0000-0000-0000-000000000004', '38000000-0000-0000-0000-000000000001', 'Source marketplace', '2026-04-01', 3000.00, '28000000-0000-0000-0000-000000000001');
+
+insert into public.monthly_cap_categories (
+  household_id,
+  monthly_cap_id,
+  category_id
+)
+values
+  ('38000000-0000-0000-0000-000000000001', '88000000-0000-0000-0000-000000000001', '58000000-0000-0000-0000-000000000001'),
+  ('38000000-0000-0000-0000-000000000001', '88000000-0000-0000-0000-000000000002', '58000000-0000-0000-0000-000000000002'),
+  ('38000000-0000-0000-0000-000000000001', '88000000-0000-0000-0000-000000000003', '58000000-0000-0000-0000-000000000003'),
+  ('38000000-0000-0000-0000-000000000001', '88000000-0000-0000-0000-000000000004', '58000000-0000-0000-0000-000000000003');
 
 insert into public.transactions (
   id,
@@ -528,26 +539,47 @@ select is(
 
 select is(
   (
-    select cap_amount
-    from public.category_caps
+    select count(*)::integer
+    from public.monthly_cap_categories
     where household_id = '38000000-0000-0000-0000-000000000001'
+      and monthly_cap_id in (
+        '88000000-0000-0000-0000-000000000002',
+        '88000000-0000-0000-0000-000000000003',
+        '88000000-0000-0000-0000-000000000004'
+      )
       and category_id = '58000000-0000-0000-0000-000000000001'
-      and period_month = '2026-03-01'
   ),
-  17000.00::numeric,
-  'same-month source caps are summed into destination cap'
+  3,
+  'source cap targets are repointed to the destination category'
 );
 
 select is(
   (
-    select cap_amount
-    from public.category_caps
+    select count(*)::integer
+    from public.monthly_cap_categories
     where household_id = '38000000-0000-0000-0000-000000000001'
-      and category_id = '58000000-0000-0000-0000-000000000001'
-      and period_month = '2026-04-01'
+      and category_id in (
+        '58000000-0000-0000-0000-000000000002',
+        '58000000-0000-0000-0000-000000000003'
+      )
   ),
-  3000.00::numeric,
-  'missing destination cap rows are created during merge'
+  0,
+  'source category cap targets are removed after merge'
+);
+
+select is(
+  (
+    select count(*)::integer
+    from public.monthly_caps mc
+    join public.monthly_cap_categories mcc
+      on mcc.monthly_cap_id = mc.id
+      and mcc.household_id = mc.household_id
+    where mc.household_id = '38000000-0000-0000-0000-000000000001'
+      and mcc.category_id = '58000000-0000-0000-0000-000000000001'
+      and mc.period_month = '2026-03-01'
+  ),
+  3,
+  'same-month named caps stay independent after merge'
 );
 
 select is(
