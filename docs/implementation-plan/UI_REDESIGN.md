@@ -868,6 +868,8 @@ Completion notes:
 
 ## M45 - Review Screen
 
+Status: completed on 2026-06-14.
+
 Purpose: rebuild Review around the Stitch review queue design.
 
 Instructions:
@@ -920,6 +922,37 @@ Completion summary requirements:
 - Assumptions made
 - Mocks created
 - Mocks used
+
+Completion notes:
+
+- Rebuilt Review around the Stitch queue-card hierarchy with the `Review`
+  display title, supporting copy, Open Reviews and Correction Data metric cards,
+  warning-rail queue cards, merchant/source/date line, amount, needs-attention
+  status, classification chips, confidence chip, full-width Resolve action,
+  and caught-up empty state.
+- Preserved Gmail parse failure visibility and detail rendering, queue
+  loading/error states, correction flow through the shared metadata editor,
+  Review correction save behavior, and caller provider invalidation after save.
+- Kept the queue performant with `SliverList.builder` in a responsive
+  sliver-based page and avoided nested unbounded scrollables.
+- Added focused Review coverage for correction behavior, Gmail parse failures,
+  redesigned loading/error states, and 390px queue-card rendering.
+- Next recommended implementation milestone is M46, Vaults Redesign.
+- Verification:
+  - `cd apps/mobile && dart format lib/src/features/merchant_review/merchant_review_screen.dart lib/src/shared/widgets/chips.dart test/finance_features_test.dart`
+  - `cd apps/mobile && flutter analyze`
+  - `cd apps/mobile && flutter test test/finance_features_test.dart`
+  - `cd apps/mobile && flutter test`
+  - `git diff --check`
+- Assumptions made:
+  - Review items do not expose a source-account label, so the redesigned
+    merchant/source/date line uses existing source amount and transaction date
+    fields without changing repository contracts.
+- Mocks created:
+  - None.
+- Mocks used:
+  - `docs/design-references/stitch/themed-dashboard-ui-redesign/screens/review-unified-navigation.jpg`
+  - `docs/design-references/stitch/themed-dashboard-ui-redesign/html/review-unified-navigation.html`
 
 ## M46 - Vaults Screen
 

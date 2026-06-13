@@ -137,9 +137,14 @@ Use this file to coordinate work across multiple implementation sessions. Update
   merchant/category/subcategory/confidence/notes controls, inline category
   creation, explanatory copy, responsive actions, preserved Suggest/Save
   behavior, and focused Activity/Review/narrow-viewport regression coverage.
+  Milestone 45 rebuilds Review around the Stitch queue-card hierarchy with
+  redesigned metric cards, Gmail parse failure diagnostics, warning-rail queue
+  cards, classification/confidence chips, full-width Resolve actions, lazy
+  queue rendering, loading/error/caught-up states, and preserved metadata
+  editor correction behavior.
   Milestones 18-21 remain planned and deferred by user request.
 - Remote deployment state: On 2026-06-08, user confirmed Supabase project `bslsitzdvrdosubbdxpd` as the intended dev/staging target. All local migrations through `20260607174515_ai_ready_layer_llm_features.sql` were pushed there, hosted expense Q&A and the now-retired legacy AI lookup function were active with JWT verification, and `GEMINI_API_KEY` was present in hosted Edge Function secrets by name. After the user signed in through the Android emulator, hosted profile/household bootstrap and authenticated Gemini Edge Function smoke passed. On 2026-06-08 for Milestone 13, `gmail-oauth-start` was deployed as version 2 with JWT verification, `gmail-sync` was deployed as version 2 without JWT verification, and new `gmail-backfill-range` was deployed as version 1 without JWT verification. Hosted `gmail-backfill-range` `OPTIONS` smoke returned 200, and an unauthenticated POST returned the expected service-key error. The live May Gmail backfill itself was not run because it requires the user to connect the target Gmail mailbox and invoke the runbook with a Supabase secret key from a local/platform secret store. On 2026-06-09, M16 deleted the hosted legacy AI lookup function from `bslsitzdvrdosubbdxpd` and a follow-up function list verified it absent. The M16 database migration and updated active Suggest function were verified locally but not pushed/deployed to hosted in this implementation session.
-- Next recommended milestone: Milestone 45, Review Redesign. Execute only M45
+- Next recommended milestone: Milestone 46, Vaults Redesign. Execute only M46
   in the next implementation thread unless the user explicitly requests a
   different milestone. Milestones 18-21 remain
   deferred unless the user resumes push notifications. If continuing hosted
@@ -295,7 +300,7 @@ Do not ask the user to perform all setup at once. Ask only when the relevant mil
 - Milestone 42, Activity Charts Mode: completed.
 - Milestone 43, Transaction Details Redesign: completed.
 - Milestone 44, Transaction Metadata Editor Redesign: completed.
-- Milestone 45, Review Redesign: planned.
+- Milestone 45, Review Redesign: completed.
 - Milestone 46, Vaults Redesign: planned.
 - Milestone 47, Settings Focused Screen and Theme Selector: planned.
 - Milestone 48, Sign-In and Household Gate Redesign: planned.
@@ -688,6 +693,45 @@ When an architecture decision changes:
 - Mocks used:
   - `docs/design-references/stitch/themed-dashboard-ui-redesign/screens/transactions-edit-metadata.jpg`
   - `docs/design-references/stitch/themed-dashboard-ui-redesign/html/transactions-edit-metadata.html`
+
+## Milestone 45 Completion Notes
+
+- Completed on 2026-06-14.
+- Rebuilt Review around the Stitch queue-card hierarchy with the `Review`
+  display title, supporting copy, Open Reviews and Correction Data metric cards,
+  warning-rail queue cards, merchant/source/date line, large amount treatment,
+  needs-attention status, classification chips, confidence chip, and full-width
+  Resolve action.
+- Preserved Gmail parse failure visibility and detail rendering, queue
+  loading/error states, correction flow through the shared metadata editor,
+  Review correction save behavior, and caller-owned provider invalidation after
+  save.
+- Moved the Review queue to a `SliverList.builder` inside a responsive
+  sliver-based page so cards fit 390px mobile width and wider layouts without
+  nested unbounded scrollables.
+- Added focused widget coverage for redesigned loading/error states, 390px
+  queue-card rendering, Gmail parse failure rendering with a lazy queue, and
+  the existing Review correction flow.
+- No Vaults/Piggy Banks redesign, Settings/sign-in/Ask/dialog redesign,
+  metadata editor redesign beyond preserving existing integration,
+  push-notification work, M46, or later-milestone work was started.
+- Verification run:
+  - `cd apps/mobile && dart format lib/src/features/merchant_review/merchant_review_screen.dart lib/src/shared/widgets/chips.dart test/finance_features_test.dart`
+  - `cd apps/mobile && flutter analyze`
+  - `cd apps/mobile && flutter test test/finance_features_test.dart`
+  - `cd apps/mobile && flutter test`
+  - `git diff --check`
+- Known gaps:
+  - None.
+- Assumptions made:
+  - Review items do not expose a source-account label, so the redesigned
+    merchant/source/date line uses the existing source amount and transaction
+    date fields without changing repository contracts.
+- Mocks created:
+  - None.
+- Mocks used:
+  - `docs/design-references/stitch/themed-dashboard-ui-redesign/screens/review-unified-navigation.jpg`
+  - `docs/design-references/stitch/themed-dashboard-ui-redesign/html/review-unified-navigation.html`
 
 ## Milestone 1 Completion Notes
 

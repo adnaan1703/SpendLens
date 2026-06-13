@@ -1353,8 +1353,72 @@ void main() {
     expect(repository.corrections.single.subcategoryId, 'sub-marketplace');
     expect(repository.corrections.single.confidence, 'medium');
     expect(repository.corrections.single.notes, 'Suggested marketplace spend.');
-    expect(find.text('No review items'), findsOneWidget);
+    expect(find.text("You're all caught up for now."), findsOneWidget);
     expect(find.text('Resolved 1 review items'), findsOneWidget);
+  });
+
+  testWidgets('merchant review shows redesigned loading state', (tester) async {
+    final repository = _FakeFinanceRepository();
+
+    await tester.pumpWidget(
+      _financeTestApp(
+        repository: repository,
+        child: const MerchantReviewScreen(),
+      ),
+    );
+
+    expect(find.text('Loading review queue'), findsOneWidget);
+    expect(
+      find.text('Checking review items and Gmail parser diagnostics.'),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('merchant review shows redesigned queue error state', (
+    tester,
+  ) async {
+    final repository = _FakeFinanceRepository()
+      ..reviewQueueError = StateError('review unavailable');
+
+    await tester.pumpWidget(
+      _financeTestApp(
+        repository: repository,
+        child: const MerchantReviewScreen(),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Review queue unavailable'), findsOneWidget);
+    expect(find.textContaining('review unavailable'), findsOneWidget);
+  });
+
+  testWidgets('merchant review queue card fits 390px viewport', (tester) async {
+    tester.view.physicalSize = const Size(390, 900);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(() {
+      tester.view.resetPhysicalSize();
+      tester.view.resetDevicePixelRatio();
+    });
+    final repository = _FakeFinanceRepository();
+
+    await tester.pumpWidget(
+      _financeTestApp(
+        repository: repository,
+        child: const MerchantReviewScreen(),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(
+      find.byKey(const ValueKey('review-queue-card-review-1')),
+      findsOneWidget,
+    );
+    expect(find.text('Open Reviews'), findsOneWidget);
+    expect(find.text('Correction Data'), findsOneWidget);
+    expect(find.text('Needs Attention'), findsOneWidget);
+    expect(find.text('Low Confidence'), findsOneWidget);
+    expect(find.text('Resolve'), findsOneWidget);
+    expect(tester.takeException(), isNull);
   });
 
   testWidgets('merchant review hides Gmail parse failures card when empty', (
@@ -1390,6 +1454,9 @@ void main() {
 
     expect(find.text('Gmail parse failures'), findsOneWidget);
     expect(find.text('1 recent failure'), findsOneWidget);
+    await tester.drag(find.byType(CustomScrollView), const Offset(0, -500));
+    await tester.pumpAndSettle();
+
     expect(find.text('AMZN MKTP IN'), findsOneWidget);
   });
 
@@ -2436,6 +2503,8 @@ final class _FakeFinanceRepository implements FinanceRepository {
   final metadataSuggestionRequests = <TransactionMetadataSuggestionRequest>[];
   final piggyBanks = <PiggyBankSummary>[];
   final piggyEntries = <PiggyBankEntry>[];
+  Object? reviewQueueError;
+  Object? gmailParseFailuresError;
   TransactionMetadataSuggestionResult? nextMetadataSuggestion;
   Object? metadataSuggestionError;
   final aiStatus = AiBudgetStatus(
@@ -3225,6 +3294,9 @@ final class _FakeFinanceRepository implements FinanceRepository {
   Future<List<MerchantReviewItem>> fetchMerchantReviewQueue({
     required String householdId,
   }) async {
+    final error = reviewQueueError;
+    if (error != null) throw error;
+
     return reviewItems;
   }
 
@@ -3232,6 +3304,9 @@ final class _FakeFinanceRepository implements FinanceRepository {
   Future<List<GmailParseFailure>> fetchGmailParseFailures({
     required String householdId,
   }) async {
+    final error = gmailParseFailuresError;
+    if (error != null) throw error;
+
     return gmailParseFailures;
   }
 

@@ -169,6 +169,7 @@ class IconChip extends StatelessWidget {
     this.tooltip,
     this.backgroundColor,
     this.foregroundColor,
+    this.maxWidth,
   });
 
   final IconData icon;
@@ -176,11 +177,29 @@ class IconChip extends StatelessWidget {
   final String? tooltip;
   final Color? backgroundColor;
   final Color? foregroundColor;
+  final double? maxWidth;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final foreground = foregroundColor ?? theme.colorScheme.onSurface;
+    final labelText = Text(
+      label,
+      maxLines: maxWidth == null ? null : 1,
+      overflow: maxWidth == null ? null : TextOverflow.ellipsis,
+      style: theme.textTheme.labelMedium?.copyWith(
+        color: foreground,
+        letterSpacing: 0,
+      ),
+    );
+    final content = Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(icon, size: 18, color: foreground),
+        const SizedBox(width: 8),
+        if (maxWidth == null) labelText else Flexible(child: labelText),
+      ],
+    );
     final chip = Semantics(
       label: label,
       child: ExcludeSemantics(
@@ -191,20 +210,12 @@ class IconChip extends StatelessWidget {
           ),
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(icon, size: 18, color: foreground),
-                const SizedBox(width: 8),
-                Text(
-                  label,
-                  style: theme.textTheme.labelMedium?.copyWith(
-                    color: foreground,
-                    letterSpacing: 0,
+            child: maxWidth == null
+                ? content
+                : ConstrainedBox(
+                    constraints: BoxConstraints(maxWidth: maxWidth!),
+                    child: content,
                   ),
-                ),
-              ],
-            ),
           ),
         ),
       ),

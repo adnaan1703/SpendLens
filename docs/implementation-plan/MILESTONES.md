@@ -2043,7 +2043,7 @@ behavior.
 
 ### Status
 
-Planned. See [UI Redesign](UI_REDESIGN.md#m45---review-screen).
+Completed on 2026-06-14. See [UI Redesign](UI_REDESIGN.md#m45---review-screen).
 
 ### Objective
 
@@ -2069,6 +2069,35 @@ Rebuild Review around the Stitch queue-card design.
 ### Deferred Scope
 
 - New review workflow behavior.
+
+### Completion Notes
+
+- Rebuilt Review around the Stitch queue-card hierarchy with redesigned title
+  copy, Open Reviews and Correction Data metrics, warning-rail queue cards,
+  merchant/source/date line, amount treatment, needs-attention status,
+  classification chips, confidence chip, Resolve action, and caught-up state.
+- Preserved Gmail parse failure diagnostics, Review loading/error states,
+  correction flow through the shared metadata editor, Review save behavior, and
+  provider invalidation after save.
+- Switched the queue to lazy sliver rendering so Review cards fit 390px mobile
+  width and wider layouts without nested unbounded scrollables.
+- Added focused widget coverage for Review loading/error states, Gmail parse
+  failures, correction behavior, and 390px queue-card rendering.
+- Verification:
+  - `cd apps/mobile && dart format lib/src/features/merchant_review/merchant_review_screen.dart lib/src/shared/widgets/chips.dart test/finance_features_test.dart`
+  - `cd apps/mobile && flutter analyze`
+  - `cd apps/mobile && flutter test test/finance_features_test.dart`
+  - `cd apps/mobile && flutter test`
+  - `git diff --check`
+- Assumptions made:
+  - Review items do not expose a source-account label, so the redesigned
+    merchant/source/date line uses existing source amount and transaction date
+    fields without changing repository contracts.
+- Mocks created:
+  - None.
+- Mocks used:
+  - `docs/design-references/stitch/themed-dashboard-ui-redesign/screens/review-unified-navigation.jpg`
+  - `docs/design-references/stitch/themed-dashboard-ui-redesign/html/review-unified-navigation.html`
 
 ## Milestone 46: Vaults Redesign
 
