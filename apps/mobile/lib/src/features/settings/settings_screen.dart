@@ -9,8 +9,8 @@ import '../../data/repositories/finance_repository.dart';
 import '../../data/repositories/household_repository.dart';
 import '../../shared/widgets/app_page.dart';
 import '../auth/data/auth_repository.dart';
+import '../activity/activity_screen.dart';
 import '../categories/category_creation_dialog.dart';
-import '../transactions/transactions_screen.dart';
 
 class SettingsScreen extends ConsumerStatefulWidget {
   const SettingsScreen({super.key});
@@ -805,7 +805,7 @@ class _CategoryManager extends ConsumerWidget {
 
     router.go(
       Uri(
-        path: TransactionsScreen.routePath,
+        path: ActivityScreen.routePath,
         queryParameters: {'categoryId': categoryId},
       ).toString(),
     );

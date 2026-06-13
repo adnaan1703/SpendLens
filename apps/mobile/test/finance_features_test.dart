@@ -2,15 +2,16 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
+import 'package:spendlens/src/app/app_shell.dart';
 import 'package:spendlens/src/core/bootstrap/app_bootstrap.dart';
 import 'package:spendlens/src/data/repositories/finance_repository.dart';
 import 'package:spendlens/src/data/repositories/household_repository.dart';
 import 'package:spendlens/src/features/ai/ai_screen.dart';
+import 'package:spendlens/src/features/activity/activity_screen.dart';
 import 'package:spendlens/src/features/dashboard/dashboard_screen.dart';
 import 'package:spendlens/src/features/merchant_review/merchant_review_screen.dart';
 import 'package:spendlens/src/features/piggy_banks/piggy_banks_screen.dart';
 import 'package:spendlens/src/features/settings/settings_screen.dart';
-import 'package:spendlens/src/features/transactions/transactions_screen.dart';
 import 'package:spendlens/src/features/trends/trends_screen.dart';
 
 void main() {
@@ -149,6 +150,50 @@ void main() {
     expect(progress.isOverBudget, isTrue);
     expect(progress.categoryTargets.single.name, 'Food');
     expect(progress.labelTargets.single.name, 'Groceries');
+  });
+
+  test('primary app destinations match the redesigned IA', () {
+    expect(appDestinations.map((destination) => destination.label), [
+      'Dashboard',
+      'Activity',
+      'Review',
+      'Vaults',
+    ]);
+    expect(appDestinations.map((destination) => destination.path), [
+      DashboardScreen.routePath,
+      ActivityScreen.routePath,
+      MerchantReviewScreen.routePath,
+      PiggyBanksScreen.routePath,
+    ]);
+  });
+
+  testWidgets('app shell exposes settings outside primary navigation', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(() {
+      tester.view.resetPhysicalSize();
+      tester.view.resetDevicePixelRatio();
+    });
+    final router = _shellTestRouter();
+    addTearDown(router.dispose);
+
+    await tester.pumpWidget(MaterialApp.router(routerConfig: router));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(NavigationDestination), findsNWidgets(4));
+    expect(find.text('Dashboard'), findsWidgets);
+    expect(find.text('Activity'), findsWidgets);
+    expect(find.text('Review'), findsWidgets);
+    expect(find.text('Vaults'), findsWidgets);
+    expect(find.text('Settings'), findsNothing);
+
+    await tester.tap(find.byTooltip('Open settings'));
+    await tester.pumpAndSettle();
+
+    expect(router.routeInformationProvider.value.uri.path, '/settings');
+    expect(find.text('Focused settings'), findsOneWidget);
   });
 
   test('label repository contract mutates one transaction label set', () async {
@@ -662,7 +707,7 @@ void main() {
     await tester.tap(categoryRow);
     await tester.pumpAndSettle();
 
-    expect(router.routeInformationProvider.value.uri.path, '/transactions');
+    expect(router.routeInformationProvider.value.uri.path, '/activity');
     expect(repository.lastQuery?.categoryId, 'cat-food');
     expect(repository.lastQuery?.searchText, '');
     expect(dateString(repository.lastQuery!.startDate!), '2026-03-01');
@@ -690,7 +735,7 @@ void main() {
     await tester.tap(merchantRow);
     await tester.pumpAndSettle();
 
-    expect(router.routeInformationProvider.value.uri.path, '/transactions');
+    expect(router.routeInformationProvider.value.uri.path, '/activity');
     expect(repository.lastQuery?.categoryId, isNull);
     expect(repository.lastQuery?.searchText, 'Swiggy Instamart');
     expect(dateString(repository.lastQuery!.startDate!), '2026-03-01');
@@ -704,10 +749,7 @@ void main() {
     final repository = _FakeFinanceRepository();
 
     await tester.pumpWidget(
-      _financeTestApp(
-        repository: repository,
-        child: const TransactionsScreen(),
-      ),
+      _financeTestApp(repository: repository, child: const ActivityScreen()),
     );
     await tester.pumpAndSettle();
 
@@ -738,10 +780,7 @@ void main() {
     final repository = _FakeFinanceRepository()..addSwiggyTransactions(22);
 
     await tester.pumpWidget(
-      _financeTestApp(
-        repository: repository,
-        child: const TransactionsScreen(),
-      ),
+      _financeTestApp(repository: repository, child: const ActivityScreen()),
     );
     await tester.pumpAndSettle();
 
@@ -772,7 +811,7 @@ void main() {
     final repository = _FakeFinanceRepository();
     final router = _financeTestRouter(
       initialLocation:
-          '/transactions?categoryId=cat-food&merchant=Swiggy%20Instamart'
+          '/activity?categoryId=cat-food&merchant=Swiggy%20Instamart'
           '&startDate=2026-03-01&endDate=2026-03-31',
     );
     addTearDown(router.dispose);
@@ -799,7 +838,7 @@ void main() {
     final repository = _FakeFinanceRepository()..addSwiggyTransactions(24);
     final router = _financeTestRouter(
       initialLocation:
-          '/transactions?categoryId=cat-food&merchant=Swiggy%20Instamart'
+          '/activity?categoryId=cat-food&merchant=Swiggy%20Instamart'
           '&startDate=2026-03-01&endDate=2026-03-31',
     );
     addTearDown(router.dispose);
@@ -835,7 +874,7 @@ void main() {
   ) async {
     final repository = _FakeFinanceRepository();
     final router = _financeTestRouter(
-      initialLocation: '/transactions?labelId=label-reimburse',
+      initialLocation: '/activity?labelId=label-reimburse',
     );
     addTearDown(router.dispose);
 
@@ -862,7 +901,7 @@ void main() {
     (tester) async {
       final repository = _FakeFinanceRepository();
       final router = _financeTestRouter(
-        initialLocation: '/transactions?labelId=label-grocery',
+        initialLocation: '/activity?labelId=label-grocery',
       );
       addTearDown(router.dispose);
 
@@ -899,10 +938,7 @@ void main() {
       final repository = _FakeFinanceRepository();
 
       await tester.pumpWidget(
-        _financeTestApp(
-          repository: repository,
-          child: const TransactionsScreen(),
-        ),
+        _financeTestApp(repository: repository, child: const ActivityScreen()),
       );
       await tester.pumpAndSettle();
 
@@ -944,10 +980,7 @@ void main() {
     final repository = _FakeFinanceRepository();
 
     await tester.pumpWidget(
-      _financeTestApp(
-        repository: repository,
-        child: const TransactionsScreen(),
-      ),
+      _financeTestApp(repository: repository, child: const ActivityScreen()),
     );
     await tester.pumpAndSettle();
 
@@ -997,10 +1030,7 @@ void main() {
       );
 
     await tester.pumpWidget(
-      _financeTestApp(
-        repository: repository,
-        child: const TransactionsScreen(),
-      ),
+      _financeTestApp(repository: repository, child: const ActivityScreen()),
     );
     await tester.pumpAndSettle();
 
@@ -1015,10 +1045,7 @@ void main() {
     final repository = _FakeFinanceRepository();
 
     await tester.pumpWidget(
-      _financeTestApp(
-        repository: repository,
-        child: const TransactionsScreen(),
-      ),
+      _financeTestApp(repository: repository, child: const ActivityScreen()),
     );
     await tester.pumpAndSettle();
 
@@ -1041,7 +1068,7 @@ void main() {
     final repository = _FakeFinanceRepository();
 
     await tester.pumpWidget(
-      _financeTestApp(repository: repository, child: const TrendsScreen()),
+      _financeTestApp(repository: repository, child: const TrendsReportPane()),
     );
     await tester.pumpAndSettle();
 
@@ -1081,7 +1108,7 @@ void main() {
     final repository = _FakeFinanceRepository();
 
     await tester.pumpWidget(
-      _financeTestApp(repository: repository, child: const TrendsScreen()),
+      _financeTestApp(repository: repository, child: const TrendsReportPane()),
     );
     await tester.pumpAndSettle();
 
@@ -1120,7 +1147,7 @@ void main() {
     final repository = _FakeFinanceRepository();
 
     await tester.pumpWidget(
-      _financeTestApp(repository: repository, child: const TrendsScreen()),
+      _financeTestApp(repository: repository, child: const TrendsReportPane()),
     );
     await tester.pumpAndSettle();
 
@@ -1330,10 +1357,7 @@ void main() {
         );
 
     await tester.pumpWidget(
-      _financeTestApp(
-        repository: repository,
-        child: const TransactionsScreen(),
-      ),
+      _financeTestApp(repository: repository, child: const ActivityScreen()),
     );
     await tester.pumpAndSettle();
 
@@ -1384,10 +1408,7 @@ void main() {
       ..metadataSuggestionError = StateError('AI unavailable');
 
     await tester.pumpWidget(
-      _financeTestApp(
-        repository: repository,
-        child: const TransactionsScreen(),
-      ),
+      _financeTestApp(repository: repository, child: const ActivityScreen()),
     );
     await tester.pumpAndSettle();
 
@@ -1565,7 +1586,7 @@ void main() {
     await tester.pumpAndSettle();
 
     final uri = router.routeInformationProvider.value.uri;
-    expect(uri.path, '/transactions');
+    expect(uri.path, '/activity');
     expect(uri.queryParameters['categoryId'], 'cat-food');
     expect(repository.lastQuery?.categoryId, 'cat-food');
     expect(repository.lastQuery?.subcategoryId, isNull);
@@ -2048,16 +2069,57 @@ GoRouter _financeTestRouter({
         builder: (_, _) => const Scaffold(body: DashboardScreen()),
       ),
       GoRoute(
-        path: TransactionsScreen.routePath,
+        path: ActivityScreen.routePath,
         builder: (_, state) => Scaffold(
-          body: TransactionsScreen(
-            initialFilters: TransactionInitialFilters.fromUri(state.uri),
+          body: ActivityScreen(
+            initialFilters: ActivityScreen.initialFiltersFromUri(state.uri),
           ),
         ),
       ),
       GoRoute(
         path: SettingsScreen.routePath,
         builder: (_, _) => const Scaffold(body: SettingsScreen()),
+      ),
+    ],
+  );
+}
+
+GoRouter _shellTestRouter({
+  String initialLocation = DashboardScreen.routePath,
+}) {
+  return GoRouter(
+    initialLocation: initialLocation,
+    routes: [
+      ShellRoute(
+        builder: (context, state, child) {
+          return AppShell(
+            location: state.uri.path,
+            householdContext: _householdContext,
+            child: child,
+          );
+        },
+        routes: [
+          GoRoute(
+            path: DashboardScreen.routePath,
+            builder: (_, _) => const Center(child: Text('Dashboard shell')),
+          ),
+          GoRoute(
+            path: ActivityScreen.routePath,
+            builder: (_, _) => const Center(child: Text('Activity shell')),
+          ),
+          GoRoute(
+            path: MerchantReviewScreen.routePath,
+            builder: (_, _) => const Center(child: Text('Review shell')),
+          ),
+          GoRoute(
+            path: PiggyBanksScreen.routePath,
+            builder: (_, _) => const Center(child: Text('Vaults shell')),
+          ),
+          GoRoute(
+            path: SettingsScreen.routePath,
+            builder: (_, _) => const Center(child: Text('Focused settings')),
+          ),
+        ],
       ),
     ],
   );

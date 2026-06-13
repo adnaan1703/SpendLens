@@ -56,6 +56,6 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Continue with Google'), findsOneWidget);
-    expect(find.text('Transactions'), findsNothing);
+    expect(find.text('Activity'), findsNothing);
   });
 }

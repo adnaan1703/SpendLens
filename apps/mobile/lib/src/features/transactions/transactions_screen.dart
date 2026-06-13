@@ -7,6 +7,7 @@ import '../../data/repositories/household_repository.dart';
 import '../../shared/widgets/app_page.dart';
 import '../../shared/widgets/empty_state.dart';
 import '../../shared/widgets/period_filter_dropdown.dart';
+import '../activity/activity_route.dart';
 import '../transaction_metadata/transaction_metadata_editor.dart';
 
 final class TransactionInitialFilters {
@@ -72,21 +73,22 @@ String? _dateKey(DateTime? date) {
   return date == null ? null : dateString(date);
 }
 
-class TransactionsScreen extends ConsumerStatefulWidget {
-  const TransactionsScreen({
+class TransactionListPane extends ConsumerStatefulWidget {
+  const TransactionListPane({
     super.key,
     this.initialFilters = const TransactionInitialFilters(),
+    this.clearFiltersPath = activityRoutePath,
   });
 
-  static const routePath = '/transactions';
-
   final TransactionInitialFilters initialFilters;
+  final String clearFiltersPath;
 
   @override
-  ConsumerState<TransactionsScreen> createState() => _TransactionsScreenState();
+  ConsumerState<TransactionListPane> createState() =>
+      _TransactionListPaneState();
 }
 
-class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
+class _TransactionListPaneState extends ConsumerState<TransactionListPane> {
   final _searchController = TextEditingController();
   String _searchText = '';
   String? _categoryId;
@@ -103,7 +105,7 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
   }
 
   @override
-  void didUpdateWidget(covariant TransactionsScreen oldWidget) {
+  void didUpdateWidget(covariant TransactionListPane oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.initialFilters == widget.initialFilters) return;
 
@@ -327,7 +329,7 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
 
     final router = GoRouter.maybeOf(context);
     if (router != null) {
-      router.go(TransactionsScreen.routePath);
+      router.go(widget.clearFiltersPath);
     }
   }
 

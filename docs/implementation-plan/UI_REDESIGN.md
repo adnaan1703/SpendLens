@@ -331,6 +331,8 @@ Completion notes:
 
 ## M39 - App Shell, Navigation IA, and Routes
 
+Status: completed on 2026-06-13.
+
 Purpose: implement the new app information architecture before screen-specific
 redesign.
 
@@ -385,6 +387,37 @@ Completion summary requirements:
 - Assumptions made
 - Mocks created
 - Mocks used
+
+Completion notes:
+
+- Added `/activity` as the authenticated Activity destination through a new
+  `ActivityScreen` integration point that can host list and charts modes in
+  later milestones.
+- Removed active `/transactions` and `/trends` app routes rather than
+  redirecting or aliasing them.
+- Replaced primary shell destinations with exactly Dashboard, Activity, Review,
+  and Vaults on mobile bottom navigation and wide navigation rail.
+- Removed Settings from primary navigation and added a global shell settings
+  action that opens `/settings`; Ask/AI remains a non-primary route.
+- Updated Dashboard category/merchant drilldowns and Settings category-detail
+  drilldowns to target Activity while preserving existing category, label,
+  merchant, `startDate`, and `endDate` query semantics.
+- Added/updated route and shell tests for Activity, the four primary
+  destinations, and the settings action.
+- Verification:
+  - `cd apps/mobile && dart format lib/src/features/activity/activity_route.dart lib/src/features/activity/activity_screen.dart lib/src/app/router.dart lib/src/app/app_shell.dart lib/src/features/dashboard/dashboard_screen.dart lib/src/features/settings/settings_screen.dart lib/src/features/transactions/transactions_screen.dart lib/src/features/trends/trends_screen.dart test/finance_features_test.dart test/widget_test.dart`
+  - `cd apps/mobile && flutter analyze`
+  - `cd apps/mobile && flutter test`
+  - `git diff --check`
+- Assumptions made:
+  - The visible Vaults destination can continue to use the existing
+    `/piggy-banks` route until later Vaults-specific work.
+  - Existing transaction-list implementation remains the temporary Activity list
+    implementation; full list/charts migration remains deferred to M41-M42.
+- Mocks created:
+  - None.
+- Mocks used:
+  - None.
 
 ## M40 - Dashboard Screen
 

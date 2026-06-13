@@ -8,7 +8,7 @@ import '../../data/repositories/household_repository.dart';
 import '../../shared/widgets/app_page.dart';
 import '../../shared/widgets/empty_state.dart';
 import '../../shared/widgets/metric_card.dart';
-import '../transactions/transactions_screen.dart';
+import '../activity/activity_screen.dart';
 
 class DashboardScreen extends ConsumerStatefulWidget {
   const DashboardScreen({super.key});
@@ -250,7 +250,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
 
     router.go(
       Uri(
-        path: TransactionsScreen.routePath,
+        path: ActivityScreen.routePath,
         queryParameters: queryParameters,
       ).toString(),
     );

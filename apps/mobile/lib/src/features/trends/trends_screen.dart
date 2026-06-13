@@ -12,16 +12,14 @@ import '../../shared/widgets/empty_state.dart';
 import '../../shared/widgets/metric_card.dart';
 import '../../shared/widgets/period_filter_dropdown.dart';
 
-class TrendsScreen extends ConsumerStatefulWidget {
-  const TrendsScreen({super.key});
-
-  static const routePath = '/trends';
+class TrendsReportPane extends ConsumerStatefulWidget {
+  const TrendsReportPane({super.key});
 
   @override
-  ConsumerState<TrendsScreen> createState() => _TrendsScreenState();
+  ConsumerState<TrendsReportPane> createState() => _TrendsReportPaneState();
 }
 
-class _TrendsScreenState extends ConsumerState<TrendsScreen> {
+class _TrendsReportPaneState extends ConsumerState<TrendsReportPane> {
   String? _categoryId;
   String? _sourceAccountType;
   String? _sourceAccountId;

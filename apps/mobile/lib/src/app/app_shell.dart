@@ -2,12 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../data/repositories/household_repository.dart';
+import '../features/activity/activity_screen.dart';
 import '../features/dashboard/dashboard_screen.dart';
 import '../features/merchant_review/merchant_review_screen.dart';
 import '../features/piggy_banks/piggy_banks_screen.dart';
 import '../features/settings/settings_screen.dart';
-import '../features/transactions/transactions_screen.dart';
-import '../features/trends/trends_screen.dart';
+import '../shared/widgets/responsive.dart';
 
 class AppDestination {
   const AppDestination({
@@ -31,16 +31,10 @@ const appDestinations = [
     selectedIcon: Icons.dashboard,
   ),
   AppDestination(
-    label: 'Transactions',
-    path: TransactionsScreen.routePath,
+    label: 'Activity',
+    path: ActivityScreen.routePath,
     icon: Icons.receipt_long_outlined,
     selectedIcon: Icons.receipt_long,
-  ),
-  AppDestination(
-    label: 'Trends',
-    path: TrendsScreen.routePath,
-    icon: Icons.show_chart_outlined,
-    selectedIcon: Icons.show_chart,
   ),
   AppDestination(
     label: 'Review',
@@ -49,16 +43,10 @@ const appDestinations = [
     selectedIcon: Icons.rule_folder,
   ),
   AppDestination(
-    label: 'Piggy Banks',
+    label: 'Vaults',
     path: PiggyBanksScreen.routePath,
     icon: Icons.savings_outlined,
     selectedIcon: Icons.savings,
-  ),
-  AppDestination(
-    label: 'Settings',
-    path: SettingsScreen.routePath,
-    icon: Icons.settings_outlined,
-    selectedIcon: Icons.settings,
   ),
 ];
 
@@ -77,68 +65,134 @@ class AppShell extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final selectedIndex = _selectedIndexFor(location);
-    final isWide = MediaQuery.sizeOf(context).width >= 720;
+    final isSettingsRoute =
+        location == SettingsScreen.routePath ||
+        location.startsWith('${SettingsScreen.routePath}/');
 
-    return Scaffold(
-      body: isWide
-          ? Row(
-              children: [
-                SafeArea(
-                  child: NavigationRail(
-                    selectedIndex: selectedIndex,
-                    onDestinationSelected: (index) {
-                      context.go(appDestinations[index].path);
-                    },
-                    leading: Padding(
-                      padding: const EdgeInsets.fromLTRB(8, 12, 8, 20),
-                      child: _HouseholdBadge(
-                        householdName: householdContext.household.name,
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final layoutWidth = constraints.hasBoundedWidth
+            ? constraints.maxWidth
+            : MediaQuery.sizeOf(context).width;
+        final isWide =
+            AppResponsiveBreakpoints.classForWidth(layoutWidth) !=
+            AppWindowSizeClass.mobile;
+
+        return Scaffold(
+          body: isWide
+              ? Row(
+                  children: [
+                    SafeArea(
+                      child: NavigationRail(
+                        selectedIndex: selectedIndex,
+                        onDestinationSelected: (index) {
+                          context.go(appDestinations[index].path);
+                        },
+                        leading: Padding(
+                          padding: const EdgeInsets.fromLTRB(8, 12, 8, 20),
+                          child: _HouseholdBadge(
+                            householdName: householdContext.household.name,
+                          ),
+                        ),
+                        trailing: Padding(
+                          padding: const EdgeInsets.only(top: 16),
+                          child: _SettingsAction(isSelected: isSettingsRoute),
+                        ),
+                        labelType: NavigationRailLabelType.all,
+                        destinations: [
+                          for (final destination in appDestinations)
+                            NavigationRailDestination(
+                              icon: Icon(destination.icon),
+                              selectedIcon: Icon(destination.selectedIcon),
+                              label: Text(destination.label),
+                            ),
+                        ],
                       ),
                     ),
-                    labelType: NavigationRailLabelType.all,
-                    destinations: [
-                      for (final destination in appDestinations)
-                        NavigationRailDestination(
-                          icon: Icon(destination.icon),
-                          selectedIcon: Icon(destination.selectedIcon),
-                          label: Text(destination.label),
-                        ),
-                    ],
-                  ),
+                    const VerticalDivider(width: 1),
+                    Expanded(child: child),
+                  ],
+                )
+              : child,
+          bottomNavigationBar: isWide
+              ? null
+              : NavigationBar(
+                  selectedIndex: selectedIndex ?? 0,
+                  labelBehavior:
+                      NavigationDestinationLabelBehavior.onlyShowSelected,
+                  onDestinationSelected: (index) {
+                    context.go(appDestinations[index].path);
+                  },
+                  destinations: [
+                    for (final destination in appDestinations)
+                      NavigationDestination(
+                        icon: Icon(destination.icon),
+                        selectedIcon: Icon(destination.selectedIcon),
+                        label: destination.label,
+                      ),
+                  ],
                 ),
-                const VerticalDivider(width: 1),
-                Expanded(child: child),
-              ],
-            )
-          : child,
-      bottomNavigationBar: isWide
-          ? null
-          : NavigationBar(
-              selectedIndex: selectedIndex,
-              labelBehavior:
-                  NavigationDestinationLabelBehavior.onlyShowSelected,
-              onDestinationSelected: (index) {
-                context.go(appDestinations[index].path);
-              },
-              destinations: [
-                for (final destination in appDestinations)
-                  NavigationDestination(
-                    icon: Icon(destination.icon),
-                    selectedIcon: Icon(destination.selectedIcon),
-                    label: destination.label,
-                  ),
-              ],
-            ),
+          floatingActionButton: isWide || isSettingsRoute
+              ? null
+              : const _SettingsAction(
+                  isSelected: false,
+                  useFloatingButton: true,
+                ),
+        );
+      },
     );
   }
 
-  int _selectedIndexFor(String path) {
+  int? _selectedIndexFor(String path) {
     final index = appDestinations.indexWhere((destination) {
       return path == destination.path ||
           path.startsWith('${destination.path}/');
     });
 
-    return index == -1 ? 0 : index;
+    return index == -1 ? null : index;
+  }
+}
+
+class _SettingsAction extends StatelessWidget {
+  const _SettingsAction({
+    required this.isSelected,
+    this.useFloatingButton = false,
+  });
+
+  final bool isSelected;
+  final bool useFloatingButton;
+
+  @override
+  Widget build(BuildContext context) {
+    final icon = Icon(isSelected ? Icons.settings : Icons.settings_outlined);
+
+    if (useFloatingButton) {
+      return FloatingActionButton.small(
+        heroTag: 'app-shell-settings',
+        tooltip: 'Open settings',
+        onPressed: () {
+          context.go(SettingsScreen.routePath);
+        },
+        child: icon,
+      );
+    }
+
+    return Tooltip(
+      message: 'Open settings',
+      child: isSelected
+          ? IconButton.filledTonal(
+              onPressed: () {
+                context.go(SettingsScreen.routePath);
+              },
+              icon: icon,
+            )
+          : IconButton(
+              onPressed: () {
+                context.go(SettingsScreen.routePath);
+              },
+              icon: icon,
+            ),
+    );
   }
 }
 

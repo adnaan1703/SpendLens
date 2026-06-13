@@ -5,14 +5,13 @@ import 'package:go_router/go_router.dart';
 import '../core/bootstrap/app_bootstrap.dart';
 import '../data/repositories/household_repository.dart';
 import '../features/ai/ai_screen.dart';
+import '../features/activity/activity_screen.dart';
 import '../features/auth/data/auth_repository.dart';
 import '../features/auth/sign_in_screen.dart';
 import '../features/dashboard/dashboard_screen.dart';
 import '../features/merchant_review/merchant_review_screen.dart';
 import '../features/piggy_banks/piggy_banks_screen.dart';
 import '../features/settings/settings_screen.dart';
-import '../features/transactions/transactions_screen.dart';
-import '../features/trends/trends_screen.dart';
 import 'app_shell.dart';
 
 final appRouterProvider = Provider<GoRouter>((ref) {
@@ -72,14 +71,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             builder: (_, _) => const DashboardScreen(),
           ),
           GoRoute(
-            path: TransactionsScreen.routePath,
-            builder: (_, state) => TransactionsScreen(
-              initialFilters: TransactionInitialFilters.fromUri(state.uri),
+            path: ActivityScreen.routePath,
+            builder: (_, state) => ActivityScreen(
+              initialFilters: ActivityScreen.initialFiltersFromUri(state.uri),
             ),
-          ),
-          GoRoute(
-            path: TrendsScreen.routePath,
-            builder: (_, _) => const TrendsScreen(),
           ),
           GoRoute(
             path: MerchantReviewScreen.routePath,

@@ -1,0 +1,1 @@
+const activityRoutePath = '/activity';

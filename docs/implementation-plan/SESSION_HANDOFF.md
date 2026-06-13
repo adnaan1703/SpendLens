@@ -4,9 +4,10 @@ Use this file to coordinate work across multiple implementation sessions. Update
 
 ## Current Status
 
-- Current milestone: None. Milestone 38 was completed on 2026-06-13.
+- Current milestone: None. Milestone 39 was completed on 2026-06-13.
   Milestones 18-21 remain deferred by user request.
-- Last completed milestone: Milestone 38, Shared Responsive UI Primitives.
+- Last completed milestone: Milestone 39, App Shell, Navigation IA, and
+  Routes.
 - Current implementation state: Flutter Android app scaffold exists in
   `apps/mobile` with SpendLens Google sign-in, route protection, authenticated
   shell, RLS-safe profile/default-household bootstrap, household
@@ -110,11 +111,16 @@ Use this file to coordinate work across multiple implementation sessions. Update
   breakpoint helpers, responsive page scaffolding, display and section
   headings, content/feature/modal card shells, metric cards, filter/status/icon
   chips, large amount text, action pills, loading/error states, a shared
-  primitive barrel export, and focused primitive tests.
+  primitive barrel export, and focused primitive tests. Milestone 39 adds the
+  authenticated Activity route at `/activity`, replaces primary shell
+  destinations with Dashboard, Activity, Review, and Vaults, moves Settings to
+  a global shell gear action, removes active `/transactions` and `/trends` app
+  routes, and retargets Dashboard and Settings drilldowns to Activity while
+  preserving existing transaction query semantics.
   Milestones 18-21 remain planned and deferred by user request.
 - Remote deployment state: On 2026-06-08, user confirmed Supabase project `bslsitzdvrdosubbdxpd` as the intended dev/staging target. All local migrations through `20260607174515_ai_ready_layer_llm_features.sql` were pushed there, hosted expense Q&A and the now-retired legacy AI lookup function were active with JWT verification, and `GEMINI_API_KEY` was present in hosted Edge Function secrets by name. After the user signed in through the Android emulator, hosted profile/household bootstrap and authenticated Gemini Edge Function smoke passed. On 2026-06-08 for Milestone 13, `gmail-oauth-start` was deployed as version 2 with JWT verification, `gmail-sync` was deployed as version 2 without JWT verification, and new `gmail-backfill-range` was deployed as version 1 without JWT verification. Hosted `gmail-backfill-range` `OPTIONS` smoke returned 200, and an unauthenticated POST returned the expected service-key error. The live May Gmail backfill itself was not run because it requires the user to connect the target Gmail mailbox and invoke the runbook with a Supabase secret key from a local/platform secret store. On 2026-06-09, M16 deleted the hosted legacy AI lookup function from `bslsitzdvrdosubbdxpd` and a follow-up function list verified it absent. The M16 database migration and updated active Suggest function were verified locally but not pushed/deployed to hosted in this implementation session.
-- Next recommended milestone: Milestone 39, App Shell, Navigation IA, and
-  Routes. Execute only M39 in the next implementation thread unless the
+- Next recommended milestone: Milestone 40, Dashboard Redesign. Execute only
+  M40 in the next implementation thread unless the
   user explicitly requests a different milestone. Milestones 18-21 remain
   deferred unless the user resumes push notifications. If continuing hosted
   rollout separately, push the M16, M26, M29, M32, and M33 migrations and deploy
@@ -263,7 +269,7 @@ Do not ask the user to perform all setup at once. Ask only when the relevant mil
 - Milestone 36, UI Redesign Planning and Reference Readiness: completed.
 - Milestone 37, UI Design Tokens, Themes, and Theme Preference: completed.
 - Milestone 38, Shared Responsive UI Primitives: completed.
-- Milestone 39, App Shell, Navigation IA, and Routes: planned.
+- Milestone 39, App Shell, Navigation IA, and Routes: completed.
 - Milestone 40, Dashboard Redesign: planned.
 - Milestone 41, Activity List Mode: planned.
 - Milestone 42, Activity Charts Mode: planned.
@@ -431,6 +437,47 @@ When an architecture decision changes:
     the authoritative design-token sources for M38.
   - M38 should provide reusable primitives and keep current screen behavior
     intact; M39 owns app-shell/navigation IA and routes.
+- Mocks created:
+  - None.
+- Mocks used:
+  - None.
+
+## Milestone 39 Completion Notes
+
+- Started and completed on 2026-06-13.
+- Added `/activity` as the authenticated Activity destination and routed it
+  through a new `ActivityScreen` integration point backed by the existing
+  transaction-list behavior for this milestone.
+- Replaced primary shell navigation with exactly Dashboard, Activity, Review,
+  and Vaults, using the M38 responsive breakpoint helper for mobile bottom
+  navigation versus wide navigation rail behavior.
+- Removed Settings from primary navigation and added a global shell settings
+  action that opens `/settings` inside the authenticated shell context.
+- Removed active `/transactions` and `/trends` app routes; Ask remains a
+  non-primary authenticated route.
+- Retargeted Dashboard category/merchant drilldowns and Settings category
+  detail drilldowns to `/activity`, preserving existing category, label,
+  merchant, `startDate`, and `endDate` query semantics through Activity.
+- Updated route/helper tests for Activity and added shell navigation coverage
+  for the four primary destinations plus the settings action.
+- No Dashboard redesign, Activity list/charts content migration,
+  Review/Vaults/Settings visual redesign, Supabase/backend/schema, hosted
+  rollout, push notification, iOS, web, M40, or later-milestone work was
+  started.
+- Verification run:
+  - `cd apps/mobile && dart format lib/src/features/activity/activity_route.dart lib/src/features/activity/activity_screen.dart lib/src/app/router.dart lib/src/app/app_shell.dart lib/src/features/dashboard/dashboard_screen.dart lib/src/features/settings/settings_screen.dart lib/src/features/transactions/transactions_screen.dart lib/src/features/trends/trends_screen.dart test/finance_features_test.dart test/widget_test.dart`
+  - `cd apps/mobile && flutter analyze`
+  - `cd apps/mobile && flutter test`
+  - `git diff --check`
+- Known gaps:
+  - None.
+- Assumptions made:
+  - The visible Vaults primary destination can continue to use the existing
+    `/piggy-banks` route until the later Vaults-specific redesign/renaming
+    milestone.
+  - The existing transaction-list implementation pane can remain as the temporary Activity
+    list implementation behind `/activity`; the full list/charts consolidation
+    remains deferred to M41-M42.
 - Mocks created:
   - None.
 - Mocks used:
