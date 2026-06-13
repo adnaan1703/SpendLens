@@ -4,7 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../data/repositories/finance_repository.dart';
 import '../../data/repositories/household_repository.dart';
-import '../../shared/widgets/app_page.dart';
+import '../../shared/widgets/app_card.dart';
 import '../../shared/widgets/empty_state.dart';
 import '../../shared/widgets/period_filter_dropdown.dart';
 import '../activity/activity_route.dart';
@@ -169,115 +169,111 @@ class _TransactionListPaneState extends ConsumerState<TransactionListPane> {
         ? const AsyncValue<PagedTransactions>.loading()
         : ref.watch(transactionsProvider(query));
 
-    return AppPage(
-      title: 'Transactions',
-      subtitle: householdContext?.household.name ?? 'Search and filters',
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _TransactionFilters(
-            searchController: _searchController,
-            searchText: _searchText,
-            categories: categories.value ?? const [],
-            selectedCategoryId: _categoryId,
-            labels: labelOptions,
-            selectedLabelId: _labelId,
-            sourceAccounts: sourceAccounts.value ?? const [],
-            selectedSourceAccountType: _sourceAccountType,
-            selectedSourceAccountId: _sourceAccountId,
-            availableMonths: availableMonths.value ?? const [],
-            dateRange: _dateRange,
-            onSearchChanged: (value) {
-              setState(() {
-                _searchText = value;
-                _page = 0;
-              });
-            },
-            onCategoryChanged: (value) {
-              setState(() {
-                _categoryId = value;
-                _page = 0;
-              });
-            },
-            onLabelChanged: (value) {
-              setState(() {
-                _labelId = value;
-                _page = 0;
-              });
-            },
-            onSourceAccountTypeChanged: (value) {
-              setState(() {
-                _sourceAccountType = value;
-                if (value != null &&
-                    _sourceAccountId != null &&
-                    !(sourceAccounts.value ?? const []).any(
-                      (source) =>
-                          source.id == _sourceAccountId && source.type == value,
-                    )) {
-                  _sourceAccountId = null;
-                }
-                _page = 0;
-              });
-            },
-            onSourceAccountChanged: (value) {
-              setState(() {
-                _sourceAccountId = value;
-                _page = 0;
-              });
-            },
-            onPeriodChanged: _handlePeriodChanged,
-            onClear: _clearFilters,
-          ),
-          const SizedBox(height: 20),
-          switch (transactions) {
-            AsyncValue(:final value?) => _TransactionList(
-              page: value,
-              onPreviousPage: value.hasPreviousPage
-                  ? () {
-                      setState(() {
-                        _page -= 1;
-                      });
-                    }
-                  : null,
-              onNextPage: value.hasNextPage
-                  ? () {
-                      setState(() {
-                        _page += 1;
-                      });
-                    }
-                  : null,
-              onEdit:
-                  householdContext == null ||
-                      !categories.hasValue ||
-                      !subcategories.hasValue
-                  ? null
-                  : (transaction) {
-                      _showMetadataEditor(
-                        householdContext: householdContext,
-                        transaction: transaction,
-                        categories: categories.value ?? const [],
-                        subcategories: subcategories.value ?? const [],
-                      );
-                    },
-              onEditLabels: householdContext == null || !labels.hasValue
-                  ? null
-                  : (transaction) {
-                      _showLabelEditor(
-                        householdContext: householdContext,
-                        transaction: transaction,
-                        labels: labels.value ?? const [],
-                      );
-                    },
-            ),
-            AsyncValue(hasError: true, :final error) => EmptyState(
-              icon: Icons.error_outline,
-              title: 'Transactions unavailable',
-              message: error.toString(),
-            ),
-            _ => const Center(child: CircularProgressIndicator()),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _TransactionFilters(
+          searchController: _searchController,
+          searchText: _searchText,
+          categories: categories.value ?? const [],
+          selectedCategoryId: _categoryId,
+          labels: labelOptions,
+          selectedLabelId: _labelId,
+          sourceAccounts: sourceAccounts.value ?? const [],
+          selectedSourceAccountType: _sourceAccountType,
+          selectedSourceAccountId: _sourceAccountId,
+          availableMonths: availableMonths.value ?? const [],
+          dateRange: _dateRange,
+          onSearchChanged: (value) {
+            setState(() {
+              _searchText = value;
+              _page = 0;
+            });
           },
-        ],
-      ),
+          onCategoryChanged: (value) {
+            setState(() {
+              _categoryId = value;
+              _page = 0;
+            });
+          },
+          onLabelChanged: (value) {
+            setState(() {
+              _labelId = value;
+              _page = 0;
+            });
+          },
+          onSourceAccountTypeChanged: (value) {
+            setState(() {
+              _sourceAccountType = value;
+              if (value != null &&
+                  _sourceAccountId != null &&
+                  !(sourceAccounts.value ?? const []).any(
+                    (source) =>
+                        source.id == _sourceAccountId && source.type == value,
+                  )) {
+                _sourceAccountId = null;
+              }
+              _page = 0;
+            });
+          },
+          onSourceAccountChanged: (value) {
+            setState(() {
+              _sourceAccountId = value;
+              _page = 0;
+            });
+          },
+          onPeriodChanged: _handlePeriodChanged,
+          onClear: _clearFilters,
+        ),
+        const SizedBox(height: 20),
+        switch (transactions) {
+          AsyncValue(:final value?) => _TransactionList(
+            page: value,
+            onPreviousPage: value.hasPreviousPage
+                ? () {
+                    setState(() {
+                      _page -= 1;
+                    });
+                  }
+                : null,
+            onNextPage: value.hasNextPage
+                ? () {
+                    setState(() {
+                      _page += 1;
+                    });
+                  }
+                : null,
+            onEdit:
+                householdContext == null ||
+                    !categories.hasValue ||
+                    !subcategories.hasValue
+                ? null
+                : (transaction) {
+                    _showMetadataEditor(
+                      householdContext: householdContext,
+                      transaction: transaction,
+                      categories: categories.value ?? const [],
+                      subcategories: subcategories.value ?? const [],
+                    );
+                  },
+            onEditLabels: householdContext == null || !labels.hasValue
+                ? null
+                : (transaction) {
+                    _showLabelEditor(
+                      householdContext: householdContext,
+                      transaction: transaction,
+                      labels: labels.value ?? const [],
+                    );
+                  },
+          ),
+          AsyncValue(hasError: true, :final error) => EmptyState(
+            icon: Icons.error_outline,
+            title: 'Transactions unavailable',
+            message: error.toString(),
+          ),
+          _ => const Center(child: CircularProgressIndicator()),
+        },
+      ],
     );
   }
 
@@ -463,6 +459,7 @@ class _TransactionFilters extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     final hasFilters =
         searchText.isNotEmpty ||
         selectedCategoryId != null ||
@@ -482,124 +479,173 @@ class _TransactionFilters extends StatelessWidget {
               .where((source) => source.type == selectedSourceAccountType)
               .toList(growable: false);
 
-    return Wrap(
-      spacing: 12,
-      runSpacing: 12,
-      crossAxisAlignment: WrapCrossAlignment.center,
-      children: [
-        SizedBox(
-          width: 300,
-          child: TextField(
-            controller: searchController,
-            onChanged: onSearchChanged,
-            decoration: const InputDecoration(
-              prefixIcon: Icon(Icons.search),
-              labelText: 'Merchant search',
-            ),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final layoutWidth = constraints.hasBoundedWidth
+            ? constraints.maxWidth
+            : MediaQuery.sizeOf(context).width;
+        final compact = layoutWidth < 640;
+        final searchWidth = compact ? layoutWidth : 360.0;
+        final categoryWidth = compact ? layoutWidth : 280.0;
+        final sourceTypeWidth = compact ? 180.0 : 220.0;
+        final sourceWidth = compact ? layoutWidth : 320.0;
+        final labelWidth = compact ? 220.0 : 260.0;
+        final pillBorder = OutlineInputBorder(
+          borderRadius: BorderRadius.circular(999),
+        );
+        final pillDecoration = InputDecoration(
+          filled: true,
+          fillColor: theme.colorScheme.surface,
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 18,
+            vertical: 12,
           ),
-        ),
-        SizedBox(
-          width: 300,
-          child: DropdownButtonFormField<String>(
-            key: ValueKey('category-$selectedCategoryId'),
-            isExpanded: true,
-            initialValue: selectedCategoryId,
-            decoration: const InputDecoration(
-              labelText: 'Category',
-              prefixIcon: Icon(Icons.category_outlined),
-            ),
-            items: [
-              const DropdownMenuItem(
-                value: null,
-                child: Text('All categories'),
+          border: pillBorder,
+          enabledBorder: pillBorder.copyWith(
+            borderSide: BorderSide(color: theme.colorScheme.outline),
+          ),
+        );
+
+        return Wrap(
+          spacing: 12,
+          runSpacing: 12,
+          crossAxisAlignment: WrapCrossAlignment.center,
+          children: [
+            SizedBox(
+              width: searchWidth,
+              child: TextField(
+                controller: searchController,
+                onChanged: onSearchChanged,
+                decoration: InputDecoration(
+                  filled: true,
+                  fillColor: theme.colorScheme.surface,
+                  prefixIcon: const Icon(Icons.search),
+                  labelText: 'Merchant search',
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(color: theme.colorScheme.outline),
+                  ),
+                ),
               ),
-              if (!hasSelectedCategory)
-                DropdownMenuItem(
-                  value: selectedCategoryId,
-                  child: const Text('Selected category'),
-                ),
-              for (final category in categories)
-                DropdownMenuItem(
-                  value: category.id,
-                  child: Text(category.name),
-                ),
-            ],
-            onChanged: onCategoryChanged,
-          ),
-        ),
-        SizedBox(
-          width: 220,
-          child: DropdownButtonFormField<String>(
-            key: ValueKey('source-type-$selectedSourceAccountType'),
-            isExpanded: true,
-            initialValue: selectedSourceAccountType,
-            decoration: const InputDecoration(
-              labelText: 'Source type',
-              prefixIcon: Icon(Icons.account_balance_outlined),
             ),
-            items: const [
-              DropdownMenuItem(value: null, child: Text('All types')),
-              DropdownMenuItem(
-                value: 'credit_card',
-                child: Text('Credit card'),
+            SizedBox(
+              width: categoryWidth,
+              child: DropdownButtonFormField<String>(
+                key: ValueKey('category-$selectedCategoryId'),
+                isExpanded: true,
+                initialValue: selectedCategoryId,
+                decoration: pillDecoration.copyWith(
+                  labelText: 'Category',
+                  prefixIcon: const Icon(Icons.category_outlined),
+                ),
+                items: [
+                  const DropdownMenuItem(
+                    value: null,
+                    child: Text('All categories'),
+                  ),
+                  if (!hasSelectedCategory)
+                    DropdownMenuItem(
+                      value: selectedCategoryId,
+                      child: const Text('Selected category'),
+                    ),
+                  for (final category in categories)
+                    DropdownMenuItem(
+                      value: category.id,
+                      child: Text(category.name),
+                    ),
+                ],
+                onChanged: onCategoryChanged,
               ),
-              DropdownMenuItem(value: 'upi', child: Text('UPI')),
-            ],
-            onChanged: onSourceAccountTypeChanged,
-          ),
-        ),
-        SizedBox(
-          width: 340,
-          child: DropdownButtonFormField<String>(
-            key: ValueKey('source-$selectedSourceAccountId'),
-            isExpanded: true,
-            initialValue: selectedSourceAccountId,
-            decoration: const InputDecoration(
-              labelText: 'Source',
-              prefixIcon: Icon(Icons.credit_card_outlined),
             ),
-            items: [
-              const DropdownMenuItem(value: null, child: Text('All sources')),
-              for (final source in filteredSourceAccounts)
-                DropdownMenuItem(value: source.id, child: Text(source.label)),
-            ],
-            onChanged: onSourceAccountChanged,
-          ),
-        ),
-        SizedBox(
-          width: 260,
-          child: DropdownButtonFormField<String>(
-            key: ValueKey('label-$selectedLabelId'),
-            isExpanded: true,
-            initialValue: selectedLabelId,
-            decoration: const InputDecoration(
-              labelText: 'Label',
-              prefixIcon: Icon(Icons.label_outline),
-            ),
-            items: [
-              const DropdownMenuItem(value: null, child: Text('All labels')),
-              if (!hasSelectedLabel)
-                DropdownMenuItem(
-                  value: selectedLabelId,
-                  child: const Text('Selected label'),
+            SizedBox(
+              width: sourceTypeWidth,
+              child: DropdownButtonFormField<String>(
+                key: ValueKey('source-type-$selectedSourceAccountType'),
+                isExpanded: true,
+                initialValue: selectedSourceAccountType,
+                decoration: pillDecoration.copyWith(
+                  labelText: 'Source type',
+                  prefixIcon: const Icon(Icons.account_balance_outlined),
                 ),
-              for (final label in labels)
-                DropdownMenuItem(value: label.id, child: Text(label.name)),
-            ],
-            onChanged: onLabelChanged,
-          ),
-        ),
-        PeriodFilterDropdown(
-          availableMonths: availableMonths,
-          selectedRange: dateRange,
-          onChanged: onPeriodChanged,
-        ),
-        IconButton(
-          tooltip: 'Clear filters',
-          onPressed: hasFilters ? onClear : null,
-          icon: const Icon(Icons.filter_alt_off_outlined),
-        ),
-      ],
+                items: const [
+                  DropdownMenuItem(value: null, child: Text('All types')),
+                  DropdownMenuItem(
+                    value: 'credit_card',
+                    child: Text('Credit card'),
+                  ),
+                  DropdownMenuItem(value: 'upi', child: Text('UPI')),
+                ],
+                onChanged: onSourceAccountTypeChanged,
+              ),
+            ),
+            SizedBox(
+              width: sourceWidth,
+              child: DropdownButtonFormField<String>(
+                key: ValueKey('source-$selectedSourceAccountId'),
+                isExpanded: true,
+                initialValue: selectedSourceAccountId,
+                decoration: pillDecoration.copyWith(
+                  labelText: 'Source',
+                  prefixIcon: const Icon(Icons.credit_card_outlined),
+                ),
+                items: [
+                  const DropdownMenuItem(
+                    value: null,
+                    child: Text('All sources'),
+                  ),
+                  for (final source in filteredSourceAccounts)
+                    DropdownMenuItem(
+                      value: source.id,
+                      child: Text(source.label),
+                    ),
+                ],
+                onChanged: onSourceAccountChanged,
+              ),
+            ),
+            SizedBox(
+              width: labelWidth,
+              child: DropdownButtonFormField<String>(
+                key: ValueKey('label-$selectedLabelId'),
+                isExpanded: true,
+                initialValue: selectedLabelId,
+                decoration: pillDecoration.copyWith(
+                  labelText: 'Label',
+                  prefixIcon: const Icon(Icons.label_outline),
+                ),
+                items: [
+                  const DropdownMenuItem(
+                    value: null,
+                    child: Text('All labels'),
+                  ),
+                  if (!hasSelectedLabel)
+                    DropdownMenuItem(
+                      value: selectedLabelId,
+                      child: const Text('Selected label'),
+                    ),
+                  for (final label in labels)
+                    DropdownMenuItem(value: label.id, child: Text(label.name)),
+                ],
+                onChanged: onLabelChanged,
+              ),
+            ),
+            PeriodFilterDropdown(
+              availableMonths: availableMonths,
+              selectedRange: dateRange,
+              pillStyle: true,
+              width: compact ? 220 : 260,
+              onChanged: onPeriodChanged,
+            ),
+            IconButton.filledTonal(
+              tooltip: 'Clear filters',
+              onPressed: hasFilters ? onClear : null,
+              icon: const Icon(Icons.filter_alt_off_outlined),
+            ),
+          ],
+        );
+      },
     );
   }
 }
@@ -633,7 +679,7 @@ class _TransactionList extends StatelessWidget {
       children: [
         for (final transaction in page.items)
           Padding(
-            padding: const EdgeInsets.only(bottom: 8),
+            padding: const EdgeInsets.only(bottom: 16),
             child: _TransactionCard(
               transaction: transaction,
               onEdit: onEdit,
@@ -682,24 +728,68 @@ class _TransactionCard extends StatelessWidget {
         : transaction.isBillPayment
         ? theme.colorScheme.outline
         : theme.colorScheme.primary;
+    final title = _titleFor(transaction);
+    final subtitle = _subtitleFor(transaction);
 
-    return Card(
-      child: ListTile(
-        leading: Icon(_iconFor(transaction), color: amountColor),
-        title: Text(
-          _titleFor(transaction),
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-        ),
-        subtitle: _TransactionSubtitle(
-          text: _subtitleFor(transaction),
-          labels: transaction.labels,
-        ),
-        trailing: Text(
-          formatMoney(transaction.netExpense),
-          style: theme.textTheme.titleMedium?.copyWith(color: amountColor),
-        ),
-        onTap: () => _showTransactionDetail(context, transaction),
+    return AppContentCard(
+      padding: const EdgeInsets.all(20),
+      borderSide: BorderSide(color: theme.colorScheme.outlineVariant),
+      onTap: () => _showTransactionDetail(context, transaction),
+      semanticLabel: '$title, ${formatMoney(transaction.netExpense)}',
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final compact = constraints.maxWidth < 380;
+          final iconChip = _TransactionIconChip(
+            icon: _iconFor(transaction),
+            color: amountColor,
+          );
+          final details = _TransactionCardDetails(
+            title: title,
+            subtitle: subtitle,
+            labels: transaction.labels,
+          );
+          final amount = Text(
+            formatMoney(transaction.netExpense),
+            textAlign: compact ? TextAlign.start : TextAlign.end,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: theme.textTheme.titleMedium?.copyWith(
+              color: amountColor,
+              fontWeight: FontWeight.w800,
+              letterSpacing: 0,
+            ),
+          );
+
+          if (compact) {
+            return Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                iconChip,
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [details, const SizedBox(height: 12), amount],
+                  ),
+                ),
+              ],
+            );
+          }
+
+          return Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              iconChip,
+              const SizedBox(width: 16),
+              Expanded(child: details),
+              const SizedBox(width: 16),
+              ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 140),
+                child: amount,
+              ),
+            ],
+          );
+        },
       ),
     );
   }
@@ -728,6 +818,7 @@ class _TransactionCard extends StatelessWidget {
       if (statementMerchant.isNotEmpty && statementMerchant != title)
         statementMerchant,
       if (transaction.categoryName != null) transaction.categoryName!,
+      if (transaction.subcategoryName != null) transaction.subcategoryName!,
       transaction.transactionType.replaceAll('_', ' '),
       if (transaction.cardholderName != null) transaction.cardholderName!,
     ];
@@ -863,24 +954,81 @@ class _DetailRow extends StatelessWidget {
   }
 }
 
-class _TransactionSubtitle extends StatelessWidget {
-  const _TransactionSubtitle({required this.text, required this.labels});
+class _TransactionIconChip extends StatelessWidget {
+  const _TransactionIconChip({required this.icon, required this.color});
 
-  final String text;
+  final IconData icon;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      decoration: ShapeDecoration(
+        color: Theme.of(context).colorScheme.surfaceContainerHighest,
+        shape: const CircleBorder(),
+      ),
+      child: SizedBox(
+        width: 48,
+        height: 48,
+        child: Icon(icon, color: color, size: 24),
+      ),
+    );
+  }
+}
+
+class _TransactionCardDetails extends StatelessWidget {
+  const _TransactionCardDetails({
+    required this.title,
+    required this.subtitle,
+    required this.labels,
+  });
+
+  final String title;
+  final String subtitle;
   final List<LabelOption> labels;
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
       children: [
-        Text(text, maxLines: 2, overflow: TextOverflow.ellipsis),
+        Text(
+          title,
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
+          style: theme.textTheme.titleMedium?.copyWith(
+            fontWeight: FontWeight.w800,
+            letterSpacing: 0,
+          ),
+        ),
+        const SizedBox(height: 4),
+        _TransactionSubtitle(text: subtitle),
         if (labels.isNotEmpty) ...[
-          const SizedBox(height: 6),
+          const SizedBox(height: 10),
           _LabelChips(labels: labels, maxVisible: 2, compact: true),
         ],
       ],
+    );
+  }
+}
+
+class _TransactionSubtitle extends StatelessWidget {
+  const _TransactionSubtitle({required this.text});
+
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    return Text(
+      text,
+      maxLines: 3,
+      overflow: TextOverflow.ellipsis,
+      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+        color: Theme.of(context).colorScheme.onSurfaceVariant,
+      ),
     );
   }
 }

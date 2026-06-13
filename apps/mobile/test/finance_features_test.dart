@@ -806,6 +806,30 @@ void main() {
     expect(repository.lastQuery?.categoryId, 'cat-food');
   });
 
+  testWidgets('activity opens in list mode by default on a narrow viewport', (
+    tester,
+  ) async {
+    final repository = _FakeFinanceRepository();
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(() {
+      tester.view.resetPhysicalSize();
+      tester.view.resetDevicePixelRatio();
+    });
+
+    await tester.pumpWidget(
+      _financeTestApp(repository: repository, child: const ActivityScreen()),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Activity'), findsOneWidget);
+    expect(find.text('List'), findsOneWidget);
+    expect(find.text('Charts'), findsOneWidget);
+    expect(find.text('Merchant search'), findsOneWidget);
+    expect(find.text('Swiggy Instamart'), findsWidgets);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('transactions period month filters query and resets pagination', (
     tester,
   ) async {
@@ -974,6 +998,7 @@ void main() {
       );
       await tester.pumpAndSettle();
 
+      await tester.ensureVisible(find.text('Amazon Shopping'));
       await tester.tap(find.text('Amazon Shopping'));
       await tester.pumpAndSettle();
       await tester.ensureVisible(

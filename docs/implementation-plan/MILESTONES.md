@@ -1804,7 +1804,8 @@ behavior.
 
 ### Status
 
-Planned. See [UI Redesign](UI_REDESIGN.md#m41---activity-list-mode).
+Completed on 2026-06-14. See
+[UI Redesign](UI_REDESIGN.md#m41---activity-list-mode).
 
 ### Objective
 
@@ -1831,6 +1832,33 @@ Move transaction list behavior into Activity's List mode.
 ### Deferred Scope
 
 - Activity Charts mode is M42.
+
+### Completion Notes
+
+- Added Activity's List/Charts segmented control with List as the default and
+  kept Charts as a placeholder for Milestone 42 only.
+- Moved transaction search/filter/pagination behavior into Activity List while
+  preserving `/activity` query semantics for Dashboard and Settings drilldowns.
+- Restyled filters as pill-like responsive controls and transaction rows as
+  large rounded cards with icon chips, merchant/group names, metadata, amounts,
+  label chips/overflow, and detail tap targets.
+- Preserved transaction label edit and metadata edit entry points through the
+  detail sheet.
+- Verification:
+  - `cd apps/mobile && dart format lib/src/features/activity/activity_screen.dart lib/src/features/transactions/transactions_screen.dart lib/src/shared/widgets/period_filter_dropdown.dart test/finance_features_test.dart`
+  - `cd apps/mobile && flutter analyze`
+  - `cd apps/mobile && flutter test test/finance_features_test.dart`
+  - `cd apps/mobile && flutter test`
+  - `git diff --check`
+- Assumptions made:
+  - Activity Charts remains a placeholder in M41 because chart/report migration
+    is Milestone 42.
+  - Transaction detail/editor visual redesign remains deferred to M43-M44.
+- Mocks created:
+  - None.
+- Mocks used:
+  - `docs/design-references/stitch/themed-dashboard-ui-redesign/screens/activity-scandi-fintech-refinement.jpg`
+  - `docs/design-references/stitch/themed-dashboard-ui-redesign/html/activity-scandi-fintech-refinement.html`
 
 ## Milestone 42: Activity Charts Mode
 

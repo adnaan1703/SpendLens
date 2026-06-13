@@ -4,9 +4,9 @@ Use this file to coordinate work across multiple implementation sessions. Update
 
 ## Current Status
 
-- Current milestone: None. Milestone 40 was completed on 2026-06-14.
+- Current milestone: None. Milestone 41 was completed on 2026-06-14.
   Milestones 18-21 remain deferred by user request.
-- Last completed milestone: Milestone 40, Dashboard Redesign.
+- Last completed milestone: Milestone 41, Activity List Mode.
 - Current implementation state: Flutter Android app scaffold exists in
   `apps/mobile` with SpendLens Google sign-in, route protection, authenticated
   shell, RLS-safe profile/default-household bootstrap, household
@@ -119,11 +119,16 @@ Use this file to coordinate work across multiple implementation sessions. Update
   Dashboard around the Stitch hierarchy with a compact month pill, Spending net
   and month-change cards, Review queue card, compact Monthly caps progress
   rows, and top category/merchant cards while preserving cap workflows,
-  carry-forward display, and Activity drilldowns.
+  carry-forward display, and Activity drilldowns. Milestone 41 adds Activity's
+  List/Charts mode selector with List as the default, moves the existing
+  transaction search/filter/pagination behavior under Activity List, restyles
+  filters as pill-like responsive controls, and presents transactions as large
+  rounded cards with icon chips, metadata, amounts, labels, and preserved detail
+  edit entry points.
   Milestones 18-21 remain planned and deferred by user request.
 - Remote deployment state: On 2026-06-08, user confirmed Supabase project `bslsitzdvrdosubbdxpd` as the intended dev/staging target. All local migrations through `20260607174515_ai_ready_layer_llm_features.sql` were pushed there, hosted expense Q&A and the now-retired legacy AI lookup function were active with JWT verification, and `GEMINI_API_KEY` was present in hosted Edge Function secrets by name. After the user signed in through the Android emulator, hosted profile/household bootstrap and authenticated Gemini Edge Function smoke passed. On 2026-06-08 for Milestone 13, `gmail-oauth-start` was deployed as version 2 with JWT verification, `gmail-sync` was deployed as version 2 without JWT verification, and new `gmail-backfill-range` was deployed as version 1 without JWT verification. Hosted `gmail-backfill-range` `OPTIONS` smoke returned 200, and an unauthenticated POST returned the expected service-key error. The live May Gmail backfill itself was not run because it requires the user to connect the target Gmail mailbox and invoke the runbook with a Supabase secret key from a local/platform secret store. On 2026-06-09, M16 deleted the hosted legacy AI lookup function from `bslsitzdvrdosubbdxpd` and a follow-up function list verified it absent. The M16 database migration and updated active Suggest function were verified locally but not pushed/deployed to hosted in this implementation session.
-- Next recommended milestone: Milestone 41, Activity List Mode. Execute only
-  M41 in the next implementation thread unless the
+- Next recommended milestone: Milestone 42, Activity Charts Mode. Execute only
+  M42 in the next implementation thread unless the
   user explicitly requests a different milestone. Milestones 18-21 remain
   deferred unless the user resumes push notifications. If continuing hosted
   rollout separately, push the M16, M26, M29, M32, and M33 migrations and deploy
@@ -274,7 +279,7 @@ Do not ask the user to perform all setup at once. Ask only when the relevant mil
 - Milestone 38, Shared Responsive UI Primitives: completed.
 - Milestone 39, App Shell, Navigation IA, and Routes: completed.
 - Milestone 40, Dashboard Redesign: completed.
-- Milestone 41, Activity List Mode: planned.
+- Milestone 41, Activity List Mode: completed.
 - Milestone 42, Activity Charts Mode: planned.
 - Milestone 43, Transaction Details Redesign: planned.
 - Milestone 44, Transaction Metadata Editor Redesign: planned.
@@ -524,6 +529,45 @@ When an architecture decision changes:
 - Mocks used:
   - `docs/design-references/stitch/themed-dashboard-ui-redesign/screens/dashboard-unified-navigation.jpg`
   - `docs/design-references/stitch/themed-dashboard-ui-redesign/html/dashboard-unified-navigation.html`
+
+## Milestone 41 Completion Notes
+
+- Started and completed on 2026-06-14.
+- Added Activity's List/Charts segmented control with List as the default mode
+  and a Charts placeholder only; Activity Charts implementation remains
+  deferred to Milestone 42.
+- Moved the existing transaction list behavior under Activity List while
+  preserving merchant search, category, label, source type, source account,
+  period/custom date range, clear filters, pagination, Dashboard drilldown, and
+  Settings drilldown query semantics for `/activity`.
+- Restyled Activity List filters as pill-like responsive controls and
+  transaction rows as large rounded cards with icon chips, merchant/group names,
+  date/statement/category/subcategory/type metadata, amounts, label chips with
+  overflow, and detail tap targets.
+- Preserved transaction label edit and metadata edit entry points through the
+  transaction detail sheet.
+- Added focused Activity List default/narrow-viewport widget coverage and
+  updated the off-screen transaction detail test tap for the larger cards.
+- No Activity Charts implementation, Review/Vaults/Settings redesign,
+  push-notification work, M42, or later-milestone work was started.
+- Verification run:
+  - `cd apps/mobile && dart format lib/src/features/activity/activity_screen.dart lib/src/features/transactions/transactions_screen.dart lib/src/shared/widgets/period_filter_dropdown.dart test/finance_features_test.dart`
+  - `cd apps/mobile && flutter analyze`
+  - `cd apps/mobile && flutter test test/finance_features_test.dart`
+  - `cd apps/mobile && flutter test`
+  - `git diff --check`
+- Known gaps:
+  - None.
+- Assumptions made:
+  - Activity Charts should remain a non-functional placeholder in M41 because
+    chart/report migration is explicitly Milestone 42.
+  - The existing transaction detail sheet remains the correct place for label
+    and metadata edit entry points until the detail/editor redesign milestones.
+- Mocks created:
+  - None.
+- Mocks used:
+  - `docs/design-references/stitch/themed-dashboard-ui-redesign/screens/activity-scandi-fintech-refinement.jpg`
+  - `docs/design-references/stitch/themed-dashboard-ui-redesign/html/activity-scandi-fintech-refinement.html`
 
 ## Milestone 1 Completion Notes
 

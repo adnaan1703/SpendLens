@@ -572,6 +572,41 @@ Completion summary requirements:
 - Mocks created
 - Mocks used
 
+Completion notes:
+
+- Added Activity's List/Charts segmented control with List as the default mode.
+- Kept Charts as a placeholder only; Activity Charts implementation remains
+  Milestone 42.
+- Moved the existing transaction search/filter/pagination behavior under
+  Activity List while preserving merchant search, category, label, source type,
+  source account, period/custom date range, clear filters, pagination, and
+  `/activity` query semantics for Dashboard and Settings drilldowns.
+- Restyled filters as pill-like responsive controls and transaction rows as
+  large rounded cards with icon chips, merchant/group names,
+  date/statement/category/subcategory/type metadata, amounts, label chips with
+  overflow, and detail tap targets.
+- Preserved transaction label edit and metadata edit entry points through the
+  transaction detail sheet.
+- Added focused Activity List default/narrow-viewport widget coverage and
+  updated the off-screen transaction detail test tap for the larger cards.
+- No Activity Charts implementation, Review/Vaults/Settings redesign,
+  push-notification work, M42, or later-milestone work was started.
+- Verification:
+  - `cd apps/mobile && dart format lib/src/features/activity/activity_screen.dart lib/src/features/transactions/transactions_screen.dart lib/src/shared/widgets/period_filter_dropdown.dart test/finance_features_test.dart`
+  - `cd apps/mobile && flutter analyze`
+  - `cd apps/mobile && flutter test test/finance_features_test.dart`
+  - `cd apps/mobile && flutter test`
+  - `git diff --check`
+- Assumptions made:
+  - Activity Charts remains a placeholder in M41 because chart/report migration
+    is Milestone 42.
+  - Transaction detail/editor visual redesign remains deferred to M43-M44.
+- Mocks created:
+  - None.
+- Mocks used:
+  - `docs/design-references/stitch/themed-dashboard-ui-redesign/screens/activity-scandi-fintech-refinement.jpg`
+  - `docs/design-references/stitch/themed-dashboard-ui-redesign/html/activity-scandi-fintech-refinement.html`
+
 ## M42 - Activity Charts Mode
 
 Purpose: migrate Trends behavior into Activity Charts mode.

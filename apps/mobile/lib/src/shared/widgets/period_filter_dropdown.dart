@@ -35,11 +35,15 @@ class PeriodFilterDropdown extends StatelessWidget {
     required this.availableMonths,
     required this.selectedRange,
     required this.onChanged,
+    this.pillStyle = false,
+    this.width = 280,
   });
 
   final List<DateTime> availableMonths;
   final DateTimeRange? selectedRange;
   final ValueChanged<PeriodFilterSelection> onChanged;
+  final bool pillStyle;
+  final double width;
 
   @override
   Widget build(BuildContext context) {
@@ -54,12 +58,28 @@ class PeriodFilterDropdown extends StatelessWidget {
       const _PeriodFilterValue.customDateRange(),
     ];
 
+    final theme = Theme.of(context);
+    final border = pillStyle
+        ? OutlineInputBorder(borderRadius: BorderRadius.circular(999))
+        : null;
+
     return SizedBox(
-      width: 280,
+      width: width,
       child: InputDecorator(
-        decoration: const InputDecoration(
+        decoration: InputDecoration(
+          filled: pillStyle,
+          fillColor: pillStyle ? theme.colorScheme.surface : null,
           labelText: 'Period',
-          prefixIcon: Icon(Icons.calendar_month_outlined),
+          prefixIcon: const Icon(Icons.calendar_month_outlined),
+          contentPadding: pillStyle
+              ? const EdgeInsets.symmetric(horizontal: 18, vertical: 12)
+              : null,
+          border: border,
+          enabledBorder: pillStyle
+              ? border?.copyWith(
+                  borderSide: BorderSide(color: theme.colorScheme.outline),
+                )
+              : null,
         ),
         isEmpty: false,
         child: DropdownButtonHideUnderline(
