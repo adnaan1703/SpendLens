@@ -1982,7 +1982,8 @@ Restyle transaction details as the focused Stitch detail surface.
 
 ### Status
 
-Planned. See [UI Redesign](UI_REDESIGN.md#m44---transaction-metadata-editor).
+Completed on 2026-06-14. See
+[UI Redesign](UI_REDESIGN.md#m44---transaction-metadata-editor).
 
 ### Objective
 
@@ -2009,6 +2010,34 @@ behavior.
 ### Deferred Scope
 
 - New metadata fields or AI behavior.
+
+### Completion Notes
+
+- Rebuilt the metadata editor as a constrained modal card with the Stitch form
+  hierarchy: `Edit metadata` title, outlined merchant group field,
+  category/subcategory selectors, Create category affordance, confidence
+  selector, notes field, explanatory copy, and Suggest/Cancel/Save actions.
+- Preserved transaction and Review correction behavior, category creation, AI
+  Suggest success/failure handling, save request shape, and provider
+  invalidation from existing callers.
+- Added focused regression coverage for Activity and Review metadata editor
+  access, Suggest failure retaining manual values, and a 390px dark-theme
+  narrow viewport render check.
+- Verification:
+  - `cd apps/mobile && dart format lib/src/features/transaction_metadata/transaction_metadata_editor.dart test/finance_features_test.dart`
+  - `cd apps/mobile && flutter analyze`
+  - `cd apps/mobile && flutter test test/finance_features_test.dart`
+  - `cd apps/mobile && flutter test`
+  - `git diff --check`
+- Assumptions made:
+  - Activity and Review continue sharing one metadata editor implementation.
+  - The existing create-category dialog is not restyled until a later
+    dialog/form polish milestone.
+- Mocks created:
+  - None.
+- Mocks used:
+  - `docs/design-references/stitch/themed-dashboard-ui-redesign/screens/transactions-edit-metadata.jpg`
+  - `docs/design-references/stitch/themed-dashboard-ui-redesign/html/transactions-edit-metadata.html`
 
 ## Milestone 45: Review Redesign
 

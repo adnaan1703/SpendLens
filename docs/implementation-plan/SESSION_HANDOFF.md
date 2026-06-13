@@ -4,9 +4,10 @@ Use this file to coordinate work across multiple implementation sessions. Update
 
 ## Current Status
 
-- Current milestone: None. Milestone 43 was completed on 2026-06-14.
+- Current milestone: None. Milestone 44 was completed on 2026-06-14.
   Milestones 18-21 remain deferred by user request.
-- Last completed milestone: Milestone 43, Transaction Details Redesign.
+- Last completed milestone: Milestone 44, Transaction Metadata Editor
+  Redesign.
 - Current implementation state: Flutter Android app scaffold exists in
   `apps/mobile` with SpendLens Google sign-in, route protection, authenticated
   shell, RLS-safe profile/default-household bootstrap, household
@@ -131,12 +132,16 @@ Use this file to coordinate work across multiple implementation sessions. Update
   Trend card. Milestone 43 restyles transaction details as a focused
   M38-modal-based surface with close affordance, centered merchant/date/amount,
   transaction type/status pill, responsive divider rows, and preserved
-  metadata and label edit entry points.
+  metadata and label edit entry points. Milestone 44 restyles the shared
+  transaction metadata editor as a constrained modal card with outlined
+  merchant/category/subcategory/confidence/notes controls, inline category
+  creation, explanatory copy, responsive actions, preserved Suggest/Save
+  behavior, and focused Activity/Review/narrow-viewport regression coverage.
   Milestones 18-21 remain planned and deferred by user request.
 - Remote deployment state: On 2026-06-08, user confirmed Supabase project `bslsitzdvrdosubbdxpd` as the intended dev/staging target. All local migrations through `20260607174515_ai_ready_layer_llm_features.sql` were pushed there, hosted expense Q&A and the now-retired legacy AI lookup function were active with JWT verification, and `GEMINI_API_KEY` was present in hosted Edge Function secrets by name. After the user signed in through the Android emulator, hosted profile/household bootstrap and authenticated Gemini Edge Function smoke passed. On 2026-06-08 for Milestone 13, `gmail-oauth-start` was deployed as version 2 with JWT verification, `gmail-sync` was deployed as version 2 without JWT verification, and new `gmail-backfill-range` was deployed as version 1 without JWT verification. Hosted `gmail-backfill-range` `OPTIONS` smoke returned 200, and an unauthenticated POST returned the expected service-key error. The live May Gmail backfill itself was not run because it requires the user to connect the target Gmail mailbox and invoke the runbook with a Supabase secret key from a local/platform secret store. On 2026-06-09, M16 deleted the hosted legacy AI lookup function from `bslsitzdvrdosubbdxpd` and a follow-up function list verified it absent. The M16 database migration and updated active Suggest function were verified locally but not pushed/deployed to hosted in this implementation session.
-- Next recommended milestone: Milestone 44, Transaction Metadata Editor
-  Redesign. Execute only M44 in the next implementation thread unless the
-  user explicitly requests a different milestone. Milestones 18-21 remain
+- Next recommended milestone: Milestone 45, Review Redesign. Execute only M45
+  in the next implementation thread unless the user explicitly requests a
+  different milestone. Milestones 18-21 remain
   deferred unless the user resumes push notifications. If continuing hosted
   rollout separately, push the M16, M26, M29, M32, and M33 migrations and deploy
   `transaction-metadata-suggest`; iOS and web remain deferred future milestones
@@ -289,7 +294,7 @@ Do not ask the user to perform all setup at once. Ask only when the relevant mil
 - Milestone 41, Activity List Mode: completed.
 - Milestone 42, Activity Charts Mode: completed.
 - Milestone 43, Transaction Details Redesign: completed.
-- Milestone 44, Transaction Metadata Editor Redesign: planned.
+- Milestone 44, Transaction Metadata Editor Redesign: completed.
 - Milestone 45, Review Redesign: planned.
 - Milestone 46, Vaults Redesign: planned.
 - Milestone 47, Settings Focused Screen and Theme Selector: planned.
@@ -648,6 +653,41 @@ When an architecture decision changes:
 - Mocks used:
   - `docs/design-references/stitch/themed-dashboard-ui-redesign/screens/transactions-details-refined-shapes.jpg`
   - `docs/design-references/stitch/themed-dashboard-ui-redesign/html/transactions-details-refined-shapes.html`
+
+## Milestone 44 Completion Notes
+
+- Completed on 2026-06-14.
+- Rebuilt the shared transaction metadata editor as a constrained modal card
+  matching the Stitch form hierarchy with `Edit metadata` display title,
+  outlined merchant group, category, subcategory, confidence, and notes fields,
+  inline Create category affordance, explanatory copy, and responsive
+  Suggest/Cancel/Save actions.
+- Preserved merchant group editing, category/subcategory selection, confidence
+  editing, notes editing, inline category creation, AI Suggest requests and
+  failure handling, transaction-detail saves, Review correction saves, and
+  existing provider invalidation after save.
+- Added focused coverage for Suggest failure retaining manual form values and
+  saving them afterward, plus a 390px dark-theme metadata editor render check.
+- No Review/Vaults/Settings/sign-in/Ask/dialog redesign, push-notification
+  work, M45, or later-milestone work was started.
+- Verification run:
+  - `cd apps/mobile && dart format lib/src/features/transaction_metadata/transaction_metadata_editor.dart test/finance_features_test.dart`
+  - `cd apps/mobile && flutter analyze`
+  - `cd apps/mobile && flutter test test/finance_features_test.dart`
+  - `cd apps/mobile && flutter test`
+  - `git diff --check`
+- Known gaps:
+  - None.
+- Assumptions made:
+  - Activity and Review should continue to share the same metadata editor and
+    caller-owned provider invalidation behavior.
+  - The existing category creation dialog remains visually out of scope for
+    M44 and is deferred to later dialog/form polish.
+- Mocks created:
+  - None.
+- Mocks used:
+  - `docs/design-references/stitch/themed-dashboard-ui-redesign/screens/transactions-edit-metadata.jpg`
+  - `docs/design-references/stitch/themed-dashboard-ui-redesign/html/transactions-edit-metadata.html`
 
 ## Milestone 1 Completion Notes
 

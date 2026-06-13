@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:spendlens/src/app/app_shell.dart';
 import 'package:spendlens/src/core/bootstrap/app_bootstrap.dart';
+import 'package:spendlens/src/core/theme/app_theme.dart';
 import 'package:spendlens/src/data/repositories/finance_repository.dart';
 import 'package:spendlens/src/data/repositories/household_repository.dart';
 import 'package:spendlens/src/features/ai/ai_screen.dart';
@@ -1561,13 +1562,84 @@ void main() {
     await tester.tap(find.widgetWithText(FilledButton, 'Edit'));
     await tester.pumpAndSettle();
 
+    await tester.enterText(find.byType(TextFormField).first, 'Swiggy Manual');
+    await tester.ensureVisible(find.byType(TextFormField).last);
+    await tester.enterText(
+      find.byType(TextFormField).last,
+      'Keep manual correction.',
+    );
+
     await tester.tap(find.text('Suggest'));
     await tester.pumpAndSettle();
 
     expect(repository.metadataSuggestionRequests, hasLength(1));
-    expect(find.text('Swiggy Instamart'), findsWidgets);
+    expect(find.text('Swiggy Manual'), findsOneWidget);
+    expect(find.text('Keep manual correction.'), findsOneWidget);
     expect(find.text('Bad state: AI unavailable'), findsOneWidget);
     expect(repository.corrections, isEmpty);
+
+    await tester.tap(find.text('Save'));
+    await tester.pumpAndSettle();
+
+    expect(repository.corrections, hasLength(1));
+    expect(repository.corrections.single.merchantGroup, 'Swiggy Manual');
+    expect(repository.corrections.single.notes, 'Keep manual correction.');
+  });
+
+  testWidgets('transaction metadata editor fits narrow dark viewport', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(390, 900);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(() {
+      tester.view.resetPhysicalSize();
+      tester.view.resetDevicePixelRatio();
+    });
+    final repository = _FakeFinanceRepository();
+
+    await tester.pumpWidget(
+      _financeTestApp(
+        repository: repository,
+        theme: AppTheme.dark(),
+        child: const ActivityScreen(),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.ensureVisible(find.text('Swiggy Instamart').first);
+    await tester.tap(find.text('Swiggy Instamart').first);
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.widgetWithText(FilledButton, 'Edit'));
+    await tester.tap(find.widgetWithText(FilledButton, 'Edit'));
+    await tester.pumpAndSettle();
+
+    final modal = find.byKey(const ValueKey('metadata-editor-card'));
+    expect(modal, findsOneWidget);
+    expect(
+      find.descendant(of: modal, matching: find.text('Edit metadata')),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(of: modal, matching: find.text('Merchant group')),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(of: modal, matching: find.text('Create category')),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(of: modal, matching: find.text('Suggest')),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(of: modal, matching: find.text('Cancel')),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(of: modal, matching: find.text('Save')),
+      findsOneWidget,
+    );
+    expect(tester.takeException(), isNull);
   });
 
   testWidgets('settings creates category and subcategory', (tester) async {
@@ -2172,6 +2244,7 @@ void main() {
 Widget _financeTestApp({
   required _FakeFinanceRepository repository,
   required Widget child,
+  ThemeData? theme,
 }) {
   return ProviderScope(
     overrides: [
@@ -2181,7 +2254,10 @@ Widget _financeTestApp({
       householdContextProvider.overrideWithValue(AsyncData(_householdContext)),
       financeRepositoryProvider.overrideWithValue(repository),
     ],
-    child: MaterialApp(home: Scaffold(body: child)),
+    child: MaterialApp(
+      theme: theme,
+      home: Scaffold(body: child),
+    ),
   );
 }
 

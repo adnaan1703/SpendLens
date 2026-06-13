@@ -777,6 +777,8 @@ Completion notes:
 
 ## M44 - Transaction Metadata Editor
 
+Status: completed on 2026-06-14.
+
 Purpose: restyle metadata editing as the Stitch modal form while preserving
 correction behavior.
 
@@ -831,6 +833,38 @@ Completion summary requirements:
 - Assumptions made
 - Mocks created
 - Mocks used
+
+Completion notes:
+
+- Rebuilt the shared transaction metadata editor as a constrained modal card
+  using the Stitch form hierarchy: `Edit metadata` title, outlined merchant
+  group field, category/subcategory selectors, Create category affordance,
+  confidence selector, notes field, explanatory copy, and responsive
+  Suggest/Cancel/Save actions.
+- Preserved merchant group editing, category/subcategory selection, confidence
+  editing, notes editing, category creation, AI Suggest request/failure
+  handling, transaction-detail correction saves, Review correction saves, and
+  caller provider invalidation after save.
+- Added focused Activity/Review metadata editor coverage, stronger Suggest
+  failure coverage that saves retained manual values, and a 390px dark-theme
+  modal render check.
+- Next recommended implementation milestone is M45, Review Redesign.
+- Verification:
+  - `cd apps/mobile && dart format lib/src/features/transaction_metadata/transaction_metadata_editor.dart test/finance_features_test.dart`
+  - `cd apps/mobile && flutter analyze`
+  - `cd apps/mobile && flutter test test/finance_features_test.dart`
+  - `cd apps/mobile && flutter test`
+  - `git diff --check`
+- Assumptions made:
+  - The existing shared metadata editor remains the single implementation for
+    both Activity transaction details and Review corrections.
+  - Restyling the nested create-category dialog is deferred to the later
+    dialogs/forms polish milestone.
+- Mocks created:
+  - None.
+- Mocks used:
+  - `docs/design-references/stitch/themed-dashboard-ui-redesign/screens/transactions-edit-metadata.jpg`
+  - `docs/design-references/stitch/themed-dashboard-ui-redesign/html/transactions-edit-metadata.html`
 
 ## M45 - Review Screen
 
