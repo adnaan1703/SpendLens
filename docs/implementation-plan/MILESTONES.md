@@ -1617,7 +1617,7 @@ references discoverable for future fresh-context execution.
 
 ### Status
 
-Planned. See
+Completed on 2026-06-13. See
 [UI Redesign](UI_REDESIGN.md#m37---design-tokens-themes-and-theme-preference).
 
 ### Objective

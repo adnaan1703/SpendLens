@@ -149,6 +149,8 @@ Completion summary requirements:
 
 ## M37 - Design Tokens, Themes, and Theme Preference
 
+Status: completed on 2026-06-13.
+
 Purpose: establish the theme foundation that all screen milestones will use.
 
 Instructions:
@@ -200,6 +202,36 @@ Completion summary requirements:
 - Assumptions made
 - Mocks created
 - Mocks used
+
+Completion notes:
+
+- Replaced the seed-color-only app theme with centralized `AppThemeTokens`,
+  semantic color extension values, explicit `AppTheme.light()`, and explicit
+  `AppTheme.dark()`.
+- Added a local system/light/dark theme-mode controller and store backed by
+  shared preferences, defaulting to `ThemeMode.system` while loading or when no
+  valid stored value exists.
+- Wired `SpendLensApp` to pass `theme`, `darkTheme`, and `themeMode` into
+  `MaterialApp.router`.
+- Added focused theme tests for token use, mode parsing, shared-preferences
+  save/load, provider default/load/change behavior, and app-level theme-mode
+  application.
+- Verification:
+  - `cd apps/mobile && flutter pub get`
+  - `cd apps/mobile && dart format lib/src/core/theme/app_theme.dart lib/src/core/theme/theme_mode_controller.dart lib/src/app/spend_lens_app.dart test/theme_test.dart`
+  - `cd apps/mobile && flutter analyze`
+  - `cd apps/mobile && flutter test`
+  - `git diff --check`
+- Assumptions made:
+  - M37 owns the local theme foundation and persistence layer; the visible
+    Settings theme selector remains deferred to Milestone 47.
+  - `DESIGN.md` is authoritative for token values when Stitch metadata differs.
+  - Theme mode remains local device state and is not synced to Supabase.
+- Mocks created:
+  - None.
+- Mocks used:
+  - Stored Stitch reference README and project metadata were inspected for M37
+    context; no Stitch HTML or screen mock content was copied into Flutter.
 
 ## M38 - Shared Responsive UI Primitives
 

@@ -4,10 +4,10 @@ Use this file to coordinate work across multiple implementation sessions. Update
 
 ## Current Status
 
-- Current milestone: None. Milestone 36 was completed on 2026-06-13.
+- Current milestone: None. Milestone 37 was completed on 2026-06-13.
   Milestones 18-21 remain deferred by user request.
-- Last completed milestone: Milestone 36, UI Redesign Planning and Reference
-  Readiness.
+- Last completed milestone: Milestone 37, UI Design Tokens, Themes, and Theme
+  Preference.
 - Current implementation state: Flutter Android app scaffold exists in
   `apps/mobile` with SpendLens Google sign-in, route protection, authenticated
   shell, RLS-safe profile/default-household bootstrap, household
@@ -103,11 +103,14 @@ Use this file to coordinate work across multiple implementation sessions. Update
   behavior into durable docs. Milestone 36 adds the UI redesign companion plan,
   records the Stitch reference bundle, and plans Milestones 37-51 for
   DESIGN.md-based theming, four-tab navigation, Activity consolidation, Vaults,
-  focused Settings, and full UI regression. Milestones 18-21 remain planned and
-  deferred by user request.
+  focused Settings, and full UI regression. Milestone 37 replaces the seed
+  theme with centralized DESIGN.md tokens, explicit light/dark `ThemeData`,
+  local system/light/dark theme-mode persistence through shared preferences,
+  `MaterialApp.router` theme wiring, and focused theme regression tests.
+  Milestones 18-21 remain planned and deferred by user request.
 - Remote deployment state: On 2026-06-08, user confirmed Supabase project `bslsitzdvrdosubbdxpd` as the intended dev/staging target. All local migrations through `20260607174515_ai_ready_layer_llm_features.sql` were pushed there, hosted expense Q&A and the now-retired legacy AI lookup function were active with JWT verification, and `GEMINI_API_KEY` was present in hosted Edge Function secrets by name. After the user signed in through the Android emulator, hosted profile/household bootstrap and authenticated Gemini Edge Function smoke passed. On 2026-06-08 for Milestone 13, `gmail-oauth-start` was deployed as version 2 with JWT verification, `gmail-sync` was deployed as version 2 without JWT verification, and new `gmail-backfill-range` was deployed as version 1 without JWT verification. Hosted `gmail-backfill-range` `OPTIONS` smoke returned 200, and an unauthenticated POST returned the expected service-key error. The live May Gmail backfill itself was not run because it requires the user to connect the target Gmail mailbox and invoke the runbook with a Supabase secret key from a local/platform secret store. On 2026-06-09, M16 deleted the hosted legacy AI lookup function from `bslsitzdvrdosubbdxpd` and a follow-up function list verified it absent. The M16 database migration and updated active Suggest function were verified locally but not pushed/deployed to hosted in this implementation session.
-- Next recommended milestone: Milestone 37, UI Design Tokens, Themes, and Theme
-  Preference. Execute only M37 in the next implementation thread unless the
+- Next recommended milestone: Milestone 38, Shared Responsive UI Primitives.
+  Execute only M38 in the next implementation thread unless the
   user explicitly requests a different milestone. Milestones 18-21 remain
   deferred unless the user resumes push notifications. If continuing hosted
   rollout separately, push the M16, M26, M29, M32, and M33 migrations and deploy
@@ -254,7 +257,7 @@ Do not ask the user to perform all setup at once. Ask only when the relevant mil
 - Milestone 34, Dashboard Carry-Forward UX: completed.
 - Milestone 35, Recurring Caps Regression, Docs, and Cleanup: completed.
 - Milestone 36, UI Redesign Planning and Reference Readiness: completed.
-- Milestone 37, UI Design Tokens, Themes, and Theme Preference: planned.
+- Milestone 37, UI Design Tokens, Themes, and Theme Preference: completed.
 - Milestone 38, Shared Responsive UI Primitives: planned.
 - Milestone 39, App Shell, Navigation IA, and Routes: planned.
 - Milestone 40, Dashboard Redesign: planned.
@@ -343,6 +346,50 @@ When an architecture decision changes:
 - Mocks used:
   - Existing Stitch export under
     `docs/design-references/stitch/themed-dashboard-ui-redesign`.
+
+## Milestone 37 Completion Notes
+
+- Started and completed on 2026-06-13.
+- Replaced the seed-color-only Flutter theme with centralized DESIGN.md token
+  constants, including lime primary CTA `#9fe870`, on-primary ink `#0e0f0c`,
+  sage canvas `#e8ebe6`, white card surface, ink/body/muted text colors,
+  positive/warning/negative semantic colors, and canonical 24px card/button
+  radius values.
+- Added explicit `AppTheme.light()` and `AppTheme.dark()` theme data with
+  token-driven surfaces, typography colors, Material component themes, and a
+  semantic color theme extension.
+- Added local system/light/dark theme-mode persistence using
+  `shared_preferences`, defaulting to `ThemeMode.system` while loading or when
+  no valid stored value exists.
+- Wired `SpendLensApp` to pass `theme`, `darkTheme`, and `themeMode` into
+  `MaterialApp.router`.
+- Added focused theme tests for token use, mode parsing, shared-preferences
+  save/load, provider default/load/change behavior, and app-level theme-mode
+  application.
+- No Supabase schema, Edge Function, RLS, repository-query, hosted rollout,
+  push notification, iOS, web, M38, or later-milestone work was started.
+- Verification run:
+  - `git status --short --branch`
+  - Required M37 planning docs, `DESIGN.md`, Stitch README/project metadata,
+    existing app theme/app wiring, `pubspec.yaml`, and current tests were
+    inspected before editing.
+  - `cd apps/mobile && flutter pub get`
+  - `cd apps/mobile && dart format lib/src/core/theme/app_theme.dart lib/src/core/theme/theme_mode_controller.dart lib/src/app/spend_lens_app.dart test/theme_test.dart`
+  - `cd apps/mobile && flutter analyze`
+  - `cd apps/mobile && flutter test`
+  - `git diff --check`
+- Known gaps:
+  - None.
+- Assumptions made:
+  - M37 owns the local theme foundation and persistence layer; the visible
+    Settings theme selector remains deferred to Milestone 47.
+  - `DESIGN.md` is authoritative for token values when Stitch metadata differs.
+  - Theme mode remains local device state and is not synced to Supabase.
+- Mocks created:
+  - None.
+- Mocks used:
+  - Stored Stitch reference README and project metadata were inspected for M37
+    context; no Stitch HTML or screen mock content was copied into Flutter.
 
 ## Milestone 1 Completion Notes
 
