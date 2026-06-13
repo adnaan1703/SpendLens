@@ -77,9 +77,10 @@ class AppShell extends StatelessWidget {
         final isWide =
             AppResponsiveBreakpoints.classForWidth(layoutWidth) !=
             AppWindowSizeClass.mobile;
+        final showPrimaryNavigation = !isSettingsRoute;
 
         return Scaffold(
-          body: isWide
+          body: isWide && showPrimaryNavigation
               ? Row(
                   children: [
                     SafeArea(
@@ -114,7 +115,7 @@ class AppShell extends StatelessWidget {
                   ],
                 )
               : child,
-          bottomNavigationBar: isWide
+          bottomNavigationBar: isWide || !showPrimaryNavigation
               ? null
               : NavigationBar(
                   selectedIndex: selectedIndex ?? 0,

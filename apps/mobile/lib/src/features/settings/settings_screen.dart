@@ -5,12 +5,14 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/bootstrap/app_bootstrap.dart';
 import '../../core/config/app_config.dart';
+import '../../core/theme/theme_mode_controller.dart';
 import '../../data/repositories/finance_repository.dart';
 import '../../data/repositories/household_repository.dart';
-import '../../shared/widgets/app_page.dart';
+import '../../shared/widgets/app_primitives.dart';
 import '../auth/data/auth_repository.dart';
 import '../activity/activity_screen.dart';
 import '../categories/category_creation_dialog.dart';
+import '../dashboard/dashboard_screen.dart';
 
 class SettingsScreen extends ConsumerStatefulWidget {
   const SettingsScreen({super.key});
@@ -50,47 +52,24 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
 
     return AppPage(
       title: 'Settings',
-      subtitle: 'Account and runtime',
-      actions: [
-        FilledButton.tonalIcon(
-          onPressed: _isSigningOut ? null : _signOut,
-          icon: _isSigningOut
-              ? const SizedBox.square(
-                  dimension: 16,
-                  child: CircularProgressIndicator(strokeWidth: 2),
-                )
-              : const Icon(Icons.logout),
-          label: Text(_isSigningOut ? 'Signing out...' : 'Sign out'),
-        ),
-      ],
+      maxContentWidth: 780,
+      reserveBottomNavigationSpace: false,
+      actions: const [_SettingsBackButton()],
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Card(
-            child: Padding(
-              padding: const EdgeInsets.all(20),
-              child: Column(
-                children: [
-                  _SettingsRow(
-                    label: 'Signed in as',
-                    value:
-                        householdContext?.profile.email ??
-                        session?.user.email ??
-                        'Unknown user',
-                  ),
-                  const Divider(height: 28),
-                  _SettingsRow(
-                    label: 'Household',
-                    value: householdContext?.household.name ?? 'Loading',
-                  ),
-                  const Divider(height: 28),
-                  _SettingsRow(
-                    label: 'Role',
-                    value: householdContext?.memberRole ?? 'Loading',
-                  ),
-                ],
-              ),
-            ),
+          _AccountRuntimeCard(
+            email:
+                householdContext?.profile.email ??
+                session?.user.email ??
+                'Unknown user',
+            householdName: householdContext?.household.name ?? 'Loading',
+            role: householdContext?.memberRole ?? 'Loading',
+            isSigningOut: _isSigningOut,
+            onSignOut: _isSigningOut ? null : _signOut,
           ),
+          const SizedBox(height: 16),
+          const _ThemeSelectorCard(),
           if (householdContext != null) ...[
             const SizedBox(height: 16),
             _CategoryManagerCard(householdId: householdContext.household.id),
@@ -102,38 +81,196 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             _AiSettingsCard(householdId: householdContext.household.id),
           ],
           const SizedBox(height: 16),
-          Card(
-            child: Padding(
-              padding: const EdgeInsets.all(20),
-              child: Column(
-                children: [
-                  _SettingsRow(
-                    label: 'Environment',
-                    value: config.environment.label,
+          _SystemEnvironmentCard(
+            environment: config.environment.label,
+            authRedirectUrl: config.authRedirectUrl,
+            supabaseStatus: switch (bootstrap.supabaseStatus) {
+              SupabaseStatus.ready => 'Ready',
+              SupabaseStatus.failed => 'Error',
+              SupabaseStatus.notConfigured => 'Not configured',
+            },
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _SettingsBackButton extends StatelessWidget {
+  const _SettingsBackButton();
+
+  @override
+  Widget build(BuildContext context) {
+    final router = GoRouter.maybeOf(context);
+
+    return TextButton.icon(
+      onPressed: router == null
+          ? null
+          : () {
+              if (router.canPop()) {
+                router.pop();
+                return;
+              }
+
+              router.go(DashboardScreen.routePath);
+            },
+      icon: const Icon(Icons.arrow_back),
+      label: const Text('Back'),
+    );
+  }
+}
+
+class _AccountRuntimeCard extends StatelessWidget {
+  const _AccountRuntimeCard({
+    required this.email,
+    required this.householdName,
+    required this.role,
+    required this.isSigningOut,
+    required this.onSignOut,
+  });
+
+  final String email;
+  final String householdName;
+  final String role;
+  final bool isSigningOut;
+  final VoidCallback? onSignOut;
+
+  @override
+  Widget build(BuildContext context) {
+    return AppContentCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(
+            'Account & Runtime',
+            style: Theme.of(context).textTheme.titleLarge,
+          ),
+          const SizedBox(height: 18),
+          _SettingsRow(label: 'Signed in as', value: email),
+          const Divider(height: 28),
+          _SettingsRow(label: 'Household', value: householdName),
+          const Divider(height: 28),
+          _SettingsRow(label: 'Role', value: role),
+          const SizedBox(height: 20),
+          OutlinedButton.icon(
+            onPressed: onSignOut,
+            icon: isSigningOut
+                ? const SizedBox.square(
+                    dimension: 16,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : const Icon(Icons.logout),
+            label: Text(isSigningOut ? 'Signing out...' : 'Sign out'),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ThemeSelectorCard extends ConsumerWidget {
+  const _ThemeSelectorCard();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final selectedMode = ref
+        .watch(appThemeModeControllerProvider)
+        .maybeWhen(data: (mode) => mode, orElse: () => AppThemeMode.system);
+
+    return AppContentCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          const _SettingsSectionHeader(
+            icon: Icons.contrast_outlined,
+            title: 'Theme',
+          ),
+          const SizedBox(height: 18),
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final isCompact =
+                  constraints.hasBoundedWidth && constraints.maxWidth < 520;
+
+              return SegmentedButton<AppThemeMode>(
+                key: const ValueKey('settings-theme-selector'),
+                direction: isCompact ? Axis.vertical : Axis.horizontal,
+                showSelectedIcon: false,
+                segments: const [
+                  ButtonSegment(
+                    value: AppThemeMode.system,
+                    icon: Icon(Icons.devices_outlined),
+                    label: Text('System default'),
                   ),
-                  const Divider(height: 28),
-                  const _SettingsRow(
-                    label: 'Android package',
-                    value: AppConfig.androidPackageName,
+                  ButtonSegment(
+                    value: AppThemeMode.light,
+                    icon: Icon(Icons.light_mode_outlined),
+                    label: Text('Light'),
                   ),
-                  const Divider(height: 28),
-                  _SettingsRow(
-                    label: 'Auth redirect',
-                    value: config.authRedirectUrl,
-                  ),
-                  const Divider(height: 28),
-                  _SettingsRow(
-                    label: 'Supabase',
-                    value: switch (bootstrap.supabaseStatus) {
-                      SupabaseStatus.ready => 'Ready',
-                      SupabaseStatus.failed => 'Error',
-                      SupabaseStatus.notConfigured => 'Not configured',
-                    },
+                  ButtonSegment(
+                    value: AppThemeMode.dark,
+                    icon: Icon(Icons.dark_mode_outlined),
+                    label: Text('Dark'),
                   ),
                 ],
-              ),
+                selected: {selectedMode},
+                onSelectionChanged: (selection) async {
+                  final nextMode = selection.single;
+                  try {
+                    await ref
+                        .read(appThemeModeControllerProvider.notifier)
+                        .setMode(nextMode);
+                  } catch (error) {
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(
+                        context,
+                      ).showSnackBar(SnackBar(content: Text(error.toString())));
+                    }
+                  }
+                },
+              );
+            },
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _SystemEnvironmentCard extends StatelessWidget {
+  const _SystemEnvironmentCard({
+    required this.environment,
+    required this.authRedirectUrl,
+    required this.supabaseStatus,
+  });
+
+  final String environment;
+  final String authRedirectUrl;
+  final String supabaseStatus;
+
+  @override
+  Widget build(BuildContext context) {
+    return SageFeatureCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(
+            'System Environment',
+            style: Theme.of(context).textTheme.labelLarge?.copyWith(
+              letterSpacing: 0,
+              fontWeight: FontWeight.w700,
             ),
           ),
+          const SizedBox(height: 18),
+          _SettingsRow(label: 'Environment', value: environment),
+          const Divider(height: 28),
+          const _SettingsRow(
+            label: 'Android package',
+            value: AppConfig.androidPackageName,
+          ),
+          const Divider(height: 28),
+          _SettingsRow(label: 'Auth redirect', value: authRedirectUrl),
+          const Divider(height: 28),
+          _SettingsRow(label: 'Supabase', value: supabaseStatus),
         ],
       ),
     );
@@ -150,66 +287,63 @@ class _AiSettingsCard extends ConsumerWidget {
     final textTheme = Theme.of(context).textTheme;
     final status = ref.watch(aiBudgetStatusProvider(householdId));
 
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(20),
-        child: status.when(
-          loading: () => const Center(child: CircularProgressIndicator()),
-          error: (error, _) => Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              _SettingsSectionHeader(
-                icon: Icons.auto_awesome_outlined,
-                title: 'AI',
-                action: IconButton(
-                  tooltip: 'Refresh',
-                  onPressed: () =>
-                      ref.invalidate(aiBudgetStatusProvider(householdId)),
-                  icon: const Icon(Icons.refresh),
-                ),
+    return DarkFeatureCard(
+      child: status.when(
+        loading: () => const Center(child: CircularProgressIndicator()),
+        error: (error, _) => Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            _SettingsSectionHeader(
+              icon: Icons.auto_awesome_outlined,
+              title: 'AI Core',
+              action: IconButton(
+                tooltip: 'Refresh',
+                onPressed: () =>
+                    ref.invalidate(aiBudgetStatusProvider(householdId)),
+                icon: const Icon(Icons.refresh),
               ),
-              const SizedBox(height: 12),
-              Text('AI status unavailable', style: textTheme.titleSmall),
-              const SizedBox(height: 6),
-              Text(error.toString(), style: textTheme.bodySmall),
-            ],
-          ),
-          data: (ai) => Column(
-            children: [
-              _SettingsSectionHeader(
-                icon: Icons.auto_awesome,
-                title: 'AI',
-                action: IconButton(
-                  tooltip: 'Refresh',
-                  onPressed: () =>
-                      ref.invalidate(aiBudgetStatusProvider(householdId)),
-                  icon: const Icon(Icons.refresh),
-                ),
+            ),
+            const SizedBox(height: 12),
+            Text('AI status unavailable', style: textTheme.titleSmall),
+            const SizedBox(height: 6),
+            Text(error.toString(), style: textTheme.bodySmall),
+          ],
+        ),
+        data: (ai) => Column(
+          children: [
+            _SettingsSectionHeader(
+              icon: Icons.auto_awesome,
+              title: 'AI Core',
+              action: IconButton(
+                tooltip: 'Refresh',
+                onPressed: () =>
+                    ref.invalidate(aiBudgetStatusProvider(householdId)),
+                icon: const Icon(Icons.refresh),
               ),
-              const SizedBox(height: 16),
-              _SettingsRow(label: 'Provider', value: ai.provider),
-              const Divider(height: 28),
-              _SettingsRow(label: 'Model', value: ai.model),
-              const Divider(height: 28),
-              _SettingsRow(label: 'Mode', value: ai.modeLabel),
-              const Divider(height: 28),
-              _SettingsRow(
-                label: 'Monthly cap',
-                value: '\$${ai.monthlySpendCapUsd.toStringAsFixed(2)}',
-              ),
-              const Divider(height: 28),
-              _SettingsRow(
-                label: 'Current usage',
-                value:
-                    '${ai.currentMonthEventCount} calls / \$${ai.currentMonthSpendUsd.toStringAsFixed(4)}',
-              ),
-              const Divider(height: 28),
-              _SettingsRow(
-                label: 'Metadata Suggest search',
-                value: ai.transactionMetadataSuggestionSearchLabel,
-              ),
-            ],
-          ),
+            ),
+            const SizedBox(height: 16),
+            _SettingsRow(label: 'Provider', value: ai.provider),
+            const Divider(height: 28),
+            _SettingsRow(label: 'Model', value: ai.model),
+            const Divider(height: 28),
+            _SettingsRow(label: 'Mode', value: ai.modeLabel),
+            const Divider(height: 28),
+            _SettingsRow(
+              label: 'Monthly cap',
+              value: '\$${ai.monthlySpendCapUsd.toStringAsFixed(2)}',
+            ),
+            const Divider(height: 28),
+            _SettingsRow(
+              label: 'Current usage',
+              value:
+                  '${ai.currentMonthEventCount} calls / \$${ai.currentMonthSpendUsd.toStringAsFixed(4)}',
+            ),
+            const Divider(height: 28),
+            _SettingsRow(
+              label: 'Metadata Suggest search',
+              value: ai.transactionMetadataSuggestionSearchLabel,
+            ),
+          ],
         ),
       ),
     );
@@ -326,55 +460,52 @@ class _LabelManagerCard extends ConsumerWidget {
     final textTheme = Theme.of(context).textTheme;
     final snapshot = ref.watch(labelManagerSnapshotProvider(householdId));
 
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            _SettingsSectionHeader(
-              icon: Icons.label_outline,
-              title: 'Labels',
-              action: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  IconButton(
-                    tooltip: 'Refresh labels',
-                    onPressed: () => _refreshLabelLookups(ref, householdId),
-                    icon: const Icon(Icons.refresh),
-                  ),
-                  const SizedBox(width: 8),
-                  FilledButton.tonalIcon(
-                    onPressed: snapshot.isLoading
-                        ? null
-                        : () => _createLabel(context, ref),
-                    icon: const Icon(Icons.add),
-                    label: const Text('Create'),
-                  ),
-                ],
-              ),
+    return AppContentCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          _SettingsSectionHeader(
+            icon: Icons.label_outline,
+            title: 'Labels',
+            action: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                IconButton(
+                  tooltip: 'Refresh labels',
+                  onPressed: () => _refreshLabelLookups(ref, householdId),
+                  icon: const Icon(Icons.refresh),
+                ),
+                const SizedBox(width: 8),
+                FilledButton.tonalIcon(
+                  onPressed: snapshot.isLoading
+                      ? null
+                      : () => _createLabel(context, ref),
+                  icon: const Icon(Icons.add),
+                  label: const Text('Create'),
+                ),
+              ],
             ),
-            const SizedBox(height: 16),
-            switch (snapshot) {
-              AsyncValue(:final value?) => _LabelManager(
-                snapshot: value,
-                onRename: (label) =>
-                    _renameLabel(context: context, ref: ref, label: label),
-                onDelete: (usage) =>
-                    _deleteLabel(context: context, ref: ref, usage: usage),
-              ),
-              AsyncValue(hasError: true, :final error) => Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Text('Labels unavailable', style: textTheme.titleSmall),
-                  const SizedBox(height: 6),
-                  Text(error.toString(), style: textTheme.bodySmall),
-                ],
-              ),
-              _ => const Center(child: CircularProgressIndicator()),
-            },
-          ],
-        ),
+          ),
+          const SizedBox(height: 16),
+          switch (snapshot) {
+            AsyncValue(:final value?) => _LabelManager(
+              snapshot: value,
+              onRename: (label) =>
+                  _renameLabel(context: context, ref: ref, label: label),
+              onDelete: (usage) =>
+                  _deleteLabel(context: context, ref: ref, usage: usage),
+            ),
+            AsyncValue(hasError: true, :final error) => Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Text('Labels unavailable', style: textTheme.titleSmall),
+                const SizedBox(height: 6),
+                Text(error.toString(), style: textTheme.bodySmall),
+              ],
+            ),
+            _ => const Center(child: CircularProgressIndicator()),
+          },
+        ],
       ),
     );
   }
@@ -558,71 +689,65 @@ class _CategoryManagerCardState extends ConsumerState<_CategoryManagerCard> {
       categoryManagerSnapshotProvider(widget.householdId),
     );
 
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            _SettingsSectionHeader(
-              icon: Icons.category_outlined,
-              title: 'Categories',
-              action: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  IconButton(
-                    tooltip: 'Refresh',
-                    onPressed: () =>
-                        refreshCategoryLookups(ref, widget.householdId),
-                    icon: const Icon(Icons.refresh),
-                  ),
-                  const SizedBox(width: 8),
-                  FilledButton.tonalIcon(
-                    onPressed: snapshot.isLoading ? null : _createCategory,
-                    icon: const Icon(Icons.add),
-                    label: const Text('Create'),
-                  ),
-                ],
-              ),
+    return AppContentCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          _SettingsSectionHeader(
+            icon: Icons.category_outlined,
+            title: 'Categories',
+            action: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                IconButton(
+                  tooltip: 'Refresh',
+                  onPressed: () =>
+                      refreshCategoryLookups(ref, widget.householdId),
+                  icon: const Icon(Icons.refresh),
+                ),
+                const SizedBox(width: 8),
+                FilledButton.tonalIcon(
+                  onPressed: snapshot.isLoading ? null : _createCategory,
+                  icon: const Icon(Icons.add),
+                  label: const Text('Create'),
+                ),
+              ],
             ),
-            const SizedBox(height: 16),
-            switch (snapshot) {
-              AsyncValue(:final value?) => _CategoryManager(
-                snapshot: value,
-                selectedCategoryId: _selectedCategoryId,
-                selectedSubcategoryId: _selectedSubcategoryId,
-                householdId: widget.householdId,
-                onCategorySelected: (categoryId) {
-                  setState(() {
-                    _selectedCategoryId = categoryId;
-                    _selectedSubcategoryId = null;
-                  });
-                },
-                onSubcategorySelected: (categoryId, subcategoryId) {
-                  setState(() {
-                    _selectedCategoryId = categoryId;
-                    _selectedSubcategoryId = subcategoryId;
-                  });
-                },
-                onEditCategory: (category, subcategories) {
-                  _editCategory(
-                    category: category,
-                    subcategories: subcategories,
-                  );
-                },
-              ),
-              AsyncValue(hasError: true, :final error) => Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Text('Categories unavailable', style: textTheme.titleSmall),
-                  const SizedBox(height: 6),
-                  Text(error.toString(), style: textTheme.bodySmall),
-                ],
-              ),
-              _ => const Center(child: CircularProgressIndicator()),
-            },
-          ],
-        ),
+          ),
+          const SizedBox(height: 16),
+          switch (snapshot) {
+            AsyncValue(:final value?) => _CategoryManager(
+              snapshot: value,
+              selectedCategoryId: _selectedCategoryId,
+              selectedSubcategoryId: _selectedSubcategoryId,
+              householdId: widget.householdId,
+              onCategorySelected: (categoryId) {
+                setState(() {
+                  _selectedCategoryId = categoryId;
+                  _selectedSubcategoryId = null;
+                });
+              },
+              onSubcategorySelected: (categoryId, subcategoryId) {
+                setState(() {
+                  _selectedCategoryId = categoryId;
+                  _selectedSubcategoryId = subcategoryId;
+                });
+              },
+              onEditCategory: (category, subcategories) {
+                _editCategory(category: category, subcategories: subcategories);
+              },
+            ),
+            AsyncValue(hasError: true, :final error) => Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Text('Categories unavailable', style: textTheme.titleSmall),
+                const SizedBox(height: 6),
+                Text(error.toString(), style: textTheme.bodySmall),
+              ],
+            ),
+            _ => const Center(child: CircularProgressIndicator()),
+          },
+        ],
       ),
     );
   }
@@ -2320,17 +2445,41 @@ class _GmailConnectorCardState extends ConsumerState<_GmailConnectorCard> {
     final textTheme = Theme.of(context).textTheme;
     final status = ref.watch(gmailConnectorStatusProvider(widget.householdId));
 
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(20),
-        child: status.when(
-          loading: () => const Center(child: CircularProgressIndicator()),
-          error: (error, _) => Column(
+    return AppContentCard(
+      child: status.when(
+        loading: () => const Center(child: CircularProgressIndicator()),
+        error: (error, _) => Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            _SettingsSectionHeader(
+              icon: Icons.mark_email_unread_outlined,
+              title: 'Gmail Importer',
+              action: IconButton(
+                tooltip: 'Refresh',
+                onPressed: () => ref.invalidate(
+                  gmailConnectorStatusProvider(widget.householdId),
+                ),
+                icon: const Icon(Icons.refresh),
+              ),
+            ),
+            const SizedBox(height: 12),
+            Text('Connector status unavailable', style: textTheme.titleSmall),
+            const SizedBox(height: 6),
+            Text(error.toString(), style: textTheme.bodySmall),
+          ],
+        ),
+        data: (mailboxes) {
+          final activeMailboxes = mailboxes
+              .where((mailbox) => mailbox.isActive)
+              .toList();
+          final mailbox = activeMailboxes.firstOrNull;
+
+          return Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               _SettingsSectionHeader(
-                icon: Icons.mark_email_unread_outlined,
-                title: 'Gmail connector',
+                icon: Icons.mark_email_read_outlined,
+                title: 'Gmail Importer',
                 action: IconButton(
                   tooltip: 'Refresh',
                   onPressed: () => ref.invalidate(
@@ -2339,103 +2488,73 @@ class _GmailConnectorCardState extends ConsumerState<_GmailConnectorCard> {
                   icon: const Icon(Icons.refresh),
                 ),
               ),
-              const SizedBox(height: 12),
-              Text('Connector status unavailable', style: textTheme.titleSmall),
-              const SizedBox(height: 6),
-              Text(error.toString(), style: textTheme.bodySmall),
-            ],
-          ),
-          data: (mailboxes) {
-            final activeMailboxes = mailboxes
-                .where((mailbox) => mailbox.isActive)
-                .toList();
-            final mailbox = activeMailboxes.firstOrNull;
-
-            return Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                _SettingsSectionHeader(
-                  icon: Icons.mark_email_read_outlined,
-                  title: 'Gmail connector',
-                  action: IconButton(
-                    tooltip: 'Refresh',
-                    onPressed: () => ref.invalidate(
-                      gmailConnectorStatusProvider(widget.householdId),
-                    ),
-                    icon: const Icon(Icons.refresh),
+              const SizedBox(height: 16),
+              if (mailbox == null)
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: FilledButton.icon(
+                    onPressed: _isConnecting ? null : _connect,
+                    icon: _isConnecting
+                        ? const SizedBox.square(
+                            dimension: 16,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : const Icon(Icons.add_link),
+                    label: Text(_isConnecting ? 'Opening...' : 'Connect Gmail'),
                   ),
+                )
+              else ...[
+                _SettingsRow(label: 'Mailbox', value: mailbox.email),
+                const Divider(height: 28),
+                _SettingsRow(label: 'Status', value: mailbox.displayStatus),
+                const Divider(height: 28),
+                _SettingsRow(
+                  label: 'Watch expires',
+                  value: _formatDateTime(mailbox.watchExpiresAt),
                 ),
-                const SizedBox(height: 16),
-                if (mailbox == null)
-                  Align(
-                    alignment: Alignment.centerLeft,
-                    child: FilledButton.icon(
-                      onPressed: _isConnecting ? null : _connect,
-                      icon: _isConnecting
-                          ? const SizedBox.square(
-                              dimension: 16,
-                              child: CircularProgressIndicator(strokeWidth: 2),
-                            )
-                          : const Icon(Icons.add_link),
-                      label: Text(
-                        _isConnecting ? 'Opening...' : 'Connect Gmail',
-                      ),
-                    ),
-                  )
-                else ...[
-                  _SettingsRow(label: 'Mailbox', value: mailbox.email),
-                  const Divider(height: 28),
-                  _SettingsRow(label: 'Status', value: mailbox.displayStatus),
+                const Divider(height: 28),
+                _SettingsRow(
+                  label: 'Last sync',
+                  value: _formatDateTime(mailbox.lastSyncAt),
+                ),
+                if (mailbox.queuedJobCount > 0) ...[
                   const Divider(height: 28),
                   _SettingsRow(
-                    label: 'Watch expires',
-                    value: _formatDateTime(mailbox.watchExpiresAt),
-                  ),
-                  const Divider(height: 28),
-                  _SettingsRow(
-                    label: 'Last sync',
-                    value: _formatDateTime(mailbox.lastSyncAt),
-                  ),
-                  if (mailbox.queuedJobCount > 0) ...[
-                    const Divider(height: 28),
-                    _SettingsRow(
-                      label: 'Queued jobs',
-                      value: mailbox.queuedJobCount.toString(),
-                    ),
-                  ],
-                  if ((mailbox.lastError ?? mailbox.latestJobError) !=
-                      null) ...[
-                    const Divider(height: 28),
-                    _SettingsRow(
-                      label: 'Last error',
-                      value: mailbox.lastError ?? mailbox.latestJobError!,
-                    ),
-                  ],
-                  const SizedBox(height: 16),
-                  Align(
-                    alignment: Alignment.centerLeft,
-                    child: OutlinedButton.icon(
-                      onPressed: _disconnectingMailboxId == mailbox.id
-                          ? null
-                          : () => _disconnect(mailbox.id),
-                      icon: _disconnectingMailboxId == mailbox.id
-                          ? const SizedBox.square(
-                              dimension: 16,
-                              child: CircularProgressIndicator(strokeWidth: 2),
-                            )
-                          : const Icon(Icons.link_off),
-                      label: Text(
-                        _disconnectingMailboxId == mailbox.id
-                            ? 'Disconnecting...'
-                            : 'Disconnect',
-                      ),
-                    ),
+                    label: 'Queued jobs',
+                    value: mailbox.queuedJobCount.toString(),
                   ),
                 ],
+                if ((mailbox.lastError ?? mailbox.latestJobError) != null) ...[
+                  const Divider(height: 28),
+                  _SettingsRow(
+                    label: 'Last error',
+                    value: mailbox.lastError ?? mailbox.latestJobError!,
+                  ),
+                ],
+                const SizedBox(height: 16),
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: OutlinedButton.icon(
+                    onPressed: _disconnectingMailboxId == mailbox.id
+                        ? null
+                        : () => _disconnect(mailbox.id),
+                    icon: _disconnectingMailboxId == mailbox.id
+                        ? const SizedBox.square(
+                            dimension: 16,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : const Icon(Icons.link_off),
+                    label: Text(
+                      _disconnectingMailboxId == mailbox.id
+                          ? 'Disconnecting...'
+                          : 'Disconnect',
+                    ),
+                  ),
+                ),
               ],
-            );
-          },
-        ),
+            ],
+          );
+        },
       ),
     );
   }
@@ -2456,13 +2575,41 @@ class _SettingsSectionHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     final textTheme = Theme.of(context).textTheme;
 
-    return Row(
-      children: [
-        Icon(icon),
-        const SizedBox(width: 10),
-        Expanded(child: Text(title, style: textTheme.titleMedium)),
-        ?action,
-      ],
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final titleRow = Row(
+          children: [
+            Icon(icon),
+            const SizedBox(width: 10),
+            Expanded(child: Text(title, style: textTheme.titleMedium)),
+          ],
+        );
+        final trailing = action;
+
+        if (trailing == null) return titleRow;
+
+        if (constraints.hasBoundedWidth && constraints.maxWidth < 500) {
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              titleRow,
+              const SizedBox(height: 12),
+              Align(alignment: Alignment.centerLeft, child: trailing),
+            ],
+          );
+        }
+
+        return Row(
+          children: [
+            Icon(icon),
+            const SizedBox(width: 10),
+            Expanded(child: Text(title, style: textTheme.titleMedium)),
+            Flexible(
+              child: Align(alignment: Alignment.centerRight, child: trailing),
+            ),
+          ],
+        );
+      },
     );
   }
 }
@@ -2477,17 +2624,33 @@ class _SettingsRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final textTheme = Theme.of(context).textTheme;
 
-    return Row(
-      children: [
-        Expanded(child: Text(label, style: textTheme.labelLarge)),
-        Flexible(
-          child: Text(
-            value,
-            textAlign: TextAlign.end,
-            style: textTheme.bodyMedium,
-          ),
-        ),
-      ],
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        if (constraints.hasBoundedWidth && constraints.maxWidth < 420) {
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(label, style: textTheme.labelLarge),
+              const SizedBox(height: 4),
+              Text(value, style: textTheme.bodyMedium),
+            ],
+          );
+        }
+
+        return Row(
+          children: [
+            Expanded(child: Text(label, style: textTheme.labelLarge)),
+            const SizedBox(width: 16),
+            Flexible(
+              child: Text(
+                value,
+                textAlign: TextAlign.end,
+                style: textTheme.bodyMedium,
+              ),
+            ),
+          ],
+        );
+      },
     );
   }
 }

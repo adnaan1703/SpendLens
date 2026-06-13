@@ -1051,6 +1051,8 @@ Completion notes:
 
 ## M47 - Settings Focused Screen and Theme Selector
 
+Status: completed on 2026-06-14.
+
 Purpose: rebuild Settings as a focused non-tab page and expose theme selection.
 
 Instructions:
@@ -1105,6 +1107,39 @@ Completion summary requirements:
 - Assumptions made
 - Mocks created
 - Mocks used
+
+Completion notes:
+
+- Rebuilt Settings as a focused no-primary-navigation route with Back,
+  Account & Runtime, Theme, Categories, Labels, Gmail Importer, AI Core, and
+  System Environment sections using the M38 primitives and DESIGN.md surfaces.
+- Wired System default, Light, and Dark theme selection to the existing M37
+  `AppThemeModeController`, preserving immediate `MaterialApp.router` updates
+  and local shared-preferences persistence.
+- Preserved sign-out, category create/rename/delete/merge, label
+  create/rename/delete, Gmail connect/disconnect/status, AI budget/status,
+  environment/config display, and category detail drilldown to Activity.
+- Updated shell behavior so `/settings` hides primary navigation while active,
+  without adding Settings to primary destinations or changing the global shell
+  settings affordance on other authenticated routes.
+- Next recommended implementation milestone is M48, Sign-In and Household Gate
+  Redesign.
+- Verification:
+  - `cd apps/mobile && dart format lib/src/app/app_shell.dart lib/src/features/settings/settings_screen.dart test/finance_features_test.dart`
+  - `cd apps/mobile && flutter analyze`
+  - `cd apps/mobile && flutter test test/finance_features_test.dart`
+  - `cd apps/mobile && flutter test`
+  - `git diff --check`
+- Assumptions made:
+  - Settings should hide primary shell navigation while active to match the
+    focused no-nav Stitch reference.
+  - Theme mode remains local device state and is not synced to Supabase.
+- Mocks created:
+  - None.
+- Mocks used:
+  - `docs/design-references/stitch/themed-dashboard-ui-redesign/screens/settings-focused-view-no-nav.jpg`
+  - `docs/design-references/stitch/themed-dashboard-ui-redesign/html/settings-focused-view-no-nav.html`
+  - `docs/design-references/stitch/themed-dashboard-ui-redesign/metadata/settings-focused-view-no-nav.screen.json`
 
 ## M48 - Sign-In and Household Gate States
 

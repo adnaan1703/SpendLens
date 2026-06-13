@@ -4,9 +4,10 @@ Use this file to coordinate work across multiple implementation sessions. Update
 
 ## Current Status
 
-- Current milestone: None. Milestone 46 was completed on 2026-06-14.
+- Current milestone: None. Milestone 47 was completed on 2026-06-14.
   Milestones 18-21 remain deferred by user request.
-- Last completed milestone: Milestone 46, Vaults Redesign.
+- Last completed milestone: Milestone 47, Settings Focused Screen and Theme
+  Selector.
 - Current implementation state: Flutter Android app scaffold exists in
   `apps/mobile` with SpendLens Google sign-in, route protection, authenticated
   shell, RLS-safe profile/default-household bootstrap, household
@@ -146,10 +147,16 @@ Use this file to coordinate work across multiple implementation sessions. Update
   compact deposit, withdraw, and adjust actions, current-balance,
   target-progress, and remaining cards, redesigned empty/timeline entry states,
   and preserved piggy-bank repository and ledger behavior.
+  Milestone 47 rebuilds Settings as a focused non-tab route with Back
+  affordance, focused Account & Runtime, Theme, Categories, Labels, Gmail
+  Importer, AI Core, and System Environment cards, hides primary shell
+  navigation while Settings is active, wires System default/Light/Dark theme
+  selection to the local M37 theme-mode controller, and preserves existing
+  Settings management flows and Activity drilldowns.
   Milestones 18-21 remain planned and deferred by user request.
 - Remote deployment state: On 2026-06-08, user confirmed Supabase project `bslsitzdvrdosubbdxpd` as the intended dev/staging target. All local migrations through `20260607174515_ai_ready_layer_llm_features.sql` were pushed there, hosted expense Q&A and the now-retired legacy AI lookup function were active with JWT verification, and `GEMINI_API_KEY` was present in hosted Edge Function secrets by name. After the user signed in through the Android emulator, hosted profile/household bootstrap and authenticated Gemini Edge Function smoke passed. On 2026-06-08 for Milestone 13, `gmail-oauth-start` was deployed as version 2 with JWT verification, `gmail-sync` was deployed as version 2 without JWT verification, and new `gmail-backfill-range` was deployed as version 1 without JWT verification. Hosted `gmail-backfill-range` `OPTIONS` smoke returned 200, and an unauthenticated POST returned the expected service-key error. The live May Gmail backfill itself was not run because it requires the user to connect the target Gmail mailbox and invoke the runbook with a Supabase secret key from a local/platform secret store. On 2026-06-09, M16 deleted the hosted legacy AI lookup function from `bslsitzdvrdosubbdxpd` and a follow-up function list verified it absent. The M16 database migration and updated active Suggest function were verified locally but not pushed/deployed to hosted in this implementation session.
-- Next recommended milestone: Milestone 47, Settings Focused Screen and Theme
-  Selector. Execute only M47
+- Next recommended milestone: Milestone 48, Sign-In and Household Gate
+  Redesign. Execute only M48
   in the next implementation thread unless the user explicitly requests a
   different milestone. Milestones 18-21 remain
   deferred unless the user resumes push notifications. If continuing hosted
@@ -307,7 +314,7 @@ Do not ask the user to perform all setup at once. Ask only when the relevant mil
 - Milestone 44, Transaction Metadata Editor Redesign: completed.
 - Milestone 45, Review Redesign: completed.
 - Milestone 46, Vaults Redesign: completed.
-- Milestone 47, Settings Focused Screen and Theme Selector: planned.
+- Milestone 47, Settings Focused Screen and Theme Selector: completed.
 - Milestone 48, Sign-In and Household Gate Redesign: planned.
 - Milestone 49, Ask / AI Redesign: planned.
 - Milestone 50, Dialogs, Forms, Empty States, and Motion Pass: planned.
@@ -778,6 +785,47 @@ When an architecture decision changes:
   - `docs/design-references/stitch/themed-dashboard-ui-redesign/screens/vaults-scandi-fintech-refinement.jpg`
   - `docs/design-references/stitch/themed-dashboard-ui-redesign/html/vaults-scandi-fintech-refinement.html`
   - `docs/design-references/stitch/themed-dashboard-ui-redesign/metadata/vaults-scandi-fintech-refinement.screen.json`
+
+## Milestone 47 Completion Notes
+
+- Completed on 2026-06-14.
+- Rebuilt Settings as a focused non-tab route with a Back affordance, constrained
+  focused page width, Account & Runtime, Theme, Categories, Labels, Gmail
+  Importer, AI Core, and System Environment cards using the M38 primitives and
+  DESIGN.md surfaces.
+- Added the Settings theme selector with System default, Light, and Dark
+  options wired to the existing M37 `AppThemeModeController`, so changes update
+  `MaterialApp.router` immediately and persist through the local theme-mode
+  store.
+- Hid the primary shell navigation while `/settings` is active, while preserving
+  the global shell settings affordance from other authenticated routes and
+  direct `/settings` reachability.
+- Preserved sign-out, category create/rename/delete/merge, label
+  create/rename/delete, Gmail connect/disconnect/status, AI budget/status,
+  environment/config display, and category detail drilldown to Activity.
+- No sign-in/household gate redesign, Ask/AI redesign, dialog/form polish,
+  Supabase/backend/schema/RPC/Edge Function/hosted work, push-notification work,
+  M48, or later-milestone work was started.
+- Verification run:
+  - `cd apps/mobile && dart format lib/src/app/app_shell.dart lib/src/features/settings/settings_screen.dart test/finance_features_test.dart`
+  - `cd apps/mobile && flutter analyze`
+  - `cd apps/mobile && flutter test test/finance_features_test.dart`
+  - `cd apps/mobile && flutter test`
+  - `git diff --check`
+  - Conflict-marker scan over changed files.
+- Known gaps:
+  - No Android-emulator manual smoke was run.
+- Assumptions made:
+  - Settings should hide primary navigation while active to match the stored
+    focused no-nav Stitch reference; users return via Back or reach Settings
+    from the global shell settings affordance on other authenticated routes.
+  - Theme mode remains local device state and must not be synced to Supabase.
+- Mocks created:
+  - None.
+- Mocks used:
+  - `docs/design-references/stitch/themed-dashboard-ui-redesign/screens/settings-focused-view-no-nav.jpg`
+  - `docs/design-references/stitch/themed-dashboard-ui-redesign/html/settings-focused-view-no-nav.html`
+  - `docs/design-references/stitch/themed-dashboard-ui-redesign/metadata/settings-focused-view-no-nav.screen.json`
 
 ## Milestone 1 Completion Notes
 

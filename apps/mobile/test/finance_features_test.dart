@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:spendlens/src/app/app_shell.dart';
 import 'package:spendlens/src/core/bootstrap/app_bootstrap.dart';
 import 'package:spendlens/src/core/theme/app_theme.dart';
+import 'package:spendlens/src/core/theme/theme_mode_controller.dart';
 import 'package:spendlens/src/data/repositories/finance_repository.dart';
 import 'package:spendlens/src/data/repositories/household_repository.dart';
 import 'package:spendlens/src/features/ai/ai_screen.dart';
@@ -193,6 +194,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(router.routeInformationProvider.value.uri.path, '/settings');
+    expect(find.byType(NavigationDestination), findsNothing);
     expect(find.text('Focused settings'), findsOneWidget);
   });
 
@@ -1709,6 +1711,58 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets('settings theme selector updates and persists theme mode', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(() {
+      tester.view.resetPhysicalSize();
+      tester.view.resetDevicePixelRatio();
+    });
+    final repository = _FakeFinanceRepository();
+    final themeStore = _FakeThemeModeStore(initialMode: AppThemeMode.system);
+
+    await tester.pumpWidget(
+      _financeThemeTestApp(
+        repository: repository,
+        themeStore: themeStore,
+        child: const SettingsScreen(),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Settings'), findsOneWidget);
+    expect(find.text('Account & Runtime'), findsOneWidget);
+    expect(find.text('Theme'), findsOneWidget);
+    expect(find.text('System default'), findsOneWidget);
+    expect(find.text('Light'), findsOneWidget);
+    expect(find.text('Dark'), findsOneWidget);
+    expect(find.text('System Environment'), findsOneWidget);
+    expect(
+      tester.widget<MaterialApp>(find.byType(MaterialApp)).themeMode,
+      ThemeMode.system,
+    );
+
+    await tester.tap(find.text('Dark'));
+    await tester.pumpAndSettle();
+
+    expect(themeStore.savedModes, [AppThemeMode.dark]);
+    expect(
+      tester.widget<MaterialApp>(find.byType(MaterialApp)).themeMode,
+      ThemeMode.dark,
+    );
+
+    await tester.tap(find.text('Light'));
+    await tester.pumpAndSettle();
+
+    expect(themeStore.savedModes, [AppThemeMode.dark, AppThemeMode.light]);
+    expect(
+      tester.widget<MaterialApp>(find.byType(MaterialApp)).themeMode,
+      ThemeMode.light,
+    );
+  });
+
   testWidgets('settings creates category and subcategory', (tester) async {
     final repository = _FakeFinanceRepository();
 
@@ -2194,7 +2248,7 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('Gmail connector'), findsOneWidget);
+    expect(find.text('Gmail Importer'), findsOneWidget);
     expect(find.text('spendlens.hdfc@example.test'), findsOneWidget);
     expect(find.text('Connected'), findsOneWidget);
     expect(find.text('Queued jobs'), findsOneWidget);
@@ -2208,7 +2262,7 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('AI'), findsOneWidget);
+    expect(find.text('AI Core'), findsOneWidget);
     expect(find.text('gemini'), findsOneWidget);
     expect(find.text('gemini-3.5-flash'), findsOneWidget);
     expect(find.text('Free tier'), findsOneWidget);
@@ -2335,6 +2389,33 @@ Widget _financeTestApp({
     child: MaterialApp(
       theme: theme,
       home: Scaffold(body: child),
+    ),
+  );
+}
+
+Widget _financeThemeTestApp({
+  required _FakeFinanceRepository repository,
+  required _FakeThemeModeStore themeStore,
+  required Widget child,
+}) {
+  return ProviderScope(
+    overrides: [
+      appBootstrapProvider.overrideWithValue(
+        const AppBootstrap(supabaseStatus: SupabaseStatus.ready),
+      ),
+      householdContextProvider.overrideWithValue(AsyncData(_householdContext)),
+      financeRepositoryProvider.overrideWithValue(repository),
+      appThemeModeStoreProvider.overrideWithValue(themeStore),
+    ],
+    child: Consumer(
+      builder: (context, ref, _) {
+        return MaterialApp(
+          theme: AppTheme.light(),
+          darkTheme: AppTheme.dark(),
+          themeMode: ref.watch(themeModeProvider),
+          home: Scaffold(body: child),
+        );
+      },
     ),
   );
 }
@@ -2496,6 +2577,23 @@ const _householdContext = HouseholdContext(
   ),
   memberRole: 'owner',
 );
+
+final class _FakeThemeModeStore implements AppThemeModeStore {
+  _FakeThemeModeStore({required AppThemeMode initialMode})
+    : _storedMode = initialMode;
+
+  AppThemeMode _storedMode;
+  final savedModes = <AppThemeMode>[];
+
+  @override
+  Future<AppThemeMode> load() async => _storedMode;
+
+  @override
+  Future<void> save(AppThemeMode mode) async {
+    savedModes.add(mode);
+    _storedMode = mode;
+  }
+}
 
 final class _FakeFinanceRepository implements FinanceRepository {
   final monthlyCapUpsertRequests = <MonthlyCapUpsertRequest>[];

@@ -2168,7 +2168,7 @@ Restyle Piggy Banks as the visible Vaults destination.
 
 ### Status
 
-Planned. See
+Completed on 2026-06-14. See
 [UI Redesign](UI_REDESIGN.md#m47---settings-focused-screen-and-theme-selector).
 
 ### Objective
@@ -2197,6 +2197,34 @@ Rebuild Settings as a focused non-tab page and expose the theme selector.
 ### Deferred Scope
 
 - Backend-synced theme preference.
+
+### Completion Notes
+
+- Rebuilt Settings as a focused no-primary-navigation route with Back,
+  Account & Runtime, Theme, Categories, Labels, Gmail Importer, AI Core, and
+  System Environment sections using the M38 primitives and DESIGN.md surfaces.
+- Added System default, Light, and Dark theme selection through the existing
+  M37 local theme-mode controller/persistence path.
+- Preserved Settings sign-out, category, label, Gmail, AI budget/status,
+  runtime/config display, and Activity drilldown behavior.
+- No Supabase/backend/schema/RPC/Edge Function/hosted work, push-notification
+  work, M48, or later-milestone work was started.
+- Verification:
+  - `cd apps/mobile && dart format lib/src/app/app_shell.dart lib/src/features/settings/settings_screen.dart test/finance_features_test.dart`
+  - `cd apps/mobile && flutter analyze`
+  - `cd apps/mobile && flutter test test/finance_features_test.dart`
+  - `cd apps/mobile && flutter test`
+  - `git diff --check`
+- Assumptions made:
+  - Settings should hide primary shell navigation while active to match the
+    focused no-nav Stitch reference.
+  - Theme mode remains local device state and is not synced to Supabase.
+- Mocks created:
+  - None.
+- Mocks used:
+  - `docs/design-references/stitch/themed-dashboard-ui-redesign/screens/settings-focused-view-no-nav.jpg`
+  - `docs/design-references/stitch/themed-dashboard-ui-redesign/html/settings-focused-view-no-nav.html`
+  - `docs/design-references/stitch/themed-dashboard-ui-redesign/metadata/settings-focused-view-no-nav.screen.json`
 
 ## Milestone 48: Sign-In and Household Gate Redesign
 
