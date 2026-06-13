@@ -1535,7 +1535,7 @@ Dashboard.
 
 ### Status
 
-Planned. See
+Completed on 2026-06-13. See
 [Monthly Caps](MONTHLY_CAPS.md#m35---recurring-caps-regression-docs-and-cleanup).
 
 ### Objective
@@ -1584,7 +1584,7 @@ Harden recurring cap and carry-forward behavior, then document the final state.
 - Do not store raw email bodies by default.
 - Do not store FCM service account JSON or private keys in Flutter or tracked
   docs.
-- Use `net_expense` for summaries and budgets.
+- Use `net_expense` for summaries and monthly caps.
 - Exclude card bill payments from spend.
 - Treat refunds as reducing net expense.
 - Ensure imports and sync jobs are idempotent.

@@ -329,7 +329,7 @@ class _DashboardContent extends StatelessWidget {
           ],
         ),
         const SizedBox(height: 28),
-        _BudgetSection(
+        _MonthlyCapsSection(
           snapshot: snapshot,
           onAddCap: onAddCap,
           onEditCap: onEditCap,
@@ -385,8 +385,8 @@ class _MonthSelector extends StatelessWidget {
   }
 }
 
-class _BudgetSection extends StatelessWidget {
-  const _BudgetSection({
+class _MonthlyCapsSection extends StatelessWidget {
+  const _MonthlyCapsSection({
     required this.snapshot,
     required this.onAddCap,
     required this.onEditCap,
@@ -422,7 +422,8 @@ class _BudgetSection extends StatelessWidget {
           const EmptyState(
             icon: Icons.speed_outlined,
             title: 'No caps set',
-            message: 'Add a category or label cap for this month.',
+            message:
+                'Add a recurring category or label cap starting this month.',
           )
         else
           Column(
@@ -646,13 +647,13 @@ class _CapFormSheetState extends State<_CapFormSheet> {
                 widget.existingCap == null ? 'Add cap' : 'Edit cap',
                 style: theme.textTheme.titleLarge,
               ),
-              if (widget.existingCap != null) ...[
-                const SizedBox(height: 4),
-                Text(
-                  'Saves from ${formatMonth(widget.selectedMonth)} onward.',
-                  style: theme.textTheme.bodySmall,
-                ),
-              ],
+              const SizedBox(height: 4),
+              Text(
+                widget.existingCap == null
+                    ? 'Starts in ${formatMonth(widget.selectedMonth)} and repeats until stopped.'
+                    : 'Saves from ${formatMonth(widget.selectedMonth)} onward.',
+                style: theme.textTheme.bodySmall,
+              ),
               const SizedBox(height: 16),
               TextField(
                 key: const ValueKey('cap-name-field'),

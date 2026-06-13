@@ -25,7 +25,7 @@ it once for that cap. Overlapping caps are allowed: the same transaction can
 contribute to more than one cap when the user intentionally creates caps with
 overlapping targets.
 
-The completed M29-M34 version supports:
+The completed M29-M35 implementation supports:
 
 - Migrating existing category caps into named monthly caps.
 - Creating, editing, and stopping named recurring monthly caps from Dashboard.
@@ -48,9 +48,8 @@ The completed M29-M34 version supports:
   effective available, spent, remaining/over, percent, matched count, and target
   values in cap rows.
 
-The remaining M35 milestone adds final recurring-cap regression and docs
-cleanup. Each recurring cap can optionally carry forward the previous month's
-remaining amount into the next month:
+Each recurring cap can optionally carry forward the previous month's remaining
+amount into the next month:
 
 - If the base cap is INR 10,000 and the prior month spent INR 8,000, the next
   month carries `+INR 2,000` and has an effective cap of INR 12,000.
@@ -926,6 +925,51 @@ Completion summary requirements:
 - Assumptions made
 - Mocks created
 - Mocks used
+
+Completion notes:
+
+- Completed on 2026-06-13.
+- Added final pgTAP coverage for selected stop-month returns, future-month
+  hiding after a stopped recurring cap, exact-month transaction label progress,
+  and exact-month RPC viewer/non-member behavior.
+- Updated Dashboard copy so empty and create states describe recurring caps
+  starting in the selected month instead of isolated one-month cap records.
+- Renamed the Dashboard cap section helper away from the old budget wording.
+- Folded final recurring/carry-forward behavior into `README.md`,
+  `DATA_MODEL.md`, `MILESTONES.md`, and `SESSION_HANDOFF.md`.
+- Verification passed:
+  - Supabase changelog/docs scan; the current Data API grant change and pgTAP
+    testing guidance did not require schema changes for M35.
+  - `supabase --version`
+  - `supabase --help`
+  - `supabase db --help`
+  - `supabase test db --help`
+  - `cd apps/mobile && dart format lib/src/features/dashboard/dashboard_screen.dart test/finance_features_test.dart`
+  - `cd apps/mobile && flutter test test/finance_features_test.dart`
+  - `supabase db reset --local`
+  - `supabase test db --local supabase/tests/monthly_caps.sql`
+  - `supabase test db --local supabase/tests`
+  - `supabase db lint --local --schema app_private,public --fail-on error`
+  - `supabase db advisors --local --type security --level warn --fail-on none`
+  - `supabase db advisors --local --type performance --level warn --fail-on none`
+  - `cd apps/mobile && flutter analyze`
+  - `cd apps/mobile && flutter test`
+  - `cd apps/mobile && flutter build apk --debug --no-pub`
+  - `git diff --check`
+- Known gaps:
+  - No hosted Supabase rollout or Android-emulator manual smoke was run.
+  - No migration was added because M35 tightened regression/docs/active copy
+    only.
+- Assumptions made:
+  - Existing M32-M33 RPC/view behavior remains the final backend contract for
+    recurrence and carry-forward.
+  - The non-member exact-month progress RPC should reject with the existing
+    permission error rather than silently returning an empty list.
+- Mocks created:
+  - None.
+- Mocks used:
+  - Existing fake finance repository/widget-test data, with an empty cap list
+    state for the new recurring-copy assertion.
 
 ## Deferred Scope
 

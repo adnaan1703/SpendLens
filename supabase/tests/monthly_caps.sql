@@ -3,7 +3,7 @@ begin;
 create extension if not exists pgtap with schema extensions;
 set search_path = public, extensions;
 
-select plan(55);
+select plan(60);
 
 insert into auth.users (id)
 values
@@ -509,6 +509,12 @@ from public.delete_monthly_cap(
 );
 
 select is(
+  (select stopped_from_month from stopped_recurring_cap),
+  '2026-06-01'::date,
+  'delete_monthly_cap returns the selected stop month'
+);
+
+select is(
   (
     select count(*)::integer
     from public.get_monthly_cap_progress(
@@ -532,6 +538,19 @@ select is(
   ),
   0,
   'delete_monthly_cap hides the selected month and future months'
+);
+
+select is(
+  (
+    select count(*)::integer
+    from public.get_monthly_cap_progress(
+      '39000000-0000-0000-0000-000000000001',
+      '2026-07-01'
+    )
+    where monthly_cap_id = (select monthly_cap_id from recurring_edit_cap)
+  ),
+  0,
+  'delete_monthly_cap hides future recurring months after the stop month'
 );
 
 update public.categories
@@ -592,6 +611,19 @@ select is(
   ),
   1500.00::numeric(14,2),
   'label-only cap spent follows transaction label assignment changes'
+);
+
+select is(
+  (
+    select spent_amount
+    from public.get_monthly_cap_progress(
+      '39000000-0000-0000-0000-000000000001',
+      '2026-05-01'
+    )
+    where monthly_cap_id = (select monthly_cap_id from label_cap)
+  ),
+  1500.00::numeric(14,2),
+  'exact-month recurring progress follows transaction label assignment changes'
 );
 
 create temporary table updated_cap as
@@ -725,6 +757,18 @@ select is(
   'household viewers can select monthly cap progress'
 );
 
+select ok(
+  exists (
+    select 1
+    from public.get_monthly_cap_progress(
+      '39000000-0000-0000-0000-000000000001',
+      '2026-05-01'
+    )
+    where monthly_cap_id = (select monthly_cap_id from label_cap)
+  ),
+  'household viewers can select exact-month recurring cap progress'
+);
+
 set local request.jwt.claim.sub = '19000000-0000-0000-0000-000000000003';
 
 select throws_ok(
@@ -748,6 +792,19 @@ select is(
   ),
   0,
   'RLS hides monthly cap progress from non-members'
+);
+
+select throws_ok(
+  $$
+    select *
+    from public.get_monthly_cap_progress(
+      '39000000-0000-0000-0000-000000000001',
+      '2026-05-01'
+    )
+  $$,
+  'P0001',
+  'You do not have permission to read monthly caps for this household.',
+  'exact-month recurring progress rejects non-members'
 );
 
 set local request.jwt.claim.sub = '19000000-0000-0000-0000-000000000001';

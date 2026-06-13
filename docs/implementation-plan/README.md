@@ -51,9 +51,10 @@ This is not a "no backend" architecture. It is a backend without a permanently r
 - Currency: INR.
 - Monthly caps: required-name recurring caps can target multiple categories
   and/or multiple labels. Edits and deletes apply from the selected month
-  forward while prior months remain readable. Milestone 33 implements optional
-  positive or negative backend carry-forward into the next month; Milestones
-  34-35 plan Dashboard carry-forward UX and final regression cleanup.
+  forward while prior months remain readable. Optional positive or negative
+  carry-forward is calculated in Postgres and shown on Dashboard as base,
+  carried, effective available, spent, remaining/over, percent, matched count,
+  and target details.
 - Piggy banks: manual ledger accounts in v1.
 - Merchant corrections: apply to matching past and future transactions.
 - Transaction metadata edits: apply to the matching normalized statement merchant
@@ -65,14 +66,13 @@ This is not a "no backend" architecture. It is a backend without a permanently r
 - Transaction labels: household-shared reusable labels attach only to selected
   transaction rows; Settings manages the shared label vocabulary with usage
   counts and delete-with-detach confirmation. Label changes do not alter
-  merchant mapping, categories, review state, budgets, summaries, or future
+  merchant mapping, categories, review state, monthly caps, summaries, or future
   imports.
 - Multi-target monthly caps: required-name recurring caps can include multiple
   categories, multiple labels, or both. A transaction counts once inside a cap
   when any selected category or label matches; overlapping caps are allowed.
   Recurring cap edits/deletes apply from the selected month forward and can
-  optionally carry positive or negative remainder into the next month after the
-  carry-forward milestones are implemented.
+  optionally carry positive or negative remainder into the next month.
 - Email retention: store minimal parsed data only; do not retain raw email bodies by default.
 - AI: backend-mediated Gemini expense Q&A and transaction metadata suggestions; dev/staging use free-tier-only mode with Suggest search disabled by default.
 - Android push notifications: Firebase Cloud Messaging delivery, Supabase

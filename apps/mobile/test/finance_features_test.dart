@@ -222,6 +222,10 @@ void main() {
     expect(find.text('Add cap'), findsOneWidget);
 
     await _openAddCapSheet(tester);
+    expect(
+      find.text('Starts in Mar 2026 and repeats until stopped.'),
+      findsOneWidget,
+    );
     await _fillCapNameAndAmount(tester, name: 'Fuel cap', amount: '5000');
     await _tapTargetChip(tester, 'Fuel');
     await _saveCapSheet(tester);
@@ -278,6 +282,23 @@ void main() {
 
     expect(find.text('Monthly caps'), findsWidgets);
     expect(find.text('3 targets without caps'), findsOneWidget);
+  });
+
+  testWidgets('dashboard empty cap state avoids one-month-only copy', (
+    tester,
+  ) async {
+    final repository = _FakeFinanceRepository()..monthlyCapProgress.clear();
+
+    await tester.pumpWidget(
+      _financeTestApp(repository: repository, child: const DashboardScreen()),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('No caps set'), findsOneWidget);
+    expect(
+      find.text('Add a recurring category or label cap starting this month.'),
+      findsOneWidget,
+    );
   });
 
   testWidgets('dashboard creates a label-only monthly cap', (tester) async {

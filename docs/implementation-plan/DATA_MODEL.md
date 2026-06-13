@@ -134,7 +134,7 @@ Important fields:
 - `error_message text`
 - `created_by uuid references profiles(id)`
 
-## Categories and Budgets
+## Categories and Monthly Caps
 
 ### `categories`
 
@@ -363,9 +363,10 @@ Rules:
 - A series can have only one version for a given effective month.
 - Edits create or replace the selected month's version and leave older months
   readable through older versions.
-- Carry-forward defaults off. When enabled, M33 derives the next active month's
-  carry-forward amount from the previous month's effective cap minus spend.
-  Dashboard copy for carry-forward details is deferred to M34.
+- Carry-forward defaults off. When enabled, Postgres derives the next active
+  month's carry-forward amount from the previous month's effective cap minus
+  spend, and Dashboard displays the returned carried/effective amounts without
+  recomputing them in Flutter.
 - Category/label matching semantics stay unchanged: category OR label target
   match, one transaction counted once per cap, and overlap allowed across
   separate caps.
@@ -410,9 +411,9 @@ Rules:
 
 ### Carry-forward semantics
 
-Milestone 33 calculates carry-forward in Postgres for recurring cap progress.
-Milestones 34-35 plan the visible Dashboard treatment and final regression
-cleanup.
+Recurring cap progress calculates carry-forward in Postgres and Dashboard
+renders the returned base, carried, effective cap, spent, remaining/over, and
+matched-count values.
 
 - Carry-forward is optional per recurring cap and defaults off.
 - Carry-forward can be positive or negative. It is derived as previous month's
@@ -426,8 +427,7 @@ cleanup.
 - App-facing progress responses already expose base cap amount, carry-forward
   enabled state, carry-forward amount, effective cap amount, spent amount,
   remaining amount, percent used, over-budget state, matched transaction count,
-  and target names/IDs; M33 returns derived carry-forward and effective-cap
-  values.
+  and target names/IDs.
 
 ## Merchants and Mapping
 
@@ -580,7 +580,7 @@ Financial rules:
 
 - Card bill payments and account credits have `net_expense = 0`.
 - Refunds are represented as positive `refund_amount`.
-- Dashboard and budgets use `net_expense`.
+- Dashboard summaries and monthly caps use `net_expense`.
 
 ### Transaction labels
 
