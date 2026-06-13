@@ -363,8 +363,9 @@ Rules:
 - A series can have only one version for a given effective month.
 - Edits create or replace the selected month's version and leave older months
   readable through older versions.
-- Carry-forward is disabled by default in M32. Later milestones add the actual
-  carry-forward amount calculation and Dashboard copy.
+- Carry-forward defaults off. When enabled, M33 derives the next active month's
+  carry-forward amount from the previous month's effective cap minus spend.
+  Dashboard copy for carry-forward details is deferred to M34.
 - Category/label matching semantics stay unchanged: category OR label target
   match, one transaction counted once per cap, and overlap allowed across
   separate caps.
@@ -407,10 +408,11 @@ Rules:
   without any category or label targets.
 - Label rename preserves target behavior because caps reference label IDs.
 
-### Planned carry-forward semantics (M33-M35)
+### Carry-forward semantics
 
-Carry-forward is not calculated or shown by M32. Milestones 33-35 plan these
-rules:
+Milestone 33 calculates carry-forward in Postgres for recurring cap progress.
+Milestones 34-35 plan the visible Dashboard treatment and final regression
+cleanup.
 
 - Carry-forward is optional per recurring cap and defaults off.
 - Carry-forward can be positive or negative. It is derived as previous month's
@@ -424,7 +426,8 @@ rules:
 - App-facing progress responses already expose base cap amount, carry-forward
   enabled state, carry-forward amount, effective cap amount, spent amount,
   remaining amount, percent used, over-budget state, matched transaction count,
-  and target names/IDs; M32 keeps carry-forward amount at zero.
+  and target names/IDs; M33 returns derived carry-forward and effective-cap
+  values.
 
 ## Merchants and Mapping
 
@@ -949,9 +952,9 @@ Create these views for app reads:
 - `v_budget_progress`: legacy category-only compatibility cap progress over
   monthly caps.
 - `v_monthly_cap_progress`: named cap progress for category and label targets,
-  with each transaction counted once per cap. Milestones 32-35 plan to extend
-  or wrap this progress contract for recurring cap months, positive/negative
-  carry-forward, and effective cap amounts.
+  with each transaction counted once per cap. After M33, recurring cap progress
+  includes positive/negative carry-forward, effective cap amounts, and
+  carry-forward-aware remaining/over-budget values.
 - `v_merchant_summary`: merchant spend, refunds, net, transaction counts.
 - `v_review_queue`: open review items with transaction and suggestions.
 - `v_piggy_bank_balances`: piggy-bank balance and target progress.

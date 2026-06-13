@@ -3,7 +3,7 @@ begin;
 create extension if not exists pgtap with schema extensions;
 set search_path = public, extensions;
 
-select plan(40);
+select plan(55);
 
 insert into auth.users (id)
 values
@@ -748,6 +748,368 @@ select is(
   ),
   0,
   'RLS hides monthly cap progress from non-members'
+);
+
+set local request.jwt.claim.sub = '19000000-0000-0000-0000-000000000001';
+
+create temporary table positive_carry_cap as
+select *
+from public.upsert_monthly_cap(
+  p_household_id => '39000000-0000-0000-0000-000000000001',
+  p_name => 'Positive carry',
+  p_period_month => '2026-05-01',
+  p_cap_amount => 1200.00,
+  p_category_ids => array['59000000-0000-0000-0000-000000000001'::uuid],
+  p_carry_forward_enabled => true
+);
+
+select is(
+  (
+    select carry_forward_amount
+    from public.get_monthly_cap_progress(
+      '39000000-0000-0000-0000-000000000001',
+      '2026-06-01'
+    )
+    where monthly_cap_id = (select monthly_cap_id from positive_carry_cap)
+  ),
+  200.00::numeric(14,2),
+  'positive prior-month remainder carries forward'
+);
+
+select is(
+  (
+    select effective_cap_amount
+    from public.get_monthly_cap_progress(
+      '39000000-0000-0000-0000-000000000001',
+      '2026-06-01'
+    )
+    where monthly_cap_id = (select monthly_cap_id from positive_carry_cap)
+  ),
+  1400.00::numeric(14,2),
+  'positive carry-forward increases the next effective cap'
+);
+
+select is(
+  (
+    select remaining_amount
+    from public.get_monthly_cap_progress(
+      '39000000-0000-0000-0000-000000000001',
+      '2026-06-01'
+    )
+    where monthly_cap_id = (select monthly_cap_id from positive_carry_cap)
+  ),
+  700.00::numeric(14,2),
+  'remaining amount is derived from the effective cap'
+);
+
+select is(
+  (
+    select effective_cap_amount
+    from public.get_monthly_cap_progress(
+      '39000000-0000-0000-0000-000000000001',
+      '2026-07-01'
+    )
+    where monthly_cap_id = (select monthly_cap_id from positive_carry_cap)
+  ),
+  1900.00::numeric(14,2),
+  'carry-forward chains across active months'
+);
+
+create temporary table negative_carry_cap as
+select *
+from public.upsert_monthly_cap(
+  p_household_id => '39000000-0000-0000-0000-000000000001',
+  p_name => 'Negative carry',
+  p_period_month => '2026-05-01',
+  p_cap_amount => 800.00,
+  p_category_ids => array['59000000-0000-0000-0000-000000000001'::uuid],
+  p_carry_forward_enabled => true
+);
+
+select is(
+  (
+    select carry_forward_amount
+    from public.get_monthly_cap_progress(
+      '39000000-0000-0000-0000-000000000001',
+      '2026-06-01'
+    )
+    where monthly_cap_id = (select monthly_cap_id from negative_carry_cap)
+  ),
+  -200.00::numeric(14,2),
+  'negative prior-month remainder carries forward'
+);
+
+select is(
+  (
+    select effective_cap_amount
+    from public.get_monthly_cap_progress(
+      '39000000-0000-0000-0000-000000000001',
+      '2026-06-01'
+    )
+    where monthly_cap_id = (select monthly_cap_id from negative_carry_cap)
+  ),
+  600.00::numeric(14,2),
+  'negative carry-forward reduces the next effective cap'
+);
+
+select is(
+  (
+    select remaining_amount
+    from public.get_monthly_cap_progress(
+      '39000000-0000-0000-0000-000000000001',
+      '2026-06-01'
+    )
+    where monthly_cap_id = (select monthly_cap_id from negative_carry_cap)
+  ),
+  -100.00::numeric(14,2),
+  'negative carry-forward can make the selected month over budget'
+);
+
+select ok(
+  (
+    select is_over_budget
+    from public.get_monthly_cap_progress(
+      '39000000-0000-0000-0000-000000000001',
+      '2026-06-01'
+    )
+    where monthly_cap_id = (select monthly_cap_id from negative_carry_cap)
+  ),
+  'over-budget state is based on negative effective remaining'
+);
+
+create temporary table disabled_carry_cap as
+select *
+from public.upsert_monthly_cap(
+  p_household_id => '39000000-0000-0000-0000-000000000001',
+  p_name => 'Disabled carry chain',
+  p_period_month => '2026-05-01',
+  p_cap_amount => 1200.00,
+  p_category_ids => array['59000000-0000-0000-0000-000000000001'::uuid],
+  p_carry_forward_enabled => true
+);
+
+create temporary table disabled_carry_june as
+select *
+from public.upsert_monthly_cap(
+  p_household_id => '39000000-0000-0000-0000-000000000001',
+  p_monthly_cap_id => (select monthly_cap_id from disabled_carry_cap),
+  p_name => 'Disabled carry chain',
+  p_period_month => '2026-06-01',
+  p_cap_amount => 1200.00,
+  p_category_ids => array['59000000-0000-0000-0000-000000000001'::uuid],
+  p_carry_forward_enabled => false
+);
+
+create temporary table disabled_carry_july as
+select *
+from public.upsert_monthly_cap(
+  p_household_id => '39000000-0000-0000-0000-000000000001',
+  p_monthly_cap_id => (select monthly_cap_id from disabled_carry_cap),
+  p_name => 'Disabled carry chain',
+  p_period_month => '2026-07-01',
+  p_cap_amount => 1200.00,
+  p_category_ids => array['59000000-0000-0000-0000-000000000001'::uuid],
+  p_carry_forward_enabled => true
+);
+
+select is(
+  (
+    select carry_forward_amount
+    from public.get_monthly_cap_progress(
+      '39000000-0000-0000-0000-000000000001',
+      '2026-06-01'
+    )
+    where monthly_cap_id = (select monthly_cap_id from disabled_carry_cap)
+  ),
+  0.00::numeric(14,2),
+  'disabled carry-forward resets the selected month carry amount'
+);
+
+select is(
+  (
+    select carry_forward_amount
+    from public.get_monthly_cap_progress(
+      '39000000-0000-0000-0000-000000000001',
+      '2026-07-01'
+    )
+    where monthly_cap_id = (select monthly_cap_id from disabled_carry_cap)
+  ),
+  0.00::numeric(14,2),
+  'the month after a disabled carry-forward version starts from zero'
+);
+
+create temporary table edited_target_carry_cap as
+select *
+from public.upsert_monthly_cap(
+  p_household_id => '39000000-0000-0000-0000-000000000001',
+  p_name => 'Edited target carry',
+  p_period_month => '2026-05-01',
+  p_cap_amount => 1200.00,
+  p_category_ids => array['59000000-0000-0000-0000-000000000001'::uuid],
+  p_carry_forward_enabled => true
+);
+
+create temporary table edited_target_carry_june as
+select *
+from public.upsert_monthly_cap(
+  p_household_id => '39000000-0000-0000-0000-000000000001',
+  p_monthly_cap_id => (select monthly_cap_id from edited_target_carry_cap),
+  p_name => 'Edited target carry',
+  p_period_month => '2026-06-01',
+  p_cap_amount => 600.00,
+  p_category_ids => array['59000000-0000-0000-0000-000000000002'::uuid],
+  p_carry_forward_enabled => true
+);
+
+select is(
+  (
+    select base_cap_amount
+    from public.get_monthly_cap_progress(
+      '39000000-0000-0000-0000-000000000001',
+      '2026-06-01'
+    )
+    where monthly_cap_id = (select monthly_cap_id from edited_target_carry_cap)
+  ),
+  600.00::numeric(14,2),
+  'selected-month amount edits affect the selected month'
+);
+
+select is(
+  (
+    select carry_forward_amount
+    from public.get_monthly_cap_progress(
+      '39000000-0000-0000-0000-000000000001',
+      '2026-06-01'
+    )
+    where monthly_cap_id = (select monthly_cap_id from edited_target_carry_cap)
+  ),
+  200.00::numeric(14,2),
+  'selected-month edits keep prior-month carry-forward history'
+);
+
+select is(
+  (
+    select spent_amount
+    from public.get_monthly_cap_progress(
+      '39000000-0000-0000-0000-000000000001',
+      '2026-06-01'
+    )
+    where monthly_cap_id = (select monthly_cap_id from edited_target_carry_cap)
+  ),
+  0.00::numeric(14,2),
+  'selected-month target edits affect matching from that month onward'
+);
+
+insert into public.categories (id, household_id, name, sort_order)
+values
+  (
+    '59000000-0000-0000-0000-000000000007',
+    '39000000-0000-0000-0000-000000000001',
+    'Utilities',
+    13
+  );
+
+insert into public.transactions (
+  id,
+  household_id,
+  source_type,
+  transaction_date,
+  statement_merchant,
+  normalized_statement_merchant,
+  category_id,
+  transaction_type,
+  amount,
+  gross_spend,
+  refund_amount,
+  net_expense,
+  confidence,
+  source_fingerprint
+)
+values
+  (
+    '79000000-0000-0000-0000-000000000101',
+    '39000000-0000-0000-0000-000000000001',
+    'workbook',
+    '2026-08-05',
+    'POWER BILL',
+    'power bill',
+    '59000000-0000-0000-0000-000000000007',
+    'debit_spend',
+    100.00,
+    100.00,
+    0.00,
+    100.00,
+    'high',
+    'monthly-cap-utility-debit'
+  ),
+  (
+    '79000000-0000-0000-0000-000000000102',
+    '39000000-0000-0000-0000-000000000001',
+    'workbook',
+    '2026-08-08',
+    'POWER REFUND',
+    'power refund',
+    '59000000-0000-0000-0000-000000000007',
+    'refund_reversal',
+    -30.00,
+    0.00,
+    30.00,
+    -30.00,
+    'high',
+    'monthly-cap-utility-refund'
+  ),
+  (
+    '79000000-0000-0000-0000-000000000103',
+    '39000000-0000-0000-0000-000000000001',
+    'workbook',
+    '2026-08-12',
+    'CARD PAYMENT',
+    'card payment',
+    '59000000-0000-0000-0000-000000000007',
+    'bill_payment_credit',
+    -500.00,
+    0.00,
+    0.00,
+    0.00,
+    'high',
+    'monthly-cap-utility-bill-payment'
+  );
+
+create temporary table net_semantics_carry_cap as
+select *
+from public.upsert_monthly_cap(
+  p_household_id => '39000000-0000-0000-0000-000000000001',
+  p_name => 'Net semantics carry',
+  p_period_month => '2026-08-01',
+  p_cap_amount => 500.00,
+  p_category_ids => array['59000000-0000-0000-0000-000000000007'::uuid],
+  p_carry_forward_enabled => true
+);
+
+select is(
+  (
+    select spent_amount
+    from public.get_monthly_cap_progress(
+      '39000000-0000-0000-0000-000000000001',
+      '2026-08-01'
+    )
+    where monthly_cap_id = (select monthly_cap_id from net_semantics_carry_cap)
+  ),
+  70.00::numeric(14,2),
+  'carry-forward progress uses net expense for refunds and bill payments'
+);
+
+select is(
+  (
+    select effective_cap_amount
+    from public.get_monthly_cap_progress(
+      '39000000-0000-0000-0000-000000000001',
+      '2026-09-01'
+    )
+    where monthly_cap_id = (select monthly_cap_id from net_semantics_carry_cap)
+  ),
+  930.00::numeric(14,2),
+  'refund-adjusted remaining amount carries into the next month'
 );
 
 select * from finish();

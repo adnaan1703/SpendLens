@@ -117,6 +117,40 @@ void main() {
     expect(query.copyWith(clearLabel: true).labelId, isNull);
   });
 
+  test('monthly cap progress parses carry-forward values', () {
+    final progress = MonthlyCapProgress.fromJson({
+      'monthly_cap_id': 'cap-carry',
+      'monthly_cap_version_id': 'cap-version-carry',
+      'household_id': 'household-1',
+      'name': 'Carry cap',
+      'period_month': '2026-06-01',
+      'cap_amount': 1000,
+      'base_cap_amount': 1000,
+      'carry_forward_enabled': true,
+      'carry_forward_amount': -200,
+      'effective_cap_amount': 800,
+      'spent_amount': 900,
+      'remaining_amount': -100,
+      'percent_used': 1.125,
+      'is_over_budget': true,
+      'matched_transaction_count': 3,
+      'category_target_ids': ['cat-food'],
+      'category_target_names': ['Food'],
+      'label_target_ids': ['label-grocery'],
+      'label_target_names': ['Groceries'],
+    });
+
+    expect(progress.baseCapAmount, 1000);
+    expect(progress.carryForwardEnabled, isTrue);
+    expect(progress.carryForwardAmount, -200);
+    expect(progress.effectiveCapAmount, 800);
+    expect(progress.remainingAmount, -100);
+    expect(progress.percentUsed, 1.125);
+    expect(progress.isOverBudget, isTrue);
+    expect(progress.categoryTargets.single.name, 'Food');
+    expect(progress.labelTargets.single.name, 'Groceries');
+  });
+
   test('label repository contract mutates one transaction label set', () async {
     final repository = _FakeFinanceRepository();
 

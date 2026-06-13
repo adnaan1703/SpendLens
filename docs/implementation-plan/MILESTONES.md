@@ -1446,7 +1446,7 @@ adding carry-forward calculations or Dashboard carry-forward copy.
 
 ### Status
 
-Planned. See
+Completed on 2026-06-13. See
 [Monthly Caps](MONTHLY_CAPS.md#m33---carry-forward-progress-semantics).
 
 ### Objective

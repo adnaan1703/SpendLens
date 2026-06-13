@@ -24,7 +24,7 @@ behavior has been folded into this README, [Data Model](DATA_MODEL.md),
 
 SpendLens is a personal and household expense intelligence app. The current implementation plan is Android-first: build the Flutter Android app first and defer iOS and web until later.
 
-The app imports historical credit-card analysis from `docs/Credit Card Spend Analysis - FY 2025-26.xlsx`, then moves to ongoing ingestion from Gmail transaction emails for credit cards and UPI. It presents spend by category, named monthly caps with category and label targets, planned recurring cap carry-forward, transaction details, merchant review workflows, trends, manual piggy-bank ledgers for future goals, backend-mediated Gemini expense Q&A, household category management, transaction labels, and planned Android push notifications for newly processed transactions.
+The app imports historical credit-card analysis from `docs/Credit Card Spend Analysis - FY 2025-26.xlsx`, then moves to ongoing ingestion from Gmail transaction emails for credit cards and UPI. It presents spend by category, named monthly caps with category and label targets, recurring cap carry-forward semantics, transaction details, merchant review workflows, trends, manual piggy-bank ledgers for future goals, backend-mediated Gemini expense Q&A, household category management, transaction labels, and planned Android push notifications for newly processed transactions.
 
 ## Architecture Decision
 
@@ -51,8 +51,9 @@ This is not a "no backend" architecture. It is a backend without a permanently r
 - Currency: INR.
 - Monthly caps: required-name recurring caps can target multiple categories
   and/or multiple labels. Edits and deletes apply from the selected month
-  forward while prior months remain readable. Milestones 33-35 plan optional
-  positive or negative carry-forward into the next month.
+  forward while prior months remain readable. Milestone 33 implements optional
+  positive or negative backend carry-forward into the next month; Milestones
+  34-35 plan Dashboard carry-forward UX and final regression cleanup.
 - Piggy banks: manual ledger accounts in v1.
 - Merchant corrections: apply to matching past and future transactions.
 - Transaction metadata edits: apply to the matching normalized statement merchant

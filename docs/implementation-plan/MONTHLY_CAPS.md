@@ -3,10 +3,11 @@
 Last updated: 2026-06-13
 
 This document is the implementation plan for named monthly caps, including the
-completed multi-target category/label work and the planned recurring
-carry-forward sequence. Each milestone below is a standalone milestone intended
-to be executed in a separate Codex thread. Stop after completing and documenting
-the current milestone; do not automatically continue to the next milestone.
+completed multi-target category/label work, recurring cap foundation, and
+backend carry-forward semantics. Each milestone below is a standalone milestone
+intended to be executed in a separate Codex thread. Stop after completing and
+documenting the current milestone; do not automatically continue to the next
+milestone.
 
 ## Target Behavior
 
@@ -24,7 +25,7 @@ it once for that cap. Overlapping caps are allowed: the same transaction can
 contribute to more than one cap when the user intentionally creates caps with
 overlapping targets.
 
-The completed M29-M32 version supports:
+The completed M29-M33 version supports:
 
 - Migrating existing category caps into named monthly caps.
 - Creating, editing, and stopping named recurring monthly caps from Dashboard.
@@ -40,10 +41,13 @@ The completed M29-M32 version supports:
   remain readable.
 - Returning cap progress for exact months even when a recurring cap has no
   matching transactions in that month.
+- Calculating positive and negative carry-forward in Postgres from the previous
+  active month's effective cap minus spend, including chained, disabled, edited,
+  refund, and bill-payment cases.
 
-The planned M33-M35 sequence adds carry-forward behavior. Each recurring cap can
-optionally carry forward the previous month's remaining amount into the next
-month:
+The remaining M34-M35 sequence adds visible carry-forward Dashboard treatment
+and final regression cleanup. Each recurring cap can optionally carry forward
+the previous month's remaining amount into the next month:
 
 - If the base cap is INR 10,000 and the prior month spent INR 8,000, the next
   month carries `+INR 2,000` and has an effective cap of INR 12,000.
@@ -59,7 +63,7 @@ month:
 - Flutter finance data flows through
   `apps/mobile/lib/src/data/repositories/finance_repository.dart`.
 - Dashboard tests live in `apps/mobile/test/finance_features_test.dart`.
-- Completed M29-M32 cap plumbing uses `public.monthly_cap_series`,
+- Completed M29-M33 cap plumbing uses `public.monthly_cap_series`,
   `public.monthly_cap_versions`, `public.monthly_cap_version_categories`,
   `public.monthly_cap_version_labels`, `public.upsert_monthly_cap`,
   `public.delete_monthly_cap`, `public.get_monthly_cap_progress`,
@@ -637,6 +641,8 @@ Completion notes:
 
 ## M33 - Carry-Forward Progress Semantics
 
+Completed on 2026-06-13.
+
 Purpose: Add positive and negative carry-forward calculations to recurring cap
 progress while keeping the Dashboard presentation mostly unchanged.
 
@@ -722,6 +728,24 @@ Completion summary requirements:
 - Assumptions made
 - Mocks created
 - Mocks used
+
+Completion notes:
+
+- Added the Supabase CLI-created migration
+  `20260613131821_carry_forward_progress_semantics.sql`.
+- Replaced the zeroed carry-forward projection in
+  `public.get_monthly_cap_progress` and `public.v_monthly_cap_progress` with
+  recursive, month-by-month recurring cap calculations.
+- Kept `cap_amount` as the backwards-compatible base monthly amount while
+  returning derived `carry_forward_amount`, `effective_cap_amount`,
+  `remaining_amount`, `percent_used`, and `is_over_budget`.
+- Preserved category OR label matching, one-count-per-cap semantics,
+  overlapping caps, `net_expense` spend semantics, and security-invoker
+  database access.
+- Added pgTAP coverage for positive carry-forward, negative carry-forward,
+  chained months, disabled carry-forward resets, selected-month amount/target
+  edits, refunds, and bill payments.
+- Added a focused Flutter model parsing regression for carry-forward fields.
 
 ## M34 - Dashboard Carry-Forward UX
 
