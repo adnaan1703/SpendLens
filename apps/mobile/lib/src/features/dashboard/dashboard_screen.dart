@@ -133,6 +133,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
           categories: snapshot.categoryOptions,
           labels: snapshot.labelOptions,
           existingCap: existingCap,
+          selectedMonth: snapshot.selectedMonth,
         );
       },
     );
@@ -148,7 +149,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
             name: formValue.name,
             periodMonth: snapshot.selectedMonth,
             capAmount: formValue.amount,
-            carryForwardEnabled: existingCap?.carryForwardEnabled ?? false,
+            carryForwardEnabled: formValue.carryForwardEnabled,
             categoryIds: formValue.categoryIds,
             labelIds: formValue.labelIds,
           ),
@@ -173,9 +174,9 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
       context: context,
       builder: (context) {
         return AlertDialog(
-          title: Text('Delete ${cap.name}?'),
+          title: Text('Stop ${cap.name}?'),
           content: Text(
-            'This stops the cap from ${formatMonth(snapshot.selectedMonth)} onward. Earlier months stay visible.',
+            'This stops the cap from ${formatMonth(snapshot.selectedMonth)} onward. Earlier months stay visible, and transactions, categories, labels, merchant rules, and review rows stay unchanged.',
           ),
           actions: [
             TextButton(
@@ -185,7 +186,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
             FilledButton.icon(
               onPressed: () => Navigator.of(context).pop(true),
               icon: const Icon(Icons.delete_outline),
-              label: const Text('Delete'),
+              label: const Text('Stop cap'),
             ),
           ],
         );
@@ -487,7 +488,7 @@ class _MonthlyCapProgressRow extends StatelessWidget {
                   icon: const Icon(Icons.edit_outlined),
                 ),
                 IconButton(
-                  tooltip: 'Delete cap',
+                  tooltip: 'Stop cap',
                   onPressed: onDelete,
                   icon: const Icon(Icons.delete_outline),
                 ),
@@ -500,8 +501,25 @@ class _MonthlyCapProgressRow extends StatelessWidget {
               spacing: 12,
               runSpacing: 4,
               children: [
+                Text('Base ${formatMoney(cap.baseCapAmount)}'),
+                if (cap.carryForwardAmount != 0)
+                  Text(
+                    'Carried ${formatSignedMoney(cap.carryForwardAmount)}',
+                    style: TextStyle(
+                      color: cap.carryForwardAmount < 0
+                          ? theme.colorScheme.error
+                          : theme.colorScheme.primary,
+                    ),
+                  ),
+                Text(
+                  'Available ${formatMoney(cap.effectiveCapAmount)}',
+                  style: TextStyle(
+                    color: cap.effectiveCapAmount <= 0
+                        ? theme.colorScheme.error
+                        : null,
+                  ),
+                ),
                 Text('Spent ${formatMoney(cap.spentAmount)}'),
-                Text('Cap ${formatMoney(cap.capAmount)}'),
                 Text(
                   cap.isOverBudget
                       ? 'Over ${formatMoney(cap.remainingAmount.abs())}'
@@ -542,12 +560,14 @@ final class _CapFormValue {
   const _CapFormValue({
     required this.name,
     required this.amount,
+    required this.carryForwardEnabled,
     required this.categoryIds,
     required this.labelIds,
   });
 
   final String name;
   final double amount;
+  final bool carryForwardEnabled;
   final List<String> categoryIds;
   final List<String> labelIds;
 }
@@ -557,11 +577,13 @@ class _CapFormSheet extends StatefulWidget {
     required this.categories,
     required this.labels,
     required this.existingCap,
+    required this.selectedMonth,
   });
 
   final List<CategoryOption> categories;
   final List<LabelOption> labels;
   final MonthlyCapProgress? existingCap;
+  final DateTime selectedMonth;
 
   @override
   State<_CapFormSheet> createState() => _CapFormSheetState();
@@ -572,6 +594,7 @@ class _CapFormSheetState extends State<_CapFormSheet> {
   late final TextEditingController _amountController;
   late final Set<String> _selectedCategoryIds;
   late final Set<String> _selectedLabelIds;
+  late bool _carryForwardEnabled;
 
   @override
   void initState() {
@@ -587,6 +610,7 @@ class _CapFormSheetState extends State<_CapFormSheet> {
     _selectedLabelIds = {
       for (final target in existingCap?.labelTargets ?? const []) target.id,
     };
+    _carryForwardEnabled = existingCap?.carryForwardEnabled ?? false;
   }
 
   @override
@@ -622,6 +646,13 @@ class _CapFormSheetState extends State<_CapFormSheet> {
                 widget.existingCap == null ? 'Add cap' : 'Edit cap',
                 style: theme.textTheme.titleLarge,
               ),
+              if (widget.existingCap != null) ...[
+                const SizedBox(height: 4),
+                Text(
+                  'Saves from ${formatMonth(widget.selectedMonth)} onward.',
+                  style: theme.textTheme.bodySmall,
+                ),
+              ],
               const SizedBox(height: 16),
               TextField(
                 key: const ValueKey('cap-name-field'),
@@ -650,6 +681,15 @@ class _CapFormSheetState extends State<_CapFormSheet> {
                 ),
                 textInputAction: TextInputAction.done,
                 onChanged: (_) => setState(() {}),
+              ),
+              const SizedBox(height: 8),
+              SwitchListTile.adaptive(
+                key: const ValueKey('cap-carry-forward-switch'),
+                contentPadding: EdgeInsets.zero,
+                title: const Text('Carry forward remainder'),
+                value: _carryForwardEnabled,
+                onChanged: (value) =>
+                    setState(() => _carryForwardEnabled = value),
               ),
               const SizedBox(height: 16),
               Text('Categories', style: theme.textTheme.titleSmall),
@@ -699,6 +739,7 @@ class _CapFormSheetState extends State<_CapFormSheet> {
                             _CapFormValue(
                               name: name,
                               amount: amount,
+                              carryForwardEnabled: _carryForwardEnabled,
                               categoryIds: _orderedSelectedIds(
                                 widget.categories,
                                 _selectedCategoryIds,

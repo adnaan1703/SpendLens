@@ -1491,7 +1491,7 @@ Add positive and negative carry-forward calculations to recurring cap progress.
 
 ### Status
 
-Planned. See
+Completed on 2026-06-13. See
 [Monthly Caps](MONTHLY_CAPS.md#m34---dashboard-carry-forward-ux).
 
 ### Objective

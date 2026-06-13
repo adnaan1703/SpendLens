@@ -233,6 +233,37 @@ void main() {
     ]);
     expect(repository.monthlyCapUpsertRequests.single.labelIds, isEmpty);
     expect(repository.monthlyCapUpsertRequests.single.capAmount, 5000);
+    expect(
+      repository.monthlyCapUpsertRequests.single.carryForwardEnabled,
+      isFalse,
+    );
+  });
+
+  testWidgets('dashboard can create a monthly cap with carry-forward', (
+    tester,
+  ) async {
+    final repository = _FakeFinanceRepository();
+
+    await tester.pumpWidget(
+      _financeTestApp(repository: repository, child: const DashboardScreen()),
+    );
+    await tester.pumpAndSettle();
+
+    await _openAddCapSheet(tester);
+
+    expect(_capCarryForwardSwitch(tester).value, isFalse);
+
+    await _tapCarryForwardSwitch(tester);
+    await _fillCapNameAndAmount(tester, name: 'Rolling fuel', amount: '5000');
+    await _tapTargetChip(tester, 'Fuel');
+    await _saveCapSheet(tester);
+
+    expect(repository.monthlyCapUpsertRequests, hasLength(1));
+    expect(repository.monthlyCapUpsertRequests.single.name, 'Rolling fuel');
+    expect(
+      repository.monthlyCapUpsertRequests.single.carryForwardEnabled,
+      isTrue,
+    );
   });
 
   testWidgets('dashboard cap metric includes category and label targets', (
@@ -338,6 +369,11 @@ void main() {
   ) async {
     final repository = _FakeFinanceRepository();
 
+    repository.monthlyCapProgress[0] = _copyMonthlyCapProgress(
+      repository.monthlyCapProgress[0],
+      carryForwardEnabled: true,
+    );
+
     await tester.pumpWidget(
       _financeTestApp(repository: repository, child: const DashboardScreen()),
     );
@@ -347,6 +383,10 @@ void main() {
     await tester.ensureVisible(firstEditButton);
     await tester.tap(firstEditButton);
     await tester.pumpAndSettle();
+
+    expect(find.text('Saves from Mar 2026 onward.'), findsOneWidget);
+    expect(_capCarryForwardSwitch(tester).value, isTrue);
+
     await _saveCapSheet(tester);
 
     expect(repository.monthlyCapUpsertRequests, hasLength(1));
@@ -356,6 +396,10 @@ void main() {
       'cat-food',
     ]);
     expect(repository.monthlyCapUpsertRequests.single.labelIds, isEmpty);
+    expect(
+      repository.monthlyCapUpsertRequests.single.carryForwardEnabled,
+      isTrue,
+    );
 
     final updatedEditButton = find.byTooltip('Edit cap').first;
     await tester.ensureVisible(updatedEditButton);
@@ -369,6 +413,7 @@ void main() {
       find.byKey(const ValueKey('cap-amount-field')),
       '30000',
     );
+    await _tapCarryForwardSwitch(tester);
     await _tapTargetChip(tester, 'Food');
     await _tapTargetChip(tester, 'Fuel');
     await _tapTargetChip(tester, 'Groceries');
@@ -391,20 +436,25 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    final firstDeleteButton = find.byTooltip('Delete cap').first;
+    final firstDeleteButton = find.byTooltip('Stop cap').first;
     await tester.ensureVisible(firstDeleteButton);
     await tester.tap(firstDeleteButton);
     await tester.pumpAndSettle();
+    expect(find.text('Stop Food?'), findsOneWidget);
+    expect(
+      find.textContaining('transactions, categories, labels'),
+      findsOneWidget,
+    );
     await tester.tap(find.text('Cancel').last);
     await tester.pumpAndSettle();
 
     expect(repository.monthlyCapDeleteRequests, isEmpty);
 
-    final confirmedDeleteButton = find.byTooltip('Delete cap').first;
+    final confirmedDeleteButton = find.byTooltip('Stop cap').first;
     await tester.ensureVisible(confirmedDeleteButton);
     await tester.tap(confirmedDeleteButton);
     await tester.pumpAndSettle();
-    await tester.tap(find.widgetWithText(FilledButton, 'Delete'));
+    await tester.tap(find.widgetWithText(FilledButton, 'Stop cap'));
     await tester.pumpAndSettle();
 
     expect(repository.monthlyCapDeleteRequests, hasLength(1));
@@ -446,6 +496,52 @@ void main() {
             ),
           ],
         ),
+      )
+      ..monthlyCapProgress.add(
+        MonthlyCapProgress(
+          monthlyCapId: 'cap-positive-carry',
+          monthlyCapVersionId: 'cap-version-positive-carry',
+          householdId: 'household-1',
+          name: 'Travel carry forward',
+          periodMonth: DateTime(2026, 3),
+          capAmount: 13000,
+          baseCapAmount: 13000,
+          carryForwardEnabled: true,
+          carryForwardAmount: 3000,
+          effectiveCapAmount: 16000,
+          spentAmount: 3000,
+          remainingAmount: 13000,
+          percentUsed: 0.1875,
+          isOverBudget: false,
+          matchedTransactionCount: 2,
+          categoryTargets: const [
+            MonthlyCapCategoryTarget(id: 'cat-fuel', name: 'Fuel'),
+          ],
+          labelTargets: const [],
+        ),
+      )
+      ..monthlyCapProgress.add(
+        MonthlyCapProgress(
+          monthlyCapId: 'cap-negative-carry',
+          monthlyCapVersionId: 'cap-version-negative-carry',
+          householdId: 'household-1',
+          name: 'Already exhausted cap',
+          periodMonth: DateTime(2026, 3),
+          capAmount: 5000,
+          baseCapAmount: 5000,
+          carryForwardEnabled: true,
+          carryForwardAmount: -7000,
+          effectiveCapAmount: -2000,
+          spentAmount: 0,
+          remainingAmount: -2000,
+          percentUsed: null,
+          isOverBudget: true,
+          matchedTransactionCount: 0,
+          categoryTargets: const [
+            MonthlyCapCategoryTarget(id: 'cat-shopping', name: 'Shopping'),
+          ],
+          labelTargets: const [],
+        ),
       );
 
     await tester.binding.setSurfaceSize(const Size(390, 900));
@@ -457,16 +553,72 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Spent INR 42,000'), findsOneWidget);
-    expect(find.text('Cap INR 50,000'), findsOneWidget);
+    expect(find.text('Base INR 50,000'), findsOneWidget);
+    expect(find.text('Available INR 50,000'), findsOneWidget);
     expect(find.text('Left INR 8,000'), findsOneWidget);
     expect(find.text('84%'), findsOneWidget);
     expect(find.text('8 matched'), findsOneWidget);
+    expect(find.text('Base INR 13,000'), findsOneWidget);
+    expect(find.text('Carried +INR 3,000'), findsOneWidget);
+    expect(find.text('Available INR 16,000'), findsOneWidget);
+    expect(find.text('Left INR 13,000'), findsOneWidget);
+    expect(find.text('Base INR 5,000'), findsOneWidget);
+    expect(find.text('Carried -INR 7,000'), findsOneWidget);
+    expect(find.text('Available -INR 2,000'), findsOneWidget);
+    expect(find.text('Over INR 2,000'), findsOneWidget);
     expect(find.text('Over INR 12,937'), findsOneWidget);
     expect(find.text('113%'), findsOneWidget);
     expect(find.text('Food'), findsWidgets);
     expect(find.text('Shopping'), findsWidgets);
     expect(find.text('Groceries with a very long target name'), findsOneWidget);
     expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('dashboard can select a future active cap month without spend', (
+    tester,
+  ) async {
+    final repository = _FakeFinanceRepository()
+      ..availableMonths = [DateTime(2026, 6), DateTime(2026, 3)]
+      ..monthlyCapProgress.add(
+        MonthlyCapProgress(
+          monthlyCapId: 'cap-june',
+          monthlyCapVersionId: 'cap-version-june',
+          householdId: 'household-1',
+          name: 'Future fuel',
+          periodMonth: DateTime(2026, 6),
+          capAmount: 9000,
+          baseCapAmount: 9000,
+          carryForwardEnabled: false,
+          carryForwardAmount: 0,
+          effectiveCapAmount: 9000,
+          spentAmount: 0,
+          remainingAmount: 9000,
+          percentUsed: 0,
+          isOverBudget: false,
+          matchedTransactionCount: 0,
+          categoryTargets: const [
+            MonthlyCapCategoryTarget(id: 'cat-fuel', name: 'Fuel'),
+          ],
+          labelTargets: const [],
+        ),
+      );
+
+    await tester.pumpWidget(
+      _financeTestApp(repository: repository, child: const DashboardScreen()),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Mar 2026 net'), findsOneWidget);
+
+    await tester.tap(find.text('Mar 2026').first);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Jun 2026').last);
+    await tester.pumpAndSettle();
+
+    expect(find.text('Jun 2026 net'), findsOneWidget);
+    expect(find.text('0 transactions'), findsOneWidget);
+    expect(find.text('Future fuel'), findsOneWidget);
+    expect(find.text('Available INR 9,000'), findsOneWidget);
   });
 
   testWidgets('dashboard top category drills into monthly transactions', (
@@ -1916,9 +2068,22 @@ Future<void> _tapTargetChip(WidgetTester tester, String label) async {
   await tester.pumpAndSettle();
 }
 
+Future<void> _tapCarryForwardSwitch(WidgetTester tester) async {
+  final toggle = find.byKey(const ValueKey('cap-carry-forward-switch'));
+  await tester.ensureVisible(toggle);
+  await tester.tap(toggle);
+  await tester.pumpAndSettle();
+}
+
 Future<void> _saveCapSheet(WidgetTester tester) async {
   await tester.tap(find.widgetWithText(FilledButton, 'Save'));
   await tester.pumpAndSettle();
+}
+
+SwitchListTile _capCarryForwardSwitch(WidgetTester tester) {
+  return tester.widget<SwitchListTile>(
+    find.byKey(const ValueKey('cap-carry-forward-switch')),
+  );
 }
 
 FilledButton _capSaveButton(WidgetTester tester) {
@@ -2019,6 +2184,8 @@ final class _FakeFinanceRepository implements FinanceRepository {
     LabelOption(id: 'label-grocery', name: 'Groceries'),
     LabelOption(id: 'label-reimburse', name: 'Reimburse'),
   ];
+
+  List<DateTime> availableMonths = [DateTime(2026, 3), DateTime(2026, 2)];
 
   final monthlyCapProgress = <MonthlyCapProgress>[
     MonthlyCapProgress(
@@ -2221,27 +2388,37 @@ final class _FakeFinanceRepository implements FinanceRepository {
     required String householdId,
     DateTime? requestedMonth,
   }) async {
+    final selectedMonth = firstDayOfMonth(requestedMonth ?? DateTime(2026, 3));
+    final isMarch2026 = isSameMonth(selectedMonth, DateTime(2026, 3));
+
     return DashboardSnapshot(
-      availableMonths: [DateTime(2026, 3), DateTime(2026, 2)],
-      selectedMonth: DateTime(2026, 3),
-      monthlySpend: MonthlySpend(
-        periodMonth: DateTime(2026, 3),
-        transactionCount: 8,
-        grossSpend: 43000,
-        refundAmount: 1000,
-        netSpend: 42000,
-        billPayments: 12000,
-      ),
-      previousMonthSpend: MonthlySpend(
-        periodMonth: DateTime(2026, 2),
-        transactionCount: 7,
-        grossSpend: 40000,
-        refundAmount: 0,
-        netSpend: 40000,
-        billPayments: 8000,
-      ),
+      availableMonths: availableMonths,
+      selectedMonth: selectedMonth,
+      monthlySpend: isMarch2026
+          ? MonthlySpend(
+              periodMonth: DateTime(2026, 3),
+              transactionCount: 8,
+              grossSpend: 43000,
+              refundAmount: 1000,
+              netSpend: 42000,
+              billPayments: 12000,
+            )
+          : MonthlySpend.empty(selectedMonth),
+      previousMonthSpend: isMarch2026
+          ? MonthlySpend(
+              periodMonth: DateTime(2026, 2),
+              transactionCount: 7,
+              grossSpend: 40000,
+              refundAmount: 0,
+              netSpend: 40000,
+              billPayments: 8000,
+            )
+          : null,
       reviewQueueCount: 3,
-      monthlyCapProgress: monthlyCapProgress,
+      monthlyCapProgress: [
+        for (final cap in monthlyCapProgress)
+          if (isSameMonth(cap.periodMonth, selectedMonth)) cap,
+      ],
       categoryOptions: categories,
       labelOptions: labels,
       topCategories: const [
@@ -2300,7 +2477,7 @@ final class _FakeFinanceRepository implements FinanceRepository {
   Future<List<DateTime>> fetchAvailableMonths({
     required String householdId,
   }) async {
-    return [DateTime(2026, 6), DateTime(2026, 3)];
+    return availableMonths;
   }
 
   @override
@@ -3314,6 +3491,12 @@ FinanceTransaction _copyTransaction(
 
 MonthlyCapProgress _copyMonthlyCapProgress(
   MonthlyCapProgress cap, {
+  bool? carryForwardEnabled,
+  double? carryForwardAmount,
+  double? effectiveCapAmount,
+  double? remainingAmount,
+  double? percentUsed,
+  bool? isOverBudget,
   List<MonthlyCapCategoryTarget>? categoryTargets,
   List<MonthlyCapLabelTarget>? labelTargets,
 }) {
@@ -3325,13 +3508,13 @@ MonthlyCapProgress _copyMonthlyCapProgress(
     periodMonth: cap.periodMonth,
     capAmount: cap.capAmount,
     baseCapAmount: cap.baseCapAmount,
-    carryForwardEnabled: cap.carryForwardEnabled,
-    carryForwardAmount: cap.carryForwardAmount,
-    effectiveCapAmount: cap.effectiveCapAmount,
+    carryForwardEnabled: carryForwardEnabled ?? cap.carryForwardEnabled,
+    carryForwardAmount: carryForwardAmount ?? cap.carryForwardAmount,
+    effectiveCapAmount: effectiveCapAmount ?? cap.effectiveCapAmount,
     spentAmount: cap.spentAmount,
-    remainingAmount: cap.remainingAmount,
-    percentUsed: cap.percentUsed,
-    isOverBudget: cap.isOverBudget,
+    remainingAmount: remainingAmount ?? cap.remainingAmount,
+    percentUsed: percentUsed ?? cap.percentUsed,
+    isOverBudget: isOverBudget ?? cap.isOverBudget,
     matchedTransactionCount: cap.matchedTransactionCount,
     categoryTargets: categoryTargets ?? cap.categoryTargets,
     labelTargets: labelTargets ?? cap.labelTargets,

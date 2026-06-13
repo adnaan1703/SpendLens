@@ -25,7 +25,7 @@ it once for that cap. Overlapping caps are allowed: the same transaction can
 contribute to more than one cap when the user intentionally creates caps with
 overlapping targets.
 
-The completed M29-M33 version supports:
+The completed M29-M34 version supports:
 
 - Migrating existing category caps into named monthly caps.
 - Creating, editing, and stopping named recurring monthly caps from Dashboard.
@@ -44,10 +44,13 @@ The completed M29-M33 version supports:
 - Calculating positive and negative carry-forward in Postgres from the previous
   active month's effective cap minus spend, including chained, disabled, edited,
   refund, and bill-payment cases.
+- Toggling carry-forward from the Dashboard cap form and showing base, carried,
+  effective available, spent, remaining/over, percent, matched count, and target
+  values in cap rows.
 
-The remaining M34-M35 sequence adds visible carry-forward Dashboard treatment
-and final regression cleanup. Each recurring cap can optionally carry forward
-the previous month's remaining amount into the next month:
+The remaining M35 milestone adds final recurring-cap regression and docs
+cleanup. Each recurring cap can optionally carry forward the previous month's
+remaining amount into the next month:
 
 - If the base cap is INR 10,000 and the prior month spent INR 8,000, the next
   month carries `+INR 2,000` and has an effective cap of INR 12,000.
@@ -821,6 +824,23 @@ Completion summary requirements:
 - Assumptions made
 - Mocks created
 - Mocks used
+
+Completion notes:
+
+- Added Dashboard create/edit support for `Carry forward remainder`, defaulting
+  off for new caps and initializing from the active cap version while editing.
+- Saved carry-forward changes through the existing monthly cap upsert request;
+  no new migration or RPC was needed because M32-M33 already exposed the
+  repository contract.
+- Updated selected-month-forward edit and stop/delete copy so users see that
+  earlier months stay readable and finance/taxonomy/review data is unchanged.
+- Updated cap progress rows to show base cap, positive or negative carried
+  amount, effective available cap, spent, left/over, percent, matched count,
+  and target chips using repository-returned values.
+- Added focused widget coverage for create/edit carry-forward toggles, stop
+  confirmation copy, positive and negative carry-forward rows on a narrow
+  viewport, future active cap-month selection without transactions, and
+  preserved add/edit/delete/drilldown workflows.
 
 ## M35 - Recurring Caps Regression, Docs, And Cleanup
 
