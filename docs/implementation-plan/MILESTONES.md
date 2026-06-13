@@ -1923,7 +1923,8 @@ Move Trends behavior into Activity's Charts mode.
 
 ### Status
 
-Planned. See [UI Redesign](UI_REDESIGN.md#m43---transaction-details-surface).
+Completed on 2026-06-14. See
+[UI Redesign](UI_REDESIGN.md#m43---transaction-details-surface).
 
 ### Objective
 
@@ -1949,6 +1950,33 @@ Restyle transaction details as the focused Stitch detail surface.
 ### Deferred Scope
 
 - Metadata editor restyle is M44.
+
+### Completion Notes
+
+- Rebuilt transaction details as the focused Stitch detail surface using the
+  M38 shared modal/card primitive with close affordance, centered
+  merchant/date/large amount, transaction type/status pill, divider rows, and
+  primary Edit action.
+- Included detail rows for statement, gross spend, refunds, net expense, source
+  amount, category, subcategory, confidence, and applicable cardholder, notes,
+  and labels.
+- Preserved metadata editing and label editing entry behavior without restyling
+  the Transaction Metadata Editor.
+- Added focused Activity List narrow-viewport coverage for the detail surface.
+- Verification:
+  - `cd apps/mobile && dart format lib/src/features/transactions/transactions_screen.dart test/finance_features_test.dart`
+  - `cd apps/mobile && flutter analyze`
+  - `cd apps/mobile && flutter test test/finance_features_test.dart`
+  - `cd apps/mobile && flutter test`
+  - `git diff --check`
+- Assumptions made:
+  - The Activity List transaction card remains the entry point for details.
+  - Metadata editor restyle remains deferred to M44.
+- Mocks created:
+  - None.
+- Mocks used:
+  - `docs/design-references/stitch/themed-dashboard-ui-redesign/screens/transactions-details-refined-shapes.jpg`
+  - `docs/design-references/stitch/themed-dashboard-ui-redesign/html/transactions-details-refined-shapes.html`
 
 ## Milestone 44: Transaction Metadata Editor Redesign
 

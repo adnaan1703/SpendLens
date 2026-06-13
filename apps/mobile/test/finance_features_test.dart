@@ -829,6 +829,100 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets('transaction detail opens from Activity List at 390px width', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(390, 900);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(() {
+      tester.view.resetPhysicalSize();
+      tester.view.resetDevicePixelRatio();
+    });
+    final repository = _FakeFinanceRepository();
+
+    await tester.pumpWidget(
+      _financeTestApp(repository: repository, child: const ActivityScreen()),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.ensureVisible(find.text('Swiggy Instamart').first);
+    await tester.tap(find.text('Swiggy Instamart').first);
+    await tester.pumpAndSettle();
+
+    final detailSheet = find.byType(BottomSheet);
+    expect(detailSheet, findsOneWidget);
+    expect(
+      find.descendant(
+        of: detailSheet,
+        matching: find.byTooltip('Close transaction details'),
+      ),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(of: detailSheet, matching: find.text('Swiggy Instamart')),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(of: detailSheet, matching: find.text('2026-03-12')),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(of: detailSheet, matching: find.text('Debit Spend')),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(of: detailSheet, matching: find.text('Statement')),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(of: detailSheet, matching: find.text('Gross spend')),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(of: detailSheet, matching: find.text('Refunds')),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(of: detailSheet, matching: find.text('Net expense')),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(of: detailSheet, matching: find.text('Source amount')),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(of: detailSheet, matching: find.text('Category')),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(of: detailSheet, matching: find.text('Subcategory')),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(of: detailSheet, matching: find.text('Confidence')),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(of: detailSheet, matching: find.text('Cardholder')),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(
+        of: detailSheet,
+        matching: find.widgetWithText(OutlinedButton, 'Edit labels'),
+      ),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(
+        of: detailSheet,
+        matching: find.widgetWithText(FilledButton, 'Edit'),
+      ),
+      findsOneWidget,
+    );
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('transactions period month filters query and resets pagination', (
     tester,
   ) async {

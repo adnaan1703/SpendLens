@@ -4,8 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../data/repositories/finance_repository.dart';
 import '../../data/repositories/household_repository.dart';
-import '../../shared/widgets/app_card.dart';
-import '../../shared/widgets/empty_state.dart';
+import '../../shared/widgets/app_primitives.dart';
 import '../../shared/widgets/period_filter_dropdown.dart';
 import '../activity/activity_route.dart';
 import '../transaction_metadata/transaction_metadata_editor.dart';
@@ -832,95 +831,30 @@ class _TransactionCard extends StatelessWidget {
   ) {
     showModalBottomSheet<void>(
       context: context,
-      showDragHandle: true,
-      builder: (context) {
-        return SafeArea(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.fromLTRB(24, 8, 24, 24),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  _titleFor(transaction),
-                  style: Theme.of(context).textTheme.headlineSmall,
-                ),
-                const SizedBox(height: 4),
-                Text(dateString(transaction.transactionDate)),
-                const SizedBox(height: 20),
-                if (transaction.statementMerchant.trim() !=
-                    _titleFor(transaction))
-                  _DetailRow(
-                    label: 'Statement',
-                    value: transaction.statementMerchant,
-                  ),
-                _DetailRow(
-                  label: 'Gross spend',
-                  value: formatMoney(transaction.grossSpend),
-                ),
-                _DetailRow(
-                  label: 'Refunds',
-                  value: formatMoney(transaction.refundAmount),
-                ),
-                _DetailRow(
-                  label: 'Net expense',
-                  value: formatMoney(transaction.netExpense),
-                ),
-                _DetailRow(
-                  label: 'Source amount',
-                  value: formatMoney(transaction.amount),
-                ),
-                _DetailRow(
-                  label: 'Category',
-                  value: transaction.categoryName ?? 'Uncategorized',
-                ),
-                _DetailRow(
-                  label: 'Subcategory',
-                  value: transaction.subcategoryName ?? 'Uncategorized',
-                ),
-                _DetailRow(
-                  label: 'Type',
-                  value: transaction.transactionType.replaceAll('_', ' '),
-                ),
-                _DetailRow(label: 'Confidence', value: transaction.confidence),
-                if (transaction.cardholderName != null)
-                  _DetailRow(
-                    label: 'Cardholder',
-                    value: transaction.cardholderName!,
-                  ),
-                if (transaction.notes != null &&
-                    transaction.notes!.trim().isNotEmpty)
-                  _DetailRow(label: 'Notes', value: transaction.notes!),
-                _DetailLabelRow(labels: transaction.labels),
-                const SizedBox(height: 8),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.end,
-                  children: [
-                    OutlinedButton.icon(
-                      onPressed: onEditLabels == null
-                          ? null
-                          : () {
-                              Navigator.of(context).pop();
-                              onEditLabels!(transaction);
-                            },
-                      icon: const Icon(Icons.label_outline),
-                      label: const Text('Edit labels'),
-                    ),
-                    const SizedBox(width: 12),
-                    FilledButton.icon(
-                      onPressed: onEdit == null
-                          ? null
-                          : () {
-                              Navigator.of(context).pop();
-                              onEdit!(transaction);
-                            },
-                      icon: const Icon(Icons.edit_outlined),
-                      label: const Text('Edit'),
-                    ),
-                  ],
-                ),
-              ],
-            ),
+      isScrollControlled: true,
+      showDragHandle: false,
+      backgroundColor: Colors.transparent,
+      builder: (sheetContext) {
+        return AppModalCardShell(
+          maxWidth: 600,
+          padding: EdgeInsets.zero,
+          showDragHandle: false,
+          child: _TransactionDetailSurface(
+            transaction: transaction,
+            title: _titleFor(transaction),
+            onClose: () => Navigator.of(sheetContext).pop(),
+            onEditLabels: onEditLabels == null
+                ? null
+                : () {
+                    Navigator.of(sheetContext).pop();
+                    onEditLabels!(transaction);
+                  },
+            onEdit: onEdit == null
+                ? null
+                : () {
+                    Navigator.of(sheetContext).pop();
+                    onEdit!(transaction);
+                  },
           ),
         );
       },
@@ -928,27 +862,249 @@ class _TransactionCard extends StatelessWidget {
   }
 }
 
-class _DetailRow extends StatelessWidget {
-  const _DetailRow({required this.label, required this.value});
+class _TransactionDetailSurface extends StatelessWidget {
+  const _TransactionDetailSurface({
+    required this.transaction,
+    required this.title,
+    required this.onClose,
+    required this.onEditLabels,
+    required this.onEdit,
+  });
 
-  final String label;
-  final String value;
+  final FinanceTransaction transaction;
+  final String title;
+  final VoidCallback onClose;
+  final VoidCallback? onEditLabels;
+  final VoidCallback? onEdit;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final typeLabel = _titleCase(transaction.transactionType);
 
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 10),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          SizedBox(
-            width: 120,
-            child: Text(label, style: theme.textTheme.labelLarge),
+    return Stack(
+      children: [
+        Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(24, 56, 24, 24),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  Text(
+                    title,
+                    maxLines: 3,
+                    overflow: TextOverflow.ellipsis,
+                    textAlign: TextAlign.center,
+                    style: theme.textTheme.headlineSmall?.copyWith(
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: 0,
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    dateString(transaction.transactionDate),
+                    textAlign: TextAlign.center,
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                  const SizedBox(height: 18),
+                  LargeAmountText(
+                    formatMoney(
+                      transaction.netExpense,
+                      currencyCode: transaction.currencyCode,
+                    ),
+                    textAlign: TextAlign.center,
+                    semanticLabel:
+                        'Net expense ${formatMoney(transaction.netExpense, currencyCode: transaction.currencyCode)}',
+                    style: theme.textTheme.displaySmall?.copyWith(
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: 0,
+                      height: 1,
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+                  StatusChip(
+                    label: typeLabel,
+                    tone: _statusToneFor(transaction),
+                    semanticLabel: 'Transaction type $typeLabel',
+                  ),
+                ],
+              ),
+            ),
+            Divider(height: 1, color: theme.colorScheme.outlineVariant),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(24, 16, 24, 8),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  _DetailRow(
+                    label: 'Statement',
+                    value: transaction.statementMerchant,
+                  ),
+                  _DetailRow(
+                    label: 'Gross spend',
+                    value: formatMoney(
+                      transaction.grossSpend,
+                      currencyCode: transaction.currencyCode,
+                    ),
+                  ),
+                  _DetailRow(
+                    label: 'Refunds',
+                    value: formatMoney(
+                      transaction.refundAmount,
+                      currencyCode: transaction.currencyCode,
+                    ),
+                  ),
+                  _DetailRow(
+                    label: 'Net expense',
+                    value: formatMoney(
+                      transaction.netExpense,
+                      currencyCode: transaction.currencyCode,
+                    ),
+                  ),
+                  _DetailRow(
+                    label: 'Source amount',
+                    value: formatMoney(
+                      transaction.amount,
+                      currencyCode: transaction.currencyCode,
+                    ),
+                  ),
+                  _DetailRow(
+                    label: 'Category',
+                    value: transaction.categoryName ?? 'Uncategorized',
+                  ),
+                  _DetailRow(
+                    label: 'Subcategory',
+                    value: transaction.subcategoryName ?? 'Uncategorized',
+                  ),
+                  _DetailRow(
+                    label: 'Confidence',
+                    value: _titleCase(transaction.confidence),
+                  ),
+                  if (transaction.cardholderName != null)
+                    _DetailRow(
+                      label: 'Cardholder',
+                      value: transaction.cardholderName!,
+                    ),
+                  if (transaction.notes != null &&
+                      transaction.notes!.trim().isNotEmpty)
+                    _DetailRow(label: 'Notes', value: transaction.notes!),
+                  _DetailLabelRow(labels: transaction.labels),
+                ],
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(24, 8, 24, 24),
+              child: Wrap(
+                spacing: 12,
+                runSpacing: 12,
+                alignment: WrapAlignment.end,
+                children: [
+                  OutlinedButton.icon(
+                    onPressed: onEditLabels,
+                    icon: const Icon(Icons.label_outline),
+                    label: const Text('Edit labels'),
+                  ),
+                  AppActionPill.primary(
+                    label: 'Edit',
+                    icon: Icons.edit_outlined,
+                    tooltip: 'Edit metadata',
+                    onPressed: onEdit,
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+        Positioned(
+          top: 12,
+          right: 12,
+          child: IconButton(
+            tooltip: 'Close transaction details',
+            onPressed: onClose,
+            icon: const Icon(Icons.close),
           ),
-          Expanded(child: Text(value)),
-        ],
+        ),
+      ],
+    );
+  }
+}
+
+class _DetailRow extends StatelessWidget {
+  const _DetailRow({
+    required this.label,
+    this.value,
+    this.valueChild,
+    this.showDivider = true,
+  }) : assert(value != null || valueChild != null);
+
+  final String label;
+  final String? value;
+  final Widget? valueChild;
+  final bool showDivider;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final labelStyle = theme.textTheme.bodyMedium?.copyWith(
+      color: theme.colorScheme.onSurfaceVariant,
+      letterSpacing: 0,
+    );
+    final valueStyle = theme.textTheme.bodyMedium?.copyWith(
+      fontWeight: FontWeight.w700,
+      letterSpacing: 0,
+    );
+    final valueWidget =
+        valueChild ??
+        Text(
+          value!,
+          softWrap: true,
+          textAlign: TextAlign.end,
+          style: valueStyle,
+        );
+
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        border: Border(
+          bottom: showDivider
+              ? BorderSide(color: theme.colorScheme.outlineVariant)
+              : BorderSide.none,
+        ),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 12),
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final compact = constraints.maxWidth < 320;
+
+            if (compact) {
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(label, style: labelStyle),
+                  const SizedBox(height: 6),
+                  Align(alignment: Alignment.centerRight, child: valueWidget),
+                ],
+              );
+            }
+
+            return Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Flexible(
+                  flex: 4,
+                  child: Text(label, softWrap: true, style: labelStyle),
+                ),
+                const SizedBox(width: 16),
+                Expanded(flex: 6, child: valueWidget),
+              ],
+            );
+          },
+        ),
       ),
     );
   }
@@ -1040,26 +1196,43 @@ class _DetailLabelRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 10),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          SizedBox(
-            width: 120,
-            child: Text('Labels', style: theme.textTheme.labelLarge),
-          ),
-          Expanded(
-            child: labels.isEmpty
-                ? const Text('None')
-                : _LabelChips(labels: labels),
-          ),
-        ],
-      ),
+    return _DetailRow(
+      label: 'Labels',
+      showDivider: false,
+      valueChild: labels.isEmpty
+          ? Text(
+              'None',
+              textAlign: TextAlign.end,
+              style: Theme.of(
+                context,
+              ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w700),
+            )
+          : _LabelChips(labels: labels),
     );
   }
+}
+
+AppStatusTone _statusToneFor(FinanceTransaction transaction) {
+  if (transaction.isRefund) return AppStatusTone.positive;
+  if (transaction.isBillPayment) return AppStatusTone.warning;
+
+  return AppStatusTone.neutral;
+}
+
+String _titleCase(String value) {
+  final words = value
+      .replaceAll('_', ' ')
+      .split(' ')
+      .where((word) => word.trim().isNotEmpty);
+
+  if (words.isEmpty) return value;
+
+  return words
+      .map((word) {
+        final lower = word.toLowerCase();
+        return '${lower[0].toUpperCase()}${lower.substring(1)}';
+      })
+      .join(' ');
 }
 
 class _LabelChips extends StatelessWidget {

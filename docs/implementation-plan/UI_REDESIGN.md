@@ -696,6 +696,8 @@ Completion notes:
 
 ## M43 - Transaction Details Surface
 
+Status: completed on 2026-06-14.
+
 Purpose: restyle transaction details as the focused Stitch detail card/sheet.
 
 Instructions:
@@ -743,6 +745,35 @@ Completion summary requirements:
 - Assumptions made
 - Mocks created
 - Mocks used
+
+Completion notes:
+
+- Rebuilt the detail bottom sheet as a constrained M38 shared modal/card
+  surface with close affordance, centered merchant/date/large amount,
+  transaction type/status pill, responsive divider rows, and primary Edit
+  action.
+- Preserved metadata editing and label editing entry behavior, including the
+  existing label editor and metadata editor tests.
+- Added focused Activity List coverage for opening transaction details at a
+  390px viewport without overflow.
+- Detail rows include statement, gross spend, refunds, net expense, source
+  amount, category, subcategory, confidence, and applicable cardholder, notes,
+  and labels.
+- Next recommended implementation milestone is M44, Transaction Metadata Editor.
+- Verification:
+  - `cd apps/mobile && dart format lib/src/features/transactions/transactions_screen.dart test/finance_features_test.dart`
+  - `cd apps/mobile && flutter analyze`
+  - `cd apps/mobile && flutter test test/finance_features_test.dart`
+  - `cd apps/mobile && flutter test`
+  - `git diff --check`
+- Assumptions made:
+  - The existing Activity List transaction card remains the route into details.
+  - M43 does not change transaction model semantics or metadata editor visuals.
+- Mocks created:
+  - None.
+- Mocks used:
+  - `docs/design-references/stitch/themed-dashboard-ui-redesign/screens/transactions-details-refined-shapes.jpg`
+  - `docs/design-references/stitch/themed-dashboard-ui-redesign/html/transactions-details-refined-shapes.html`
 
 ## M44 - Transaction Metadata Editor
 
