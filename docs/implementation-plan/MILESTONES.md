@@ -1393,6 +1393,189 @@ the final behavior.
 - Subcategory caps, merchant/source-account targets, cap notifications,
   rollover budgets, shared templates, AI cap suggestions, and cap drilldown.
 
+## Milestone 32: Recurring Cap Series Foundation
+
+### Status
+
+Planned. See
+[Monthly Caps](MONTHLY_CAPS.md#m32---recurring-cap-series-foundation).
+
+### Objective
+
+Introduce stable recurring cap identity and current/future cap versioning before
+adding carry-forward calculations or Dashboard carry-forward copy.
+
+### Tasks
+
+- Add a Supabase CLI-created migration for recurring cap series,
+  month-effective cap versions, and versioned category/label targets.
+- Backfill existing named monthly caps into recurring series with one initial
+  version and carry-forward disabled.
+- Update app-facing cap upsert/delete behavior so creates make recurring cap
+  series, edits create a selected-month-forward version, and deletes stop a
+  series from the selected month forward.
+- Add an exact-month cap progress read path that can include recurring caps in
+  months without transactions.
+- Update Flutter repository models, fake repository support, and month
+  availability to carry stable series/version identity while preserving current
+  Dashboard behavior with carry-forward off.
+- Preserve category/label lifecycle cleanup for versioned targets.
+
+### External Work
+
+- None.
+
+### Acceptance Criteria
+
+- Existing caps migrate into recurring series without losing target data.
+- Creating a cap from Dashboard creates a recurring cap series.
+- Edits and deletes from a selected month affect that month and future months
+  only.
+- Prior months remain readable after edit/delete.
+- Recurring cap months can appear in Dashboard month selection before
+  transactions exist.
+- Existing multi-target matching, overlap, RLS, and lifecycle cleanup behavior
+  still passes with carry-forward disabled.
+
+### Deferred Scope
+
+- Carry-forward calculations, carry-forward Dashboard copy, cap drilldown,
+  notifications, AI suggestions, and hosted rollout.
+
+## Milestone 33: Carry-Forward Progress Semantics
+
+### Status
+
+Planned. See
+[Monthly Caps](MONTHLY_CAPS.md#m33---carry-forward-progress-semantics).
+
+### Objective
+
+Add positive and negative carry-forward calculations to recurring cap progress.
+
+### Tasks
+
+- Extend cap progress responses with base cap amount, carry-forward enabled
+  state, carry-forward amount, effective cap amount, remaining amount,
+  percent used, and over-budget state.
+- Calculate carry-forward in Postgres from the same recurring cap series:
+  previous month's effective cap minus previous month's spend.
+- Support positive carry-forward, negative carry-forward, chained
+  carry-forward, first active month behavior, disabled carry-forward behavior,
+  amount edits, target edits, and stopped caps.
+- Keep matching semantics unchanged: `net_expense`, category OR label target,
+  one-count-per-cap, and allowed overlap.
+- Update Dart model parsing and fake repository behavior for the new progress
+  fields.
+- Add focused pgTAP and Flutter model/repository tests.
+
+### External Work
+
+- None.
+
+### Acceptance Criteria
+
+- Positive prior-month remainder increases the next month's effective cap.
+- Negative prior-month remainder reduces the next month's effective cap.
+- Carry-forward chains across active months and stops when disabled or inactive.
+- Effective cap, remaining amount, percent used, and over-budget state are
+  derived from the carry-forward-aware cap.
+- Flutter models expose the values required by Dashboard UX.
+
+### Deferred Scope
+
+- Dashboard carry-forward toggle/copy, cap drilldown, notifications, AI
+  suggestions, and hosted rollout.
+
+## Milestone 34: Dashboard Carry-Forward UX
+
+### Status
+
+Planned. See
+[Monthly Caps](MONTHLY_CAPS.md#m34---dashboard-carry-forward-ux).
+
+### Objective
+
+Expose carry-forward creation/editing and effective cap explanation in the
+Dashboard.
+
+### Tasks
+
+- Add a `Carry forward remainder` toggle to the Dashboard cap create/edit sheet,
+  defaulting off for new caps.
+- Save the toggle through the updated monthly cap upsert request.
+- Update edit/delete copy to make selected-month-forward recurring behavior
+  clear.
+- Render base monthly cap, carried amount, effective available cap, spent,
+  remaining/over, percent, matched count, and target chips.
+- Show positive carry-forward as extra available cap and negative carry-forward
+  as already-exhausted cap space.
+- Keep existing add/edit/delete target workflows, provider refresh, and top
+  category/merchant drilldowns intact.
+- Add narrow-viewport and focused Dashboard widget coverage.
+
+### External Work
+
+- None.
+
+### Acceptance Criteria
+
+- Users can enable or disable carry-forward while creating or editing a cap.
+- Positive and negative carry-forward states are understandable in cap rows.
+- Over-budget states use effective cap, not base cap alone.
+- Recurring cap months remain selectable before transactions exist.
+- Existing Dashboard cap workflows and drilldowns still work.
+
+### Deferred Scope
+
+- Cap drilldown, cap reports, push notifications, AI suggestions, shared
+  templates, and hosted rollout.
+
+## Milestone 35: Recurring Caps Regression, Docs, and Cleanup
+
+### Status
+
+Planned. See
+[Monthly Caps](MONTHLY_CAPS.md#m35---recurring-caps-regression-docs-and-cleanup).
+
+### Objective
+
+Harden recurring cap and carry-forward behavior, then document the final state.
+
+### Tasks
+
+- Run cross-feature regression for recurring creation, current/future edit,
+  current/future delete, positive carry-forward, negative carry-forward,
+  chained carry-forward, disabled carry-forward, category lifecycle changes,
+  label lifecycle changes, no double-counting, overlap, and RLS.
+- Remove or update stale one-month-only cap assumptions in Dashboard copy,
+  repository models, tests, and docs.
+- Update durable docs and handoff with final recurring/carry-forward behavior.
+- Add or tighten pgTAP and Flutter regression coverage for the final contract.
+- Run full local Supabase, Flutter analyze/test, and debug Android build
+  verification.
+
+### External Work
+
+- None.
+
+### Acceptance Criteria
+
+- Recurring cap and carry-forward behavior is covered by database and Flutter
+  regression tests.
+- No active Dashboard copy assumes caps are one-month-only records.
+- Final docs reflect recurring cap identity, selected-month-forward edits and
+  deletes, optional carry-forward, positive/negative carry-forward, effective
+  caps, category/label OR matching, one-count-per-cap semantics, and allowed
+  overlap.
+- Milestones 18-21 remain deferred unless explicitly resumed.
+
+### Deferred Scope
+
+- Subcategory caps, merchant/source-account targets, cap notifications,
+  cap drilldown, shared templates, annual budget planning, AI cap suggestions,
+  and hosted rollout.
+
 ## Cross-Milestone Consistency Rules
 
 - Ask the user before proceeding on any undocumented decision. Codex may recommend a default, but must wait for confirmation.
@@ -1416,6 +1599,9 @@ the final behavior.
 - Multi-target monthly caps use required names, category and/or label targets,
   OR matching, one-count-per-cap transaction semantics, and allowed overlap
   between separate caps.
+- Recurring monthly caps use explicit cap-series identity. Edits and deletes
+  apply from the selected month forward, and optional carry-forward can be
+  positive or negative.
 - Prefer deterministic rules before AI.
 - Keep client code free of service credentials.
 - Update these docs when architecture decisions change.

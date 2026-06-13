@@ -13,7 +13,7 @@ Read these documents in order at the start of every new implementation thread:
 7. [Production Readiness](PRODUCTION_READINESS.md)
 8. [Push Notifications](PUSH_NOTIFICATIONS.md) when executing Milestones 18-21
 9. [Transaction Labels](TRANSACTION_LABELS.md) when executing Milestones 26-28
-10. [Monthly Caps](MONTHLY_CAPS.md) when executing Milestones 29-31
+10. [Monthly Caps](MONTHLY_CAPS.md) when executing Milestones 29-35
 11. [Session Handoff](SESSION_HANDOFF.md)
 
 Completed-only companion execution plans are removed after their durable
@@ -24,7 +24,7 @@ behavior has been folded into this README, [Data Model](DATA_MODEL.md),
 
 SpendLens is a personal and household expense intelligence app. The current implementation plan is Android-first: build the Flutter Android app first and defer iOS and web until later.
 
-The app imports historical credit-card analysis from `docs/Credit Card Spend Analysis - FY 2025-26.xlsx`, then moves to ongoing ingestion from Gmail transaction emails for credit cards and UPI. It presents spend by category, named monthly caps with category and label targets, transaction details, merchant review workflows, trends, manual piggy-bank ledgers for future goals, backend-mediated Gemini expense Q&A, household category management, transaction labels, and planned Android push notifications for newly processed transactions.
+The app imports historical credit-card analysis from `docs/Credit Card Spend Analysis - FY 2025-26.xlsx`, then moves to ongoing ingestion from Gmail transaction emails for credit cards and UPI. It presents spend by category, named monthly caps with category and label targets, planned recurring cap carry-forward, transaction details, merchant review workflows, trends, manual piggy-bank ledgers for future goals, backend-mediated Gemini expense Q&A, household category management, transaction labels, and planned Android push notifications for newly processed transactions.
 
 ## Architecture Decision
 
@@ -49,8 +49,9 @@ This is not a "no backend" architecture. It is a backend without a permanently r
 
 - Usage model: personal plus household.
 - Currency: INR.
-- Monthly caps: category-level today; Milestones 29-31 plan required-name caps
-  that can target multiple categories and/or multiple labels.
+- Monthly caps: required-name caps can target multiple categories and/or
+  multiple labels. Milestones 32-35 plan recurring caps with optional positive
+  or negative carry-forward into the next month.
 - Piggy banks: manual ledger accounts in v1.
 - Merchant corrections: apply to matching past and future transactions.
 - Transaction metadata edits: apply to the matching normalized statement merchant
@@ -67,6 +68,8 @@ This is not a "no backend" architecture. It is a backend without a permanently r
 - Multi-target monthly caps: required-name caps can include multiple
   categories, multiple labels, or both. A transaction counts once inside a cap
   when any selected category or label matches; overlapping caps are allowed.
+  Planned recurring caps apply edits/deletes from the selected month forward
+  and can optionally carry positive or negative remainder into the next month.
 - Email retention: store minimal parsed data only; do not retain raw email bodies by default.
 - AI: backend-mediated Gemini expense Q&A and transaction metadata suggestions; dev/staging use free-tier-only mode with Suggest search disabled by default.
 - Android push notifications: Firebase Cloud Messaging delivery, Supabase

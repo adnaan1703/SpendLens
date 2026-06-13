@@ -1,12 +1,12 @@
-# Multi-Target Monthly Caps Plan
+# Monthly Caps Plan
 
-Last updated: 2026-06-12
+Last updated: 2026-06-13
 
-This document is the implementation plan for named monthly caps that can target
-one or more categories and one or more transaction labels. Each milestone below
-is a standalone milestone intended to be executed in a separate Codex thread.
-Stop after completing and documenting the current milestone; do not
-automatically continue to the next milestone.
+This document is the implementation plan for named monthly caps, including the
+completed multi-target category/label work and the planned recurring
+carry-forward sequence. Each milestone below is a standalone milestone intended
+to be executed in a separate Codex thread. Stop after completing and documenting
+the current milestone; do not automatically continue to the next milestone.
 
 ## Target Behavior
 
@@ -24,7 +24,7 @@ it once for that cap. Overlapping caps are allowed: the same transaction can
 contribute to more than one cap when the user intentionally creates caps with
 overlapping targets.
 
-The first version supports:
+The completed M29-M31 version supports:
 
 - Migrating existing category caps into named monthly caps.
 - Creating, editing, and deleting named monthly caps from Dashboard.
@@ -36,6 +36,19 @@ The first version supports:
   edits do not recategorize transactions, assign labels, change merchant rules,
   or send transactions to Review.
 
+The planned M32-M35 sequence adds recurring monthly caps. Every user-created
+cap is recurring by default. A recurring cap has a stable series identity, and
+edits or deletes apply from the selected month forward while prior months remain
+historical. Each recurring cap can optionally carry forward the previous
+month's remaining amount into the next month:
+
+- If the base cap is INR 10,000 and the prior month spent INR 8,000, the next
+  month carries `+INR 2,000` and has an effective cap of INR 12,000.
+- If the base cap is INR 10,000 and the prior month spent INR 12,000, the next
+  month carries `-INR 2,000` and has an effective cap of INR 8,000.
+- Carry-forward can chain month to month while the same cap series remains
+  active and carry-forward is enabled.
+
 ## Existing Foundation
 
 - Dashboard cap UI lives in
@@ -43,8 +56,13 @@ The first version supports:
 - Flutter finance data flows through
   `apps/mobile/lib/src/data/repositories/finance_repository.dart`.
 - Dashboard tests live in `apps/mobile/test/finance_features_test.dart`.
-- Current category-only caps use `public.category_caps`,
-  `public.v_budget_progress`, `BudgetProgress`, and `saveCategoryCap`.
+- Completed M29-M31 cap plumbing uses `public.monthly_caps`,
+  `public.monthly_cap_categories`, `public.monthly_cap_labels`,
+  `public.upsert_monthly_cap`, `public.delete_monthly_cap`,
+  `public.v_monthly_cap_progress`, `MonthlyCapProgress`,
+  `MonthlyCapUpsertRequest`, and `MonthlyCapDeleteRequest`.
+- Legacy category-only caps use `public.category_caps` and
+  `public.v_budget_progress` for backfill and compatibility history only.
 - Categories are household-scoped in `public.categories`; category management
   through M25 includes rename, delete, merge, usage preview, and category
   transaction drilldown.
@@ -428,12 +446,421 @@ Completion summary requirements:
 - Mocks created
 - Mocks used
 
+## Global Rules For M32-M35
+
+- Execute exactly one milestone when asked. After the requested milestone is
+  implemented, verified, cleaned up, and documented, stop and report the result.
+  Do not start, partially implement, prepare, or jump ahead to any later
+  milestone unless the user explicitly asks to proceed.
+- Preserve Android-first scope. Do not add iOS, web, or hosted rollout work in
+  this sequence.
+- Every user-created monthly cap is recurring after M32. Do not keep creating
+  isolated one-month cap definitions for new Dashboard cap creation.
+- Recurring cap identity must be stored explicitly. Do not infer recurrence by
+  matching cap names, target sets, or amounts.
+- Cap edits and deletes apply from the selected month forward. Prior months
+  remain historical unless the user explicitly requests a future all-history
+  edit mode in a separate milestone.
+- Carry-forward is optional per recurring cap and defaults off.
+- Carry-forward values can be positive or negative and must be derived from
+  prior-month progress in Postgres, not manually entered by the user.
+- Cap progress continues to use `net_expense`. Refunds reduce spend through
+  existing transaction semantics, and card bill payments remain zero net
+  expense.
+- Cap matching remains OR across selected categories and labels, with
+  one-count-per-cap transaction semantics and allowed overlap across separate
+  caps.
+- Cap targets remain top-level categories and transaction labels only. Do not
+  add subcategory, merchant, source-account, regex, amount-range, annual, shared
+  template, or AI-suggested targets in this sequence.
+- Keep cap progress computation in Supabase. Flutter should render returned
+  base cap, carry-forward, effective cap, spent, and remaining values.
+- New app-facing Supabase tables, views, and RPCs must be RLS-safe, household
+  scoped, and reachable only through authenticated client privileges. Use
+  `security_invoker` views and functions where appropriate; never use
+  service-role credentials from Flutter.
+- Create migrations with `supabase migration new <descriptive_name>` when
+  implementation starts. Do not invent migration filenames.
+- Before Supabase implementation, run `supabase --version`, discover relevant
+  CLI help, and scan the Supabase changelog/docs for relevant breaking changes.
+- Add focused pgTAP and Flutter tests in the same milestone as each behavior
+  change.
+- Milestones 18-21 remain deferred unless the user explicitly resumes push
+  notification work.
+- At completion, update `SESSION_HANDOFF.md` and include:
+  - Assumptions made
+  - Mocks created
+  - Mocks used
+
+## M32 - Recurring Cap Series Foundation
+
+Purpose: Introduce stable recurring cap identity and current/future cap
+versioning before adding carry-forward calculations or Dashboard copy.
+
+Instructions:
+
+- Start by reading M29-M31 completion notes, this plan, and the current
+  `SESSION_HANDOFF.md`, plus:
+  - `docs/implementation-plan/README.md`
+  - `docs/implementation-plan/DATA_MODEL.md`
+  - `docs/implementation-plan/MILESTONES.md`
+  - `supabase/migrations/20260612174258_monthly_cap_data_model_repository_foundation.sql`
+  - relevant category delete, category merge, label delete, and label rename
+    migrations/tests
+  - `supabase/tests/monthly_caps.sql`
+  - `apps/mobile/lib/src/data/repositories/finance_repository.dart`
+  - `apps/mobile/lib/src/features/dashboard/dashboard_screen.dart`
+  - `apps/mobile/test/finance_features_test.dart`
+- Add a Supabase migration created by the CLI.
+- Add a recurring cap series table that stores stable identity:
+  - household ownership.
+  - created profile/timestamps.
+  - active lifecycle state sufficient to stop a cap from a selected month
+    forward without deleting history.
+- Add versioned recurring cap detail rows effective from a first-of-month date:
+  - required name.
+  - base monthly amount.
+  - carry-forward flag, default `false`.
+  - created profile/timestamps.
+  - uniqueness that prevents two versions for the same cap series and effective
+    month.
+- Add versioned category and label target tables tied to the cap version, not
+  only the cap series, so historical months preserve the targets active then.
+- Backfill existing `monthly_caps` rows into recurring cap series and first
+  versions:
+  - one series per existing named cap row.
+  - `period_month` becomes the first version's effective month.
+  - `cap_amount`, name, created profile, timestamps, category targets, and label
+    targets are preserved.
+  - carry-forward defaults to disabled.
+  - keep existing monthly cap rows usable until their replacement read path is
+    fully wired in this milestone.
+- Replace active app-facing cap mutation behavior with current/future
+  recurrence semantics:
+  - `upsert_monthly_cap` creates a series when no cap ID is provided.
+  - editing an existing cap writes a new version effective from the selected
+    month and leaves older months unchanged.
+  - `delete_monthly_cap` stops the series from the selected month forward and
+    leaves prior progress visible.
+  - RPCs validate signed-in profile, household writer access, first-of-month
+    dates, nonnegative amount, nonblank trimmed name, and at least one category
+    or label target.
+- Add an app read path that can return active cap progress for a requested
+  month even when no transaction exists in that month, preferably an RPC such as
+  `get_monthly_cap_progress(p_household_id, p_period_month)`.
+- Update repository models and requests to carry stable cap series ID, active
+  version ID, base amount, carry-forward flag, and selected targets while
+  preserving existing Dashboard behavior when carry-forward is off.
+- Update `fetchAvailableMonths`/Dashboard month selection so months with active
+  recurring caps can be selected even before transactions exist.
+- Keep user-visible Dashboard copy functionally unchanged in M32 except for any
+  unavoidable current/future edit/delete wording. Do not add carry-forward
+  display copy until M34.
+- Preserve category/label lifecycle behavior for versioned targets:
+  - category delete removes affected future/current category targets and removes
+    future/current versions left with no targets.
+  - category merge repoints and dedupes current/future target rows.
+  - label delete removes affected current/future label targets and removes
+    future/current versions left with no targets.
+  - label/category rename requires no target mutation.
+
+Expected code shape:
+
+- Prefer a versioned recurring-cap schema over name/target inference. The series
+  ID is the durable identity; version rows are the month-effective configuration.
+- Keep the Dashboard data model close to the current `MonthlyCapProgress` shape
+  so M33-M34 can add carry-forward fields without a second UI rewrite.
+- Keep old compatibility views/tables only where required for migration history
+  or legacy docs/tests; do not add new Flutter reads from `category_caps`.
+
+Acceptance criteria:
+
+- Existing M29-M31 cap data migrates into recurring series without losing target
+  information.
+- Creating a cap from Dashboard creates a recurring cap series.
+- Editing from a selected month changes that month and future months only.
+- Deleting from a selected month hides that month and future months only.
+- Prior months remain readable after edit/delete.
+- Recurring cap months can appear in the Dashboard month selector without
+  requiring transactions for those months.
+- Existing category/label OR matching, no double-counting, overlap, RLS, and
+  lifecycle cleanup behavior still passes with carry-forward disabled.
+
+Verification:
+
+```bash
+supabase db reset --local
+supabase test db --local supabase/tests/monthly_caps.sql
+supabase test db --local supabase/tests
+supabase db lint --local --schema app_private,public --fail-on error
+supabase db advisors --local --type security --level warn --fail-on none
+supabase db advisors --local --type performance --level warn --fail-on none
+cd apps/mobile && dart format lib/src/data/repositories/finance_repository.dart lib/src/features/dashboard/dashboard_screen.dart test/finance_features_test.dart
+cd apps/mobile && flutter analyze
+cd apps/mobile && flutter test test/finance_features_test.dart
+cd apps/mobile && flutter test
+git diff --check
+```
+
+Completion summary requirements:
+
+- Assumptions made
+- Mocks created
+- Mocks used
+
+## M33 - Carry-Forward Progress Semantics
+
+Purpose: Add positive and negative carry-forward calculations to recurring cap
+progress while keeping the Dashboard presentation mostly unchanged.
+
+Instructions:
+
+- Start by reading M32 completion notes, this plan, and the current
+  `SESSION_HANDOFF.md`, plus:
+  - M32 recurring cap migration and tests
+  - `supabase/tests/monthly_caps.sql`
+  - `apps/mobile/lib/src/data/repositories/finance_repository.dart`
+  - `apps/mobile/test/finance_features_test.dart`
+- Extend the cap progress read path with carry-forward fields:
+  - `base_cap_amount`
+  - `carry_forward_enabled`
+  - `carry_forward_amount`
+  - `effective_cap_amount`
+  - existing `spent_amount`
+  - `remaining_amount`
+  - `percent_used`
+  - `is_over_budget`
+- Keep `cap_amount` in app-facing responses as a backwards-compatible alias for
+  base monthly cap amount unless this milestone updates every app caller in the
+  same change.
+- Calculate carry-forward in Postgres over the recurring cap series:
+  - first active month carry-forward is `0`.
+  - if carry-forward is disabled for the active version, carry-forward is `0`.
+  - if the previous active month for the same series has carry-forward disabled,
+    the next month starts from `0`.
+  - otherwise carry-forward equals previous month's effective cap minus previous
+    month's spend, allowing positive or negative values.
+  - effective cap equals base cap plus carry-forward.
+  - remaining equals effective cap minus current-month spend.
+  - over-budget state is based on negative remaining, including cases where
+    negative carry-forward exhausts the month before current spend.
+- Support chained carry-forward month by month. Do not skip across inactive or
+  deleted future months.
+- Preserve current matching semantics:
+  - use `net_expense`.
+  - match selected category OR selected label.
+  - count one transaction once per cap.
+  - allow overlapping separate caps.
+- Update Dart model parsing and fake repository behavior for all new fields.
+- Keep Dashboard row rendering mostly unchanged in this milestone if needed, but
+  ensure tests can assert the values returned by repository/model code.
+
+Expected code shape:
+
+- Keep the carry-forward calculation in SQL/RPC/view code so every client sees
+  the same effective cap.
+- Prefer deterministic month-series logic over storing mutable derived carry
+  values. Derived values should update when prior-month transactions, labels, or
+  refunds change.
+- Use numeric precision consistent with existing cap/spend fields.
+
+Acceptance criteria:
+
+- A positive prior-month remainder increases the next month's effective cap.
+- A negative prior-month remainder reduces the next month's effective cap.
+- Carry-forward chains across multiple active months.
+- Disabling carry-forward stops the chain from that month.
+- Edits to amount or targets from a selected month affect carry-forward only
+  from that month onward.
+- Refunds and bill payments follow existing `net_expense` semantics.
+- Flutter models expose carry-forward and effective-cap values for M34.
+
+Verification:
+
+```bash
+supabase db reset --local
+supabase test db --local supabase/tests/monthly_caps.sql
+supabase test db --local supabase/tests
+supabase db lint --local --schema app_private,public --fail-on error
+supabase db advisors --local --type security --level warn --fail-on none
+supabase db advisors --local --type performance --level warn --fail-on none
+cd apps/mobile && dart format lib/src/data/repositories/finance_repository.dart test/finance_features_test.dart
+cd apps/mobile && flutter analyze
+cd apps/mobile && flutter test test/finance_features_test.dart
+git diff --check
+```
+
+Completion summary requirements:
+
+- Assumptions made
+- Mocks created
+- Mocks used
+
+## M34 - Dashboard Carry-Forward UX
+
+Purpose: Expose the carry-forward option and effective cap explanation in the
+Dashboard cap form and progress rows.
+
+Instructions:
+
+- Start by reading M32-M33 completion notes, this plan, and the current
+  `SESSION_HANDOFF.md`, plus:
+  - `apps/mobile/lib/src/features/dashboard/dashboard_screen.dart`
+  - `apps/mobile/lib/src/data/repositories/finance_repository.dart`
+  - `apps/mobile/test/finance_features_test.dart`
+- Add a `Carry forward remainder` toggle to the cap create/edit sheet:
+  - default off for newly created caps.
+  - initialized from the selected cap's active version when editing.
+  - saved through the updated `MonthlyCapUpsertRequest`.
+- Keep the form compact and task-focused. Do not add long instructional
+  paragraphs in the app UI.
+- Update save/delete copy for recurring semantics:
+  - editing saves changes from the selected month forward.
+  - deleting stops the cap from the selected month forward.
+  - confirmations must not imply transactions, categories, labels, merchant
+    rules, or review rows are deleted.
+- Update cap progress rows to render carry-forward state:
+  - always show the base monthly cap.
+  - when carry-forward is nonzero, show `Carried +INR ...` or
+    `Carried -INR ...`.
+  - show `Available INR ...` using `effective_cap_amount`.
+  - keep spent, left/over, percent, matched count, and target chips.
+  - if effective cap is already zero or negative because of carry-forward, show
+    the over-budget/error state before current-month spend.
+- Ensure long cap names, target chips, and carry-forward copy wrap on narrow
+  Android viewports without overflow.
+- Refresh Dashboard providers after create, edit, and delete as today.
+- Do not add cap-row drilldown, cap reports, push notifications, or AI
+  suggestions in M34.
+
+Expected code shape:
+
+- Keep helper widgets local to Dashboard unless an existing shared widget is
+  already the natural fit.
+- Continue to use repository-returned values for progress. Flutter should not
+  recompute carry-forward.
+- Use existing INR formatting helpers for positive and negative carry-forward
+  values.
+
+Acceptance criteria:
+
+- Users can enable or disable carry-forward while creating a cap.
+- Users can edit carry-forward behavior from the selected month forward.
+- Positive carry-forward displays as extra available cap.
+- Negative carry-forward displays as already-exhausted cap space.
+- Over-budget states use effective cap, not the base cap alone.
+- Dashboard month selection exposes future active recurring cap months even
+  before transactions exist.
+- Existing add/edit/delete target workflows and top category/merchant
+  drilldowns still work.
+
+Verification:
+
+```bash
+cd apps/mobile && dart format lib/src/features/dashboard/dashboard_screen.dart lib/src/data/repositories/finance_repository.dart test/finance_features_test.dart
+cd apps/mobile && flutter analyze
+cd apps/mobile && flutter test test/finance_features_test.dart
+cd apps/mobile && flutter test
+cd apps/mobile && flutter build apk --debug --no-pub
+git diff --check
+```
+
+Completion summary requirements:
+
+- Assumptions made
+- Mocks created
+- Mocks used
+
+## M35 - Recurring Caps Regression, Docs, And Cleanup
+
+Purpose: Harden recurring cap and carry-forward behavior, then fold final
+behavior into durable docs and handoff.
+
+Instructions:
+
+- Start by reading M32-M34 completion notes, this plan, and the current
+  `SESSION_HANDOFF.md`, plus:
+  - `docs/implementation-plan/README.md`
+  - `docs/implementation-plan/DATA_MODEL.md`
+  - `docs/implementation-plan/MILESTONES.md`
+  - `apps/mobile/lib/src/features/dashboard/dashboard_screen.dart`
+  - `apps/mobile/lib/src/data/repositories/finance_repository.dart`
+  - all monthly-cap, category lifecycle, and label lifecycle tests.
+- Run regression for:
+  - recurring cap creation across empty/future months.
+  - current/future edit preserving historical months.
+  - current/future delete preserving historical months.
+  - positive carry-forward.
+  - negative carry-forward.
+  - chained carry-forward.
+  - disabled carry-forward.
+  - category delete and merge with versioned targets.
+  - label delete, rename, and transaction label assignment with versioned
+    targets.
+  - no double-counting within a mixed cap.
+  - allowed overlap between separate caps.
+  - viewer and non-member RLS behavior.
+- Review remaining code and docs for stale one-month-only cap assumptions:
+  - cap rows as isolated monthly records.
+  - delete copy that implies full historical deletion.
+  - edit copy that implies all-history changes.
+  - progress copy that compares only spent against base cap.
+  - `v_monthly_cap_progress` callers that cannot include recurring months
+    without transactions.
+- Update durable docs:
+  - `README.md` product summary and scope defaults.
+  - `DATA_MODEL.md` recurring cap model and progress calculation.
+  - `MILESTONES.md` status for completed M32-M35 work.
+  - `SESSION_HANDOFF.md` current status, milestone status, verification run, and
+    known gaps.
+- Keep historical completion notes intact when they describe old milestone
+  behavior; add current-state notes instead of rewriting history.
+- Keep Milestones 18-21 deferred unless the user explicitly resumes them.
+
+Expected code shape:
+
+- Final docs should describe monthly caps as recurring named category/label
+  target groups with optional carry-forward and current/future versioning.
+- Keep compatibility notes clear if old `monthly_caps` or
+  `v_monthly_cap_progress` names remain as views over recurring structures.
+- Do not add cap reports, cap notifications, cap drilldown, shared templates,
+  AI cap suggestions, subcategory targets, or hosted rollout in M35.
+
+Acceptance criteria:
+
+- Recurring cap and carry-forward behavior is covered by database and Flutter
+  regression tests.
+- No active Dashboard copy assumes caps are one-month-only records.
+- Durable docs and handoff reflect final recurring/carry-forward behavior and
+  deferred work.
+- Full local database, Flutter, and debug build verification passes or any
+  blocker is documented with exact failing command and error.
+
+Verification:
+
+```bash
+supabase db reset --local
+supabase test db --local supabase/tests
+supabase db lint --local --schema app_private,public --fail-on error
+supabase db advisors --local --type security --level warn --fail-on none
+supabase db advisors --local --type performance --level warn --fail-on none
+cd apps/mobile && flutter analyze
+cd apps/mobile && flutter test
+cd apps/mobile && flutter build apk --debug --no-pub
+git diff --check
+```
+
+Completion summary requirements:
+
+- Assumptions made
+- Mocks created
+- Mocks used
+
 ## Deferred Scope
 
 - Subcategory caps.
 - Merchant, source-account, amount-range, pattern, or AI-suggested cap targets.
 - Cap-row drilldown to Transactions.
 - Cap notifications, alerts, or push delivery.
-- Budget rollover, recurring templates, shared household templates, or annual
-  budget planning.
+- Shared household templates or annual budget planning.
 - Label auto-assignment from cap creation.

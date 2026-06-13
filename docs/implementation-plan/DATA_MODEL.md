@@ -237,6 +237,9 @@ Rules:
   `v_monthly_cap_progress`.
 - `v_budget_progress` is retained only as a category-only compatibility view
   over monthly caps.
+- Milestones 32-35 plan to introduce recurring cap series and versioned cap
+  configuration. Until those milestones are implemented, this legacy table and
+  the completed M29-M31 monthly cap tables remain the active local schema.
 
 Unique constraint:
 
@@ -244,7 +247,7 @@ Unique constraint:
 
 ### `monthly_caps`
 
-Named monthly cap definition.
+Named monthly cap definition from the completed M29-M31 implementation.
 
 Important fields:
 
@@ -271,6 +274,10 @@ Rules:
   multiple caps.
 - Cap edits do not change transaction categories, labels, merchant mappings,
   review state, importer behavior, or future Gmail classification.
+- Milestones 32-35 plan to make Dashboard-created caps recurring by default.
+  The recurring model must preserve historical months, apply edits/deletes from
+  the selected month forward, and keep this table or compatibility views usable
+  only as long as active app reads require them.
 
 ### `monthly_cap_categories`
 
@@ -308,6 +315,43 @@ Rules:
 - Label deletion removes this target. If a cap has no remaining category or
   label targets, the cap is deleted.
 - Label rename preserves target behavior because caps reference label IDs.
+
+### Planned recurring monthly cap model (M32-M35)
+
+Planned recurring cap and carry-forward model. This is not active schema until
+Milestones 32-35 are implemented.
+
+Important planned records:
+
+- Recurring cap series with stable household-scoped identity.
+- Month-effective cap version rows with required name, base monthly amount,
+  optional carry-forward flag, and lifecycle metadata.
+- Versioned category targets tied to the active cap version.
+- Versioned label targets tied to the active cap version.
+
+Rules:
+
+- Every user-created cap is recurring by default after M32.
+- Recurring cap identity is explicit; do not infer recurrence from matching
+  names, amounts, or target sets.
+- Edits and deletes apply from the selected month forward while prior months
+  remain historical.
+- Carry-forward is optional per recurring cap and defaults off.
+- Carry-forward can be positive or negative. It is derived as previous month's
+  effective cap minus previous month's spend for the same active cap series.
+- Effective cap equals base monthly cap plus carry-forward amount.
+- Remaining amount equals effective cap minus current-month spend.
+- Over-budget state is based on negative remaining amount, not only current
+  spend compared with the base cap.
+- Carry-forward chains only across active months for the same cap series while
+  carry-forward remains enabled.
+- Category/label matching semantics stay unchanged: category OR label target
+  match, one transaction counted once per cap, and overlap allowed across
+  separate caps.
+- Planned app-facing progress responses should expose base cap amount,
+  carry-forward enabled state, carry-forward amount, effective cap amount,
+  spent amount, remaining amount, percent used, over-budget state, matched
+  transaction count, and target names/IDs.
 
 ## Merchants and Mapping
 
@@ -832,7 +876,9 @@ Create these views for app reads:
 - `v_budget_progress`: legacy category-only compatibility cap progress over
   monthly caps.
 - `v_monthly_cap_progress`: named cap progress for category and label targets,
-  with each transaction counted once per cap.
+  with each transaction counted once per cap. Milestones 32-35 plan to extend
+  or wrap this progress contract for recurring cap months, positive/negative
+  carry-forward, and effective cap amounts.
 - `v_merchant_summary`: merchant spend, refunds, net, transaction counts.
 - `v_review_queue`: open review items with transaction and suggestions.
 - `v_piggy_bank_balances`: piggy-bank balance and target progress.
