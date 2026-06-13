@@ -1576,6 +1576,534 @@ Harden recurring cap and carry-forward behavior, then document the final state.
   cap drilldown, shared templates, annual budget planning, AI cap suggestions,
   and hosted rollout.
 
+## Milestone 36: UI Redesign Planning and Reference Readiness
+
+### Status
+
+Completed on 2026-06-13. See
+[UI Redesign](UI_REDESIGN.md#m36---ui-redesign-planning-and-reference-readiness).
+
+### Objective
+
+Create the durable UI redesign implementation plan and make the Stitch
+references discoverable for future fresh-context execution.
+
+### Tasks
+
+- Verify the cleaned branch has no unresolved conflict markers.
+- Confirm the Stitch reference bundle exists under
+  `docs/design-references/stitch/themed-dashboard-ui-redesign`.
+- Add `docs/implementation-plan/UI_REDESIGN.md` as the companion plan for the
+  UI redesign sequence.
+- Update README, milestones, and handoff so future sessions start with M37.
+- Do not implement Flutter UI changes in this milestone.
+
+### External Work
+
+- None.
+
+### Acceptance Criteria
+
+- The UI redesign plan is self-contained and references DESIGN.md plus the
+  stored Stitch mocks.
+- Milestones 37-51 are planned for fresh-thread implementation.
+- The next recommended milestone is M37.
+
+### Deferred Scope
+
+- Flutter UI implementation begins in M37.
+
+## Milestone 37: UI Design Tokens, Themes, and Theme Preference
+
+### Status
+
+Planned. See
+[UI Redesign](UI_REDESIGN.md#m37---design-tokens-themes-and-theme-preference).
+
+### Objective
+
+Replace the current one-off light theme with a DESIGN.md-based light/dark theme
+system and local theme-mode persistence.
+
+### Tasks
+
+- Add token-driven light and dark themes.
+- Add system/light/dark theme mode state with system as default.
+- Persist the selected theme mode locally on device.
+- Wire `MaterialApp.router` to `theme`, `darkTheme`, and `themeMode`.
+- Add focused theme tests.
+
+### External Work
+
+- None.
+
+### Acceptance Criteria
+
+- The app defaults to system theme mode.
+- Light and dark themes are available globally.
+- Theme mode changes persist locally and do not require Supabase.
+
+### Deferred Scope
+
+- Individual screen redesign starts in later milestones.
+
+## Milestone 38: Shared Responsive UI Primitives
+
+### Status
+
+Planned. See
+[UI Redesign](UI_REDESIGN.md#m38---shared-responsive-ui-primitives).
+
+### Objective
+
+Create shared responsive widgets and primitives used by all redesigned screens.
+
+### Tasks
+
+- Expand or replace `AppPage`, `MetricCard`, `EmptyState`, and related shared
+  widgets.
+- Add responsive page, card, chip, button, section, amount, modal, loading, and
+  error primitives.
+- Encode mobile/tablet/desktop breakpoints from DESIGN.md.
+- Use constraint-based responsive layout rules.
+- Add focused primitive tests.
+
+### External Work
+
+- None.
+
+### Acceptance Criteria
+
+- Shared widgets match the DESIGN.md visual language.
+- Shared widgets render in light and dark themes.
+- Existing feature tests still pass.
+
+### Deferred Scope
+
+- App navigation and screen-specific redesign are later milestones.
+
+## Milestone 39: App Shell, Navigation IA, and Routes
+
+### Status
+
+Planned. See
+[UI Redesign](UI_REDESIGN.md#m39---app-shell-navigation-ia-and-routes).
+
+### Objective
+
+Move the app to the redesigned information architecture before screen-specific
+work.
+
+### Tasks
+
+- Add the primary Activity destination.
+- Replace the primary navigation with Dashboard, Activity, Review, and Vaults.
+- Remove Settings from primary navigation.
+- Add a global shell settings action.
+- Remove active `/transactions` and `/trends` routes.
+- Update internal navigation and tests to use Activity.
+
+### External Work
+
+- None.
+
+### Acceptance Criteria
+
+- Bottom navigation has exactly four primary items.
+- Settings is reachable but not a bottom-tab destination.
+- Old Transactions and Trends routes are removed from the app.
+
+### Deferred Scope
+
+- Activity list/charts content migration is split across M41-M42.
+
+## Milestone 40: Dashboard Redesign
+
+### Status
+
+Planned. See [UI Redesign](UI_REDESIGN.md#m40---dashboard-screen).
+
+### Objective
+
+Rebuild Dashboard using the Stitch dashboard hierarchy while preserving finance
+behavior.
+
+### Tasks
+
+- Restyle Dashboard heading, month selector, spending cards, review card,
+  monthly caps, and top category/merchant sections.
+- Preserve recurring monthly-cap add/edit/delete, carry-forward, and drilldown
+  behavior.
+- Route category and merchant drilldowns to Activity list mode.
+- Add or update Dashboard widget coverage for the redesigned layout.
+
+### External Work
+
+- None.
+
+### Acceptance Criteria
+
+- Dashboard follows the Stitch visual hierarchy.
+- Existing cap workflows still pass.
+- Dashboard has no narrow-viewport overflow.
+
+### Deferred Scope
+
+- Cap form/dialog polish is handled in M50 unless required for Dashboard tests.
+
+## Milestone 41: Activity List Mode
+
+### Status
+
+Planned. See [UI Redesign](UI_REDESIGN.md#m41---activity-list-mode).
+
+### Objective
+
+Move transaction list behavior into Activity's List mode.
+
+### Tasks
+
+- Add Activity List mode with search, filters, pagination, transaction cards,
+  labels, and metadata entry points.
+- Preserve transaction query semantics and filter behavior.
+- Update transaction tests to use `/activity`.
+- Remove remaining app navigation to `/transactions`.
+
+### External Work
+
+- None.
+
+### Acceptance Criteria
+
+- Activity List covers current Transactions behavior.
+- Existing transaction filter, label, and metadata tests pass.
+- Transaction cards are responsive and dark-theme safe.
+
+### Deferred Scope
+
+- Activity Charts mode is M42.
+
+## Milestone 42: Activity Charts Mode
+
+### Status
+
+Planned. See [UI Redesign](UI_REDESIGN.md#m42---activity-charts-mode).
+
+### Objective
+
+Move Trends behavior into Activity's Charts mode.
+
+### Tasks
+
+- Add Activity Charts mode with gross/refunds/net cards, monthly chart, monthly
+  table, and category trend card.
+- Preserve trend filtering and CSV copy behavior where still visible.
+- Update trend tests to use Activity Charts.
+- Remove remaining app navigation to `/trends`.
+
+### External Work
+
+- None.
+
+### Acceptance Criteria
+
+- Activity Charts covers current Trends behavior.
+- Existing trend report tests pass.
+- Charts and tables are readable in light and dark modes.
+
+### Deferred Scope
+
+- New analytics beyond current Trends behavior.
+
+## Milestone 43: Transaction Details Redesign
+
+### Status
+
+Planned. See [UI Redesign](UI_REDESIGN.md#m43---transaction-details-surface).
+
+### Objective
+
+Restyle transaction details as the focused Stitch detail surface.
+
+### Tasks
+
+- Rebuild the detail surface with centered merchant/date/amount/status and
+  divider rows.
+- Preserve metadata and label editor entry points.
+- Constrain sheet/modal width across mobile and large layouts.
+
+### External Work
+
+- None.
+
+### Acceptance Criteria
+
+- Details open from Activity List.
+- Metadata and label editor entry tests pass.
+- Detail layout has no narrow-viewport overflow.
+
+### Deferred Scope
+
+- Metadata editor restyle is M44.
+
+## Milestone 44: Transaction Metadata Editor Redesign
+
+### Status
+
+Planned. See [UI Redesign](UI_REDESIGN.md#m44---transaction-metadata-editor).
+
+### Objective
+
+Restyle metadata editing while preserving transaction and review correction
+behavior.
+
+### Tasks
+
+- Rebuild the metadata editor as the Stitch modal form.
+- Preserve merchant group, category, subcategory, confidence, notes, category
+  creation, AI Suggest, and save behavior.
+- Keep Review and Activity callers working.
+
+### External Work
+
+- None.
+
+### Acceptance Criteria
+
+- Metadata editor tests pass from Activity and Review.
+- Suggest failure keeps form values.
+- The form is keyboard-safe and theme-safe.
+
+### Deferred Scope
+
+- New metadata fields or AI behavior.
+
+## Milestone 45: Review Redesign
+
+### Status
+
+Planned. See [UI Redesign](UI_REDESIGN.md#m45---review-screen).
+
+### Objective
+
+Rebuild Review around the Stitch queue-card design.
+
+### Tasks
+
+- Restyle Review title, metric cards, queue cards, classification chips,
+  confidence chips, Resolve action, and caught-up state.
+- Preserve Gmail parse failure rendering and correction flow.
+- Preserve metadata editor integration and provider invalidation.
+
+### External Work
+
+- None.
+
+### Acceptance Criteria
+
+- Review queue and correction tests pass.
+- Empty, loading, and error states use the redesigned system.
+- Review cards fit mobile width.
+
+### Deferred Scope
+
+- New review workflow behavior.
+
+## Milestone 46: Vaults Redesign
+
+### Status
+
+Planned. See [UI Redesign](UI_REDESIGN.md#m46---vaults-screen).
+
+### Objective
+
+Restyle Piggy Banks as the visible Vaults destination.
+
+### Tasks
+
+- Change visible destination and screen copy to Vaults.
+- Preserve existing piggy-bank data/repository naming unless a small UI rename
+  is necessary.
+- Restyle summary cards, selected vault card, deposit/withdraw actions,
+  progress cards, and empty entry state.
+- Update tests for visible copy changes.
+
+### External Work
+
+- None.
+
+### Acceptance Criteria
+
+- Bottom nav label is Vaults.
+- Existing piggy-bank behavior tests pass.
+- Vault detail and actions are responsive.
+
+### Deferred Scope
+
+- Database or RPC renaming from piggy-bank wording to vault wording.
+
+## Milestone 47: Settings Focused Screen and Theme Selector
+
+### Status
+
+Planned. See
+[UI Redesign](UI_REDESIGN.md#m47---settings-focused-screen-and-theme-selector).
+
+### Objective
+
+Rebuild Settings as a focused non-tab page and expose the theme selector.
+
+### Tasks
+
+- Restyle Settings with a back affordance, focused cards, and DESIGN.md
+  surfaces.
+- Add a theme selector for System default, Light, and Dark.
+- Preserve sign-out, category, label, Gmail connector, AI, and environment
+  behavior.
+- Route Settings drilldowns to Activity.
+
+### External Work
+
+- None.
+
+### Acceptance Criteria
+
+- Settings is not in primary navigation.
+- Theme selector updates the app immediately and persists locally.
+- Existing Settings tests pass after route/copy updates.
+
+### Deferred Scope
+
+- Backend-synced theme preference.
+
+## Milestone 48: Sign-In and Household Gate Redesign
+
+### Status
+
+Planned. See [UI Redesign](UI_REDESIGN.md#m48---sign-in-and-household-gate-states).
+
+### Objective
+
+Bring sign-in, household loading, and household error states into the new visual
+system.
+
+### Tasks
+
+- Restyle sign-in as a DESIGN.md auth card.
+- Restyle household loading and error states.
+- Preserve auth, route guard, retry, and sign-out behavior.
+
+### External Work
+
+- None.
+
+### Acceptance Criteria
+
+- Auth smoke tests pass.
+- Entry and gate states render correctly in light, dark, and system modes.
+
+### Deferred Scope
+
+- Auth provider or OAuth behavior changes.
+
+## Milestone 49: Ask / AI Redesign
+
+### Status
+
+Planned. See [UI Redesign](UI_REDESIGN.md#m49---ask--ai-screen).
+
+### Objective
+
+Redesign the non-primary Ask route consistently with the new UI system.
+
+### Tasks
+
+- Restyle Ask input, status, loading, error, and result states.
+- Preserve backend-mediated expense Q&A and AI budget semantics.
+- Keep Ask outside the four primary tabs.
+
+### External Work
+
+- None.
+
+### Acceptance Criteria
+
+- Existing AI tests pass.
+- Ask is responsive and theme-safe.
+
+### Deferred Scope
+
+- New AI capabilities or Edge Function changes.
+
+## Milestone 50: Dialogs, Forms, Empty States, and Motion Pass
+
+### Status
+
+Planned. See
+[UI Redesign](UI_REDESIGN.md#m50---dialogs-forms-empty-states-and-motion-pass).
+
+### Objective
+
+Normalize remaining shared surfaces and low-cost motion after the main screen
+redesigns.
+
+### Tasks
+
+- Restyle remaining dialogs, sheets, category forms, label forms, cap forms,
+  piggy-bank dialogs, delete/merge confirmations, snackbars, and empty states.
+- Add purposeful low-cost motion while respecting accessible navigation.
+- Add or update semantic labels and tooltips for icon-only actions.
+- Fix any remaining layout constraint issues.
+
+### External Work
+
+- None.
+
+### Acceptance Criteria
+
+- Core dialogs and forms match the redesigned system.
+- No known overflow/unbounded-layout issues remain in redesigned flows.
+- Important icon-only actions are accessible.
+
+### Deferred Scope
+
+- New product behavior.
+
+## Milestone 51: UI Redesign Final Regression, Responsive QA, and Docs Closeout
+
+### Status
+
+Planned. See
+[UI Redesign](UI_REDESIGN.md#m51---final-regression-responsive-qa-and-docs-closeout).
+
+### Objective
+
+Verify the full redesign and fold final UI behavior into durable docs.
+
+### Tasks
+
+- Run full Flutter verification.
+- Perform responsive QA at mobile, tablet, and desktop widths.
+- Verify system, light, and dark theme behavior across primary flows.
+- Update README, milestones, session handoff, and UI redesign docs with final
+  behavior and known gaps.
+- Confirm deferred push notification, iOS, web, and hosted rollout scope.
+
+### External Work
+
+- None.
+
+### Acceptance Criteria
+
+- `flutter analyze` and `flutter test` pass.
+- New navigation, Activity consolidation, Vaults naming, Settings focus mode,
+  and theme behavior are documented.
+- Milestones 18-21 remain deferred unless explicitly resumed.
+
+### Deferred Scope
+
+- Push notifications, iOS, web, hosted rollout, and new finance semantics.
+
 ## Cross-Milestone Consistency Rules
 
 - Ask the user before proceeding on any undocumented decision. Codex may recommend a default, but must wait for confirmation.

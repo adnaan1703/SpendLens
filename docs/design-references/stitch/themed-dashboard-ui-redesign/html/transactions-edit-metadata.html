@@ -1,0 +1,245 @@
+<!DOCTYPE html><html lang="en"><head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0" name="viewport">
+<title>Edit Metadata</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;900&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<style>
+        @font-face {
+            font-family: 'Wise Sans';
+            src: local('Inter'), local('sans-serif'); /* Fallback to Inter if Wise Sans is not available */
+            font-weight: 900;
+        }
+        @font-face {
+            font-family: 'Wise Sans';
+            src: local('Inter'), local('sans-serif');
+            font-weight: 400;
+        }
+    </style>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "surface-container": "#ecf0e2",
+                        "warning": "#ffd11a",
+                        "on-error-container": "#93000a",
+                        "surface-container-high": "#e6eadc",
+                        "on-primary-fixed": "#092100",
+                        "outline": "#717a68",
+                        "positive-deep": "#054d28",
+                        "secondary-fixed": "#c6eeac",
+                        "tertiary-fixed": "#ffd9e3",
+                        "tertiary-container": "#ffc5d7",
+                        "on-tertiary-container": "#7b4f5e",
+                        "secondary-container": "#c3ebaa",
+                        "surface-container-highest": "#e0e4d7",
+                        "on-surface-variant": "#41493a",
+                        "surface-container-low": "#f1f5e8",
+                        "positive": "#2ead4b",
+                        "surface-tint": "#2f6c00",
+                        "accent-orange": "#ffc091",
+                        "canvas-soft": "#e8ebe6",
+                        "secondary": "#456733",
+                        "inverse-on-surface": "#eef2e5",
+                        "mute": "#868685",
+                        "on-secondary-container": "#4a6c37",
+                        "primary-pale": "#e2f6d5",
+                        "negative-bg": "#320707",
+                        "on-secondary-fixed": "#072100",
+                        "primary-container": "#9fe870",
+                        "ink": "#0e0f0c",
+                        "tertiary-fixed-dim": "#f0b7c9",
+                        "primary-active": "#cdffad",
+                        "warning-deep": "#b86700",
+                        "on-surface": "#191d15",
+                        "accent-cyan": "#38c8ff",
+                        "surface-container-lowest": "#ffffff",
+                        "primary": "#2f6c00",
+                        "on-tertiary-fixed": "#31101e",
+                        "negative": "#d03238",
+                        "error": "#ba1a1a",
+                        "ink-deep": "#163300",
+                        "on-background": "#191d15",
+                        "primary-fixed-dim": "#91d963",
+                        "on-primary-container": "#2e6900",
+                        "on-primary-fixed-variant": "#225100",
+                        "on-secondary-fixed-variant": "#2e4f1d",
+                        "body-text": "#454745",
+                        "on-tertiary": "#ffffff",
+                        "background": "#f7fbed",
+                        "surface-dim": "#d8dcce",
+                        "primary-fixed": "#acf67c",
+                        "surface": "#f7fbed",
+                        "error-container": "#ffdad6",
+                        "on-primary": "#ffffff",
+                        "inverse-surface": "#2d3229",
+                        "tertiary": "#7e5161",
+                        "surface-variant": "#e0e4d7",
+                        "on-error": "#ffffff",
+                        "on-tertiary-fixed-variant": "#643a49",
+                        "secondary-fixed-dim": "#abd292",
+                        "outline-variant": "#c1cab5",
+                        "surface-bright": "#f7fbed",
+                        "inverse-primary": "#91d963",
+                        "on-secondary": "#ffffff"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "xxl": "32px",
+                        "margin-desktop": "48px",
+                        "xl": "24px",
+                        "sm": "8px",
+                        "md": "12px",
+                        "lg": "16px",
+                        "2xl": "32px",
+                        "xxxl": "48px",
+                        "xs": "4px",
+                        "gutter": "24px",
+                        "3xl": "48px",
+                        "xxs": "2px",
+                        "margin-mobile": "16px"
+                    },
+                    "fontFamily": {
+                        "button-md": ["Inter", "system-ui", "sans-serif"],
+                        "display-mega": ["Wise Sans", "Inter", "system-ui", "-apple-system", "sans-serif"],
+                        "body-lg": ["Inter", "system-ui", "sans-serif"],
+                        "display-xs": ["Inter", "system-ui", "sans-serif"],
+                        "display-xl-mobile": ["Inter"],
+                        "caption": ["Inter", "system-ui", "sans-serif"],
+                        "button": ["Inter"],
+                        "display-lg": ["Wise Sans", "Inter", "system-ui", "sans-serif"],
+                        "display-xl": ["Wise Sans", "Inter", "system-ui", "sans-serif"],
+                        "display-xxl": ["Wise Sans", "Inter", "system-ui", "sans-serif"],
+                        "body-md-strong": ["Inter", "system-ui", "sans-serif"],
+                        "body-md": ["Inter", "system-ui", "sans-serif"],
+                        "display-md": ["Wise Sans", "Inter", "system-ui", "sans-serif"],
+                        "display-sm": ["Inter", "system-ui", "sans-serif"],
+                        "body-sm-strong": ["Inter", "system-ui", "sans-serif"],
+                        "body-sm": ["Inter", "system-ui", "sans-serif"]
+                    },
+                    "fontSize": {
+                        "button-md": ["16px", {"lineHeight": "24px", "fontWeight": "600"}],
+                        "display-mega": ["126px", {"lineHeight": "107.1px", "letterSpacing": "-0.04em", "fontWeight": "900"}],
+                        "body-lg": ["20px", {"lineHeight": "30px", "fontWeight": "400"}],
+                        "display-xs": ["24px", {"lineHeight": "31.2px", "letterSpacing": "-0.48px", "fontWeight": "600"}],
+                        "display-xl-mobile": ["48px", {"lineHeight": "44px", "letterSpacing": "-0.02em", "fontWeight": "900"}],
+                        "caption": ["12px", {"lineHeight": "16px", "fontWeight": "400"}],
+                        "button": ["16px", {"lineHeight": "24px", "fontWeight": "600"}],
+                        "display-lg": ["47px", {"lineHeight": "70.5px", "letterSpacing": "-0.108px", "fontWeight": "400"}],
+                        "display-xl": ["64px", {"lineHeight": "54.4px", "letterSpacing": "-0.02em", "fontWeight": "900"}],
+                        "display-xxl": ["96px", {"lineHeight": "81.6px", "fontWeight": "900"}],
+                        "body-md-strong": ["16px", {"lineHeight": "24px", "fontWeight": "600"}],
+                        "body-md": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                        "display-md": ["40px", {"lineHeight": "34px", "fontWeight": "900"}],
+                        "display-sm": ["32px", {"lineHeight": "38.4px", "letterSpacing": "-0.96px", "fontWeight": "600"}],
+                        "body-sm-strong": ["14px", {"lineHeight": "20px", "fontWeight": "600"}],
+                        "body-sm": ["14px", {"lineHeight": "20px", "fontWeight": "400"}]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background font-body-md text-body-md text-on-surface antialiased">
+<!-- Dimmed Background Overlay -->
+<div class="fixed inset-0 bg-ink/40 z-40 backdrop-blur-sm flex items-center justify-center p-margin-mobile md:p-margin-desktop">
+<!-- Modal Container -->
+<div class="bg-surface-container-lowest w-full max-w-lg rounded-xl shadow-2xl overflow-hidden flex flex-col max-h-[795px]">
+<!-- Modal Header -->
+<div class="px-xl pt-xl pb-md border-b-2 border-surface-dim">
+<h2 class="font-display-sm text-display-sm text-ink font-bold">Edit metadata</h2>
+</div>
+<!-- Modal Content (Scrollable) -->
+<div class="px-xl py-lg flex-1 overflow-y-auto space-y-xl">
+<!-- Merchant Group Input -->
+<div class="relative">
+<label class="absolute -top-2 left-3 bg-surface-container-lowest px-1 text-caption font-caption text-mute">Merchant group</label>
+<div class="flex items-center border-[1.5px] border-ink rounded-md px-md py-md bg-surface-container-lowest focus-within:ring-2 focus-within:ring-primary-container transition-shadow">
+<span class="material-symbols-outlined text-ink mr-md" data-icon="storefront">storefront</span>
+<input class="w-full bg-transparent border-none p-0 focus:ring-0 font-body-md text-ink outline-none" type="text" value="Amazon / Flipkart">
+</div>
+</div>
+<!-- Category Dropdown -->
+<div class="relative">
+<label class="absolute -top-2 left-3 bg-surface-container-lowest px-1 text-caption font-caption text-mute">Category</label>
+<div class="flex items-center justify-between border-[1.5px] border-ink rounded-md px-md py-md bg-surface-container-lowest cursor-pointer hover:bg-surface-container-low transition-colors">
+<div class="flex items-center">
+<span class="material-symbols-outlined text-ink mr-md" data-icon="category">category</span>
+<span class="font-body-md text-ink">Online Shopping /</span>
+</div>
+<span class="material-symbols-outlined text-ink" data-icon="arrow_drop_down">arrow_drop_down</span>
+</div>
+</div>
+<!-- Create Category Action -->
+<button class="flex items-center text-primary font-button-md text-button-md hover:opacity-80 transition-opacity">
+<span class="material-symbols-outlined mr-sm" data-icon="add">add</span>
+                    Create category
+                </button>
+<!-- Subcategory Dropdown -->
+<div class="relative">
+<label class="absolute -top-2 left-3 bg-surface-container-lowest px-1 text-caption font-caption text-mute">Subcategory</label>
+<div class="flex items-center justify-between border-[1.5px] border-ink rounded-md px-md py-md bg-surface-container-lowest cursor-pointer hover:bg-surface-container-low transition-colors">
+<div class="flex items-center">
+<span class="material-symbols-outlined text-ink mr-md" data-icon="sell">sell</span>
+<span class="font-body-md text-ink">Marketplace purchase/</span>
+</div>
+<span class="material-symbols-outlined text-ink" data-icon="arrow_drop_down">arrow_drop_down</span>
+</div>
+</div>
+<!-- Confidence Dropdown -->
+<div class="relative">
+<label class="absolute -top-2 left-3 bg-surface-container-lowest px-1 text-caption font-caption text-mute">Confidence</label>
+<div class="flex items-center justify-between border-[1.5px] border-ink rounded-md px-md py-md bg-surface-container-lowest cursor-pointer hover:bg-surface-container-low transition-colors">
+<div class="flex items-center">
+<span class="material-symbols-outlined text-ink mr-md" data-icon="verified">verified</span>
+<span class="font-body-md text-ink">Medium</span>
+</div>
+<span class="material-symbols-outlined text-ink" data-icon="arrow_drop_down">arrow_drop_down</span>
+</div>
+</div>
+<!-- Notes Input -->
+<div class="relative">
+<label class="absolute -top-2 left-3 bg-surface-container-lowest px-1 text-caption font-caption text-mute">Notes</label>
+<div class="flex items-start border-[1.5px] border-ink rounded-md px-md py-md bg-surface-container-lowest focus-within:ring-2 focus-within:ring-primary-container transition-shadow">
+<span class="material-symbols-outlined text-ink mr-md mt-1" data-icon="notes">notes</span>
+<textarea class="w-full bg-transparent border-none p-0 focus:ring-0 font-body-md text-ink outline-none resize-none" placeholder="Add notes..." rows="2"></textarea>
+</div>
+</div>
+<!-- Contextual Text -->
+<p class="font-body-sm text-body-sm text-on-surface-variant">
+                    Applies to matching statement merchant and future imports.
+                </p>
+</div>
+<!-- Modal Actions -->
+<div class="px-xl py-lg bg-surface-container-lowest border-t-2 border-surface-dim flex justify-between items-center gap-md">
+<button class="flex items-center justify-center font-button-md text-button-md text-ink bg-transparent border-[1.5px] border-ink rounded-full px-lg py-sm hover:bg-surface-container-low transition-colors">
+<span class="material-symbols-outlined mr-sm text-primary" data-icon="auto_awesome">auto_awesome</span>
+                    Suggest
+                </button>
+<div class="flex gap-md">
+<button class="font-button-md text-button-md text-ink bg-canvas-soft rounded-full px-lg py-sm hover:opacity-80 transition-opacity">
+                        Cancel
+                    </button>
+<button class="flex items-center justify-center font-button-md text-button-md text-on-primary-fixed bg-primary-container rounded-full px-lg py-sm hover:bg-primary-active transition-colors">
+<span class="material-symbols-outlined mr-sm" data-icon="check">check</span>
+                        Save
+                    </button>
+</div>
+</div>
+</div>
+</div>
+</body></html>

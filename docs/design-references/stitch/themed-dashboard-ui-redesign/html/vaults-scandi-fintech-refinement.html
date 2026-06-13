@@ -1,0 +1,289 @@
+<!DOCTYPE html><html class="light" lang="en" style=""><head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0" name="viewport">
+<title>Vaults</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;900&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<style>
+        /* Fallback for custom brand font if not loaded natively */
+        @font-face {
+            font-family: 'Wise Sans';
+            src: local('Inter'), local('sans-serif');
+            font-weight: 900;
+        }
+    </style>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "tertiary-fixed-dim": "#f0b7c9",
+                        "on-background": "#191d15",
+                        "on-primary-fixed": "#092100",
+                        "outline-variant": "#c1cab5",
+                        "primary-pale": "#e2f6d5",
+                        "surface-dim": "#d8dcce",
+                        "secondary": "#456733",
+                        "error": "#ba1a1a",
+                        "ink-deep": "#163300",
+                        "tertiary-container": "#ffc5d7",
+                        "warning": "#ffd11a",
+                        "primary-fixed-dim": "#91d963",
+                        "surface-container-lowest": "#ffffff",
+                        "primary-active": "#cdffad",
+                        "surface-tint": "#2f6c00",
+                        "negative-bg": "#320707",
+                        "on-tertiary": "#ffffff",
+                        "on-surface": "#191d15",
+                        "on-secondary-fixed": "#072100",
+                        "mute": "#868685",
+                        "surface-container-low": "#f1f5e8",
+                        "secondary-fixed": "#c6eeac",
+                        "on-primary": "#ffffff",
+                        "secondary-fixed-dim": "#abd292",
+                        "on-tertiary-fixed-variant": "#643a49",
+                        "inverse-on-surface": "#eef2e5",
+                        "negative": "#d03238",
+                        "primary-fixed": "#acf67c",
+                        "on-tertiary-fixed": "#31101e",
+                        "outline": "#717a68",
+                        "on-primary-container": "#2e6900",
+                        "accent-orange": "#ffc091",
+                        "primary": "#2f6c00",
+                        "positive-deep": "#054d28",
+                        "error-container": "#ffdad6",
+                        "inverse-primary": "#91d963",
+                        "on-secondary-fixed-variant": "#2e4f1d",
+                        "on-primary-fixed-variant": "#225100",
+                        "primary-container": "#9fe870",
+                        "surface-variant": "#e0e4d7",
+                        "tertiary-fixed": "#ffd9e3",
+                        "on-error-container": "#93000a",
+                        "surface-bright": "#f7fbed",
+                        "on-secondary-container": "#4a6c37",
+                        "positive": "#2ead4b",
+                        "on-tertiary-container": "#7b4f5e",
+                        "canvas-soft": "#e8ebe6",
+                        "body-text": "#454745",
+                        "on-error": "#ffffff",
+                        "warning-deep": "#b86700",
+                        "accent-cyan": "#38c8ff",
+                        "secondary-container": "#c3ebaa",
+                        "inverse-surface": "#2d3229",
+                        "ink": "#0e0f0c",
+                        "surface-container-high": "#e6eadc",
+                        "on-secondary": "#ffffff",
+                        "background": "#f7fbed",
+                        "on-surface-variant": "#41493a",
+                        "surface-container-highest": "#e0e4d7",
+                        "surface": "#f7fbed",
+                        "tertiary": "#7e5161",
+                        "surface-container": "#ecf0e2"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "xxs": "2px",
+                        "xs": "4px",
+                        "margin-desktop": "48px",
+                        "lg": "16px",
+                        "margin-mobile": "16px",
+                        "sm": "8px",
+                        "3xl": "48px",
+                        "xxl": "32px",
+                        "xxxl": "48px",
+                        "gutter": "24px",
+                        "xl": "24px",
+                        "md": "12px",
+                        "2xl": "32px"
+                    },
+                    "fontFamily": {
+                        "display-lg": ["Wise Sans", "Inter", "system-ui", "sans-serif"],
+                        "body-sm-strong": ["Inter", "system-ui", "sans-serif"],
+                        "display-mega": ["Wise Sans", "Inter", "system-ui", "-apple-system", "sans-serif"],
+                        "display-xxl": ["Wise Sans", "Inter", "system-ui", "sans-serif"],
+                        "display-md": ["Wise Sans", "Inter", "system-ui", "sans-serif"],
+                        "body-md-strong": ["Inter", "system-ui", "sans-serif"],
+                        "button-md": ["Inter", "system-ui", "sans-serif"],
+                        "body-lg": ["Inter", "system-ui", "sans-serif"],
+                        "button": ["Inter"],
+                        "display-xl": ["Wise Sans", "Inter", "system-ui", "sans-serif"],
+                        "body-sm": ["Inter", "system-ui", "sans-serif"],
+                        "caption": ["Inter", "system-ui", "sans-serif"],
+                        "display-xs": ["Inter", "system-ui", "sans-serif"],
+                        "display-xl-mobile": ["Inter"],
+                        "body-md": ["Inter", "system-ui", "sans-serif"],
+                        "display-sm": ["Inter", "system-ui", "sans-serif"]
+                    },
+                    "fontSize": {
+                        "display-lg": ["47px", {"lineHeight": "70.5px", "letterSpacing": "-0.108px", "fontWeight": "400"}],
+                        "body-sm-strong": ["14px", {"lineHeight": "20px", "fontWeight": "600"}],
+                        "display-mega": ["126px", {"lineHeight": "107.1px", "letterSpacing": "-0.04em", "fontWeight": "900"}],
+                        "display-xxl": ["96px", {"lineHeight": "81.6px", "fontWeight": "900"}],
+                        "display-md": ["40px", {"lineHeight": "34px", "fontWeight": "900"}],
+                        "body-md-strong": ["16px", {"lineHeight": "24px", "fontWeight": "600"}],
+                        "button-md": ["16px", {"lineHeight": "24px", "fontWeight": "600"}],
+                        "body-lg": ["20px", {"lineHeight": "30px", "fontWeight": "400"}],
+                        "button": ["16px", {"lineHeight": "24px", "fontWeight": "600"}],
+                        "display-xl": ["64px", {"lineHeight": "54.4px", "letterSpacing": "-0.02em", "fontWeight": "900"}],
+                        "body-sm": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+                        "caption": ["12px", {"lineHeight": "16px", "fontWeight": "400"}],
+                        "display-xs": ["24px", {"lineHeight": "31.2px", "letterSpacing": "-0.48px", "fontWeight": "600"}],
+                        "display-xl-mobile": ["48px", {"lineHeight": "44px", "letterSpacing": "-0.02em", "fontWeight": "900"}],
+                        "body-md": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                        "display-sm": ["32px", {"lineHeight": "38.4px", "letterSpacing": "-0.96px", "fontWeight": "600"}]
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-canvas-soft min-h-screen text-body-text font-body-md selection:bg-primary-pale selection:text-ink pb-32">
+<main class="max-w-7xl mx-auto px-margin-mobile md:px-margin-desktop py-xl space-y-xl">
+<!-- Hero Band / Page Header -->
+<div class="flex justify-between items-start pt-md">
+<div>
+<h1 class="font-display-xl text-display-xl-mobile md:text-display-xl font-black text-ink tracking-tight">Vaults</h1>
+</div>
+<button class="bg-surface-container-highest text-ink font-button px-lg py-sm rounded-full flex items-center gap-sm hover:opacity-90 active:scale-95 transition-all">
+<span class="material-symbols-outlined text-[18px]">add</span>
+                New Vault
+            </button>
+</div>
+<!-- Global Summary Cards -->
+<div class="grid grid-cols-1 md:grid-cols-2 gap-margin-mobile pt-sm">
+<div class="bg-surface-container-lowest rounded-[24px] p-xl flex flex-col gap-md">
+<div class="flex items-center gap-sm text-on-surface-variant font-body-sm-strong">
+<span class="material-symbols-outlined">savings</span> Active ledgers
+                </div>
+<div class="font-display-sm text-display-sm text-ink font-black">1</div>
+<div class="font-caption text-caption text-mute">Piggy bank</div>
+</div>
+<div class="bg-surface-container-lowest rounded-[24px] p-xl flex flex-col gap-md">
+<div class="flex items-center gap-sm text-on-surface-variant font-body-sm-strong">
+<span class="material-symbols-outlined">account_balance_wallet</span> Total balance
+                </div>
+<div class="font-display-sm text-display-sm text-ink font-black">INR 0</div>
+<div class="font-caption text-caption text-mute">Ledger-derived</div>
+</div>
+</div>
+<!-- Focused Goal View -->
+<div class="space-y-xl pt-xl">
+<!-- Main Goal High-Contrast Card -->
+<div class="bg-surface-container-lowest rounded-[24px] p-xl space-y-xl relative overflow-hidden group hover:shadow-sm transition-shadow">
+<div class="flex justify-between items-start">
+<div class="flex gap-md items-start">
+<div>
+<h3 class="font-display-sm text-display-sm font-black text-ink tracking-tight">Television</h3>
+<p class="font-body-sm text-body-sm text-on-surface-variant mt-xs max-w-md">Television &amp; subtitle</p>
+<p class="font-caption text-caption text-on-surface-variant mt-sm">Target date: 23.11. 2023</p>
+</div>
+</div>
+</div>
+<div class="pt-sm flex justify-center py-xl">
+<div class="font-display-xl text-display-xl-mobile md:text-display-xl text-ink font-black tracking-tight">INR 0</div>
+</div>
+<div class="space-y-md">
+<!-- Progress bar -->
+<div class="w-full bg-surface-variant h-[12px] rounded-full overflow-hidden">
+<div class="bg-primary h-full rounded-full transition-all duration-1000 ease-in-out" style="width: 25%;"></div>
+</div>
+<div class="flex justify-between items-center text-body-sm">
+<span class="text-on-surface-variant font-body-sm">Target</span>
+<span class="text-ink font-body-sm-strong">1300 GB</span>
+</div>
+<div class="flex justify-between items-center text-body-sm">
+<span class="text-on-surface-variant font-body-sm">Target details</span>
+<span class="text-ink font-body-sm-strong">1300 GB</span>
+</div>
+</div>
+<div class="flex gap-md pt-sm">
+<button class="bg-surface-variant text-ink px-xl py-sm rounded-[24px] font-button flex items-center gap-sm flex-1 justify-center hover:bg-surface-dim active:scale-95 transition-all">
+<span class="material-symbols-outlined text-[18px]">add</span> Deposit
+                </button>
+<button class="bg-surface-variant text-ink px-xl py-sm rounded-[24px] font-button flex items-center gap-sm flex-1 justify-center hover:bg-surface-dim active:scale-95 transition-all">
+<span class="material-symbols-outlined text-[18px]">remove</span> Withdraw
+                </button>
+</div>
+</div>
+<!-- Detail Cards Grid -->
+<div class="grid grid-cols-1 md:grid-cols-3 gap-margin-mobile">
+<div class="bg-surface-container-lowest rounded-[24px] p-xl flex flex-col gap-md">
+<div class="flex items-center gap-sm text-on-surface-variant font-body-sm-strong">
+<span class="material-symbols-outlined">account_balance</span> Current balance
+                    </div>
+<div class="font-display-sm text-display-sm text-ink font-black">INR 0</div>
+<div class="font-caption text-caption text-mute">From entries</div>
+</div>
+<div class="bg-surface-container-lowest rounded-[24px] p-xl flex flex-col gap-md">
+<div class="flex items-center gap-sm text-on-surface-variant font-body-sm-strong">
+<span class="material-symbols-outlined">track_changes</span> Target progress
+                    </div>
+<div class="font-display-sm text-display-sm text-ink font-black">0%</div>
+<div class="font-caption text-caption text-mute">Target INR 200,000</div>
+</div>
+<div class="bg-surface-container-lowest rounded-[24px] p-xl flex flex-col gap-md">
+<div class="flex items-center gap-sm text-on-surface-variant font-body-sm-strong">
+<span class="material-symbols-outlined">flag</span> Remaining
+                    </div>
+<div class="font-display-sm text-display-sm text-ink font-black">INR 200,000</div>
+<div class="font-caption text-caption text-mute">By 2026-09-30</div>
+</div>
+</div>
+<!-- Empty State for Entries -->
+<div class="bg-surface-container-lowest rounded-[24px] p-xl border-[1.5px] border-transparent flex flex-col items-center justify-center text-center py-xxxl">
+<div class="w-16 h-16 bg-surface-variant rounded-full flex items-center justify-center mb-md text-primary">
+<span class="material-symbols-outlined text-display-xs" style="font-variation-settings: &quot;FILL&quot; 1;">timeline</span>
+</div>
+<h4 class="font-body-md-strong text-body-md-strong text-ink mb-xs">No entries yet</h4>
+<p class="font-body-sm text-body-sm text-on-surface-variant max-w-sm">Deposits, withdrawals, and adjustments will appear here.</p>
+</div>
+</div>
+</main>
+<!-- BottomNavBar -->
+<nav class="fixed bottom-0 w-full z-50 flex justify-around items-center px-xs py-sm pb-safe bg-surface dark:bg-surface-container-low border-t-2 border-transparent hidden md:flex max-w-7xl mx-auto rounded-t-[24px]">
+<a class="flex flex-col items-center justify-center text-on-surface-variant dark:text-mute px-sm py-xs hover:text-ink dark:hover:text-primary-active active:scale-90 transition-transform duration-200" href="#">
+<span class="material-symbols-outlined">dashboard</span>
+<span class="font-caption text-caption mt-xs">Dashboard</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant dark:text-mute px-sm py-xs hover:text-ink dark:hover:text-primary-active active:scale-90 transition-transform duration-200" href="#">
+<span class="material-symbols-outlined">list</span>
+<span class="font-caption text-caption mt-xs">Activity</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant dark:text-mute px-sm py-xs hover:text-ink dark:hover:text-primary-active active:scale-90 transition-transform duration-200" href="#">
+<span class="material-symbols-outlined">check_circle</span>
+<span class="font-caption text-caption mt-xs">Review</span>
+</a>
+<!-- Active Tab -->
+<a class="flex flex-col items-center justify-center text-ink px-sm py-xs hover:text-ink dark:hover:text-primary-active active:scale-90 transition-transform duration-200" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: &quot;FILL&quot; 1;">account_balance_wallet</span>
+<span class="font-caption text-caption mt-xs font-bold">Vaults</span>
+</a>
+</nav>
+<!-- Mobile BottomNavBar -->
+<nav class="md:hidden fixed bottom-0 w-full z-50 flex justify-around items-center px-xs py-sm pb-6 bg-surface dark:bg-surface-container-low border-t border-transparent shadow-[0_-4px_24px_rgba(0,0,0,0.05)]">
+<a class="flex flex-col items-center justify-center text-on-surface-variant dark:text-mute px-sm py-xs hover:text-ink dark:hover:text-primary-active active:scale-90 transition-transform duration-200" href="#">
+<span class="material-symbols-outlined">dashboard</span>
+<span class="font-caption text-caption mt-xs">Dashboard</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant dark:text-mute px-sm py-xs hover:text-ink dark:hover:text-primary-active active:scale-90 transition-transform duration-200" href="#">
+<span class="material-symbols-outlined">list</span>
+<span class="font-caption text-caption mt-xs">Activity</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant dark:text-mute px-sm py-xs hover:text-ink dark:hover:text-primary-active active:scale-90 transition-transform duration-200" href="#">
+<span class="material-symbols-outlined">check_circle</span>
+<span class="font-caption text-caption mt-xs">Review</span>
+</a>
+<a class="flex flex-col items-center justify-center text-ink px-sm py-xs hover:text-ink dark:hover:text-primary-active active:scale-90 transition-transform duration-200" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: &quot;FILL&quot; 1;">account_balance_wallet</span>
+<span class="font-caption text-caption mt-xs font-bold">Vaults</span>
+</a>
+</nav>
+</body></html>

@@ -14,7 +14,8 @@ Read these documents in order at the start of every new implementation thread:
 8. [Push Notifications](PUSH_NOTIFICATIONS.md) when executing Milestones 18-21
 9. [Transaction Labels](TRANSACTION_LABELS.md) when executing Milestones 26-28
 10. [Monthly Caps](MONTHLY_CAPS.md) when executing Milestones 29-35
-11. [Session Handoff](SESSION_HANDOFF.md)
+11. [UI Redesign](UI_REDESIGN.md) when executing Milestones 37-51
+12. [Session Handoff](SESSION_HANDOFF.md)
 
 Completed-only companion execution plans are removed after their durable
 behavior has been folded into this README, [Data Model](DATA_MODEL.md),
@@ -24,7 +25,7 @@ behavior has been folded into this README, [Data Model](DATA_MODEL.md),
 
 SpendLens is a personal and household expense intelligence app. The current implementation plan is Android-first: build the Flutter Android app first and defer iOS and web until later.
 
-The app imports historical credit-card analysis from `docs/Credit Card Spend Analysis - FY 2025-26.xlsx`, then moves to ongoing ingestion from Gmail transaction emails for credit cards and UPI. It presents spend by category, named monthly caps with category and label targets, recurring cap carry-forward semantics, transaction details, merchant review workflows, trends, manual piggy-bank ledgers for future goals, backend-mediated Gemini expense Q&A, household category management, transaction labels, and planned Android push notifications for newly processed transactions.
+The app imports historical credit-card analysis from `docs/Credit Card Spend Analysis - FY 2025-26.xlsx`, then moves to ongoing ingestion from Gmail transaction emails for credit cards and UPI. It presents spend by category, named monthly caps with category and label targets, recurring cap carry-forward semantics, transaction details, merchant review workflows, trends, manual piggy-bank ledgers for future goals, backend-mediated Gemini expense Q&A, household category management, transaction labels, and planned Android push notifications for newly processed transactions. Milestones 37-51 plan a UI redesign that consolidates Transactions and Trends into Activity, presents Piggy Banks as Vaults, removes Settings from bottom navigation, and adds light/dark/system theme support.
 
 ## Architecture Decision
 
@@ -77,6 +78,12 @@ This is not a "no backend" architecture. It is a backend without a permanently r
 - AI: backend-mediated Gemini expense Q&A and transaction metadata suggestions; dev/staging use free-tier-only mode with Suggest search disabled by default.
 - Android push notifications: Firebase Cloud Messaging delivery, Supabase
   device registration, and Supabase-managed notification outbox.
+- UI redesign: `DESIGN.md` is the visual design-system source of truth.
+  Stitch references under `docs/design-references/stitch/themed-dashboard-ui-redesign`
+  are layout references only. The redesigned primary navigation is Dashboard,
+  Activity, Review, and Vaults; Settings is a focused page opened from a global
+  settings action. Theme mode supports system, light, and dark, with system as
+  the default and local device persistence.
 - iOS app: deferred, not part of the current implementation milestones.
 - Web interface: deferred, not part of the current implementation milestones.
 
@@ -102,10 +109,11 @@ When starting a new implementation thread:
 1. Read this `README.md`.
 2. Read [Architecture](ARCHITECTURE.md) and [Data Model](DATA_MODEL.md).
 3. Read the active milestone in [Milestones](MILESTONES.md).
-4. Check [Session Handoff](SESSION_HANDOFF.md) for current status.
-5. Do only that milestone unless the user explicitly expands scope.
-6. Preserve documented invariants, especially idempotency, RLS isolation, and no raw email retention.
-7. Update milestone notes when an implementation decision changes the plan.
+4. Read [UI Redesign](UI_REDESIGN.md) when executing Milestones 37-51.
+5. Check [Session Handoff](SESSION_HANDOFF.md) for current status.
+6. Do only that milestone unless the user explicitly expands scope.
+7. Preserve documented invariants, especially idempotency, RLS isolation, and no raw email retention.
+8. Update milestone notes when an implementation decision changes the plan.
 
 ## Clarification Rule
 

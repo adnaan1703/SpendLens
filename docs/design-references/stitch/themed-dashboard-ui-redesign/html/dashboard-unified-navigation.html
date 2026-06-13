@@ -1,0 +1,298 @@
+<!DOCTYPE html><html lang="en" style=""><head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0" name="viewport">
+<title>Financial Dashboard</title>
+<!-- Material Symbols -->
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@100..900&amp;display=swap" rel="stylesheet">
+<!-- Tailwind CSS -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<style>
+        /* Custom lightweight utilities for interactions */
+        .hover-lift {
+            transition: transform 0.2s cubic-bezier(0.2, 0, 0, 1), box-shadow 0.2s cubic-bezier(0.2, 0, 0, 1);
+        }
+        .hover-lift:hover {
+            transform: translateY(-2px);
+        }
+    </style>
+<!-- Tailwind Configuration Source of Truth -->
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "surface-bright": "#f7fbed",
+                      "secondary-fixed-dim": "#abd292",
+                      "on-secondary-fixed": "#072100",
+                      "warning": "#ffd11a",
+                      "primary-container": "#9fe870",
+                      "on-primary-fixed": "#092100",
+                      "primary-fixed": "#acf67c",
+                      "outline-variant": "#c1cab5",
+                      "on-primary-fixed-variant": "#225100",
+                      "canvas-soft": "#e8ebe6",
+                      "on-secondary-container": "#4a6c37",
+                      "secondary": "#456733",
+                      "on-secondary": "#ffffff",
+                      "negative": "#d03238",
+                      "negative-bg": "#320707",
+                      "accent-cyan": "#38c8ff",
+                      "error": "#ba1a1a",
+                      "inverse-primary": "#91d963",
+                      "surface-container-lowest": "#ffffff",
+                      "on-primary": "#ffffff",
+                      "on-surface-variant": "#41493a",
+                      "secondary-container": "#c3ebaa",
+                      "surface-container-high": "#e6eadc",
+                      "surface-container-highest": "#e0e4d7",
+                      "primary-active": "#cdffad",
+                      "primary-pale": "#e2f6d5",
+                      "mute": "#868685",
+                      "primary": "#2f6c00",
+                      "positive-deep": "#054d28",
+                      "positive": "#2ead4b",
+                      "warning-deep": "#b86700",
+                      "surface-variant": "#e0e4d7",
+                      "ink-deep": "#163300",
+                      "on-primary-container": "#2e6900",
+                      "surface-container": "#ecf0e2",
+                      "body-text": "#454745",
+                      "on-tertiary-fixed-variant": "#643a49",
+                      "surface-tint": "#2f6c00",
+                      "on-surface": "#191d15",
+                      "inverse-on-surface": "#eef2e5",
+                      "accent-orange": "#ffc091",
+                      "tertiary-fixed-dim": "#f0b7c9",
+                      "tertiary-fixed": "#ffd9e3",
+                      "inverse-surface": "#2d3229",
+                      "on-secondary-fixed-variant": "#2e4f1d",
+                      "background": "#f7fbed",
+                      "tertiary-container": "#ffc5d7",
+                      "surface-container-low": "#f1f5e8",
+                      "on-error-container": "#93000a",
+                      "surface-dim": "#d8dcce",
+                      "on-tertiary": "#ffffff",
+                      "on-tertiary-fixed": "#31101e",
+                      "error-container": "#ffdad6",
+                      "primary-fixed-dim": "#91d963",
+                      "on-error": "#ffffff",
+                      "on-background": "#191d15",
+                      "outline": "#717a68",
+                      "tertiary": "#7e5161",
+                      "on-tertiary-container": "#7b4f5e",
+                      "ink": "#0e0f0c",
+                      "secondary-fixed": "#c6eeac",
+                      "surface": "#f7fbed"
+              },
+              "borderRadius": {
+                      "DEFAULT": "0.25rem",
+                      "lg": "0.5rem",
+                      "xl": "0.75rem",
+                      "full": "9999px"
+              },
+              "spacing": {
+                      "xxxl": "48px",
+                      "xl": "24px",
+                      "xxs": "2px",
+                      "xxl": "32px",
+                      "md": "12px",
+                      "margin-mobile": "16px",
+                      "sm": "8px",
+                      "margin-desktop": "48px",
+                      "xs": "4px",
+                      "2xl": "32px",
+                      "lg": "16px",
+                      "gutter": "24px",
+                      "3xl": "48px"
+              },
+              "fontFamily": {
+                      "display-xs": ["Inter", "system-ui", "sans-serif"],
+                      "body-sm-strong": ["Inter", "system-ui", "sans-serif"],
+                      "body-md-strong": ["Inter", "system-ui", "sans-serif"],
+                      "display-xl-mobile": ["Inter"],
+                      "display-sm": ["Inter", "system-ui", "sans-serif"],
+                      "button-md": ["Inter", "system-ui", "sans-serif"],
+                      "button": ["Inter"],
+                      "body-lg": ["Inter", "system-ui", "sans-serif"],
+                      "display-xl": ["Wise Sans", "Inter", "system-ui", "sans-serif"],
+                      "caption": ["Inter", "system-ui", "sans-serif"],
+                      "display-mega": ["Wise Sans", "Inter", "system-ui", "-apple-system", "sans-serif"],
+                      "body-md": ["Inter", "system-ui", "sans-serif"],
+                      "display-md": ["Wise Sans", "Inter", "system-ui", "sans-serif"],
+                      "display-xxl": ["Wise Sans", "Inter", "system-ui", "sans-serif"],
+                      "display-lg": ["Wise Sans", "Inter", "system-ui", "sans-serif"],
+                      "body-sm": ["Inter", "system-ui", "sans-serif"]
+              },
+              "fontSize": {
+                      "display-xs": ["24px", { "lineHeight": "31.2px", "letterSpacing": "-0.48px", "fontWeight": "600" }],
+                      "body-sm-strong": ["14px", { "lineHeight": "20px", "fontWeight": "600" }],
+                      "body-md-strong": ["16px", { "lineHeight": "24px", "fontWeight": "600" }],
+                      "display-xl-mobile": ["48px", { "lineHeight": "44px", "letterSpacing": "-0.02em", "fontWeight": "900" }],
+                      "display-sm": ["32px", { "lineHeight": "38.4px", "letterSpacing": "-0.96px", "fontWeight": "600" }],
+                      "button-md": ["16px", { "lineHeight": "24px", "fontWeight": "600" }],
+                      "button": ["16px", { "lineHeight": "24px", "fontWeight": "600" }],
+                      "body-lg": ["20px", { "lineHeight": "30px", "fontWeight": "400" }],
+                      "display-xl": ["64px", { "lineHeight": "54.4px", "letterSpacing": "-0.02em", "fontWeight": "900" }],
+                      "caption": ["12px", { "lineHeight": "16px", "fontWeight": "400" }],
+                      "display-mega": ["126px", { "lineHeight": "107.1px", "letterSpacing": "-0.04em", "fontWeight": "900" }],
+                      "body-md": ["16px", { "lineHeight": "24px", "fontWeight": "400" }],
+                      "display-md": ["40px", { "lineHeight": "34px", "fontWeight": "900" }],
+                      "display-xxl": ["96px", { "lineHeight": "81.6px", "fontWeight": "900" }],
+                      "display-lg": ["47px", { "lineHeight": "70.5px", "letterSpacing": "-0.108px", "fontWeight": "400" }],
+                      "body-sm": ["14px", { "lineHeight": "20px", "fontWeight": "400" }]
+              }
+            }
+          }
+        }
+    </script>
+</head>
+<body class="bg-canvas-soft text-ink font-sans antialiased pb-xxxl md:pb-0">
+<!-- Main Canvas -->
+<main class="max-w-5xl mx-auto px-margin-mobile md:px-margin-desktop pt-xl pb-[100px] flex flex-col gap-3xl">
+<!-- Dashboard Title & Top Controls -->
+<header class="pt-xl flex flex-col gap-md mb-lg"><div class="flex justify-end w-full"><button class="bg-surface-container-highest text-ink w-12 h-12 rounded-full flex items-center justify-center hover:opacity-90 active:scale-95 transition-all">
+<span class="material-symbols-outlined">settings</span>
+</button></div>
+<div class="flex flex-col gap-md">
+<h1 class="font-display-xl text-display-xl font-black text-ink">Dashboard</h1>
+<div class="flex items-center gap-xs px-md py-sm bg-surface-container-lowest border-[1px] border-surface-container rounded-full w-fit cursor-pointer hover:bg-surface-container-low transition-colors shadow-sm">
+<span class="font-body-sm-strong text-body-sm-strong text-ink pl-xs">Jun 2026</span>
+<span class="material-symbols-outlined text-mute" style="font-size: 20px;">expand_more</span>
+</div>
+</div></header>
+<!-- Spending Section -->
+<section class="flex flex-col gap-xl">
+<h3 class="font-display-sm text-display-sm font-bold text-ink border-b border-surface-variant pb-sm font-black">Spending</h3>
+<!-- Main Net Spend Hero -->
+<div class="bg-surface-container-lowest border-[1px] border-surface-container rounded-[24px] p-xl md:p-xxxl flex flex-col gap-sm hover-lift">
+<p class="font-body-md text-body-text uppercase tracking-widest text-sm opacity-80">Jun 2026 net</p>
+<div class="flex items-baseline gap-xs">
+<span class="font-display-sm text-display-sm font-bold text-primary" style="color: #2f6c00;">INR</span>
+<span class="font-display-xl text-display-xl font-black text-primary tracking-tighter" style="color: #2f6c00;">279,861</span>
+</div>
+</div>
+<!-- Month Change -->
+<div class="bg-surface-container-lowest border-[1.5px] border-surface-container rounded-[24px] p-xl flex flex-col gap-sm hover-lift">
+<p class="font-body-sm-strong text-body-sm-strong text-mute">Month Change</p>
+<div class="flex items-center gap-xs">
+<span class="material-symbols-outlined text-positive" style="font-size: 24px; font-variation-settings: &quot;wght&quot; 300;">trending_up</span>
+<p class="font-display-sm text-display-sm font-bold text-ink">+12.4%</p>
+</div>
+</div>
+</section>
+<!-- Review Section -->
+<section class="flex flex-col gap-xl">
+<h3 class="font-display-sm text-display-sm font-bold text-ink border-b border-surface-variant pb-sm font-black">Review</h3>
+<!-- Review Queue -->
+<div class="bg-surface-container-lowest border-[1.5px] border-surface-container rounded-[24px] p-xl flex flex-col gap-sm hover-lift cursor-pointer group bg-primary-pale">
+<p class="font-body-sm-strong text-body-sm-strong text-mute group-hover:text-ink transition-colors">Review Queue</p>
+<div class="flex items-center gap-xs">
+<span class="material-symbols-outlined text-warning-deep" style="font-size: 24px; font-variation-settings: &quot;wght&quot; 300;">pending_actions</span>
+<p class="font-display-sm text-display-sm font-bold text-ink">4 Items</p>
+</div>
+</div>
+</section>
+<!-- Monthly Caps -->
+<section class="flex flex-col gap-xl">
+<h3 class="font-display-sm text-display-sm font-bold text-ink border-b border-surface-variant pb-sm font-black">Monthly caps</h3>
+<div class="flex flex-col gap-xl">
+<!-- Cap Item 1 -->
+<div class="flex flex-col gap-xs">
+<div class="flex justify-between items-end">
+<span class="font-body-md-strong text-body-md-strong text-ink">Marketing</span>
+<span class="font-body-sm text-body-text">INR 45k <span class="text-mute">/ 100k</span></span>
+</div>
+<div class="h-1 bg-surface-variant rounded-full overflow-hidden">
+<div class="h-full bg-primary rounded-full transition-all duration-1000 ease-out" style="width: 45%;"></div>
+</div>
+</div>
+<!-- Cap Item 2 -->
+<div class="flex flex-col gap-xs">
+<div class="flex justify-between items-end">
+<span class="font-body-md-strong text-body-md-strong text-ink">Software &amp; Tools</span>
+<span class="font-body-sm text-body-text">INR 18k <span class="text-mute">/ 20k</span></span>
+</div>
+<div class="h-1 bg-surface-variant rounded-full overflow-hidden">
+<div class="h-full bg-warning rounded-full transition-all duration-1000 ease-out" style="width: 90%;"></div>
+</div>
+</div>
+<!-- Cap Item 3 -->
+<div class="flex flex-col gap-xs">
+<div class="flex justify-between items-end">
+<span class="font-body-md-strong text-body-md-strong text-ink">Travel</span>
+<span class="font-body-sm text-body-text">INR 5k <span class="text-mute">/ 50k</span></span>
+</div>
+<div class="h-1 bg-surface-variant rounded-full overflow-hidden">
+<div class="h-full bg-primary rounded-full transition-all duration-1000 ease-out" style="width: 10%;"></div>
+</div>
+</div>
+</div>
+</section>
+<!-- Categories -->
+<section class="flex flex-col gap-xl">
+<h3 class="font-display-sm text-display-sm font-bold text-ink border-b border-surface-variant pb-sm font-black">Top categories</h3>
+<div class="flex flex-col gap-sm">
+<!-- Category 1 -->
+<div class="flex items-center gap-md p-lg bg-surface-container-lowest rounded-[24px] border-[1px] border-surface-container hover:bg-surface-container-low transition-colors cursor-pointer">
+<div class="w-12 h-12 rounded-full bg-canvas-soft flex items-center justify-center">
+<span class="material-symbols-outlined text-primary" style="font-variation-settings: 'wght' 100;">category</span>
+</div>
+<div class="flex-1 flex flex-col">
+<p class="font-body-md-strong text-body-md-strong text-ink">Advertising</p>
+<p class="font-body-sm text-mute">32 Transactions</p>
+</div>
+<div class="text-right">
+<p class="font-body-md-strong text-body-md-strong text-ink">INR 142.5k</p>
+</div>
+</div>
+<!-- Category 2 -->
+<div class="flex items-center gap-md p-lg bg-surface-container-lowest rounded-[24px] border-[1px] border-surface-container hover:bg-surface-container-low transition-colors cursor-pointer">
+<div class="w-12 h-12 rounded-full bg-canvas-soft flex items-center justify-center">
+<span class="material-symbols-outlined text-primary" style="font-variation-settings: 'wght' 100;">label</span>
+</div>
+<div class="flex-1 flex flex-col">
+<p class="font-body-md-strong text-body-md-strong text-ink">Corporate Travel</p>
+<p class="font-body-sm text-mute">8 Transactions</p>
+</div>
+<div class="text-right">
+<p class="font-body-md-strong text-body-md-strong text-ink">INR 85.0k</p>
+</div>
+</div>
+<!-- Category 3 -->
+<div class="flex items-center gap-md p-lg bg-surface-container-lowest rounded-[24px] border-[1px] border-surface-container hover:bg-surface-container-low transition-colors cursor-pointer">
+<div class="w-12 h-12 rounded-full bg-canvas-soft flex items-center justify-center">
+<span class="material-symbols-outlined text-primary" style="font-variation-settings: 'wght' 100;">layers</span>
+</div>
+<div class="flex-1 flex flex-col">
+<p class="font-body-md-strong text-body-md-strong text-ink">Cloud Infrastructure</p>
+<p class="font-body-sm text-mute">4 Transactions</p>
+</div>
+<div class="text-right">
+<p class="font-body-md-strong text-body-md-strong text-ink">INR 32.1k</p>
+</div>
+</div>
+</div>
+</section>
+</main>
+<!-- BottomNavBar -->
+<nav class="fixed bottom-0 w-full z-50 flex justify-around items-center px-xs py-sm pb-safe bg-surface dark:bg-surface-container-low border-t-2 border-transparent max-w-5xl mx-auto rounded-t-[24px] shadow-[0_-4px_24px_rgba(0,0,0,0.05)]">
+<a class="flex flex-col items-center justify-center text-ink px-sm py-xs hover:text-ink dark:hover:text-primary-active active:scale-90 transition-transform duration-200" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: &quot;FILL&quot; 1;">dashboard</span>
+<span class="font-caption text-caption mt-xs font-bold">Dashboard</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant dark:text-mute px-sm py-xs hover:text-ink dark:hover:text-primary-active active:scale-90 transition-transform duration-200" href="#">
+<span class="material-symbols-outlined">list</span>
+<span class="font-caption text-caption mt-xs">Activity</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant dark:text-mute px-sm py-xs hover:text-ink dark:hover:text-primary-active active:scale-90 transition-transform duration-200" href="#">
+<span class="material-symbols-outlined">check_circle</span>
+<span class="font-caption text-caption mt-xs">Review</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant dark:text-mute px-sm py-xs hover:text-ink dark:hover:text-primary-active active:scale-90 transition-transform duration-200" href="#">
+<span class="material-symbols-outlined">account_balance_wallet</span>
+<span class="font-caption text-caption mt-xs">Vaults</span>
+</a>
+</nav>
+</body></html>

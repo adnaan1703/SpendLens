@@ -1,0 +1,241 @@
+<!DOCTYPE html><html class="light" lang="en" style=""><head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0" name="viewport">
+<title>Merchant Review</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;900&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "secondary-fixed-dim": "#abd292",
+                        "on-tertiary-fixed-variant": "#643a49",
+                        "inverse-on-surface": "#eef2e5",
+                        "outline": "#717a68",
+                        "on-primary-container": "#2e6900",
+                        "accent-orange": "#ffc091",
+                        "negative": "#d03238",
+                        "primary-fixed": "#acf67c",
+                        "on-tertiary-fixed": "#31101e",
+                        "positive-deep": "#054d28",
+                        "primary": "#2f6c00",
+                        "inverse-primary": "#91d963",
+                        "error-container": "#ffdad6",
+                        "on-primary-fixed-variant": "#225100",
+                        "primary-container": "#9fe870",
+                        "on-secondary-fixed-variant": "#2e4f1d",
+                        "surface-bright": "#f7fbed",
+                        "surface-variant": "#e0e4d7",
+                        "tertiary-fixed": "#ffd9e3",
+                        "on-error-container": "#93000a",
+                        "on-tertiary-container": "#7b4f5e",
+                        "canvas-soft": "#e8ebe6",
+                        "body-text": "#454745",
+                        "on-secondary-container": "#4a6c37",
+                        "positive": "#2ead4b",
+                        "on-error": "#ffffff",
+                        "warning-deep": "#b86700",
+                        "accent-cyan": "#38c8ff",
+                        "secondary-container": "#c3ebaa",
+                        "ink": "#0e0f0c",
+                        "inverse-surface": "#2d3229",
+                        "background": "#f7fbed",
+                        "on-surface-variant": "#41493a",
+                        "surface-container-high": "#e6eadc",
+                        "on-secondary": "#ffffff",
+                        "tertiary": "#7e5161",
+                        "surface-container": "#ecf0e2",
+                        "surface-container-highest": "#e0e4d7",
+                        "surface": "#f7fbed",
+                        "tertiary-fixed-dim": "#f0b7c9",
+                        "on-background": "#191d15",
+                        "outline-variant": "#c1cab5",
+                        "on-primary-fixed": "#092100",
+                        "primary-pale": "#e2f6d5",
+                        "surface-dim": "#d8dcce",
+                        "secondary": "#456733",
+                        "error": "#ba1a1a",
+                        "tertiary-container": "#ffc5d7",
+                        "ink-deep": "#163300",
+                        "warning": "#ffd11a",
+                        "primary-fixed-dim": "#91d963",
+                        "on-tertiary": "#ffffff",
+                        "surface-container-lowest": "#ffffff",
+                        "primary-active": "#cdffad",
+                        "surface-tint": "#2f6c00",
+                        "negative-bg": "#320707",
+                        "on-surface": "#191d15",
+                        "on-secondary-fixed": "#072100",
+                        "mute": "#868685",
+                        "surface-container-low": "#f1f5e8",
+                        "secondary-fixed": "#c6eeac",
+                        "on-primary": "#ffffff"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "xxs": "2px",
+                        "xs": "4px",
+                        "margin-desktop": "48px",
+                        "lg": "16px",
+                        "margin-mobile": "16px",
+                        "sm": "8px",
+                        "3xl": "48px",
+                        "xxl": "32px",
+                        "xxxl": "48px",
+                        "gutter": "24px",
+                        "xl": "24px",
+                        "md": "12px",
+                        "2xl": "32px"
+                    },
+                    "fontFamily": {
+                        "display-lg": ["Inter", "system-ui", "sans-serif"],
+                        "body-sm-strong": ["Inter", "system-ui", "sans-serif"],
+                        "display-mega": ["Inter", "system-ui", "-apple-system", "sans-serif"],
+                        "display-xxl": ["Inter", "system-ui", "sans-serif"],
+                        "display-md": ["Inter", "system-ui", "sans-serif"],
+                        "body-md-strong": ["Inter", "system-ui", "sans-serif"],
+                        "button-md": ["Inter", "system-ui", "sans-serif"],
+                        "body-lg": ["Inter", "system-ui", "sans-serif"],
+                        "button": ["Inter"],
+                        "display-xl": ["Inter", "system-ui", "sans-serif"],
+                        "body-sm": ["Inter", "system-ui", "sans-serif"],
+                        "caption": ["Inter", "system-ui", "sans-serif"],
+                        "display-xs": ["Inter", "system-ui", "sans-serif"],
+                        "display-xl-mobile": ["Inter"],
+                        "body-md": ["Inter", "system-ui", "sans-serif"],
+                        "display-sm": ["Inter", "system-ui", "sans-serif"]
+                    },
+                    "fontSize": {
+                        "display-lg": ["47px", { "lineHeight": "70.5px", "letterSpacing": "-0.108px", "fontWeight": "400" }],
+                        "body-sm-strong": ["14px", { "lineHeight": "20px", "fontWeight": "600" }],
+                        "display-mega": ["126px", { "lineHeight": "107.1px", "letterSpacing": "-0.04em", "fontWeight": "900" }],
+                        "display-xxl": ["96px", { "lineHeight": "81.6px", "fontWeight": "900" }],
+                        "display-md": ["40px", { "lineHeight": "34px", "fontWeight": "900" }],
+                        "body-md-strong": ["16px", { "lineHeight": "24px", "fontWeight": "600" }],
+                        "button-md": ["16px", { "lineHeight": "24px", "fontWeight": "600" }],
+                        "body-lg": ["20px", { "lineHeight": "30px", "fontWeight": "400" }],
+                        "button": ["16px", { "lineHeight": "24px", "fontWeight": "600" }],
+                        "display-xl": ["64px", { "lineHeight": "54.4px", "letterSpacing": "-0.02em", "fontWeight": "900" }],
+                        "body-sm": ["14px", { "lineHeight": "20px", "fontWeight": "400" }],
+                        "caption": ["12px", { "lineHeight": "16px", "fontWeight": "400" }],
+                        "display-xs": ["24px", { "lineHeight": "31.2px", "letterSpacing": "-0.48px", "fontWeight": "600" }],
+                        "display-xl-mobile": ["48px", { "lineHeight": "44px", "letterSpacing": "-0.02em", "fontWeight": "900" }],
+                        "body-md": ["16px", { "lineHeight": "24px", "fontWeight": "400" }],
+                        "display-sm": ["32px", { "lineHeight": "38.4px", "letterSpacing": "-0.96px", "fontWeight": "600" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+</head>
+<body class="bg-canvas-soft text-ink font-body-md antialiased pb-32">
+<!-- Main Content Canvas -->
+<main class="max-w-7xl mx-auto px-margin-mobile md:px-margin-desktop pt-xl md:pt-3xl flex flex-col gap-xl">
+<!-- Header -->
+<header class="flex flex-col gap-sm mb-lg">
+<h1 class="font-display-xl text-display-xl font-black text-ink tracking-tight">Review</h1>
+<p class="font-body-lg text-body-lg text-mute max-w-2xl hidden md:block">Help us categorize your recent transactions for better insights.</p>
+</header>
+<!-- Summary Stats Grid -->
+<section class="grid grid-cols-2 md:grid-cols-4 gap-lg">
+<div class="bg-surface-container-lowest rounded-[24px] p-xl flex flex-col gap-sm">
+<span class="font-caption text-caption text-mute uppercase tracking-wider">Open Reviews</span>
+<span class="font-display-sm text-display-sm font-black text-ink">12</span>
+</div>
+<div class="bg-surface-container-lowest rounded-[24px] p-xl flex flex-col gap-sm">
+<span class="font-caption text-caption text-mute uppercase tracking-wider">Correction Data</span>
+<span class="font-display-sm text-display-sm font-black text-ink">94%</span>
+</div>
+</section>
+<!-- Review Queue -->
+<section class="flex flex-col gap-2xl mt-lg">
+<!-- Review Item Card -->
+<article class="bg-surface-container-lowest rounded-[24px] p-xl flex flex-col md:flex-row gap-xl items-start md:items-center justify-between border border-outline-variant shadow-sm relative overflow-hidden">
+<!-- Status indicator line -->
+<div class="absolute left-0 top-0 bottom-0 w-2 bg-warning"></div>
+<div class="flex flex-col gap-md flex-grow ml-xs w-full">
+<div class="flex justify-between items-start w-full">
+<div>
+<h3 class="font-display-xs text-display-xs font-black text-ink uppercase">Flipkart</h3>
+<p class="font-body-sm text-body-sm text-mute mt-xs">Imported via Gmail Parser • Oct 24</p>
+</div>
+<span class="font-display-sm text-display-sm font-black text-ink tabular-nums">INR 479</span>
+</div>
+<div class="text-warning-deep font-body-sm-strong uppercase tracking-wider mt-sm">Needs Attention</div>
+<div class="flex flex-wrap gap-sm mt-sm">
+<span class="bg-primary-pale text-positive-deep font-caption text-caption px-md py-xs border border-primary-container flex items-center gap-xs rounded-xl"><span class="material-symbols-outlined text-[14px]">storefront</span>Amazon / Flipkart</span>
+<span class="bg-surface-container text-ink font-caption text-caption px-md py-xs flex items-center gap-xs rounded-xl"><span class="material-symbols-outlined text-[14px]">shopping_cart</span>Online Shopping</span>
+<span class="bg-surface-container text-ink font-caption text-caption px-md py-xs flex items-center gap-xs rounded-xl"><span class="material-symbols-outlined text-[14px]">sell</span>Marketplace purchase</span>
+</div>
+</div>
+<div class="flex flex-col items-end gap-md w-full md:w-auto mt-lg md:mt-0">
+<span class="bg-canvas-soft text-mute font-caption text-caption px-md py-xs flex items-center gap-xs rounded-xl"><span class="material-symbols-outlined text-[14px]">help</span>Low Confidence</span>
+<button class="bg-primary text-on-primary font-button-md text-button-md px-xl py-md w-full md:w-auto hover:bg-on-primary-container transition-colors duration-200 uppercase tracking-wide rounded-xl">
+                        Resolve
+                    </button>
+</div>
+</article>
+<div class="flex flex-col items-center justify-center py-xxxl gap-md opacity-70">
+<span class="material-symbols-outlined text-3xl text-mute">check_circle</span>
+<p class="font-body-md text-body-md text-mute">You're all caught up for now.</p>
+</div>
+<!-- Review Item Card (Completed) -->
+</section>
+</main>
+<!-- Bottom Navigation Mobile -->
+<nav class="fixed bottom-0 w-full z-50 flex justify-around items-center px-xs py-sm pb-safe bg-surface dark:bg-surface-container-low border-t-2 border-transparent hidden md:flex max-w-7xl mx-auto rounded-t-[24px]">
+<a class="flex flex-col items-center justify-center text-on-surface-variant dark:text-mute px-sm py-xs hover:text-ink dark:hover:text-primary-active active:scale-90 transition-transform duration-200" href="#">
+<span class="material-symbols-outlined">dashboard</span>
+<span class="font-caption text-caption mt-xs">Dashboard</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant dark:text-mute px-sm py-xs hover:text-ink dark:hover:text-primary-active active:scale-90 transition-transform duration-200" href="#">
+<span class="material-symbols-outlined">list</span>
+<span class="font-caption text-caption mt-xs">Activity</span>
+</a>
+<a class="flex flex-col items-center justify-center text-ink px-sm py-xs hover:text-ink dark:hover:text-primary-active active:scale-90 transition-transform duration-200" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: &quot;FILL&quot; 1;">check_circle</span>
+<span class="font-caption text-caption mt-xs font-bold">Review</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant dark:text-mute px-sm py-xs hover:text-ink dark:hover:text-primary-active active:scale-90 transition-transform duration-200" href="#">
+<span class="material-symbols-outlined">account_balance_wallet</span>
+<span class="font-caption text-caption mt-xs">Vaults</span>
+</a>
+</nav><nav class="md:hidden fixed bottom-0 w-full z-50 flex justify-around items-center px-xs py-sm pb-6 bg-surface dark:bg-surface-container-low border-t border-transparent shadow-[0_-4px_24px_rgba(0,0,0,0.05)]">
+<a class="flex flex-col items-center justify-center text-on-surface-variant dark:text-mute px-sm py-xs hover:text-ink dark:hover:text-primary-active active:scale-90 transition-transform duration-200" href="#">
+<span class="material-symbols-outlined">dashboard</span>
+<span class="font-caption text-caption mt-xs">Dashboard</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant dark:text-mute px-sm py-xs hover:text-ink dark:hover:text-primary-active active:scale-90 transition-transform duration-200" href="#">
+<span class="material-symbols-outlined">list</span>
+<span class="font-caption text-caption mt-xs">Activity</span>
+</a>
+<a class="flex flex-col items-center justify-center text-ink px-sm py-xs hover:text-ink dark:hover:text-primary-active active:scale-90 transition-transform duration-200" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: &quot;FILL&quot; 1;">check_circle</span>
+<span class="font-caption text-caption mt-xs font-bold">Review</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant dark:text-mute px-sm py-xs hover:text-ink dark:hover:text-primary-active active:scale-90 transition-transform duration-200" href="#">
+<span class="material-symbols-outlined">account_balance_wallet</span>
+<span class="font-caption text-caption mt-xs">Vaults</span>
+</a>
+</nav>
+
+
+</body></html>

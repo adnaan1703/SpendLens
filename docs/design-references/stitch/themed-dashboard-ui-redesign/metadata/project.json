@@ -1,0 +1,846 @@
+{
+  "name": "projects/10071489564617817936",
+  "title": "Themed Dashboard UI Redesign",
+  "visibility": "PRIVATE",
+  "createTime": "2026-06-11T19:24:48.245985Z",
+  "updateTime": "2026-06-13T15:59:48.006509Z",
+  "projectType": "TEXT_TO_UI_PRO",
+  "thumbnailScreenshot": {
+    "name": "projects/10071489564617817936/files/8312fb3a8a7e4114887c9d7c1d737082"
+  },
+  "origin": "STITCH",
+  "deviceType": "MOBILE",
+  "designTheme": {
+    "colorMode": "LIGHT",
+    "font": "INTER",
+    "roundness": "ROUND_EIGHT",
+    "customColor": "#9fe870",
+    "headlineFont": "INTER",
+    "labelFont": "INTER",
+    "namedColors": {
+      "accent-cyan": "#38c8ff",
+      "accent-orange": "#ffc091",
+      "background": "#f7fbed",
+      "body-text": "#454745",
+      "canvas-soft": "#e8ebe6",
+      "error": "#ba1a1a",
+      "error_container": "#ffdad6",
+      "ink": "#0e0f0c",
+      "ink-deep": "#163300",
+      "inverse_on_surface": "#eef2e5",
+      "inverse_primary": "#91d963",
+      "inverse_surface": "#2d3229",
+      "mute": "#868685",
+      "negative": "#d03238",
+      "negative-bg": "#320707",
+      "on_background": "#191d15",
+      "on_error": "#ffffff",
+      "on_error_container": "#93000a",
+      "on_primary": "#ffffff",
+      "on_primary_container": "#2e6900",
+      "on_primary_fixed": "#092100",
+      "on_primary_fixed_variant": "#225100",
+      "on_secondary": "#ffffff",
+      "on_secondary_container": "#4a6c37",
+      "on_secondary_fixed": "#072100",
+      "on_secondary_fixed_variant": "#2e4f1d",
+      "on_surface": "#191d15",
+      "on_surface_variant": "#41493a",
+      "on_tertiary": "#ffffff",
+      "on_tertiary_container": "#7b4f5e",
+      "on_tertiary_fixed": "#31101e",
+      "on_tertiary_fixed_variant": "#643a49",
+      "outline": "#717a68",
+      "outline_variant": "#c1cab5",
+      "positive": "#2ead4b",
+      "positive-deep": "#054d28",
+      "primary": "#2f6c00",
+      "primary-active": "#cdffad",
+      "primary-pale": "#e2f6d5",
+      "primary_container": "#9fe870",
+      "primary_fixed": "#acf67c",
+      "primary_fixed_dim": "#91d963",
+      "secondary": "#456733",
+      "secondary_container": "#c3ebaa",
+      "secondary_fixed": "#c6eeac",
+      "secondary_fixed_dim": "#abd292",
+      "surface": "#f7fbed",
+      "surface_bright": "#f7fbed",
+      "surface_container": "#ecf0e2",
+      "surface_container_high": "#e6eadc",
+      "surface_container_highest": "#e0e4d7",
+      "surface_container_low": "#f1f5e8",
+      "surface_container_lowest": "#ffffff",
+      "surface_dim": "#d8dcce",
+      "surface_tint": "#2f6c00",
+      "surface_variant": "#e0e4d7",
+      "tertiary": "#7e5161",
+      "tertiary_container": "#ffc5d7",
+      "tertiary_fixed": "#ffd9e3",
+      "tertiary_fixed_dim": "#f0b7c9",
+      "warning": "#ffd11a",
+      "warning-deep": "#b86700"
+    },
+    "designMd": "---\nversion: alpha\nname: Wise-design-analysis\ndescription: An inspired interpretation of Wise's design language — a global money-transfer\n  brand whose surface combines an unusually heavy near-black display sans (weight\n  900 at 64–126 px) with a vivid lime-green brand accent, sage-tinted surface neutrals,\n  and rounded white cards on a pale green-tinted canvas; the whole system reads more\n  like a Scandinavian fintech magazine than a bank.\ncolors:\n  primary: '#9fe870'\n  on-primary: '#0e0f0c'\n  primary-active: '#cdffad'\n  primary-neutral: '#c5edab'\n  primary-pale: '#e2f6d5'\n  ink: '#0e0f0c'\n  ink-deep: '#163300'\n  body: '#454745'\n  mute: '#868685'\n  canvas: '#ffffff'\n  canvas-soft: '#e8ebe6'\n  positive: '#2ead4b'\n  positive-deep: '#054d28'\n  warning: '#ffd11a'\n  warning-deep: '#b86700'\n  warning-content: '#4a3b1c'\n  negative: '#d03238'\n  negative-deep: '#a72027'\n  negative-darkest: '#a7000d'\n  negative-bg: '#320707'\n  accent-orange: '#ffc091'\n  accent-cyan: '#38c8ff'\n  surface: '#f7fbed'\n  surface-dim: '#d8dcce'\n  surface-bright: '#f7fbed'\n  surface-container-lowest: '#ffffff'\n  surface-container-low: '#f1f5e8'\n  surface-container: '#ecf0e2'\n  surface-container-high: '#e6eadc'\n  surface-container-highest: '#e0e4d7'\n  on-surface: '#191d15'\n  on-surface-variant: '#41493a'\n  inverse-surface: '#2d3229'\n  inverse-on-surface: '#eef2e5'\n  outline: '#717a68'\n  outline-variant: '#c1cab5'\n  surface-tint: '#2f6c00'\n  primary-container: '#9fe870'\n  on-primary-container: '#2e6900'\n  inverse-primary: '#91d963'\n  secondary: '#456733'\n  on-secondary: '#ffffff'\n  secondary-container: '#c3ebaa'\n  on-secondary-container: '#4a6c37'\n  tertiary: '#7e5161'\n  on-tertiary: '#ffffff'\n  tertiary-container: '#ffc5d7'\n  on-tertiary-container: '#7b4f5e'\n  error: '#ba1a1a'\n  on-error: '#ffffff'\n  error-container: '#ffdad6'\n  on-error-container: '#93000a'\n  primary-fixed: '#acf67c'\n  primary-fixed-dim: '#91d963'\n  on-primary-fixed: '#092100'\n  on-primary-fixed-variant: '#225100'\n  secondary-fixed: '#c6eeac'\n  secondary-fixed-dim: '#abd292'\n  on-secondary-fixed: '#072100'\n  on-secondary-fixed-variant: '#2e4f1d'\n  tertiary-fixed: '#ffd9e3'\n  tertiary-fixed-dim: '#f0b7c9'\n  on-tertiary-fixed: '#31101e'\n  on-tertiary-fixed-variant: '#643a49'\n  background: '#f7fbed'\n  on-background: '#191d15'\n  surface-variant: '#e0e4d7'\n  body-text: '#454745'\ntypography:\n  display-mega:\n    fontFamily: Wise Sans, Inter, system-ui, -apple-system, sans-serif\n    fontSize: 126px\n    fontWeight: 900\n    lineHeight: 107.1px\n    letterSpacing: -0.04em\n  display-xxl:\n    fontFamily: Wise Sans, Inter, system-ui, sans-serif\n    fontSize: 96px\n    fontWeight: 900\n    lineHeight: 81.6px\n  display-xl:\n    fontFamily: Wise Sans, Inter, system-ui, sans-serif\n    fontSize: 64px\n    fontWeight: 900\n    lineHeight: 54.4px\n    letterSpacing: -0.02em\n  display-lg:\n    fontFamily: Wise Sans, Inter, system-ui, sans-serif\n    fontSize: 47px\n    fontWeight: 400\n    lineHeight: 70.5px\n    letterSpacing: -0.108px\n  display-md:\n    fontFamily: Wise Sans, Inter, system-ui, sans-serif\n    fontSize: 40px\n    fontWeight: 900\n    lineHeight: 34px\n  display-sm:\n    fontFamily: Inter, system-ui, sans-serif\n    fontSize: 32px\n    fontWeight: 600\n    lineHeight: 38.4px\n    letterSpacing: -0.96px\n  display-xs:\n    fontFamily: Inter, system-ui, sans-serif\n    fontSize: 24px\n    fontWeight: 600\n    lineHeight: 31.2px\n    letterSpacing: -0.48px\n  body-lg:\n    fontFamily: Inter, system-ui, sans-serif\n    fontSize: 20px\n    fontWeight: 400\n    lineHeight: 30px\n  body-md:\n    fontFamily: Inter, system-ui, sans-serif\n    fontSize: 16px\n    fontWeight: 400\n    lineHeight: 24px\n  body-md-strong:\n    fontFamily: Inter, system-ui, sans-serif\n    fontSize: 16px\n    fontWeight: 600\n    lineHeight: 24px\n  body-sm:\n    fontFamily: Inter, system-ui, sans-serif\n    fontSize: 14px\n    fontWeight: 400\n    lineHeight: 20px\n  body-sm-strong:\n    fontFamily: Inter, system-ui, sans-serif\n    fontSize: 14px\n    fontWeight: 600\n    lineHeight: 20px\n  caption:\n    fontFamily: Inter, system-ui, sans-serif\n    fontSize: 12px\n    fontWeight: 400\n    lineHeight: 16px\n  button-md:\n    fontFamily: Inter, system-ui, sans-serif\n    fontSize: 16px\n    fontWeight: 600\n    lineHeight: 24px\n  display-xl-mobile:\n    fontFamily: Inter\n    fontSize: 48px\n    fontWeight: '900'\n    lineHeight: 44px\n    letterSpacing: -0.02em\n  button:\n    fontFamily: Inter\n    fontSize: 16px\n    fontWeight: '600'\n    lineHeight: 24px\nrounded:\n  none: 0px\n  sm: 8px\n  md: 12px\n  lg: 16px\n  xl: 24px\n  pill: 9999px\n  full: 9999px\n  DEFAULT: 0.5rem\nspacing:\n  xxs: 2px\n  xs: 4px\n  sm: 8px\n  md: 12px\n  lg: 16px\n  xl: 24px\n  2xl: 32px\n  3xl: 48px\n  xxl: 32px\n  xxxl: 48px\n  gutter: 24px\n  margin-mobile: 16px\n  margin-desktop: 48px\ncomponents:\n  nav-bar:\n    backgroundColor: '{colors.canvas}'\n    textColor: '{colors.ink}'\n    typography: '{typography.body-sm-strong}'\n    padding: '{spacing.md} {spacing.xl}'\n  nav-link:\n    textColor: '{colors.ink}'\n    typography: '{typography.body-sm-strong}'\n  button-primary:\n    backgroundColor: '{colors.primary}'\n    textColor: '{colors.on-primary}'\n    typography: '{typography.button-md}'\n    rounded: '{rounded.xl}'\n    padding: '{spacing.md} {spacing.xl}'\n  button-secondary:\n    backgroundColor: '{colors.canvas-soft}'\n    textColor: '{colors.ink}'\n    typography: '{typography.button-md}'\n    rounded: '{rounded.xl}'\n    padding: '{spacing.md} {spacing.xl}'\n  button-tertiary:\n    backgroundColor: '{colors.canvas}'\n    textColor: '{colors.ink}'\n    borderColor: '{colors.ink}'\n    typography: '{typography.button-md}'\n    rounded: '{rounded.xl}'\n    padding: '{spacing.md} {spacing.xl}'\n  button-icon-circular:\n    backgroundColor: '{colors.canvas}'\n    textColor: '{colors.ink}'\n    rounded: '{rounded.full}'\n    padding: '{spacing.sm}'\n  text-input:\n    backgroundColor: '{colors.canvas}'\n    textColor: '{colors.ink}'\n    borderColor: '{colors.ink}'\n    typography: '{typography.body-md}'\n    rounded: '{rounded.md}'\n    padding: '{spacing.md} {spacing.lg}'\n  card-content:\n    backgroundColor: '{colors.canvas}'\n    textColor: '{colors.ink}'\n    typography: '{typography.body-md}'\n    rounded: '{rounded.xl}'\n    padding: '{spacing.xl}'\n  card-feature-sage:\n    backgroundColor: '{colors.canvas-soft}'\n    textColor: '{colors.ink}'\n    typography: '{typography.body-md}'\n    rounded: '{rounded.xl}'\n    padding: '{spacing.xl}'\n  card-feature-green:\n    backgroundColor: '{colors.primary-pale}'\n    textColor: '{colors.ink}'\n    typography: '{typography.body-md}'\n    rounded: '{rounded.xl}'\n    padding: '{spacing.xl}'\n  card-feature-dark:\n    backgroundColor: '{colors.ink}'\n    textColor: '{colors.primary}'\n    typography: '{typography.body-md}'\n    rounded: '{rounded.xl}'\n    padding: '{spacing.xl}'\n  hero-band:\n    backgroundColor: '{colors.canvas-soft}'\n    textColor: '{colors.ink}'\n    typography: '{typography.display-mega}'\n    padding: '{spacing.3xl} {spacing.xl}'\n  hero-band-dark:\n    backgroundColor: '{colors.ink}'\n    textColor: '{colors.primary}'\n    typography: '{typography.display-mega}'\n    padding: '{spacing.3xl} {spacing.xl}'\n  content-band:\n    backgroundColor: '{colors.canvas}'\n    textColor: '{colors.ink}'\n    typography: '{typography.display-md}'\n    padding: '{spacing.3xl} {spacing.xl}'\n  currency-converter-card:\n    backgroundColor: '{colors.canvas}'\n    textColor: '{colors.ink}'\n    borderColor: '{colors.ink}'\n    typography: '{typography.body-md}'\n    rounded: '{rounded.xl}'\n    padding: '{spacing.xl}'\n  badge-positive:\n    backgroundColor: '{colors.primary-pale}'\n    textColor: '{colors.positive-deep}'\n    typography: '{typography.body-sm-strong}'\n    rounded: '{rounded.pill}'\n    padding: '{spacing.xs} {spacing.md}'\n  badge-negative:\n    backgroundColor: '{colors.negative-bg}'\n    textColor: '{colors.on-primary}'\n    typography: '{typography.body-sm-strong}'\n    rounded: '{rounded.pill}'\n    padding: '{spacing.xs} {spacing.md}'\n  footer:\n    backgroundColor: '{colors.ink}'\n    textColor: '{colors.canvas-soft}'\n    typography: '{typography.body-sm}'\n    padding: '{spacing.3xl} {spacing.xl}'\n---\n\n",
+    "colorVariant": "FIDELITY",
+    "overridePrimaryColor": "#9fe870",
+    "overrideSecondaryColor": "#c5edab",
+    "spacingScale": 2,
+    "typography": {
+      "body-lg": {
+        "fontFamily": "Inter, system-ui, sans-serif",
+        "fontSize": "20px",
+        "fontWeight": "400",
+        "lineHeight": "30px"
+      },
+      "body-md": {
+        "fontFamily": "Inter, system-ui, sans-serif",
+        "fontSize": "16px",
+        "fontWeight": "400",
+        "lineHeight": "24px"
+      },
+      "body-md-strong": {
+        "fontFamily": "Inter, system-ui, sans-serif",
+        "fontSize": "16px",
+        "fontWeight": "600",
+        "lineHeight": "24px"
+      },
+      "body-sm": {
+        "fontFamily": "Inter, system-ui, sans-serif",
+        "fontSize": "14px",
+        "fontWeight": "400",
+        "lineHeight": "20px"
+      },
+      "body-sm-strong": {
+        "fontFamily": "Inter, system-ui, sans-serif",
+        "fontSize": "14px",
+        "fontWeight": "600",
+        "lineHeight": "20px"
+      },
+      "button": {
+        "fontFamily": "Inter",
+        "fontSize": "16px",
+        "fontWeight": "600",
+        "lineHeight": "24px"
+      },
+      "button-md": {
+        "fontFamily": "Inter, system-ui, sans-serif",
+        "fontSize": "16px",
+        "fontWeight": "600",
+        "lineHeight": "24px"
+      },
+      "caption": {
+        "fontFamily": "Inter, system-ui, sans-serif",
+        "fontSize": "12px",
+        "fontWeight": "400",
+        "lineHeight": "16px"
+      },
+      "display-lg": {
+        "fontFamily": "Wise Sans, Inter, system-ui, sans-serif",
+        "fontSize": "47px",
+        "fontWeight": "400",
+        "lineHeight": "70.5px",
+        "letterSpacing": "-0.108px"
+      },
+      "display-md": {
+        "fontFamily": "Wise Sans, Inter, system-ui, sans-serif",
+        "fontSize": "40px",
+        "fontWeight": "900",
+        "lineHeight": "34px"
+      },
+      "display-mega": {
+        "fontFamily": "Wise Sans, Inter, system-ui, -apple-system, sans-serif",
+        "fontSize": "126px",
+        "fontWeight": "900",
+        "lineHeight": "107.1px",
+        "letterSpacing": "-0.04em"
+      },
+      "display-sm": {
+        "fontFamily": "Inter, system-ui, sans-serif",
+        "fontSize": "32px",
+        "fontWeight": "600",
+        "lineHeight": "38.4px",
+        "letterSpacing": "-0.96px"
+      },
+      "display-xl": {
+        "fontFamily": "Wise Sans, Inter, system-ui, sans-serif",
+        "fontSize": "64px",
+        "fontWeight": "900",
+        "lineHeight": "54.4px",
+        "letterSpacing": "-0.02em"
+      },
+      "display-xl-mobile": {
+        "fontFamily": "Inter",
+        "fontSize": "48px",
+        "fontWeight": "900",
+        "lineHeight": "44px",
+        "letterSpacing": "-0.02em"
+      },
+      "display-xs": {
+        "fontFamily": "Inter, system-ui, sans-serif",
+        "fontSize": "24px",
+        "fontWeight": "600",
+        "lineHeight": "31.2px",
+        "letterSpacing": "-0.48px"
+      },
+      "display-xxl": {
+        "fontFamily": "Wise Sans, Inter, system-ui, sans-serif",
+        "fontSize": "96px",
+        "fontWeight": "900",
+        "lineHeight": "81.6px"
+      }
+    },
+    "spacing": {
+      "2xl": "32px",
+      "3xl": "48px",
+      "gutter": "24px",
+      "lg": "16px",
+      "margin-desktop": "48px",
+      "margin-mobile": "16px",
+      "md": "12px",
+      "sm": "8px",
+      "xl": "24px",
+      "xs": "4px",
+      "xxl": "32px",
+      "xxs": "2px",
+      "xxxl": "48px"
+    },
+    "headlineFontFamily": "Inter",
+    "bodyFontFamily": "Inter, system-ui, sans-serif",
+    "labelFontFamily": "Inter"
+  },
+  "screenInstances": [
+    {
+      "id": "01de632a-eaa8-49fc-aa6e-d896431677a4",
+      "sourceScreen": "projects/10071489564617817936/screens/17181047290847080344",
+      "x": 1606,
+      "width": 512,
+      "height": 1138,
+      "type": "SCREEN_INSTANCE"
+    },
+    {
+      "id": "11dcdc87ac6a426caa6010bceed3e4be",
+      "sourceScreen": "projects/10071489564617817936/screens/11dcdc87ac6a426caa6010bceed3e4be",
+      "x": 3587,
+      "y": -3721,
+      "width": 390,
+      "height": 842,
+      "hidden": true
+    },
+    {
+      "id": "160d69ed-3f6e-4906-a394-8b971a95164d",
+      "sourceScreen": "projects/10071489564617817936/screens/17181047290847077250",
+      "x": 10748,
+      "width": 512,
+      "height": 1138,
+      "type": "SCREEN_INSTANCE"
+    },
+    {
+      "id": "18f4d10bba7b4d62b68adaa5ce93d536",
+      "sourceScreen": "projects/10071489564617817936/screens/18f4d10bba7b4d62b68adaa5ce93d536",
+      "x": 4547,
+      "y": -3721,
+      "width": 390,
+      "height": 1262
+    },
+    {
+      "id": "1aa271f2906d42e6b840ce67c9117ca1",
+      "sourceScreen": "projects/10071489564617817936/screens/1aa271f2906d42e6b840ce67c9117ca1",
+      "x": 8226,
+      "y": -3712,
+      "width": 390,
+      "height": 884,
+      "hidden": true
+    },
+    {
+      "id": "1aa271f2906d42e6b840ce67c9117ca1-1781358374386",
+      "sourceScreen": "projects/10071489564617817936/screens/10339973839206114960",
+      "x": 17404,
+      "y": -3745,
+      "width": 390,
+      "height": 884
+    },
+    {
+      "id": "1aa271f2906d42e6b840ce67c9117ca1-1781358491135",
+      "sourceScreen": "projects/10071489564617817936/screens/3004798730972119301",
+      "x": 13076,
+      "y": -3398,
+      "width": 390,
+      "height": 884,
+      "hidden": true
+    },
+    {
+      "id": "1aa271f2906d42e6b840ce67c9117ca1-1781358507520",
+      "sourceScreen": "projects/10071489564617817936/screens/1409464364332042224",
+      "x": 12643,
+      "y": -3571,
+      "width": 390,
+      "height": 884,
+      "hidden": true
+    },
+    {
+      "id": "1c639ef3e69a4e1a8dd52d13cc77d8bf",
+      "sourceScreen": "projects/10071489564617817936/screens/1c639ef3e69a4e1a8dd52d13cc77d8bf",
+      "x": 10950,
+      "y": -3721,
+      "width": 390,
+      "height": 1578,
+      "hidden": true
+    },
+    {
+      "id": "1cef1c0f197c4994ac2901f3845b3196",
+      "sourceScreen": "projects/10071489564617817936/screens/1cef1c0f197c4994ac2901f3845b3196",
+      "x": 21173,
+      "y": -3839,
+      "width": 390,
+      "height": 884
+    },
+    {
+      "id": "20def5aa81c2419fb50dce6d936cd20a",
+      "sourceScreen": "projects/10071489564617817936/screens/20def5aa81c2419fb50dce6d936cd20a",
+      "x": 992,
+      "y": -3713,
+      "width": 390,
+      "height": 1015
+    },
+    {
+      "id": "23c9110d-dacb-4397-9e30-bc95c8ca1fdc",
+      "sourceScreen": "projects/10071489564617817936/screens/17181047290847079460",
+      "x": 7414,
+      "width": 512,
+      "height": 1138,
+      "type": "SCREEN_INSTANCE"
+    },
+    {
+      "id": "2fd40c65-fe52-4839-af3a-c244d304a75f",
+      "sourceScreen": "projects/10071489564617817936/screens/17181047290847076808",
+      "x": 11324,
+      "width": 512,
+      "height": 1138,
+      "type": "SCREEN_INSTANCE"
+    },
+    {
+      "id": "3294e341d5c34736973e64f0f919f024",
+      "sourceScreen": "projects/10071489564617817936/screens/3294e341d5c34736973e64f0f919f024",
+      "x": 4114,
+      "width": 390,
+      "height": 1257
+    },
+    {
+      "id": "33365c7d10234c68a19502f1b5c468f0",
+      "sourceScreen": "projects/10071489564617817936/screens/33365c7d10234c68a19502f1b5c468f0",
+      "x": 14609,
+      "y": -3750,
+      "width": 390,
+      "height": 1469
+    },
+    {
+      "id": "3711710f7e4543db94250da7855dc1b8",
+      "sourceScreen": "projects/10071489564617817936/screens/3711710f7e4543db94250da7855dc1b8",
+      "x": 10042,
+      "y": -3721,
+      "width": 390,
+      "height": 1701,
+      "hidden": true
+    },
+    {
+      "id": "4170edfdf88e4bfd9cbae720f6323547",
+      "sourceScreen": "projects/10071489564617817936/screens/4170edfdf88e4bfd9cbae720f6323547",
+      "x": 9588,
+      "y": -3721,
+      "width": 390,
+      "height": 1698,
+      "hidden": true
+    },
+    {
+      "id": "4afd4d4b-609c-4d44-8428-4b2a473b3a50",
+      "sourceScreen": "projects/10071489564617817936/screens/17181047290847078576",
+      "x": 8566,
+      "width": 512,
+      "height": 1138,
+      "type": "SCREEN_INSTANCE"
+    },
+    {
+      "id": "4ed3c07bddf64c5f9663bd5d67538b2e",
+      "sourceScreen": "projects/10071489564617817936/screens/4ed3c07bddf64c5f9663bd5d67538b2e",
+      "x": 2595,
+      "y": -3712,
+      "width": 390,
+      "height": 1564
+    },
+    {
+      "id": "4ed3c07bddf64c5f9663bd5d67538b2e-1781356868904",
+      "sourceScreen": "projects/10071489564617817936/screens/6523689389309011143",
+      "x": 12374,
+      "y": -3694,
+      "width": 390,
+      "height": 1564,
+      "hidden": true
+    },
+    {
+      "id": "51056a5d-300e-4401-be06-c59a01ae8f93",
+      "sourceScreen": "projects/10071489564617817936/screens/9738374838474646558",
+      "y": 4656,
+      "width": 512,
+      "height": 280,
+      "type": "SCREEN_INSTANCE"
+    },
+    {
+      "id": "5152a52114194730aeb728e2c66a4b6d",
+      "sourceScreen": "projects/10071489564617817936/screens/5152a52114194730aeb728e2c66a4b6d",
+      "x": 19811,
+      "y": -3839,
+      "width": 390,
+      "height": 1653
+    },
+    {
+      "id": "54e9dd11-1521-461f-b406-dbc7dd2462ca",
+      "sourceScreen": "projects/10071489564617817936/screens/11816349672208115709",
+      "y": 1394,
+      "width": 512,
+      "height": 1138,
+      "type": "SCREEN_INSTANCE"
+    },
+    {
+      "id": "552f32af-90e0-4066-bfe4-bdf70fbc0a74",
+      "sourceScreen": "projects/10071489564617817936/screens/17181047290847079578",
+      "x": 15322,
+      "width": 512,
+      "height": 1138,
+      "type": "SCREEN_INSTANCE"
+    },
+    {
+      "id": "59306303-3913-4a49-a2f4-1ee2469cf16b",
+      "sourceScreen": "projects/10071489564617817936/screens/17181047290847079018",
+      "x": 7990,
+      "width": 512,
+      "height": 1138,
+      "type": "SCREEN_INSTANCE"
+    },
+    {
+      "id": "5c144eaa-7a92-484f-9a7d-5c61e496de79",
+      "sourceScreen": "projects/10071489564617817936/screens/17181047290847079136",
+      "x": 15898,
+      "width": 512,
+      "height": 1138,
+      "type": "SCREEN_INSTANCE"
+    },
+    {
+      "id": "5c775bc19f8f48719fbb8bb5b3de2028",
+      "sourceScreen": "projects/10071489564617817936/screens/5c775bc19f8f48719fbb8bb5b3de2028",
+      "x": 15080,
+      "y": -3750,
+      "width": 390,
+      "height": 970
+    },
+    {
+      "id": "5faba412-6213-4047-b947-cf60e9c4c963",
+      "sourceScreen": "projects/10071489564617817936/screens/17181047290847077132",
+      "width": 512,
+      "height": 1138,
+      "type": "SCREEN_INSTANCE"
+    },
+    {
+      "id": "6107f1cd19604ec483fcaefeb1432937",
+      "sourceScreen": "projects/10071489564617817936/screens/6107f1cd19604ec483fcaefeb1432937",
+      "x": 4041,
+      "y": -3721,
+      "width": 390,
+      "height": 842
+    },
+    {
+      "id": "6107f1cd19604ec483fcaefeb1432937-1781358351050",
+      "sourceScreen": "projects/10071489564617817936/screens/63469319783552923",
+      "x": 16955,
+      "y": -3745,
+      "width": 390,
+      "height": 842
+    },
+    {
+      "id": "6112008a-ec5d-470b-8802-334f6c43de6c",
+      "sourceScreen": "projects/10071489564617817936/screens/4875493004364825022",
+      "y": 2632,
+      "width": 780,
+      "height": 1768,
+      "type": "SCREEN_INSTANCE"
+    },
+    {
+      "id": "66e13ccbffb44c9caaa59f999dff478d",
+      "sourceScreen": "projects/10071489564617817936/screens/66e13ccbffb44c9caaa59f999dff478d",
+      "x": 21627,
+      "y": -3839,
+      "width": 390,
+      "height": 884
+    },
+    {
+      "id": "672cd77270d24f959f9182d44aa0001e",
+      "sourceScreen": "projects/10071489564617817936/screens/672cd77270d24f959f9182d44aa0001e",
+      "x": 13716,
+      "width": 390,
+      "height": 884
+    },
+    {
+      "id": "6ee380a7e6ce4b66ab9469e0cb15e63e",
+      "sourceScreen": "projects/10071489564617817936/screens/6ee380a7e6ce4b66ab9469e0cb15e63e",
+      "x": 5055,
+      "y": -3716,
+      "width": 390,
+      "height": 884
+    },
+    {
+      "id": "6ef3727b-ca9a-4b7d-ad48-f56e648e1a11",
+      "sourceScreen": "projects/10071489564617817936/screens/13656865327562886207",
+      "x": 8603,
+      "y": -3768,
+      "width": 512,
+      "height": 280,
+      "hidden": true,
+      "type": "SCREEN_INSTANCE"
+    },
+    {
+      "id": "70267bc8-69ba-4cd7-9357-5ba5fe72a6eb",
+      "sourceScreen": "projects/10071489564617817936/screens/11816349672208114009",
+      "x": 1152,
+      "y": 1394,
+      "width": 512,
+      "height": 1138,
+      "type": "SCREEN_INSTANCE"
+    },
+    {
+      "id": "7294f5e1-8dac-4fbd-a1ae-235d08b9cc9a",
+      "sourceScreen": "projects/10071489564617817936/screens/9738374838474648956",
+      "x": 576,
+      "y": 4656,
+      "width": 512,
+      "height": 280,
+      "type": "SCREEN_INSTANCE"
+    },
+    {
+      "id": "751538ad59e344718926139e7e5624b8",
+      "sourceScreen": "projects/10071489564617817936/screens/751538ad59e344718926139e7e5624b8",
+      "x": 10496,
+      "y": -3721,
+      "width": 390,
+      "height": 1650,
+      "hidden": true
+    },
+    {
+      "id": "83ae47b9483a4e5583249e25d5070696",
+      "sourceScreen": "projects/10071489564617817936/screens/83ae47b9483a4e5583249e25d5070696",
+      "x": 12354,
+      "width": 390,
+      "height": 1262
+    },
+    {
+      "id": "8470da90-3f35-4b7c-a211-77b4456501f7",
+      "sourceScreen": "projects/10071489564617817936/screens/11816349672208116907",
+      "x": 576,
+      "y": 1394,
+      "width": 512,
+      "height": 1138,
+      "type": "SCREEN_INSTANCE"
+    },
+    {
+      "id": "889d58d6265146c4be5b2b0ce6cb6d04",
+      "sourceScreen": "projects/10071489564617817936/screens/889d58d6265146c4be5b2b0ce6cb6d04",
+      "x": 16485,
+      "y": -3745,
+      "width": 390,
+      "height": 1472
+    },
+    {
+      "id": "8adb7f825b384dd98b26c876c09fb587",
+      "sourceScreen": "projects/10071489564617817936/screens/8adb7f825b384dd98b26c876c09fb587",
+      "x": 26,
+      "y": -3713,
+      "width": 390,
+      "height": 1652
+    },
+    {
+      "id": "8c0f033ad00f44958b9e88c3aed4d205",
+      "sourceScreen": "projects/10071489564617817936/screens/8c0f033ad00f44958b9e88c3aed4d205",
+      "x": 11404,
+      "y": -3721,
+      "width": 390,
+      "height": 970,
+      "hidden": true
+    },
+    {
+      "id": "905081a737cc4ef3ac045f6b893dfae1",
+      "sourceScreen": "projects/10071489564617817936/screens/905081a737cc4ef3ac045f6b893dfae1",
+      "x": 5509,
+      "y": -3721,
+      "width": 390,
+      "height": 2835
+    },
+    {
+      "id": "9db9ffb28d99481f9d08b277e380f4a4",
+      "sourceScreen": "projects/10071489564617817936/screens/9db9ffb28d99481f9d08b277e380f4a4",
+      "x": 1568,
+      "y": -3713,
+      "width": 390,
+      "height": 1999
+    },
+    {
+      "id": "9db9ffb28d99481f9d08b277e380f4a4-1781262136079",
+      "sourceScreen": "projects/10071489564617817936/screens/9644669714484335326",
+      "x": 2023,
+      "y": -3723,
+      "width": 390,
+      "height": 1999
+    },
+    {
+      "id": "9f488eba-4ee3-41c9-b319-6e92b477b087",
+      "sourceScreen": "projects/10071489564617817936/screens/17181047290847079902",
+      "x": 6384,
+      "width": 512,
+      "height": 1138,
+      "type": "SCREEN_INSTANCE"
+    },
+    {
+      "id": "a5fdaea1-1c90-4215-8c69-52593a969b02",
+      "sourceScreen": "projects/10071489564617817936/screens/17181047290847078134",
+      "x": 9142,
+      "width": 512,
+      "height": 1138,
+      "type": "SCREEN_INSTANCE"
+    },
+    {
+      "id": "a632b9b94da5405f83796c00a12ff314",
+      "sourceScreen": "projects/10071489564617817936/screens/a632b9b94da5405f83796c00a12ff314",
+      "x": 5001,
+      "y": -3721,
+      "width": 390,
+      "height": 884
+    },
+    {
+      "id": "a7ae930017714fa9ad3973f5aca3b85a",
+      "sourceScreen": "projects/10071489564617817936/screens/a7ae930017714fa9ad3973f5aca3b85a",
+      "x": 538,
+      "y": -3713,
+      "width": 390,
+      "height": 1084
+    },
+    {
+      "id": "a8d4f27a-4a17-49bc-8f40-2ad45da42a73",
+      "sourceScreen": "projects/10071489564617817936/screens/17181047290847077692",
+      "x": 10172,
+      "width": 512,
+      "height": 1138,
+      "type": "SCREEN_INSTANCE"
+    },
+    {
+      "id": "a92b84124ea54f13b522aeec99ada756",
+      "sourceScreen": "projects/10071489564617817936/screens/a92b84124ea54f13b522aeec99ada756",
+      "x": 4568,
+      "width": 390,
+      "height": 1542
+    },
+    {
+      "id": "adb0adfa-c8c0-44ae-8acd-90e4a3108e3b",
+      "sourceScreen": "projects/10071489564617817936/screens/9738374838474647258",
+      "x": 1152,
+      "y": 4656,
+      "width": 512,
+      "height": 280,
+      "type": "SCREEN_INSTANCE"
+    },
+    {
+      "id": "ae463e3f-73fb-44d4-9627-74bcd755936c",
+      "sourceScreen": "projects/10071489564617817936/screens/17181047290847076690",
+      "x": 576,
+      "width": 512,
+      "height": 1138,
+      "type": "SCREEN_INSTANCE"
+    },
+    {
+      "id": "assets_44424e53eb2b4fc0815832298fba8661",
+      "x": 12599,
+      "y": -3745,
+      "width": 960,
+      "height": 540,
+      "sourceAsset": "assets/44424e53eb2b4fc0815832298fba8661",
+      "type": "DESIGN_SYSTEM_INSTANCE"
+    },
+    {
+      "id": "b6bed4ed3bf84003a1a13afd745d4e06",
+      "sourceScreen": "projects/10071489564617817936/screens/b6bed4ed3bf84003a1a13afd745d4e06",
+      "x": 15578,
+      "y": -3750,
+      "width": 390,
+      "height": 1808
+    },
+    {
+      "id": "b974b94fe8804d04b91fd6d44a50f4c2",
+      "sourceScreen": "projects/10071489564617817936/screens/b974b94fe8804d04b91fd6d44a50f4c2",
+      "x": 11904,
+      "y": -3694,
+      "width": 390,
+      "height": 1469,
+      "hidden": true
+    },
+    {
+      "id": "bb506d97a9334337ab9906d30f46dadd",
+      "sourceScreen": "projects/10071489564617817936/screens/bb506d97a9334337ab9906d30f46dadd",
+      "x": 20265,
+      "y": -3839,
+      "width": 390,
+      "height": 970
+    },
+    {
+      "id": "c3309483-2a14-4bd7-aa11-c00d2515826b",
+      "sourceScreen": "projects/10071489564617817936/screens/17181047290847078694",
+      "x": 16474,
+      "width": 512,
+      "height": 1138,
+      "type": "SCREEN_INSTANCE"
+    },
+    {
+      "id": "c3e47984fc40404e810c8539e09eecbf",
+      "sourceScreen": "projects/10071489564617817936/screens/c3e47984fc40404e810c8539e09eecbf",
+      "x": 9134,
+      "y": -3721,
+      "width": 390,
+      "height": 1570,
+      "hidden": true
+    },
+    {
+      "id": "d0964064417f496bbf1da1ba734b354f",
+      "sourceScreen": "projects/10071489564617817936/screens/d0964064417f496bbf1da1ba734b354f",
+      "x": 3206,
+      "width": 390,
+      "height": 1106
+    },
+    {
+      "id": "d0efc6c742a34edab7a11f7d84c168e8",
+      "sourceScreen": "projects/10071489564617817936/screens/d0efc6c742a34edab7a11f7d84c168e8",
+      "x": 5476,
+      "width": 390,
+      "height": 990
+    },
+    {
+      "id": "d2628b2ffe1e42059b330cb213b748dd",
+      "sourceScreen": "projects/10071489564617817936/screens/d2628b2ffe1e42059b330cb213b748dd",
+      "x": 5930,
+      "width": 390,
+      "height": 2294
+    },
+    {
+      "id": "d36dee6a-bc4c-44e9-ad38-c8adf61aac5e",
+      "sourceScreen": "projects/10071489564617817936/screens/13000549239258406512",
+      "x": 12556,
+      "y": -3064,
+      "width": 819,
+      "height": 1122,
+      "type": "SCREEN_INSTANCE"
+    },
+    {
+      "id": "d4b8fd4e01e34afc8d745a67371412a3",
+      "sourceScreen": "projects/10071489564617817936/screens/d4b8fd4e01e34afc8d745a67371412a3",
+      "x": 20719,
+      "y": -3839,
+      "width": 390,
+      "height": 1602
+    },
+    {
+      "id": "d6da3dc450844055b130df3f44fb7f75",
+      "sourceScreen": "projects/10071489564617817936/screens/d6da3dc450844055b130df3f44fb7f75",
+      "x": 8680,
+      "y": -3721,
+      "width": 390,
+      "height": 1590,
+      "hidden": true
+    },
+    {
+      "id": "d7025f9759d645aeb5a937d54bb459db",
+      "sourceScreen": "projects/10071489564617817936/screens/d7025f9759d645aeb5a937d54bb459db",
+      "x": 19357,
+      "y": -3839,
+      "width": 390,
+      "height": 1469
+    },
+    {
+      "id": "dae6dd5b20574983b06dcafcc13254f4",
+      "sourceScreen": "projects/10071489564617817936/screens/dae6dd5b20574983b06dcafcc13254f4",
+      "x": 14140,
+      "y": -3750,
+      "width": 390,
+      "height": 1324
+    },
+    {
+      "id": "e249aa2e859c407c97b55dbbe8b6c003",
+      "sourceScreen": "projects/10071489564617817936/screens/e249aa2e859c407c97b55dbbe8b6c003",
+      "x": 5455,
+      "y": -3721,
+      "width": 390,
+      "height": 941
+    },
+    {
+      "id": "e3b69a18dd5b4701984e78c73e4b6fe5",
+      "sourceScreen": "projects/10071489564617817936/screens/e3b69a18dd5b4701984e78c73e4b6fe5",
+      "x": 5909,
+      "y": -3721,
+      "width": 390,
+      "height": 1316
+    },
+    {
+      "id": "e768dcf7-e42a-473e-9d60-e3e393571f22",
+      "sourceScreen": "projects/10071489564617817936/screens/17181047290847080020",
+      "x": 14746,
+      "width": 512,
+      "height": 1138,
+      "type": "SCREEN_INSTANCE"
+    },
+    {
+      "id": "ec03af14-206f-4749-9090-7a2350bb7b39",
+      "sourceScreen": "projects/10071489564617817936/screens/17181047290847076366",
+      "x": 14170,
+      "width": 512,
+      "height": 1138,
+      "type": "SCREEN_INSTANCE"
+    },
+    {
+      "id": "f3403aaa393140f6af702dae86c3faf3",
+      "sourceScreen": "projects/10071489564617817936/screens/f3403aaa393140f6af702dae86c3faf3",
+      "x": 13636,
+      "y": -3750,
+      "width": 390,
+      "height": 1653
+    },
+    {
+      "id": "f3d736994a674705897a320a7f8e30c1",
+      "sourceScreen": "projects/10071489564617817936/screens/f3d736994a674705897a320a7f8e30c1",
+      "x": 3660,
+      "width": 390,
+      "height": 2572
+    },
+    {
+      "id": "fa0c4cd698a84e71bbf61ed02454e46c",
+      "sourceScreen": "projects/10071489564617817936/screens/fa0c4cd698a84e71bbf61ed02454e46c",
+      "x": 3049,
+      "y": -3712,
+      "width": 390,
+      "height": 1588
+    },
+    {
+      "id": "fdd44ecaa8bd4bbf8e6434f84520efca",
+      "sourceScreen": "projects/10071489564617817936/screens/fdd44ecaa8bd4bbf8e6434f84520efca",
+      "x": 7576,
+      "y": -3721,
+      "width": 600,
+      "height": 600
+    },
+    {
+      "id": "ffc742125f8d482fac216d1e614f9c0a",
+      "sourceScreen": "projects/10071489564617817936/screens/ffc742125f8d482fac216d1e614f9c0a",
+      "x": 2407,
+      "y": -3939,
+      "width": 390,
+      "height": 1564,
+      "hidden": true
+    }
+  ],
+  "metadata": {
+    "userRole": "OWNER"
+  }
+}

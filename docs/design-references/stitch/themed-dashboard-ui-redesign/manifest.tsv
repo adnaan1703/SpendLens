@@ -1,0 +1,9 @@
+screen_id	name	screenshot_file	html_file	screenshot_dimensions
+f3403aaa393140f6af702dae86c3faf3	Dashboard - Unified Navigation	screens/dashboard-unified-navigation.jpg	html/dashboard-unified-navigation.html	390x1653
+dae6dd5b20574983b06dcafcc13254f4	Activity - Scandi-Fintech Refinement	screens/activity-scandi-fintech-refinement.jpg	html/activity-scandi-fintech-refinement.html	390x1324
+33365c7d10234c68a19502f1b5c468f0	Activity - Unified Navigation	screens/activity-unified-navigation.jpg	html/activity-unified-navigation.html	390x1469
+5c775bc19f8f48719fbb8bb5b3de2028	Review - Unified Navigation	screens/review-unified-navigation.jpg	html/review-unified-navigation.html	390x970
+b6bed4ed3bf84003a1a13afd745d4e06	Vaults - Scandi-Fintech Refinement	screens/vaults-scandi-fintech-refinement.jpg	html/vaults-scandi-fintech-refinement.html	390x1808
+889d58d6265146c4be5b2b0ce6cb6d04	Settings - Focused View No Nav	screens/settings-focused-view-no-nav.jpg	html/settings-focused-view-no-nav.html	390x1472
+63469319783552923	Transactions - Details Refined Shapes	screens/transactions-details-refined-shapes.jpg	html/transactions-details-refined-shapes.html	390x842
+10339973839206114960	Transactions - Edit Metadata	screens/transactions-edit-metadata.jpg	html/transactions-edit-metadata.html	390x884

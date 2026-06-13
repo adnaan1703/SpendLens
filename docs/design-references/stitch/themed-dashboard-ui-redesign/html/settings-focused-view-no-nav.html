@@ -1,0 +1,312 @@
+<!DOCTYPE html><html class="light" lang="en" style=""><head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0" name="viewport">
+<title>Settings - FinMag</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<style>
+        /* Custom Fonts defined in Tailwind Config will need to be imported or defined, we assume Inter is available via standard mechanisms if not explicitly imported here, but we will import Inter for completeness as it's heavily used */
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;900&display=swap');
+        
+        /* Fallback for Wise Sans if not available locally */
+        @font-face {
+            font-family: 'Wise Sans';
+            src: local('Inter'), local('system-ui'); /* Fallback to Inter for demonstration */
+            font-weight: 900;
+        }
+    </style>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "primary": "#2f6c00",
+                        "body-text": "#454745",
+                        "surface": "#f7fbed",
+                        "on-primary-container": "#2e6900",
+                        "on-primary": "#ffffff",
+                        "error": "#ba1a1a",
+                        "surface-variant": "#e0e4d7",
+                        "mute": "#868685",
+                        "surface-container-highest": "#e0e4d7",
+                        "primary-active": "#cdffad",
+                        "tertiary": "#7e5161",
+                        "outline-variant": "#c1cab5",
+                        "secondary": "#456733",
+                        "surface-container": "#ecf0e2",
+                        "on-secondary-container": "#4a6c37",
+                        "positive": "#2ead4b",
+                        "on-tertiary": "#ffffff",
+                        "on-secondary-fixed-variant": "#2e4f1d",
+                        "negative": "#d03238",
+                        "ink": "#0e0f0c",
+                        "primary-fixed-dim": "#91d963",
+                        "tertiary-container": "#ffc5d7",
+                        "error-container": "#ffdad6",
+                        "surface-bright": "#f7fbed",
+                        "negative-bg": "#320707",
+                        "surface-container-low": "#f1f5e8",
+                        "primary-pale": "#e2f6d5",
+                        "inverse-surface": "#2d3229",
+                        "on-tertiary-fixed-variant": "#643a49",
+                        "tertiary-fixed": "#ffd9e3",
+                        "inverse-on-surface": "#eef2e5",
+                        "accent-cyan": "#38c8ff",
+                        "on-background": "#191d15",
+                        "accent-orange": "#ffc091",
+                        "surface-container-high": "#e6eadc",
+                        "outline": "#717a68",
+                        "primary-container": "#9fe870",
+                        "inverse-primary": "#91d963",
+                        "surface-container-lowest": "#ffffff",
+                        "on-error-container": "#93000a",
+                        "on-secondary": "#ffffff",
+                        "on-error": "#ffffff",
+                        "on-secondary-fixed": "#072100",
+                        "secondary-fixed-dim": "#abd292",
+                        "on-primary-fixed-variant": "#225100",
+                        "warning": "#ffd11a",
+                        "positive-deep": "#054d28",
+                        "canvas-soft": "#e8ebe6",
+                        "secondary-fixed": "#c6eeac",
+                        "warning-deep": "#b86700",
+                        "ink-deep": "#163300",
+                        "on-surface": "#191d15",
+                        "on-primary-fixed": "#092100",
+                        "secondary-container": "#c3ebaa",
+                        "on-tertiary-fixed": "#31101e",
+                        "surface-dim": "#d8dcce",
+                        "tertiary-fixed-dim": "#f0b7c9",
+                        "surface-tint": "#2f6c00",
+                        "background": "#f7fbed",
+                        "on-surface-variant": "#41493a",
+                        "on-tertiary-container": "#7b4f5e",
+                        "primary-fixed": "#acf67c"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "1.5rem", /* Updated to 24px as requested in text */
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "margin-mobile": "16px",
+                        "lg": "16px",
+                        "xxl": "32px",
+                        "3xl": "48px",
+                        "md": "12px",
+                        "sm": "8px",
+                        "2xl": "32px",
+                        "xxs": "2px",
+                        "margin-desktop": "48px",
+                        "xs": "4px",
+                        "xl": "24px",
+                        "gutter": "24px",
+                        "xxxl": "48px",
+                        "safe": "env(safe-area-inset-bottom)"
+                    },
+                    "fontFamily": {
+                        "display-lg": ["Wise Sans", "Inter", "system-ui", "sans-serif"],
+                        "body-sm": ["Inter", "system-ui", "sans-serif"],
+                        "caption": ["Inter", "system-ui", "sans-serif"],
+                        "body-sm-strong": ["Inter", "system-ui", "sans-serif"],
+                        "body-md-strong": ["Inter", "system-ui", "sans-serif"],
+                        "display-mega": ["Wise Sans", "Inter", "system-ui", "-apple-system", "sans-serif"],
+                        "display-xl": ["Wise Sans", "Inter", "system-ui", "sans-serif"],
+                        "body-lg": ["Inter", "system-ui", "sans-serif"],
+                        "display-sm": ["Inter", "system-ui", "sans-serif"],
+                        "display-xl-mobile": ["Inter"],
+                        "display-xs": ["Inter", "system-ui", "sans-serif"],
+                        "button": ["Inter"],
+                        "button-md": ["Inter", "system-ui", "sans-serif"],
+                        "body-md": ["Inter", "system-ui", "sans-serif"],
+                        "display-xxl": ["Wise Sans", "Inter", "system-ui", "sans-serif"],
+                        "display-md": ["Wise Sans", "Inter", "system-ui", "sans-serif"]
+                    },
+                    "fontSize": {
+                        "display-lg": ["47px", { "lineHeight": "70.5px", "letterSpacing": "-0.108px", "fontWeight": "400" }],
+                        "body-sm": ["14px", { "lineHeight": "20px", "fontWeight": "400" }],
+                        "caption": ["12px", { "lineHeight": "16px", "fontWeight": "400" }],
+                        "body-sm-strong": ["14px", { "lineHeight": "20px", "fontWeight": "600" }],
+                        "body-md-strong": ["16px", { "lineHeight": "24px", "fontWeight": "600" }],
+                        "display-mega": ["126px", { "lineHeight": "107.1px", "letterSpacing": "-0.04em", "fontWeight": "900" }],
+                        "display-xl": ["64px", { "lineHeight": "54.4px", "letterSpacing": "-0.02em", "fontWeight": "900" }],
+                        "body-lg": ["20px", { "lineHeight": "30px", "fontWeight": "400" }],
+                        "display-sm": ["32px", { "lineHeight": "38.4px", "letterSpacing": "-0.96px", "fontWeight": "600" }],
+                        "display-xl-mobile": ["48px", { "lineHeight": "44px", "letterSpacing": "-0.02em", "fontWeight": "900" }],
+                        "display-xs": ["24px", { "lineHeight": "31.2px", "letterSpacing": "-0.48px", "fontWeight": "600" }],
+                        "button": ["16px", { "lineHeight": "24px", "fontWeight": "600" }],
+                        "button-md": ["16px", { "lineHeight": "24px", "fontWeight": "600" }],
+                        "body-md": ["16px", { "lineHeight": "24px", "fontWeight": "400" }],
+                        "display-xxl": ["96px", { "lineHeight": "81.6px", "fontWeight": "900" }],
+                        "display-md": ["40px", { "lineHeight": "34px", "fontWeight": "900" }]
+                    }
+                }
+            }
+        }
+    </script>
+<link data-snapdom="injected-import" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;900&amp;display=swap" rel="stylesheet"></head>
+<body class="bg-canvas-soft min-h-screen text-ink font-body-md selection:bg-primary-pale pb-32">
+<!-- Top Navigation (Mobile Hidden, Desktop Flex) -->
+<header class="hidden md:flex justify-between items-center px-xl py-lg w-full bg-surface-container-lowest border-b-2 border-ink top-0 sticky z-40 shadow-sm">
+<div class="flex items-center gap-sm">
+<div class="w-10 h-10 rounded-full bg-canvas-soft overflow-hidden border border-ink">
+<img alt="" class="w-full h-full object-cover opacity-0" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAiJFH069RJFIu0u4twPKeQtDsmoC04FT-8-ZyOnhMXltpzrPwNpt-4gEiRN4qO0bcDLqzJY5lOANZTbNGlbctLW8JqpDhp7ROz1ePnreB4kRtTDchjV5_s-vhkqlPwAcjE3XaqgjlgRx86Gfv69eEiN_jkIA1pQ8v5tLnMz3H8dl3Cjba5264nIkyL-3UmPU7V464axaRZ9ZssKh9_FI4RugO0WVtWPBFTBXGXOmvwUxj1rcrERphxlb63qhKoK-9OM5kNcWcP0_AV"> <!-- Placeholder for avatar -->
+<span class="material-symbols-outlined w-full h-full flex items-center justify-center text-mute" data-icon="person">person</span>
+</div>
+<h1 class="font-display-md text-display-md font-black text-ink tracking-tight">FinMag</h1>
+</div>
+<nav class="flex gap-lg">
+<a class="text-body-text hover:bg-primary-pale px-md py-sm rounded-xl transition-colors font-body-sm-strong" href="#">Home</a>
+<a class="text-body-text hover:bg-primary-pale px-md py-sm rounded-xl transition-colors font-body-sm-strong" href="#">Activity</a>
+<a class="text-body-text hover:bg-primary-pale px-md py-sm rounded-xl transition-colors font-body-sm-strong" href="#">Trends</a>
+<a class="text-body-text hover:bg-primary-pale px-md py-sm rounded-xl transition-colors font-body-sm-strong" href="#">Queue</a>
+<a class="text-primary hover:bg-primary-pale px-md py-sm rounded-xl transition-colors font-body-sm-strong border-b-2 border-primary" href="#">Settings</a>
+</nav>
+<button class="p-sm rounded-full hover:bg-primary-pale transition-colors text-primary active:scale-95 duration-150">
+<span class="material-symbols-outlined" data-icon="notifications">notifications</span>
+</button>
+</header>
+<!-- Main Content Canvas -->
+<main class="max-w-3xl mx-auto px-margin-mobile md:px-margin-desktop pt-xl md:pt-xxxl space-y-xl">
+<!-- Header -->
+<div class="mb-xxl">
+<button class="mb-md flex items-center gap-xs text-primary hover:text-ink transition-colors active:scale-95">
+<span class="material-symbols-outlined">arrow_back</span>
+<span class="font-body-sm-strong">Back</span>
+</button><h1 class="font-display-xl-mobile md:font-display-xl text-display-xl-mobile md:text-display-xl font-black text-ink tracking-tight">Settings</h1>
+</div>
+<!-- Account & Runtime Card -->
+<section class="bg-surface-container-lowest rounded-xl p-xl shadow-sm border border-canvas-soft">
+<h2 class="font-display-xs text-display-xs mb-lg text-ink font-bold">Account &amp; Runtime</h2>
+<div class="space-y-md">
+<div class="flex justify-between items-center py-sm border-b border-canvas-soft">
+<span class="font-body-sm text-mute">Signed in as</span>
+<span class="font-body-md-strong text-ink">adnaan.again@gmail.com</span>
+</div>
+<div class="flex justify-between items-center py-sm border-b border-canvas-soft">
+<span class="font-body-sm text-mute">Household</span>
+<span class="font-body-md-strong text-ink">adnaan Household</span>
+</div>
+<div class="flex justify-between items-center py-sm">
+<span class="font-body-sm text-mute">Role</span>
+<span class="inline-flex px-sm py-xs bg-canvas-soft text-ink font-caption rounded-lg">owner</span>
+</div>
+</div>
+<div class="mt-lg pt-lg border-t border-canvas-soft">
+<button class="w-full bg-transparent border-2 border-ink text-ink font-button-md py-sm hover:bg-canvas-soft transition-colors active:scale-95 rounded-lg">Sign out</button>
+</div>
+</section>
+<!-- Categories Card -->
+<section class="bg-surface-container-lowest rounded-xl p-xl shadow-sm border border-canvas-soft">
+<div class="flex justify-between items-end mb-lg">
+<h2 class="font-display-xs text-display-xs text-ink font-bold">Categories</h2>
+<div class="flex gap-sm">
+<button class="bg-canvas-soft text-ink font-button-md px-md py-sm hover:bg-surface-variant transition-colors rounded-lg">Merge</button>
+<button class="bg-primary text-ink font-button-md px-md py-sm hover:bg-primary-active transition-colors rounded-lg">Create</button>
+</div>
+</div>
+<div class="space-y-sm">
+<!-- Category Item -->
+<div class="flex items-center justify-between p-md bg-canvas-soft rounded-lg group hover:bg-surface-variant transition-colors">
+<div class="flex items-center gap-md">
+<div class="w-8 h-8 rounded-full bg-surface-container-lowest flex items-center justify-center text-primary">
+<span class="material-symbols-outlined text-sm" data-icon="local_gas_station">local_gas_station</span>
+</div>
+<span class="font-body-md-strong text-ink">Petrol &amp; Energy</span>
+</div>
+<div class="flex gap-sm opacity-50 group-hover:opacity-100 transition-opacity">
+<button class="text-mute hover:text-ink rounded-lg"><span class="material-symbols-outlined text-sm" data-icon="edit">edit</span></button>
+<button class="text-mute hover:text-negative rounded-lg"><span class="material-symbols-outlined text-sm" data-icon="delete">delete</span></button>
+</div>
+</div>
+<!-- Category Item -->
+<div class="flex items-center justify-between p-md bg-canvas-soft rounded-lg group hover:bg-surface-variant transition-colors">
+<div class="flex items-center gap-md">
+<div class="w-8 h-8 rounded-full bg-surface-container-lowest flex items-center justify-center text-mute">
+<span class="material-symbols-outlined text-sm" data-icon="category">category</span>
+</div>
+<span class="font-body-md-strong text-ink">miscellaneous</span>
+</div>
+<div class="flex gap-sm opacity-50 group-hover:opacity-100 transition-opacity">
+<button class="text-mute hover:text-ink rounded-lg"><span class="material-symbols-outlined text-sm" data-icon="edit">edit</span></button>
+<button class="text-mute hover:text-negative rounded-lg"><span class="material-symbols-outlined text-sm" data-icon="delete">delete</span></button>
+</div>
+</div>
+</div>
+</section>
+<!-- Connectors Grid (Bento Style) -->
+<div class="grid grid-cols-1 md:grid-cols-2 gap-lg">
+<!-- Gmail Connector Card -->
+<section class="bg-surface-container-lowest rounded-xl p-xl shadow-sm border border-canvas-soft flex flex-col justify-between">
+<div>
+<div class="flex justify-between items-start mb-md">
+<div class="w-10 h-10 rounded-lg bg-surface-variant flex items-center justify-center text-negative">
+<span class="material-symbols-outlined" data-icon="mail">mail</span>
+</div>
+<span class="inline-flex px-sm py-xs bg-primary-pale text-positive-deep font-caption rounded-lg">Connected</span>
+</div>
+<h2 class="font-display-xs text-display-xs text-ink font-bold mb-xs">Gmail Importer</h2>
+<p class="font-body-sm text-mute mb-lg">Last synced: 2 hours ago</p>
+</div>
+<button class="w-full bg-canvas-soft text-ink font-button-md py-sm hover:bg-surface-variant transition-colors mt-auto rounded-lg">Disconnect</button>
+</section>
+<!-- AI Settings Card -->
+<section class="bg-ink rounded-xl p-xl shadow-sm text-on-primary border border-ink-deep flex flex-col justify-between">
+<div>
+<div class="flex justify-between items-start mb-md">
+<div class="w-10 h-10 rounded-lg bg-surface-variant/20 flex items-center justify-center text-primary">
+<span class="material-symbols-outlined" data-icon="smart_toy">smart_toy</span>
+</div>
+</div>
+<h2 class="font-display-xs text-display-xs text-on-primary font-bold mb-xs">AI Core</h2>
+<div class="space-y-sm mt-md">
+<div class="flex justify-between font-body-sm">
+<span class="text-mute">Provider</span>
+<span class="text-on-primary font-semibold">Gemini</span>
+</div>
+<div class="flex justify-between font-body-sm">
+<span class="text-mute">Model</span>
+<span class="text-on-primary font-semibold">Pro 1.5</span>
+</div>
+<div class="flex justify-between font-body-sm">
+<span class="text-mute">Usage</span>
+<span class="text-primary font-semibold">42% Quota</span>
+</div>
+</div>
+</div>
+<button class="w-full bg-transparent border border-outline text-on-primary font-button-md py-sm hover:bg-surface-variant/10 transition-colors mt-lg rounded-lg">Configure Limits</button>
+</section>
+</div>
+<!-- App Environment Footer Card -->
+<section class="bg-surface-variant rounded-xl p-lg shadow-inner mt-xl">
+<h3 class="font-body-sm-strong text-ink mb-md uppercase tracking-wide">System Environment</h3>
+<div class="grid grid-cols-2 gap-md text-sm">
+<div>
+<span class="block text-mute font-caption mb-xs">Environment</span>
+<span class="font-body-md-strong text-ink">Staging</span>
+</div>
+<div>
+<span class="block text-mute font-caption mb-xs">Database (Supabase)</span>
+<span class="font-body-md-strong text-positive flex items-center gap-xs rounded-lg">
+<span class="w-2 h-2 rounded-full bg-positive"></span> Ready
+                    </span>
+</div>
+<div class="col-span-2 mt-sm pt-sm border-t border-outline-variant/30">
+<span class="block text-mute font-caption mb-xs">Build Version</span>
+<span class="font-mono text-xs text-mute">v2.4.1-build.990 (com.finmag.staging)</span>
+</div>
+</div>
+</section>
+</main>
+<!-- Bottom Navigation Shell (Mobile Only, Desktop Hidden) -->
+<!-- Invisible pre-loader for images defined in prompt to satisfy criteria -->
+<div class="hidden">
+<img alt="hidden cache" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCppRm9v7_n-yUoTkci-blb005uzJuAHSRYJGYhxntgj3z9vm9M82h1J-kvw6B1U3UcU4ZHj6ZOwrwJR7YGkodA58kViAM1fgHrkZ8_tg0g8YDyzlQMxuLWJZuan-mWwxOA0ze4l7OyFPVNUo-JgO7n-EiI-0Qgcs52REwhMD9JcPKGUH1O8MplR4XfPfK7pWaLBnbErYJIzcu8kA3lZCPRHyh_xKAXsP9OgYCp0Jf7Wjj0USLSDqO6itssd0CUPmWqCwJCBIQJIWxO">
+<img alt="hidden cache" src="https://lh3.googleusercontent.com/aida-public/AB6AXuC3LRS6p4iufd1G8HcB7rGgpbqlNERi3nTs9mHT3menORYh1oKxITOk1HGlldsbARHoShlhyC5Lzptjm-ZyFgAXg8SCGofud03GnukpSWa2Ku8eg6nbBrTJ9BvrQLhw4iqsne42JnJHxMfL-OW-cCYs2wa3NFRBmPpgw3Kec0F6H8TqzB_gV9z0GpWSzIV307jEjNbUMvl8GKXGSd6jKvanNl8vXsd0Bz_60-qzFCIMv4fMP4O8_3H-xOKo9qG1em28d4YSQy2F4xeD">
+<img alt="hidden cache" src="https://lh3.googleusercontent.com/aida-public/AB6AXuC7wRrTXIs6Zz8zo3t1kX02ZUMLqlkYWbrc8ZHq_E7PPchn3maRUEcYkzJQ6k4FG1gesoMTw1qS_2TqWeh2Cy1XPcHWI3sS-tjXVzQwzXxDmNqciG6Y2yZeuryg2ItyDXszG8KwA_LEL5DjEMH22KSd34Hj0FEeHFS20XuFYYUKUsUqAkBX9XbTGOnwxGcT5elW3kpoQy6nH03D4z9-YxUnHY1IOCAjxoR9irzkBn9KYtAeYTewlG_MVoVbtTGiBiLQ7GEl1UrTKhY-">
+<img alt="hidden cache" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAiJFH069RJFIu0u4twPKeQtDsmoC04FT-8-ZyOnhMXltpzrPwNpt-4gEiRN4qO0bcDLqzJY5lOANZTbNGlbctLW8JqpDhp7ROz1ePnreB4kRtTDchjV5_s-vhkqlPwAcjE3XaqgjlgRx86Gfv69eEiN_jkIA1pQ8v5tLnMz3H8dl3Cjba5264nIkyL-3UmPU7V464axaRZ9ZssKh9_FI4RugO0WVtWPBFTBXGXOmvwUxj1rcrERphxlb63qhKoK-9OM5kNcWcP0_AV">
+</div>
+</body></html>
