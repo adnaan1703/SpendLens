@@ -1,6 +1,6 @@
 # SpendLens UI Redesign Plan
 
-Last updated: 2026-06-13
+Last updated: 2026-06-14
 
 This document is the implementation plan for the SpendLens UI redesign. Each
 milestone below is a standalone milestone intended to be executed in a separate
@@ -609,6 +609,8 @@ Completion notes:
 
 ## M42 - Activity Charts Mode
 
+Status: completed on 2026-06-14.
+
 Purpose: migrate Trends behavior into Activity Charts mode.
 
 Instructions:
@@ -657,6 +659,40 @@ Completion summary requirements:
 - Assumptions made
 - Mocks created
 - Mocks used
+
+Completion notes:
+
+- Replaced Activity's Charts placeholder with the existing Trends report
+  behavior inside the Activity segmented control.
+- Preserved `TrendReport`, `TrendQuery`, and `trendReportProvider` contracts
+  unchanged.
+- Preserved category, source type, source account, period/custom date filtering,
+  and filtered transaction CSV copy as a secondary action.
+- Rendered the Stitch hierarchy with gross spend, refunds, net spend, Monthly
+  Net Spend chart, Gross/Refunds/Net monthly table, and Category Trend card.
+- Kept chart and table content horizontally scrollable where needed on narrow
+  Android widths, while retaining a wider category trend table on larger
+  layouts.
+- Updated trend tests to open Activity Charts mode.
+- Verified no app/test code still navigates to `/trends`.
+- No Transaction Details redesign, Transaction Metadata Editor redesign,
+  Review/Vaults/Settings redesign, push-notification work, M43, or
+  later-milestone work was started.
+- Verification:
+  - `cd apps/mobile && dart format lib/src/features/activity/activity_screen.dart lib/src/features/trends/trends_screen.dart test/finance_features_test.dart`
+  - `cd apps/mobile && flutter analyze`
+  - `cd apps/mobile && flutter test test/finance_features_test.dart`
+  - `cd apps/mobile && flutter test`
+  - `git diff --check`
+- Assumptions made:
+  - The existing Trend report model/provider contracts remain the correct data
+    source for Activity Charts.
+  - The standalone `/trends` app route had already been removed by M39.
+- Mocks created:
+  - None.
+- Mocks used:
+  - `docs/design-references/stitch/themed-dashboard-ui-redesign/screens/activity-unified-navigation.jpg`
+  - `docs/design-references/stitch/themed-dashboard-ui-redesign/html/activity-unified-navigation.html`
 
 ## M43 - Transaction Details Surface
 

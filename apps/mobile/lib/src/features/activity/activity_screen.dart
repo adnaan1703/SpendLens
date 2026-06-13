@@ -3,8 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../data/repositories/household_repository.dart';
 import '../../shared/widgets/app_page.dart';
-import '../../shared/widgets/empty_state.dart';
 import '../transactions/transactions_screen.dart';
+import '../trends/trends_screen.dart';
 import 'activity_route.dart';
 
 enum _ActivityMode { list, charts }
@@ -57,7 +57,7 @@ class _ActivityScreenState extends ConsumerState<ActivityScreen> {
               initialFilters: widget.initialFilters,
               clearFiltersPath: ActivityScreen.routePath,
             ),
-            _ActivityMode.charts => const _ActivityChartsPlaceholder(),
+            _ActivityMode.charts => const ActivityChartsPane(),
           },
         ],
       ),
@@ -146,19 +146,6 @@ class _ActivityModeButton extends StatelessWidget {
           ),
         ),
       ),
-    );
-  }
-}
-
-class _ActivityChartsPlaceholder extends StatelessWidget {
-  const _ActivityChartsPlaceholder();
-
-  @override
-  Widget build(BuildContext context) {
-    return const EmptyState(
-      icon: Icons.query_stats_outlined,
-      title: 'Charts are coming next',
-      message: 'Activity charts are planned for the next milestone.',
     );
   }
 }

@@ -12,7 +12,6 @@ import 'package:spendlens/src/features/dashboard/dashboard_screen.dart';
 import 'package:spendlens/src/features/merchant_review/merchant_review_screen.dart';
 import 'package:spendlens/src/features/piggy_banks/piggy_banks_screen.dart';
 import 'package:spendlens/src/features/settings/settings_screen.dart';
-import 'package:spendlens/src/features/trends/trends_screen.dart';
 
 void main() {
   test('trend report aggregates monthly category and merchant totals', () {
@@ -1119,21 +1118,19 @@ void main() {
     expect(find.text('Swiggy Instamart'), findsNothing);
   });
 
-  testWidgets('trends render reports and refresh shared filters', (
+  testWidgets('activity charts render reports and refresh shared filters', (
     tester,
   ) async {
     final repository = _FakeFinanceRepository();
 
-    await tester.pumpWidget(
-      _financeTestApp(repository: repository, child: const TrendsReportPane()),
-    );
-    await tester.pumpAndSettle();
+    await _pumpActivityCharts(tester, repository);
 
+    expect(find.text('Activity'), findsOneWidget);
     expect(find.text('Monthly Net Spend'), findsOneWidget);
     expect(find.text('Gross, Refunds, Net'), findsOneWidget);
     expect(find.text('Category Trend'), findsOneWidget);
-    expect(find.text('Merchant Summary'), findsOneWidget);
-    expect(find.text('Swiggy Instamart'), findsWidgets);
+    expect(find.text('Food'), findsWidgets);
+    expect(find.text('Shopping'), findsWidgets);
     expect(repository.lastTrendQuery?.categoryId, isNull);
     expect(repository.lastTrendQuery?.startDate, isNull);
     expect(repository.lastTrendQuery?.endDate, isNull);
@@ -1145,7 +1142,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(repository.lastTrendQuery?.categoryId, 'cat-food');
-    expect(find.text('Amazon Pay'), findsNothing);
+    expect(find.text('Shopping'), findsNothing);
 
     await tester.tap(find.byType(DropdownButtonFormField<String>).last);
     await tester.pumpAndSettle();
@@ -1159,15 +1156,12 @@ void main() {
     expect(copyButton.onPressed, isNotNull);
   });
 
-  testWidgets('trends period month composes with shared filters', (
+  testWidgets('activity charts period month composes with shared filters', (
     tester,
   ) async {
     final repository = _FakeFinanceRepository();
 
-    await tester.pumpWidget(
-      _financeTestApp(repository: repository, child: const TrendsReportPane()),
-    );
-    await tester.pumpAndSettle();
+    await _pumpActivityCharts(tester, repository);
 
     await tester.tap(find.text('All dates'));
     await tester.pumpAndSettle();
@@ -1176,7 +1170,7 @@ void main() {
 
     expect(dateString(repository.lastTrendQuery!.startDate!), '2026-03-01');
     expect(dateString(repository.lastTrendQuery!.endDate!), '2026-03-31');
-    expect(find.text('CRED Club'), findsNothing);
+    expect(find.text('June 2026'), findsNothing);
 
     await tester.tap(find.byType(DropdownButtonFormField<String>).first);
     await tester.pumpAndSettle();
@@ -1186,6 +1180,7 @@ void main() {
     expect(repository.lastTrendQuery?.categoryId, 'cat-food');
     expect(dateString(repository.lastTrendQuery!.startDate!), '2026-03-01');
     expect(dateString(repository.lastTrendQuery!.endDate!), '2026-03-31');
+    expect(find.text('Shopping'), findsNothing);
 
     await tester.tap(find.byType(DropdownButtonFormField<String>).last);
     await tester.pumpAndSettle();
@@ -1198,15 +1193,12 @@ void main() {
     expect(dateString(repository.lastTrendQuery!.endDate!), '2026-03-31');
   });
 
-  testWidgets('trends source type filter separates UPI reporting', (
+  testWidgets('activity charts source type filter separates UPI reporting', (
     tester,
   ) async {
     final repository = _FakeFinanceRepository();
 
-    await tester.pumpWidget(
-      _financeTestApp(repository: repository, child: const TrendsReportPane()),
-    );
-    await tester.pumpAndSettle();
+    await _pumpActivityCharts(tester, repository);
 
     await tester.tap(find.byType(DropdownButtonFormField<String>).at(1));
     await tester.pumpAndSettle();
@@ -1214,8 +1206,8 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(repository.lastTrendQuery?.sourceAccountType, 'upi');
-    expect(find.text('CRED Club'), findsWidgets);
-    expect(find.text('Swiggy Instamart'), findsNothing);
+    expect(find.text('Shopping'), findsWidgets);
+    expect(find.text('Food'), findsNothing);
   });
 
   testWidgets('merchant review resolves an open item', (tester) async {
@@ -2097,6 +2089,18 @@ Widget _financeTestApp({
     ],
     child: MaterialApp(home: Scaffold(body: child)),
   );
+}
+
+Future<void> _pumpActivityCharts(
+  WidgetTester tester,
+  _FakeFinanceRepository repository,
+) async {
+  await tester.pumpWidget(
+    _financeTestApp(repository: repository, child: const ActivityScreen()),
+  );
+  await tester.pumpAndSettle();
+  await tester.tap(find.text('Charts'));
+  await tester.pumpAndSettle();
 }
 
 Widget _financeRouterTestApp({

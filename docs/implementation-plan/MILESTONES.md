@@ -1864,7 +1864,7 @@ Move transaction list behavior into Activity's List mode.
 
 ### Status
 
-Planned. See [UI Redesign](UI_REDESIGN.md#m42---activity-charts-mode).
+Completed on 2026-06-14. See [UI Redesign](UI_REDESIGN.md#m42---activity-charts-mode).
 
 ### Objective
 
@@ -1891,6 +1891,33 @@ Move Trends behavior into Activity's Charts mode.
 ### Deferred Scope
 
 - New analytics beyond current Trends behavior.
+
+### Completion Notes
+
+- Moved existing Trends report behavior into Activity's Charts mode.
+- Preserved trend report model/provider contracts, category/source
+  filtering, period filtering, and filtered transaction CSV copy.
+- Rendered the M42 Stitch hierarchy with gross/refunds/net cards, Monthly Net
+  Spend chart, Gross/Refunds/Net monthly table, and Category Trend card.
+- Kept chart and table content horizontally scrollable where needed on narrow
+  Android widths.
+- Updated trend tests to open Activity Charts mode.
+- Verified no app/test code still navigates to `/trends`.
+- Verification:
+  - `cd apps/mobile && dart format lib/src/features/activity/activity_screen.dart lib/src/features/trends/trends_screen.dart test/finance_features_test.dart`
+  - `cd apps/mobile && flutter analyze`
+  - `cd apps/mobile && flutter test test/finance_features_test.dart`
+  - `cd apps/mobile && flutter test`
+  - `git diff --check`
+- Assumptions made:
+  - The existing Trend report model/provider contracts remain the correct data
+    source for Activity Charts.
+  - The standalone `/trends` app route had already been removed by M39.
+- Mocks created:
+  - None.
+- Mocks used:
+  - `docs/design-references/stitch/themed-dashboard-ui-redesign/screens/activity-unified-navigation.jpg`
+  - `docs/design-references/stitch/themed-dashboard-ui-redesign/html/activity-unified-navigation.html`
 
 ## Milestone 43: Transaction Details Redesign
 
