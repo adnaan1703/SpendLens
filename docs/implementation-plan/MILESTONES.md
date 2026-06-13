@@ -1397,7 +1397,7 @@ the final behavior.
 
 ### Status
 
-Planned. See
+Completed on 2026-06-13. See
 [Monthly Caps](MONTHLY_CAPS.md#m32---recurring-cap-series-foundation).
 
 ### Objective

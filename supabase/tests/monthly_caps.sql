@@ -3,7 +3,7 @@ begin;
 create extension if not exists pgtap with schema extensions;
 set search_path = public, extensions;
 
-select plan(24);
+select plan(40);
 
 insert into auth.users (id)
 values
@@ -274,6 +274,266 @@ select is(
   'category-only cap progress excludes other categories and months'
 );
 
+create temporary table recurring_edit_cap as
+select *
+from public.upsert_monthly_cap(
+  p_household_id => '39000000-0000-0000-0000-000000000001',
+  p_name => 'Recurring food',
+  p_period_month => '2026-05-01',
+  p_cap_amount => 1100.00,
+  p_category_ids => array['59000000-0000-0000-0000-000000000001'::uuid]
+);
+
+select ok(
+  (select monthly_cap_version_id is not null from recurring_edit_cap),
+  'upsert returns the active monthly cap version id'
+);
+
+select is(
+  (
+    select count(*)::integer
+    from public.monthly_cap_series
+    where id = (select monthly_cap_id from recurring_edit_cap)
+  ),
+  1,
+  'upsert creates a stable recurring cap series'
+);
+
+create temporary table recurring_edit_june as
+select *
+from public.upsert_monthly_cap(
+  p_household_id => '39000000-0000-0000-0000-000000000001',
+  p_monthly_cap_id => (select monthly_cap_id from recurring_edit_cap),
+  p_name => 'Recurring food',
+  p_period_month => '2026-06-01',
+  p_cap_amount => 600.00,
+  p_category_ids => array['59000000-0000-0000-0000-000000000001'::uuid]
+);
+
+select is(
+  (
+    select count(*)::integer
+    from public.monthly_cap_versions
+    where monthly_cap_series_id = (select monthly_cap_id from recurring_edit_cap)
+  ),
+  2,
+  'editing a future month creates a new cap version'
+);
+
+select is(
+  (
+    select cap_amount
+    from public.get_monthly_cap_progress(
+      '39000000-0000-0000-0000-000000000001',
+      '2026-05-01'
+    )
+    where monthly_cap_id = (select monthly_cap_id from recurring_edit_cap)
+  ),
+  1100.00::numeric(14,2),
+  'future-month edits leave prior-month cap amount unchanged'
+);
+
+select is(
+  (
+    select cap_amount
+    from public.get_monthly_cap_progress(
+      '39000000-0000-0000-0000-000000000001',
+      '2026-06-01'
+    )
+    where monthly_cap_id = (select monthly_cap_id from recurring_edit_cap)
+  ),
+  600.00::numeric(14,2),
+  'future-month edits apply the new cap amount in the selected month'
+);
+
+select is(
+  (
+    select spent_amount
+    from public.get_monthly_cap_progress(
+      '39000000-0000-0000-0000-000000000001',
+      '2026-06-01'
+    )
+    where monthly_cap_id = (select monthly_cap_id from recurring_edit_cap)
+  ),
+  700.00::numeric(14,2),
+  'exact-month recurring progress uses transactions from the requested month'
+);
+
+create temporary table future_cap as
+select *
+from public.upsert_monthly_cap(
+  p_household_id => '39000000-0000-0000-0000-000000000001',
+  p_name => 'Future travel',
+  p_period_month => '2026-07-01',
+  p_cap_amount => 300.00,
+  p_category_ids => array['59000000-0000-0000-0000-000000000002'::uuid]
+);
+
+select is(
+  (
+    select spent_amount
+    from public.get_monthly_cap_progress(
+      '39000000-0000-0000-0000-000000000001',
+      '2026-07-01'
+    )
+    where monthly_cap_id = (select monthly_cap_id from future_cap)
+  ),
+  0.00::numeric(14,2),
+  'exact-month recurring progress returns caps even without transactions'
+);
+
+select ok(
+  exists (
+    select 1
+    from public.get_available_reporting_months(
+      '39000000-0000-0000-0000-000000000001'
+    )
+    where period_month = '2026-07-01'
+  ),
+  'available reporting months include recurring cap months without transactions'
+);
+
+insert into public.categories (id, household_id, name, sort_order)
+values
+  ('59000000-0000-0000-0000-000000000004', '39000000-0000-0000-0000-000000000001', 'Unused', 10),
+  ('59000000-0000-0000-0000-000000000005', '39000000-0000-0000-0000-000000000001', 'Source Merge', 11),
+  ('59000000-0000-0000-0000-000000000006', '39000000-0000-0000-0000-000000000001', 'Destination Merge', 12);
+
+create temporary table unused_category_cap as
+select *
+from public.upsert_monthly_cap(
+  p_household_id => '39000000-0000-0000-0000-000000000001',
+  p_name => 'Unused category cap',
+  p_period_month => '2026-08-01',
+  p_cap_amount => 100.00,
+  p_category_ids => array['59000000-0000-0000-0000-000000000004'::uuid]
+);
+
+create temporary table deleted_unused_category as
+select *
+from public.delete_household_category(
+  '39000000-0000-0000-0000-000000000001',
+  '59000000-0000-0000-0000-000000000004'
+);
+
+select is((select deleted_cap_count from deleted_unused_category), 1, 'category delete removes versioned caps left without targets');
+select is(
+  (
+    select count(*)::integer
+    from public.monthly_cap_series
+    where id = (select monthly_cap_id from unused_category_cap)
+  ),
+  0,
+  'category delete prunes orphan recurring cap series'
+);
+
+create temporary table source_merge_cap as
+select *
+from public.upsert_monthly_cap(
+  p_household_id => '39000000-0000-0000-0000-000000000001',
+  p_name => 'Source merge cap',
+  p_period_month => '2026-08-01',
+  p_cap_amount => 100.00,
+  p_category_ids => array['59000000-0000-0000-0000-000000000005'::uuid]
+);
+
+create temporary table merged_unused_category as
+select *
+from public.merge_household_categories(
+  '39000000-0000-0000-0000-000000000001',
+  '59000000-0000-0000-0000-000000000006',
+  'Destination Merge',
+  array['59000000-0000-0000-0000-000000000005'::uuid],
+  '[]'::jsonb
+);
+
+select is((select merged_cap_count from merged_unused_category), 1, 'category merge reports versioned cap target repoints');
+select is(
+  (
+    select count(*)::integer
+    from public.monthly_cap_version_categories
+    where monthly_cap_version_id = (
+      select monthly_cap_version_id from source_merge_cap
+    )
+      and category_id = '59000000-0000-0000-0000-000000000006'
+  ),
+  1,
+  'category merge repoints versioned category targets'
+);
+
+create temporary table reimburse_label_cap as
+select *
+from public.upsert_monthly_cap(
+  p_household_id => '39000000-0000-0000-0000-000000000001',
+  p_name => 'Reimburse label cap',
+  p_period_month => '2026-08-01',
+  p_cap_amount => 100.00,
+  p_label_ids => array['89000000-0000-0000-0000-000000000002'::uuid]
+);
+
+create temporary table deleted_reimburse_label as
+select *
+from public.delete_household_label(
+  '39000000-0000-0000-0000-000000000001',
+  '89000000-0000-0000-0000-000000000002'
+);
+
+select is(
+  (
+    select count(*)::integer
+    from public.monthly_cap_version_labels
+    where monthly_cap_version_id = (
+      select monthly_cap_version_id from reimburse_label_cap
+    )
+  ),
+  0,
+  'label delete removes versioned label targets'
+);
+
+select is(
+  (
+    select count(*)::integer
+    from public.monthly_cap_series
+    where id = (select monthly_cap_id from reimburse_label_cap)
+  ),
+  0,
+  'label delete prunes orphan recurring cap series'
+);
+
+create temporary table stopped_recurring_cap as
+select *
+from public.delete_monthly_cap(
+  '39000000-0000-0000-0000-000000000001',
+  (select monthly_cap_id from recurring_edit_cap),
+  '2026-06-01'
+);
+
+select is(
+  (
+    select count(*)::integer
+    from public.get_monthly_cap_progress(
+      '39000000-0000-0000-0000-000000000001',
+      '2026-05-01'
+    )
+    where monthly_cap_id = (select monthly_cap_id from recurring_edit_cap)
+  ),
+  1,
+  'delete_monthly_cap preserves prior recurring months'
+);
+
+select is(
+  (
+    select count(*)::integer
+    from public.get_monthly_cap_progress(
+      '39000000-0000-0000-0000-000000000001',
+      '2026-06-01'
+    )
+    where monthly_cap_id = (select monthly_cap_id from recurring_edit_cap)
+  ),
+  0,
+  'delete_monthly_cap hides the selected month and future months'
+);
+
 update public.categories
 set name = 'Meals'
 where id = '59000000-0000-0000-0000-000000000001';
@@ -461,7 +721,7 @@ select is(
     from public.v_monthly_cap_progress
     where household_id = '39000000-0000-0000-0000-000000000001'
   ),
-  3,
+  6,
   'household viewers can select monthly cap progress'
 );
 

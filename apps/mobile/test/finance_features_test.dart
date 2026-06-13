@@ -346,6 +346,7 @@ void main() {
     expect(changedRequest.categoryIds, ['cat-fuel']);
     expect(changedRequest.labelIds, ['label-grocery']);
     expect(changedRequest.capAmount, 30000);
+    expect(changedRequest.carryForwardEnabled, false);
   });
 
   testWidgets('dashboard deletes caps after confirmation', (tester) async {
@@ -374,6 +375,10 @@ void main() {
 
     expect(repository.monthlyCapDeleteRequests, hasLength(1));
     expect(repository.monthlyCapDeleteRequests.single.monthlyCapId, 'cap-food');
+    expect(
+      repository.monthlyCapDeleteRequests.single.periodMonth,
+      DateTime(2026, 3),
+    );
   });
 
   testWidgets('dashboard renders cap progress and target chips', (
@@ -383,10 +388,15 @@ void main() {
       ..monthlyCapProgress.add(
         MonthlyCapProgress(
           monthlyCapId: 'cap-mixed',
+          monthlyCapVersionId: 'cap-version-mixed',
           householdId: 'household-1',
           name: 'Very long category and label cap name for a narrow screen',
           periodMonth: DateTime(2026, 3),
           capAmount: 12000,
+          baseCapAmount: 12000,
+          carryForwardEnabled: false,
+          carryForwardAmount: 0,
+          effectiveCapAmount: 12000,
           spentAmount: 3000,
           remainingAmount: 9000,
           percentUsed: 0.25,
@@ -1979,10 +1989,15 @@ final class _FakeFinanceRepository implements FinanceRepository {
   final monthlyCapProgress = <MonthlyCapProgress>[
     MonthlyCapProgress(
       monthlyCapId: 'cap-food',
+      monthlyCapVersionId: 'cap-version-food',
       householdId: 'household-1',
       name: 'Food',
       periodMonth: DateTime(2026, 3),
       capAmount: 50000,
+      baseCapAmount: 50000,
+      carryForwardEnabled: false,
+      carryForwardAmount: 0,
+      effectiveCapAmount: 50000,
       spentAmount: 42000,
       remainingAmount: 8000,
       percentUsed: 0.84,
@@ -1995,10 +2010,15 @@ final class _FakeFinanceRepository implements FinanceRepository {
     ),
     MonthlyCapProgress(
       monthlyCapId: 'cap-shopping',
+      monthlyCapVersionId: 'cap-version-shopping',
       householdId: 'household-1',
       name: 'Shopping',
       periodMonth: DateTime(2026, 3),
       capAmount: 100000,
+      baseCapAmount: 100000,
+      carryForwardEnabled: false,
+      carryForwardAmount: 0,
+      effectiveCapAmount: 100000,
       spentAmount: 112937,
       remainingAmount: -12937,
       percentUsed: 1.1294,
@@ -3115,10 +3135,15 @@ final class _FakeFinanceRepository implements FinanceRepository {
         'cap-created-${monthlyCapUpsertRequests.length}';
     final progress = MonthlyCapProgress(
       monthlyCapId: monthlyCapId,
+      monthlyCapVersionId: 'cap-version-$monthlyCapId',
       householdId: request.householdId,
       name: request.name.trim(),
       periodMonth: firstDayOfMonth(request.periodMonth),
       capAmount: request.capAmount,
+      baseCapAmount: request.capAmount,
+      carryForwardEnabled: request.carryForwardEnabled,
+      carryForwardAmount: 0,
+      effectiveCapAmount: request.capAmount,
       spentAmount: 0,
       remainingAmount: request.capAmount,
       percentUsed: request.capAmount == 0 ? null : 0,
@@ -3138,10 +3163,13 @@ final class _FakeFinanceRepository implements FinanceRepository {
 
     return MonthlyCapUpsertResult(
       monthlyCapId: monthlyCapId,
+      monthlyCapVersionId: 'cap-version-$monthlyCapId',
       householdId: request.householdId,
       name: request.name.trim(),
       periodMonth: firstDayOfMonth(request.periodMonth),
       capAmount: request.capAmount,
+      baseCapAmount: request.capAmount,
+      carryForwardEnabled: request.carryForwardEnabled,
       categoryTargets: categoryTargets,
       labelTargets: labelTargets,
     );
@@ -3155,7 +3183,10 @@ final class _FakeFinanceRepository implements FinanceRepository {
     monthlyCapProgress.removeWhere(
       (cap) => cap.monthlyCapId == request.monthlyCapId,
     );
-    return MonthlyCapDeleteResult(monthlyCapId: request.monthlyCapId);
+    return MonthlyCapDeleteResult(
+      monthlyCapId: request.monthlyCapId,
+      stoppedFromMonth: firstDayOfMonth(request.periodMonth),
+    );
   }
 
   PiggyBankSummary _summaryWithCurrentBalance(PiggyBankSummary piggyBank) {
@@ -3254,10 +3285,15 @@ MonthlyCapProgress _copyMonthlyCapProgress(
 }) {
   return MonthlyCapProgress(
     monthlyCapId: cap.monthlyCapId,
+    monthlyCapVersionId: cap.monthlyCapVersionId,
     householdId: cap.householdId,
     name: cap.name,
     periodMonth: cap.periodMonth,
     capAmount: cap.capAmount,
+    baseCapAmount: cap.baseCapAmount,
+    carryForwardEnabled: cap.carryForwardEnabled,
+    carryForwardAmount: cap.carryForwardAmount,
+    effectiveCapAmount: cap.effectiveCapAmount,
     spentAmount: cap.spentAmount,
     remainingAmount: cap.remainingAmount,
     percentUsed: cap.percentUsed,

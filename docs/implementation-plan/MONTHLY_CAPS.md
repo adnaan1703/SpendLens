@@ -24,10 +24,10 @@ it once for that cap. Overlapping caps are allowed: the same transaction can
 contribute to more than one cap when the user intentionally creates caps with
 overlapping targets.
 
-The completed M29-M31 version supports:
+The completed M29-M32 version supports:
 
 - Migrating existing category caps into named monthly caps.
-- Creating, editing, and deleting named monthly caps from Dashboard.
+- Creating, editing, and stopping named recurring monthly caps from Dashboard.
 - Selecting multiple categories and multiple labels while creating or editing a
   cap.
 - Showing progress, remaining amount, percent used, over-budget state, matched
@@ -35,12 +35,15 @@ The completed M29-M31 version supports:
 - Preserving transaction classification and label assignment semantics. Cap
   edits do not recategorize transactions, assign labels, change merchant rules,
   or send transactions to Review.
+- Keeping stable recurring cap series identity with month-effective versions,
+  so edits and deletes apply from the selected month forward while prior months
+  remain readable.
+- Returning cap progress for exact months even when a recurring cap has no
+  matching transactions in that month.
 
-The planned M32-M35 sequence adds recurring monthly caps. Every user-created
-cap is recurring by default. A recurring cap has a stable series identity, and
-edits or deletes apply from the selected month forward while prior months remain
-historical. Each recurring cap can optionally carry forward the previous
-month's remaining amount into the next month:
+The planned M33-M35 sequence adds carry-forward behavior. Each recurring cap can
+optionally carry forward the previous month's remaining amount into the next
+month:
 
 - If the base cap is INR 10,000 and the prior month spent INR 8,000, the next
   month carries `+INR 2,000` and has an effective cap of INR 12,000.
@@ -56,11 +59,16 @@ month's remaining amount into the next month:
 - Flutter finance data flows through
   `apps/mobile/lib/src/data/repositories/finance_repository.dart`.
 - Dashboard tests live in `apps/mobile/test/finance_features_test.dart`.
-- Completed M29-M31 cap plumbing uses `public.monthly_caps`,
-  `public.monthly_cap_categories`, `public.monthly_cap_labels`,
-  `public.upsert_monthly_cap`, `public.delete_monthly_cap`,
-  `public.v_monthly_cap_progress`, `MonthlyCapProgress`,
+- Completed M29-M32 cap plumbing uses `public.monthly_cap_series`,
+  `public.monthly_cap_versions`, `public.monthly_cap_version_categories`,
+  `public.monthly_cap_version_labels`, `public.upsert_monthly_cap`,
+  `public.delete_monthly_cap`, `public.get_monthly_cap_progress`,
+  `public.get_available_reporting_months`, `MonthlyCapProgress`,
   `MonthlyCapUpsertRequest`, and `MonthlyCapDeleteRequest`.
+- `public.monthly_caps`, `public.monthly_cap_categories`,
+  `public.monthly_cap_labels`, and `public.v_monthly_cap_progress` remain as
+  compatibility tables/views for migrated history, older SQL coverage, and
+  lifecycle bridging.
 - Legacy category-only caps use `public.category_caps` and
   `public.v_budget_progress` for backfill and compatibility history only.
 - Categories are household-scoped in `public.categories`; category management
@@ -494,6 +502,8 @@ Completion summary requirements:
 
 ## M32 - Recurring Cap Series Foundation
 
+Completed on 2026-06-13.
+
 Purpose: Introduce stable recurring cap identity and current/future cap
 versioning before adding carry-forward calculations or Dashboard copy.
 
@@ -607,6 +617,23 @@ Completion summary requirements:
 - Assumptions made
 - Mocks created
 - Mocks used
+
+Completion notes:
+
+- Added `monthly_cap_series`, `monthly_cap_versions`, versioned category/label
+  target tables, RLS policies, explicit authenticated grants, and a backfill
+  from existing M29-M31 monthly caps.
+- Replaced active cap mutation semantics so creates make a stable recurring
+  series, edits write a selected-month version, and deletes stop the series from
+  the selected month forward while preserving prior progress.
+- Added `get_monthly_cap_progress` for exact-month cap progress and
+  `get_available_reporting_months` so recurring cap months can appear before
+  transactions exist.
+- Updated Flutter repository models and Dashboard delete wording while keeping
+  carry-forward display copy deferred.
+- Added pgTAP coverage for selected-month edit/delete behavior, zero-transaction
+  recurring progress, cap-driven available months, and versioned target cleanup
+  after category delete, category merge, and label delete.
 
 ## M33 - Carry-Forward Progress Semantics
 

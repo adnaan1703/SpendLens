@@ -148,6 +148,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
             name: formValue.name,
             periodMonth: snapshot.selectedMonth,
             capAmount: formValue.amount,
+            carryForwardEnabled: existingCap?.carryForwardEnabled ?? false,
             categoryIds: formValue.categoryIds,
             labelIds: formValue.labelIds,
           ),
@@ -173,7 +174,9 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
       builder: (context) {
         return AlertDialog(
           title: Text('Delete ${cap.name}?'),
-          content: const Text('This removes only the cap and its targets.'),
+          content: Text(
+            'This stops the cap from ${formatMonth(snapshot.selectedMonth)} onward. Earlier months stay visible.',
+          ),
           actions: [
             TextButton(
               onPressed: () => Navigator.of(context).pop(false),
@@ -197,6 +200,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
           MonthlyCapDeleteRequest(
             householdId: householdContext.household.id,
             monthlyCapId: cap.monthlyCapId,
+            periodMonth: snapshot.selectedMonth,
           ),
         );
 
@@ -205,7 +209,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     if (context.mounted) {
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(SnackBar(content: Text('${cap.name} cap deleted')));
+      ).showSnackBar(SnackBar(content: Text('${cap.name} cap stopped')));
     }
   }
 

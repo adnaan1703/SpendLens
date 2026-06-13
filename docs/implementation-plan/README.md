@@ -49,9 +49,10 @@ This is not a "no backend" architecture. It is a backend without a permanently r
 
 - Usage model: personal plus household.
 - Currency: INR.
-- Monthly caps: required-name caps can target multiple categories and/or
-  multiple labels. Milestones 32-35 plan recurring caps with optional positive
-  or negative carry-forward into the next month.
+- Monthly caps: required-name recurring caps can target multiple categories
+  and/or multiple labels. Edits and deletes apply from the selected month
+  forward while prior months remain readable. Milestones 33-35 plan optional
+  positive or negative carry-forward into the next month.
 - Piggy banks: manual ledger accounts in v1.
 - Merchant corrections: apply to matching past and future transactions.
 - Transaction metadata edits: apply to the matching normalized statement merchant
@@ -65,11 +66,12 @@ This is not a "no backend" architecture. It is a backend without a permanently r
   counts and delete-with-detach confirmation. Label changes do not alter
   merchant mapping, categories, review state, budgets, summaries, or future
   imports.
-- Multi-target monthly caps: required-name caps can include multiple
+- Multi-target monthly caps: required-name recurring caps can include multiple
   categories, multiple labels, or both. A transaction counts once inside a cap
   when any selected category or label matches; overlapping caps are allowed.
-  Planned recurring caps apply edits/deletes from the selected month forward
-  and can optionally carry positive or negative remainder into the next month.
+  Recurring cap edits/deletes apply from the selected month forward and can
+  optionally carry positive or negative remainder into the next month after the
+  carry-forward milestones are implemented.
 - Email retention: store minimal parsed data only; do not retain raw email bodies by default.
 - AI: backend-mediated Gemini expense Q&A and transaction metadata suggestions; dev/staging use free-tier-only mode with Suggest search disabled by default.
 - Android push notifications: Firebase Cloud Messaging delivery, Supabase

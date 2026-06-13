@@ -232,14 +232,17 @@ Important fields:
 Rules:
 
 - `period_month` is the first day of the month.
-- Active app reads and writes use `monthly_caps`, `monthly_cap_categories`,
-  `monthly_cap_labels`, `upsert_monthly_cap`, `delete_monthly_cap`, and
-  `v_monthly_cap_progress`.
+- Active app reads and writes use recurring cap series through
+  `monthly_cap_series`, `monthly_cap_versions`,
+  `monthly_cap_version_categories`, `monthly_cap_version_labels`,
+  `upsert_monthly_cap`, `delete_monthly_cap`, `get_monthly_cap_progress`, and
+  `get_available_reporting_months`.
 - `v_budget_progress` is retained only as a category-only compatibility view
   over monthly caps.
-- Milestones 32-35 plan to introduce recurring cap series and versioned cap
-  configuration. Until those milestones are implemented, this legacy table and
-  the completed M29-M31 monthly cap tables remain the active local schema.
+- `monthly_caps`, `monthly_cap_categories`, and `monthly_cap_labels` are
+  retained as compatibility snapshot tables for migrated history, older summary
+  views, and category/label lifecycle bridging. New Flutter reads do not use
+  `category_caps`.
 
 Unique constraint:
 
@@ -247,7 +250,10 @@ Unique constraint:
 
 ### `monthly_caps`
 
-Named monthly cap definition from the completed M29-M31 implementation.
+Compatibility snapshot for named monthly caps from the completed M29-M31
+implementation. After M32, the stable app-facing cap identity is
+`monthly_cap_series.id`; RPC writes keep this table usable for legacy views and
+tests while exact-month app progress comes from recurring series/version rows.
 
 Important fields:
 
@@ -274,10 +280,8 @@ Rules:
   multiple caps.
 - Cap edits do not change transaction categories, labels, merchant mappings,
   review state, importer behavior, or future Gmail classification.
-- Milestones 32-35 plan to make Dashboard-created caps recurring by default.
-  The recurring model must preserve historical months, apply edits/deletes from
-  the selected month forward, and keep this table or compatibility views usable
-  only as long as active app reads require them.
+- Dashboard-created caps are recurring by default after M32. This table is no
+  longer the source of truth for historical versioning.
 
 ### `monthly_cap_categories`
 
@@ -316,26 +320,98 @@ Rules:
   label targets, the cap is deleted.
 - Label rename preserves target behavior because caps reference label IDs.
 
-### Planned recurring monthly cap model (M32-M35)
+### `monthly_cap_series`
 
-Planned recurring cap and carry-forward model. This is not active schema until
-Milestones 32-35 are implemented.
+Stable household-scoped identity for a recurring monthly cap.
 
-Important planned records:
+Important fields:
 
-- Recurring cap series with stable household-scoped identity.
-- Month-effective cap version rows with required name, base monthly amount,
-  optional carry-forward flag, and lifecycle metadata.
-- Versioned category targets tied to the active cap version.
-- Versioned label targets tied to the active cap version.
+- `id uuid primary key`
+- `household_id uuid references households(id)`
+- `created_by uuid references profiles(id)`
+- `stopped_from_month date null`
+- `created_at timestamptz`
+- `updated_at timestamptz`
 
 Rules:
 
-- Every user-created cap is recurring by default after M32.
 - Recurring cap identity is explicit; do not infer recurrence from matching
   names, amounts, or target sets.
-- Edits and deletes apply from the selected month forward while prior months
-  remain historical.
+- `stopped_from_month` is the first month hidden by a delete/stop action. Prior
+  months remain readable through their active version.
+
+### `monthly_cap_versions`
+
+Month-effective cap configuration for a recurring cap series.
+
+Important fields:
+
+- `id uuid primary key`
+- `household_id uuid references households(id)`
+- `monthly_cap_series_id uuid references monthly_cap_series(id)`
+- `effective_month date not null`
+- `name text not null`
+- `base_amount numeric(14,2) not null`
+- `carry_forward_enabled boolean not null default false`
+- `created_by uuid references profiles(id)`
+- `created_at timestamptz`
+- `updated_at timestamptz`
+
+Rules:
+
+- `effective_month` is the first day of the month.
+- A series can have only one version for a given effective month.
+- Edits create or replace the selected month's version and leave older months
+  readable through older versions.
+- Carry-forward is disabled by default in M32. Later milestones add the actual
+  carry-forward amount calculation and Dashboard copy.
+- Category/label matching semantics stay unchanged: category OR label target
+  match, one transaction counted once per cap, and overlap allowed across
+  separate caps.
+
+### `monthly_cap_version_categories`
+
+Versioned category targets for recurring monthly caps.
+
+Important fields:
+
+- `household_id uuid references households(id)`
+- `monthly_cap_version_id uuid references monthly_cap_versions(id)`
+- `category_id uuid references categories(id)`
+- `created_at timestamptz`
+
+Rules:
+
+- Targets belong to a specific cap version so historical months can retain the
+  targets active for that version.
+- Category delete removes affected targets and prunes cap versions/series left
+  without any category or label targets.
+- Category merge repoints source category targets to the surviving category and
+  dedupes duplicates.
+
+### `monthly_cap_version_labels`
+
+Versioned label targets for recurring monthly caps.
+
+Important fields:
+
+- `household_id uuid references households(id)`
+- `monthly_cap_version_id uuid references monthly_cap_versions(id)`
+- `label_id uuid references labels(id)`
+- `created_at timestamptz`
+
+Rules:
+
+- Targets belong to a specific cap version.
+- Label delete removes affected targets and prunes cap versions/series left
+  without any category or label targets.
+- Label rename preserves target behavior because caps reference label IDs.
+
+### Planned carry-forward semantics (M33-M35)
+
+Carry-forward is not calculated or shown by M32. Milestones 33-35 plan these
+rules:
+
 - Carry-forward is optional per recurring cap and defaults off.
 - Carry-forward can be positive or negative. It is derived as previous month's
   effective cap minus previous month's spend for the same active cap series.
@@ -345,13 +421,10 @@ Rules:
   spend compared with the base cap.
 - Carry-forward chains only across active months for the same cap series while
   carry-forward remains enabled.
-- Category/label matching semantics stay unchanged: category OR label target
-  match, one transaction counted once per cap, and overlap allowed across
-  separate caps.
-- Planned app-facing progress responses should expose base cap amount,
-  carry-forward enabled state, carry-forward amount, effective cap amount,
-  spent amount, remaining amount, percent used, over-budget state, matched
-  transaction count, and target names/IDs.
+- App-facing progress responses already expose base cap amount, carry-forward
+  enabled state, carry-forward amount, effective cap amount, spent amount,
+  remaining amount, percent used, over-budget state, matched transaction count,
+  and target names/IDs; M32 keeps carry-forward amount at zero.
 
 ## Merchants and Mapping
 
