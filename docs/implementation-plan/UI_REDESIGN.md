@@ -421,6 +421,8 @@ Completion notes:
 
 ## M40 - Dashboard Screen
 
+Status: completed on 2026-06-14.
+
 Purpose: rebuild Dashboard to match the Stitch dashboard mock while preserving
 finance behavior.
 
@@ -480,6 +482,40 @@ Completion summary requirements:
 - Assumptions made
 - Mocks created
 - Mocks used
+
+Completion notes:
+
+- Rebuilt Dashboard around the Stitch dashboard hierarchy: large Dashboard
+  display title with compact month pill, Spending section, large net-spend
+  card, month-change card, Review queue card, Monthly caps progress rows, Top
+  categories cards, and Top merchants cards.
+- Preserved selected reporting month, current month net spend,
+  month-over-month amount/percent, review queue count, recurring monthly caps,
+  cap add/edit/delete, carry-forward display, top category drilldown, and top
+  merchant drilldown.
+- Kept Dashboard category and merchant drilldowns routed to `/activity` with
+  equivalent month/category/merchant filters.
+- Added a 390px Dashboard hierarchy widget regression test.
+- No Activity List mode migration, Activity Charts migration,
+  Review/Vaults/Settings visual redesign, cap backend/schema/RPC work, hosted
+  rollout, push notification, M41, or later-milestone work was started.
+- Verification:
+  - `cd apps/mobile && dart format lib/src/features/dashboard/dashboard_screen.dart test/finance_features_test.dart`
+  - `cd apps/mobile && flutter analyze`
+  - `cd apps/mobile && flutter test test/finance_features_test.dart`
+  - `cd apps/mobile && flutter test`
+  - `git diff --check`
+- Assumptions made:
+  - The existing shell settings affordance added in M39 remains the Dashboard
+    settings affordance for M40, so Dashboard itself does not add a second
+    settings button.
+  - The existing cap form remains functionally intact for M40; broader
+    modal/sheet polish remains deferred to M50.
+- Mocks created:
+  - None.
+- Mocks used:
+  - `docs/design-references/stitch/themed-dashboard-ui-redesign/screens/dashboard-unified-navigation.jpg`
+  - `docs/design-references/stitch/themed-dashboard-ui-redesign/html/dashboard-unified-navigation.html`
 
 ## M41 - Activity List Mode
 

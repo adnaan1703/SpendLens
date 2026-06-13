@@ -2,12 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../core/bootstrap/app_bootstrap.dart';
+import '../../core/theme/app_theme.dart';
 import '../../data/repositories/finance_repository.dart';
 import '../../data/repositories/household_repository.dart';
-import '../../shared/widgets/app_page.dart';
-import '../../shared/widgets/empty_state.dart';
-import '../../shared/widgets/metric_card.dart';
+import '../../shared/widgets/app_primitives.dart';
 import '../activity/activity_screen.dart';
 
 class DashboardScreen extends ConsumerStatefulWidget {
@@ -24,7 +22,6 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final bootstrap = ref.watch(appBootstrapProvider);
     final householdContext = ref.watch(householdContextProvider).value;
     final householdId = householdContext?.household.id;
     final snapshotState = householdId == null
@@ -40,7 +37,6 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
 
     return AppPage(
       title: 'Dashboard',
-      subtitle: householdContext?.household.name ?? 'Current household',
       actions: [
         if (snapshotState.hasValue)
           _MonthSelector(
@@ -56,8 +52,6 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
       child: switch (snapshotState) {
         AsyncValue(:final value?) => _DashboardContent(
           snapshot: value,
-          backendLabel: _backendLabel(bootstrap.supabaseStatus),
-          isSupabaseReady: bootstrap.isSupabaseReady,
           onAddCap: householdContext == null
               ? null
               : () {
@@ -108,14 +102,6 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
         _ => const Center(child: CircularProgressIndicator()),
       },
     );
-  }
-
-  String _backendLabel(SupabaseStatus status) {
-    return switch (status) {
-      SupabaseStatus.ready => 'Ready',
-      SupabaseStatus.failed => 'Error',
-      SupabaseStatus.notConfigured => 'Local',
-    };
   }
 
   Future<void> _showCapDialog({
@@ -260,8 +246,6 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
 class _DashboardContent extends StatelessWidget {
   const _DashboardContent({
     required this.snapshot,
-    required this.backendLabel,
-    required this.isSupabaseReady,
     required this.onAddCap,
     required this.onEditCap,
     required this.onDeleteCap,
@@ -270,8 +254,6 @@ class _DashboardContent extends StatelessWidget {
   });
 
   final DashboardSnapshot snapshot;
-  final String backendLabel;
-  final bool isSupabaseReady;
   final VoidCallback? onAddCap;
   final ValueChanged<MonthlyCapProgress>? onEditCap;
   final ValueChanged<MonthlyCapProgress>? onDeleteCap;
@@ -280,68 +262,37 @@ class _DashboardContent extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Wrap(
-          spacing: 12,
-          runSpacing: 12,
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final width = constraints.hasBoundedWidth
+            ? constraints.maxWidth
+            : MediaQuery.sizeOf(context).width;
+        final sectionGap = width >= AppResponsiveBreakpoints.tabletMinWidth
+            ? 36.0
+            : 32.0;
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            MetricCard(
-              label: '${formatMonth(snapshot.selectedMonth)} net',
-              value: formatMoney(snapshot.monthlySpend.netSpend),
-              icon: Icons.payments_outlined,
-              supportingText:
-                  '${snapshot.monthlySpend.transactionCount} transactions',
+            _SpendingSection(snapshot: snapshot),
+            SizedBox(height: sectionGap),
+            _ReviewSection(reviewQueueCount: snapshot.reviewQueueCount),
+            SizedBox(height: sectionGap),
+            _MonthlyCapsSection(
+              snapshot: snapshot,
+              onAddCap: onAddCap,
+              onEditCap: onEditCap,
+              onDeleteCap: onDeleteCap,
             ),
-            MetricCard(
-              label: 'Month change',
-              value: formatSignedMoney(snapshot.monthOverMonthChange),
-              icon: Icons.trending_up,
-              supportingText: snapshot.monthOverMonthPercent == null
-                  ? 'No previous month'
-                  : formatPercent(snapshot.monthOverMonthPercent!),
-            ),
-            MetricCard(
-              label: 'Review queue',
-              value: snapshot.reviewQueueCount.toString(),
-              icon: Icons.rule_folder_outlined,
-              supportingText: snapshot.reviewQueueCount == 1
-                  ? 'Open item'
-                  : 'Open items',
-            ),
-            MetricCard(
-              label: 'Monthly caps',
-              value: snapshot.monthlyCapCount.toString(),
-              icon: Icons.speed_outlined,
-              supportingText: snapshot.uncappedTargetCount == 0
-                  ? 'All cap targets covered'
-                  : '${snapshot.uncappedTargetCount} targets without caps',
-            ),
-            MetricCard(
-              label: 'Backend',
-              value: backendLabel,
-              icon: Icons.storage_outlined,
-              supportingText: isSupabaseReady
-                  ? 'Supabase connected'
-                  : 'Supabase deferred',
+            SizedBox(height: sectionGap),
+            _SummaryGrid(
+              snapshot: snapshot,
+              onOpenCategory: onOpenCategory,
+              onOpenMerchant: onOpenMerchant,
             ),
           ],
-        ),
-        const SizedBox(height: 28),
-        _MonthlyCapsSection(
-          snapshot: snapshot,
-          onAddCap: onAddCap,
-          onEditCap: onEditCap,
-          onDeleteCap: onDeleteCap,
-        ),
-        const SizedBox(height: 28),
-        _SummaryGrid(
-          snapshot: snapshot,
-          onOpenCategory: onOpenCategory,
-          onOpenMerchant: onOpenMerchant,
-        ),
-      ],
+        );
+      },
     );
   }
 }
@@ -364,22 +315,273 @@ class _MonthSelector extends StatelessWidget {
     );
     final items = hasSelected ? months : [selectedMonth, ...months];
 
-    return SizedBox(
-      width: 220,
-      child: DropdownButtonFormField<DateTime>(
-        isExpanded: true,
-        initialValue: selectedMonth,
-        decoration: const InputDecoration(
-          labelText: 'Month',
-          prefixIcon: Icon(Icons.calendar_month_outlined),
+    return PopupMenuButton<DateTime>(
+      tooltip: 'Select reporting month',
+      initialValue: selectedMonth,
+      onSelected: onChanged,
+      itemBuilder: (context) => [
+        for (final month in items)
+          PopupMenuItem(value: month, child: Text(formatMonth(month))),
+      ],
+      child: DecoratedBox(
+        decoration: ShapeDecoration(
+          color: Theme.of(context).colorScheme.surface,
+          shape: StadiumBorder(
+            side: BorderSide(
+              color: Theme.of(context).colorScheme.outlineVariant,
+            ),
+          ),
         ),
-        items: [
-          for (final month in items)
-            DropdownMenuItem(value: month, child: Text(formatMonth(month))),
-        ],
-        onChanged: (month) {
-          if (month != null) onChanged(month);
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                formatMonth(selectedMonth),
+                style: Theme.of(context).textTheme.labelLarge,
+              ),
+              const SizedBox(width: 6),
+              Icon(
+                Icons.expand_more,
+                size: 20,
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _DashboardSection extends StatelessWidget {
+  const _DashboardSection({
+    required this.title,
+    this.trailing,
+    required this.child,
+  });
+
+  final String title;
+  final Widget? trailing;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        AppSectionHeading(title: title, trailing: trailing),
+        const SizedBox(height: 24),
+        child,
+      ],
+    );
+  }
+}
+
+class _SpendingSection extends StatelessWidget {
+  const _SpendingSection({required this.snapshot});
+
+  final DashboardSnapshot snapshot;
+
+  @override
+  Widget build(BuildContext context) {
+    return _DashboardSection(
+      title: 'Spending',
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final width = constraints.hasBoundedWidth
+              ? constraints.maxWidth
+              : MediaQuery.sizeOf(context).width;
+          final isWide = width >= AppResponsiveBreakpoints.tabletMinWidth;
+          final netCard = _NetSpendCard(snapshot: snapshot);
+          final changeCard = _MonthChangeCard(snapshot: snapshot);
+
+          if (!isWide) {
+            return Column(
+              children: [netCard, const SizedBox(height: 16), changeCard],
+            );
+          }
+
+          return Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Expanded(flex: 3, child: netCard),
+              const SizedBox(width: 16),
+              Expanded(flex: 2, child: changeCard),
+            ],
+          );
         },
+      ),
+    );
+  }
+}
+
+class _NetSpendCard extends StatelessWidget {
+  const _NetSpendCard({required this.snapshot});
+
+  final DashboardSnapshot snapshot;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final amountColor = theme.brightness == Brightness.dark
+        ? AppThemeTokens.primaryActive
+        : AppThemeTokens.inkDeep;
+
+    return AppContentCard(
+      padding: const EdgeInsets.all(24),
+      borderSide: BorderSide(color: theme.colorScheme.surfaceContainer),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            '${formatMonth(snapshot.selectedMonth)} net',
+            style: theme.textTheme.labelMedium?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+              letterSpacing: 1.8,
+            ),
+          ),
+          const SizedBox(height: 16),
+          LargeAmountText(
+            formatMoney(snapshot.monthlySpend.netSpend),
+            style: theme.textTheme.displaySmall?.copyWith(
+              color: amountColor,
+              fontWeight: FontWeight.w900,
+              letterSpacing: 0,
+              height: 1,
+            ),
+          ),
+          const SizedBox(height: 10),
+          Text(
+            '${snapshot.monthlySpend.transactionCount} transactions',
+            style: theme.textTheme.bodyMedium,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _MonthChangeCard extends StatelessWidget {
+  const _MonthChangeCard({required this.snapshot});
+
+  final DashboardSnapshot snapshot;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final semanticColors = theme.extension<AppSemanticColors>();
+    final change = snapshot.monthOverMonthChange;
+    final isPositive = change > 0;
+    final isNegative = change < 0;
+    final tone = isNegative
+        ? AppStatusTone.negative
+        : isPositive
+        ? AppStatusTone.positive
+        : AppStatusTone.neutral;
+    final trendColor = isNegative
+        ? theme.colorScheme.error
+        : isPositive
+        ? semanticColors?.positive ?? theme.colorScheme.primary
+        : theme.colorScheme.onSurfaceVariant;
+    final percentText = snapshot.monthOverMonthPercent == null
+        ? 'No previous month'
+        : _formatSignedPercent(snapshot.monthOverMonthPercent!);
+
+    return AppContentCard(
+      padding: const EdgeInsets.all(24),
+      borderSide: BorderSide(color: theme.colorScheme.surfaceContainer),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Month Change',
+            style: theme.textTheme.labelLarge?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
+          ),
+          const SizedBox(height: 14),
+          Row(
+            children: [
+              Icon(
+                isNegative
+                    ? Icons.trending_down
+                    : isPositive
+                    ? Icons.trending_up
+                    : Icons.trending_flat,
+                color: trendColor,
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: LargeAmountText(
+                  formatSignedMoney(change),
+                  style: theme.textTheme.headlineSmall?.copyWith(
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: 0,
+                    height: 1,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          StatusChip(label: percentText, tone: tone),
+        ],
+      ),
+    );
+  }
+}
+
+class _ReviewSection extends StatelessWidget {
+  const _ReviewSection({required this.reviewQueueCount});
+
+  final int reviewQueueCount;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final semanticColors = theme.extension<AppSemanticColors>();
+    final itemLabel = reviewQueueCount == 1
+        ? '1 Item'
+        : '$reviewQueueCount Items';
+
+    return _DashboardSection(
+      title: 'Review',
+      child: AppContentCard(
+        padding: const EdgeInsets.all(24),
+        backgroundColor: theme.brightness == Brightness.dark
+            ? theme.colorScheme.surfaceContainerHigh
+            : AppThemeTokens.primaryPale,
+        foregroundColor: theme.colorScheme.onSurface,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Review Queue',
+              style: theme.textTheme.labelLarge?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
+            const SizedBox(height: 14),
+            Row(
+              children: [
+                Icon(
+                  Icons.pending_actions_outlined,
+                  color: semanticColors?.warning ?? AppThemeTokens.warningDeep,
+                ),
+                const SizedBox(width: 10),
+                Text(
+                  itemLabel,
+                  style: theme.textTheme.headlineSmall?.copyWith(
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: 0,
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -400,48 +602,49 @@ class _MonthlyCapsSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            Expanded(
-              child: Text('Monthly caps', style: theme.textTheme.titleLarge),
-            ),
-            FilledButton.icon(
-              onPressed: onAddCap,
-              icon: const Icon(Icons.add),
-              label: const Text('Add cap'),
-            ),
-          ],
-        ),
-        const SizedBox(height: 12),
-        if (snapshot.monthlyCapProgress.isEmpty)
-          const EmptyState(
+    return _DashboardSection(
+      title: 'Monthly caps',
+      trailing: Wrap(
+        spacing: 8,
+        runSpacing: 8,
+        crossAxisAlignment: WrapCrossAlignment.center,
+        children: [
+          StatusChip(
+            label: snapshot.uncappedTargetCount == 0
+                ? 'All cap targets covered'
+                : '${snapshot.uncappedTargetCount} targets without caps',
             icon: Icons.speed_outlined,
-            title: 'No caps set',
-            message:
-                'Add a recurring category or label cap starting this month.',
-          )
-        else
-          Column(
-            children: [
-              for (final cap in snapshot.monthlyCapProgress)
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 8),
-                  child: _MonthlyCapProgressRow(
-                    cap: cap,
-                    onEdit: onEditCap == null ? null : () => onEditCap!(cap),
-                    onDelete: onDeleteCap == null
-                        ? null
-                        : () => onDeleteCap!(cap),
-                  ),
-                ),
-            ],
           ),
-      ],
+          AppActionPill.primary(
+            label: 'Add cap',
+            icon: Icons.add,
+            tooltip: 'Add monthly cap',
+            onPressed: onAddCap,
+          ),
+        ],
+      ),
+      child: snapshot.monthlyCapProgress.isEmpty
+          ? const EmptyState(
+              icon: Icons.speed_outlined,
+              title: 'No caps set',
+              message:
+                  'Add a recurring category or label cap starting this month.',
+            )
+          : Column(
+              children: [
+                for (final cap in snapshot.monthlyCapProgress)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 22),
+                    child: _MonthlyCapProgressRow(
+                      cap: cap,
+                      onEdit: onEditCap == null ? null : () => onEditCap!(cap),
+                      onDelete: onDeleteCap == null
+                          ? null
+                          : () => onDeleteCap!(cap),
+                    ),
+                  ),
+              ],
+            ),
     );
   }
 }
@@ -461,98 +664,117 @@ class _MonthlyCapProgressRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final progress = (cap.percentUsed ?? 0).clamp(0, 1).toDouble();
+    final semanticColors = theme.extension<AppSemanticColors>();
     final color = cap.isOverBudget
         ? theme.colorScheme.error
+        : progress >= 0.85
+        ? semanticColors?.warning ?? AppThemeTokens.warning
         : theme.colorScheme.primary;
     final percentText = cap.percentUsed == null
         ? '0%'
         : formatPercent(cap.percentUsed!);
 
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    cap.name,
-                    softWrap: true,
-                    style: theme.textTheme.titleMedium,
-                  ),
-                ),
-                IconButton(
-                  tooltip: 'Edit cap',
-                  onPressed: onEdit,
-                  icon: const Icon(Icons.edit_outlined),
-                ),
-                IconButton(
-                  tooltip: 'Stop cap',
-                  onPressed: onDelete,
-                  icon: const Icon(Icons.delete_outline),
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            LinearProgressIndicator(value: progress, color: color),
-            const SizedBox(height: 8),
-            Wrap(
-              spacing: 12,
-              runSpacing: 4,
-              children: [
-                Text('Base ${formatMoney(cap.baseCapAmount)}'),
-                if (cap.carryForwardAmount != 0)
-                  Text(
-                    'Carried ${formatSignedMoney(cap.carryForwardAmount)}',
-                    style: TextStyle(
-                      color: cap.carryForwardAmount < 0
-                          ? theme.colorScheme.error
-                          : theme.colorScheme.primary,
-                    ),
-                  ),
-                Text(
-                  'Available ${formatMoney(cap.effectiveCapAmount)}',
-                  style: TextStyle(
-                    color: cap.effectiveCapAmount <= 0
-                        ? theme.colorScheme.error
-                        : null,
-                  ),
-                ),
-                Text('Spent ${formatMoney(cap.spentAmount)}'),
-                Text(
-                  cap.isOverBudget
-                      ? 'Over ${formatMoney(cap.remainingAmount.abs())}'
-                      : 'Left ${formatMoney(cap.remainingAmount)}',
-                  style: TextStyle(
-                    color: cap.isOverBudget ? theme.colorScheme.error : null,
-                  ),
-                ),
-                Text(percentText),
-                Text('${cap.matchedTransactionCount} matched'),
-              ],
-            ),
-            if (cap.categoryTargets.isNotEmpty ||
-                cap.labelTargets.isNotEmpty) ...[
-              const SizedBox(height: 10),
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: [
-                  for (final category in cap.categoryTargets)
-                    _TargetChip(
-                      icon: Icons.category_outlined,
-                      label: category.name,
-                    ),
-                  for (final label in cap.labelTargets)
-                    _TargetChip(icon: Icons.label_outline, label: label.name),
-                ],
+            Expanded(
+              child: Text(
+                cap.name,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: theme.textTheme.titleMedium,
               ),
-            ],
+            ),
+            const SizedBox(width: 8),
+            IconButton(
+              tooltip: 'Edit cap',
+              onPressed: onEdit,
+              icon: const Icon(Icons.edit_outlined),
+            ),
+            IconButton(
+              tooltip: 'Stop cap',
+              onPressed: onDelete,
+              icon: const Icon(Icons.delete_outline),
+            ),
           ],
         ),
-      ),
+        const SizedBox(height: 8),
+        ClipRRect(
+          borderRadius: BorderRadius.circular(999),
+          child: LinearProgressIndicator(
+            minHeight: 5,
+            value: progress,
+            color: color,
+            backgroundColor: theme.colorScheme.surfaceContainerHigh,
+          ),
+        ),
+        const SizedBox(height: 10),
+        Wrap(
+          spacing: 12,
+          runSpacing: 8,
+          children: [
+            _CapDetailText('Spent ${formatMoney(cap.spentAmount)}'),
+            _CapDetailText('Base ${formatMoney(cap.baseCapAmount)}'),
+            if (cap.carryForwardAmount != 0)
+              _CapDetailText(
+                'Carried ${formatSignedMoney(cap.carryForwardAmount)}',
+                color: cap.carryForwardAmount < 0
+                    ? theme.colorScheme.error
+                    : theme.colorScheme.primary,
+              ),
+            _CapDetailText(
+              'Available ${formatMoney(cap.effectiveCapAmount)}',
+              color: cap.effectiveCapAmount <= 0
+                  ? theme.colorScheme.error
+                  : null,
+            ),
+            _CapDetailText(
+              cap.isOverBudget
+                  ? 'Over ${formatMoney(cap.remainingAmount.abs())}'
+                  : 'Left ${formatMoney(cap.remainingAmount)}',
+              color: cap.isOverBudget ? theme.colorScheme.error : null,
+            ),
+            _CapDetailText(percentText),
+            _CapDetailText('${cap.matchedTransactionCount} matched'),
+          ],
+        ),
+        if (cap.categoryTargets.isNotEmpty || cap.labelTargets.isNotEmpty) ...[
+          const SizedBox(height: 12),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              for (final category in cap.categoryTargets)
+                _TargetChip(
+                  icon: Icons.category_outlined,
+                  label: category.name,
+                ),
+              for (final label in cap.labelTargets)
+                _TargetChip(icon: Icons.label_outline, label: label.name),
+            ],
+          ),
+        ],
+      ],
+    );
+  }
+}
+
+class _CapDetailText extends StatelessWidget {
+  const _CapDetailText(this.text, {this.color});
+
+  final String text;
+  final Color? color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Text(
+      text,
+      maxLines: 1,
+      overflow: TextOverflow.ellipsis,
+      style: Theme.of(context).textTheme.bodySmall?.copyWith(color: color),
     );
   }
 }
@@ -866,33 +1088,39 @@ class _SummaryGrid extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isWide = MediaQuery.sizeOf(context).width >= 860;
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final width = constraints.hasBoundedWidth
+            ? constraints.maxWidth
+            : MediaQuery.sizeOf(context).width;
+        final isWide = width >= 860;
+        final children = [
+          _CategorySpendList(
+            categories: snapshot.topCategories,
+            onOpenCategory: onOpenCategory,
+          ),
+          _MerchantSpendList(
+            merchants: snapshot.topMerchants,
+            onOpenMerchant: onOpenMerchant,
+          ),
+        ];
 
-    final children = [
-      _CategorySpendList(
-        categories: snapshot.topCategories,
-        onOpenCategory: onOpenCategory,
-      ),
-      _MerchantSpendList(
-        merchants: snapshot.topMerchants,
-        onOpenMerchant: onOpenMerchant,
-      ),
-    ];
+        if (!isWide) {
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [children[0], const SizedBox(height: 32), children[1]],
+          );
+        }
 
-    if (!isWide) {
-      return Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [children[0], const SizedBox(height: 28), children[1]],
-      );
-    }
-
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Expanded(child: children[0]),
-        const SizedBox(width: 24),
-        Expanded(child: children[1]),
-      ],
+        return Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(child: children[0]),
+            const SizedBox(width: 24),
+            Expanded(child: children[1]),
+          ],
+        );
+      },
     );
   }
 }
@@ -908,35 +1136,30 @@ class _CategorySpendList extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final maxSpend = categories.isEmpty
-        ? 0.0
-        : categories
-              .map((category) => category.netSpend)
-              .reduce((value, element) => value > element ? value : element);
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text('Top categories', style: theme.textTheme.titleLarge),
-        const SizedBox(height: 12),
-        if (categories.isEmpty)
-          const EmptyState(
-            icon: Icons.category_outlined,
-            title: 'No category spend',
-            message: 'No category totals for this month.',
-          )
-        else
-          for (final category in categories)
-            _SpendListItem(
+    return _DashboardSection(
+      title: 'Top categories',
+      child: categories.isEmpty
+          ? const EmptyState(
               icon: Icons.category_outlined,
-              title: category.categoryName,
-              value: formatMoney(category.netSpend),
-              supportingText: '${category.transactionCount} transactions',
-              progress: maxSpend == 0 ? 0 : category.netSpend / maxSpend,
-              onTap: () => onOpenCategory(category),
+              title: 'No category spend',
+              message: 'No category totals for this month.',
+            )
+          : Column(
+              children: [
+                for (final category in categories)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 10),
+                    child: _SpendListItem(
+                      icon: Icons.category_outlined,
+                      title: category.categoryName,
+                      value: formatMoney(category.netSpend),
+                      supportingText:
+                          '${category.transactionCount} transactions',
+                      onTap: () => onOpenCategory(category),
+                    ),
+                  ),
+              ],
             ),
-      ],
     );
   }
 }
@@ -952,35 +1175,30 @@ class _MerchantSpendList extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final maxSpend = merchants.isEmpty
-        ? 0.0
-        : merchants
-              .map((merchant) => merchant.netSpend)
-              .reduce((value, element) => value > element ? value : element);
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text('Top merchants', style: theme.textTheme.titleLarge),
-        const SizedBox(height: 12),
-        if (merchants.isEmpty)
-          const EmptyState(
-            icon: Icons.storefront_outlined,
-            title: 'No merchant spend',
-            message: 'No merchant totals for this month.',
-          )
-        else
-          for (final merchant in merchants)
-            _SpendListItem(
+    return _DashboardSection(
+      title: 'Top merchants',
+      child: merchants.isEmpty
+          ? const EmptyState(
               icon: Icons.storefront_outlined,
-              title: merchant.merchantName,
-              value: formatMoney(merchant.netSpend),
-              supportingText: '${merchant.transactionCount} transactions',
-              progress: maxSpend == 0 ? 0 : merchant.netSpend / maxSpend,
-              onTap: () => onOpenMerchant(merchant),
+              title: 'No merchant spend',
+              message: 'No merchant totals for this month.',
+            )
+          : Column(
+              children: [
+                for (final merchant in merchants)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 10),
+                    child: _SpendListItem(
+                      icon: Icons.storefront_outlined,
+                      title: merchant.merchantName,
+                      value: formatMoney(merchant.netSpend),
+                      supportingText:
+                          '${merchant.transactionCount} transactions',
+                      onTap: () => onOpenMerchant(merchant),
+                    ),
+                  ),
+              ],
             ),
-      ],
     );
   }
 }
@@ -991,7 +1209,6 @@ class _SpendListItem extends StatelessWidget {
     required this.title,
     required this.value,
     required this.supportingText,
-    required this.progress,
     required this.onTap,
   });
 
@@ -999,58 +1216,78 @@ class _SpendListItem extends StatelessWidget {
   final String title;
   final String value;
   final String supportingText;
-  final double progress;
   final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
-    return Card(
-      margin: const EdgeInsets.only(bottom: 8),
-      clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.all(14),
-          child: Column(
-            children: [
-              Row(
-                children: [
-                  Icon(icon, color: theme.colorScheme.secondary),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          title,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: theme.textTheme.titleSmall,
-                        ),
-                        Text(supportingText, style: theme.textTheme.bodySmall),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Text(value, style: theme.textTheme.labelLarge),
-                  if (onTap != null) ...[
-                    const SizedBox(width: 4),
-                    Icon(
-                      Icons.chevron_right,
-                      size: 20,
-                      color: theme.colorScheme.outline,
-                    ),
-                  ],
-                ],
-              ),
-              const SizedBox(height: 10),
-              LinearProgressIndicator(value: progress.clamp(0, 1).toDouble()),
-            ],
+    return AppContentCard(
+      padding: const EdgeInsets.all(16),
+      borderSide: BorderSide(color: theme.colorScheme.surfaceContainer),
+      onTap: onTap,
+      semanticLabel: '$title, $supportingText, $value',
+      child: Row(
+        children: [
+          Container(
+            width: 48,
+            height: 48,
+            decoration: ShapeDecoration(
+              color: theme.colorScheme.surfaceContainerHigh,
+              shape: const OvalBorder(),
+            ),
+            child: Icon(icon, color: theme.colorScheme.primary, size: 22),
           ),
-        ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: theme.textTheme.titleSmall,
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  supportingText,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: theme.textTheme.bodySmall,
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 12),
+          ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 112),
+            child: LargeAmountText(
+              value,
+              textAlign: TextAlign.right,
+              style: theme.textTheme.labelLarge?.copyWith(
+                fontWeight: FontWeight.w800,
+                letterSpacing: 0,
+              ),
+            ),
+          ),
+          if (onTap != null) ...[
+            const SizedBox(width: 4),
+            Icon(
+              Icons.chevron_right,
+              size: 20,
+              color: theme.colorScheme.outline,
+            ),
+          ],
+        ],
       ),
     );
   }
+}
+
+String _formatSignedPercent(double value) {
+  if (value == 0) return formatPercent(0);
+
+  final sign = value > 0 ? '+' : '-';
+  return '$sign${formatPercent(value.abs())}';
 }

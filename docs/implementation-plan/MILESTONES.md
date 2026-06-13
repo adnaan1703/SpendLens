@@ -1744,7 +1744,8 @@ work.
 
 ### Status
 
-Planned. See [UI Redesign](UI_REDESIGN.md#m40---dashboard-screen).
+Completed on 2026-06-14. See
+[UI Redesign](UI_REDESIGN.md#m40---dashboard-screen).
 
 ### Objective
 
@@ -1773,6 +1774,31 @@ behavior.
 ### Deferred Scope
 
 - Cap form/dialog polish is handled in M50 unless required for Dashboard tests.
+
+### Completion Notes
+
+- Rebuilt Dashboard around the Stitch hierarchy with the month pill, Spending
+  net/month-change cards, Review queue card, compact Monthly caps rows, Top
+  categories cards, and Top merchants cards.
+- Preserved selected month, net spend, month-over-month values, review queue
+  count, recurring cap add/edit/delete, carry-forward display, and Activity
+  drilldowns.
+- Added 390px Dashboard hierarchy widget coverage.
+- Verification:
+  - `cd apps/mobile && dart format lib/src/features/dashboard/dashboard_screen.dart test/finance_features_test.dart`
+  - `cd apps/mobile && flutter analyze`
+  - `cd apps/mobile && flutter test test/finance_features_test.dart`
+  - `cd apps/mobile && flutter test`
+  - `git diff --check`
+- Assumptions made:
+  - The existing M39 shell settings affordance is the Dashboard settings
+    affordance for M40.
+  - Cap form/modal polish remains deferred to M50.
+- Mocks created:
+  - None.
+- Mocks used:
+  - `docs/design-references/stitch/themed-dashboard-ui-redesign/screens/dashboard-unified-navigation.jpg`
+  - `docs/design-references/stitch/themed-dashboard-ui-redesign/html/dashboard-unified-navigation.html`
 
 ## Milestone 41: Activity List Mode
 

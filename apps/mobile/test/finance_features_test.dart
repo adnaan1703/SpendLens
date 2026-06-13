@@ -329,6 +329,38 @@ void main() {
     expect(find.text('3 targets without caps'), findsOneWidget);
   });
 
+  testWidgets('dashboard redesign renders hierarchy at 390px width', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(390, 900);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(() {
+      tester.view.resetPhysicalSize();
+      tester.view.resetDevicePixelRatio();
+    });
+    final repository = _FakeFinanceRepository();
+
+    await tester.pumpWidget(
+      _financeTestApp(repository: repository, child: const DashboardScreen()),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Dashboard'), findsOneWidget);
+    expect(find.text('Mar 2026'), findsOneWidget);
+    expect(find.text('Spending'), findsOneWidget);
+    expect(find.text('Mar 2026 net'), findsOneWidget);
+    expect(find.text('Month Change'), findsOneWidget);
+    expect(find.text('+5%'), findsOneWidget);
+    expect(find.text('Review'), findsOneWidget);
+    expect(find.text('Review Queue'), findsOneWidget);
+    expect(find.text('3 Items'), findsOneWidget);
+    expect(find.text('Monthly caps'), findsWidgets);
+    expect(find.text('Top categories'), findsOneWidget);
+    expect(find.text('Top merchants'), findsOneWidget);
+    expect(find.text('Swiggy Instamart'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('dashboard empty cap state avoids one-month-only copy', (
     tester,
   ) async {
