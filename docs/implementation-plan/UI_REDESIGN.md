@@ -235,6 +235,8 @@ Completion notes:
 
 ## M38 - Shared Responsive UI Primitives
 
+Status: completed on 2026-06-13.
+
 Purpose: create reusable UI building blocks before individual screen redesigns.
 
 Instructions:
@@ -294,6 +296,38 @@ Completion summary requirements:
 - Assumptions made
 - Mocks created
 - Mocks used
+
+Completion notes:
+
+- Added shared breakpoint helpers for mobile below 768px, tablet 768-1023px,
+  and desktop at 1024px and above.
+- Extended `AppPage` into a responsive, safe-area-aware page scaffold with
+  constrained desktop content width and mobile bottom-navigation spacing.
+- Added reusable shared primitives for display headings, section headings,
+  white content cards, sage and dark feature cards, metric cards, filter pills,
+  status chips, icon chips, large amount text, primary/secondary/destructive
+  action pills, modal/bottom-sheet card shells, and loading/error states.
+- Added `app_primitives.dart` as a shared-widget barrel for upcoming screen
+  milestones.
+- Added focused primitive tests covering breakpoint classification, page
+  padding/content width behavior, and representative light/dark rendering.
+- Existing screen constructors for `AppPage`, `MetricCard`, and `EmptyState`
+  remain compatible.
+- Verification:
+  - `cd apps/mobile && dart format lib/src/shared/widgets/action_pill.dart lib/src/shared/widgets/amount_text.dart lib/src/shared/widgets/app_card.dart lib/src/shared/widgets/app_page.dart lib/src/shared/widgets/app_primitives.dart lib/src/shared/widgets/chips.dart lib/src/shared/widgets/empty_state.dart lib/src/shared/widgets/metric_card.dart lib/src/shared/widgets/responsive.dart test/shared_primitives_test.dart`
+  - `cd apps/mobile && flutter analyze`
+  - `cd apps/mobile && flutter test test/shared_primitives_test.dart`
+  - `cd apps/mobile && flutter test`
+  - `git diff --check`
+- Assumptions made:
+  - The checked-in root `DESIGN.md` and the M37 tokenized `AppTheme` layer are
+    the current design-system source for M38 primitives.
+  - Current screen behavior and navigation should remain unchanged; screen
+    redesign starts in later milestones.
+- Mocks created:
+  - None.
+- Mocks used:
+  - None.
 
 ## M39 - App Shell, Navigation IA, and Routes
 

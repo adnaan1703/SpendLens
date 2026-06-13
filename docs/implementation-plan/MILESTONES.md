@@ -1651,7 +1651,7 @@ system and local theme-mode persistence.
 
 ### Status
 
-Planned. See
+Completed on 2026-06-13. See
 [UI Redesign](UI_REDESIGN.md#m38---shared-responsive-ui-primitives).
 
 ### Objective
