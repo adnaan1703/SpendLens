@@ -2255,9 +2255,15 @@ void main() {
     },
   );
 
-  testWidgets('piggy banks create entries and update target progress', (
+  testWidgets('vaults create entries and update target progress at 390px', (
     tester,
   ) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(() {
+      tester.view.resetPhysicalSize();
+      tester.view.resetDevicePixelRatio();
+    });
     final repository = _FakeFinanceRepository();
 
     await tester.pumpWidget(
@@ -2265,9 +2271,12 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('No piggy banks'), findsOneWidget);
+    expect(find.text('Vaults'), findsWidgets);
+    expect(find.text('New Vault'), findsOneWidget);
+    expect(find.text('No vaults yet'), findsOneWidget);
 
-    await tester.tap(find.text('Create piggy bank'));
+    await tester.ensureVisible(find.text('Create vault'));
+    await tester.tap(find.text('Create vault'));
     await tester.pumpAndSettle();
     await tester.enterText(find.byType(TextFormField).at(0), 'Vacation');
     await tester.enterText(find.byType(TextFormField).at(1), 'Flights');
@@ -2277,7 +2286,9 @@ void main() {
 
     expect(repository.piggyBanks, hasLength(1));
     expect(find.text('Vacation'), findsWidgets);
+    expect(find.text('Current balance'), findsOneWidget);
     expect(find.text('Target INR 1,000'), findsWidgets);
+    expect(find.text('No entries yet'), findsOneWidget);
 
     await tester.ensureVisible(find.text('Deposit').first);
     await tester.tap(find.text('Deposit').first);

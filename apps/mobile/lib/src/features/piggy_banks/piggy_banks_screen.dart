@@ -2,11 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../core/theme/app_theme.dart';
 import '../../data/repositories/finance_repository.dart';
 import '../../data/repositories/household_repository.dart';
-import '../../shared/widgets/app_page.dart';
-import '../../shared/widgets/empty_state.dart';
-import '../../shared/widgets/metric_card.dart';
+import '../../shared/widgets/app_primitives.dart';
 
 class PiggyBanksScreen extends ConsumerStatefulWidget {
   const PiggyBanksScreen({super.key});
@@ -28,30 +27,18 @@ class _PiggyBanksScreenState extends ConsumerState<PiggyBanksScreen> {
         ? const AsyncValue<List<PiggyBankSummary>>.loading()
         : ref.watch(piggyBanksProvider(householdId));
 
-    return AppPage(
-      title: 'Piggy Banks',
-      subtitle: householdContext?.household.name ?? 'Manual ledgers',
-      actions: [
-        IconButton(
-          tooltip: 'Refresh',
-          onPressed: householdId == null
-              ? null
-              : () => ref.invalidate(piggyBanksProvider(householdId)),
-          icon: const Icon(Icons.refresh),
-        ),
-        FilledButton.icon(
-          onPressed: householdContext == null
-              ? null
-              : () {
-                  _showPiggyBankDialog(
-                    context: context,
-                    householdContext: householdContext,
-                  );
-                },
-          icon: const Icon(Icons.add),
-          label: const Text('New'),
-        ),
-      ],
+    return _VaultsPage(
+      onRefresh: householdId == null
+          ? null
+          : () => ref.invalidate(piggyBanksProvider(householdId)),
+      onNewVault: householdContext == null
+          ? null
+          : () {
+              _showPiggyBankDialog(
+                context: context,
+                householdContext: householdContext,
+              );
+            },
       child: switch (piggyBanks) {
         AsyncValue(:final value?) => _PiggyBanksContent(
           piggyBanks: value,
@@ -81,10 +68,13 @@ class _PiggyBanksScreenState extends ConsumerState<PiggyBanksScreen> {
         ),
         AsyncValue(hasError: true, :final error) => EmptyState(
           icon: Icons.error_outline,
-          title: 'Piggy banks unavailable',
+          title: 'Vaults unavailable',
           message: error.toString(),
         ),
-        _ => const Center(child: CircularProgressIndicator()),
+        _ => const AppLoadingState(
+          title: 'Loading vaults',
+          message: 'Checking manual ledgers and balances.',
+        ),
       },
     );
   }
@@ -119,6 +109,109 @@ class _PiggyBanksScreenState extends ConsumerState<PiggyBanksScreen> {
   }
 }
 
+class _VaultsPage extends StatelessWidget {
+  const _VaultsPage({
+    required this.onRefresh,
+    required this.onNewVault,
+    required this.child,
+  });
+
+  final VoidCallback? onRefresh;
+  final VoidCallback? onNewVault;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return AppResponsiveBuilder(
+      reserveBottomNavigationSpace: true,
+      builder: (context, metrics) {
+        return SafeArea(
+          bottom: false,
+          child: SingleChildScrollView(
+            padding: metrics.pagePadding,
+            child: Align(
+              alignment: Alignment.topCenter,
+              child: ConstrainedBox(
+                constraints: metrics.contentConstraints,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    _VaultsHeader(onRefresh: onRefresh, onNewVault: onNewVault),
+                    SizedBox(height: metrics.sectionGap),
+                    child,
+                  ],
+                ),
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _VaultsHeader extends StatelessWidget {
+  const _VaultsHeader({required this.onRefresh, required this.onNewVault});
+
+  final VoidCallback? onRefresh;
+  final VoidCallback? onNewVault;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final title = Text(
+      'Vaults',
+      maxLines: 1,
+      overflow: TextOverflow.ellipsis,
+      style: theme.textTheme.displaySmall?.copyWith(
+        fontWeight: FontWeight.w900,
+        letterSpacing: 0,
+        height: 0.98,
+      ),
+    );
+    final actions = Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Tooltip(
+          message: 'Refresh vaults',
+          child: IconButton.filledTonal(
+            onPressed: onRefresh,
+            icon: const Icon(Icons.refresh),
+          ),
+        ),
+        const SizedBox(width: 8),
+        AppActionPill.secondary(
+          label: 'New Vault',
+          icon: Icons.add,
+          onPressed: onNewVault,
+        ),
+      ],
+    );
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final stacks =
+            constraints.hasBoundedWidth && constraints.maxWidth < 330;
+        if (stacks) {
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [title, const SizedBox(height: 16), actions],
+          );
+        }
+
+        return Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            Expanded(child: title),
+            const SizedBox(width: 16),
+            actions,
+          ],
+        );
+      },
+    );
+  }
+}
+
 class _PiggyBanksContent extends StatelessWidget {
   const _PiggyBanksContent({
     required this.piggyBanks,
@@ -138,19 +231,11 @@ class _PiggyBanksContent extends StatelessWidget {
   Widget build(BuildContext context) {
     if (piggyBanks.isEmpty) {
       return Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const EmptyState(
-            icon: Icons.savings_outlined,
-            title: 'No piggy banks',
-            message: 'Create a manual ledger for a future expense.',
-          ),
-          const SizedBox(height: 12),
-          FilledButton.icon(
-            onPressed: onAddFirst,
-            icon: const Icon(Icons.add),
-            label: const Text('Create piggy bank'),
-          ),
+          const _VaultSummaryCards(activeLedgerCount: 0, totalBalance: 0),
+          const SizedBox(height: 24),
+          _NoVaultsCard(onCreate: onAddFirst),
         ],
       );
     }
@@ -166,37 +251,88 @@ class _PiggyBanksContent extends StatelessWidget {
     );
 
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Wrap(
-          spacing: 12,
-          runSpacing: 12,
-          children: [
-            MetricCard(
-              label: 'Active ledgers',
-              value: piggyBanks.length.toString(),
-              icon: Icons.savings_outlined,
-              supportingText: piggyBanks.length == 1
-                  ? 'Piggy bank'
-                  : 'Piggy banks',
-            ),
-            MetricCard(
-              label: 'Total balance',
-              value: formatMoney(totalBalance),
-              icon: Icons.account_balance_wallet_outlined,
-              supportingText: 'Ledger-derived',
-            ),
-          ],
+        _VaultSummaryCards(
+          activeLedgerCount: piggyBanks.length,
+          totalBalance: totalBalance,
         ),
-        const SizedBox(height: 24),
-        _PiggyBankList(
-          piggyBanks: piggyBanks,
-          selectedPiggyBank: selected,
-          onSelect: onSelect,
-          onEdit: onEdit,
+        if (piggyBanks.length > 1) ...[
+          const SizedBox(height: 28),
+          _PiggyBankList(
+            piggyBanks: piggyBanks,
+            selectedPiggyBank: selected,
+            onSelect: onSelect,
+            onEdit: onEdit,
+          ),
+        ],
+        const SizedBox(height: 36),
+        _PiggyBankDetail(
+          piggyBank: selected,
+          onEdit: onEdit == null ? null : () => onEdit!(selected),
         ),
-        const SizedBox(height: 28),
-        _PiggyBankDetail(piggyBank: selected),
+      ],
+    );
+  }
+}
+
+class _VaultSummaryCards extends StatelessWidget {
+  const _VaultSummaryCards({
+    required this.activeLedgerCount,
+    required this.totalBalance,
+  });
+
+  final int activeLedgerCount;
+  final double totalBalance;
+
+  @override
+  Widget build(BuildContext context) {
+    final ledgerLabel = activeLedgerCount == 1 ? 'Vault' : 'Vaults';
+
+    return MetricCardGrid(
+      minTileWidth: 240,
+      spacing: 16,
+      runSpacing: 16,
+      children: [
+        MetricCard(
+          label: 'Active ledgers',
+          value: activeLedgerCount.toString(),
+          icon: Icons.savings_outlined,
+          supportingText: ledgerLabel,
+          width: null,
+        ),
+        MetricCard(
+          label: 'Total balance',
+          value: formatMoney(totalBalance),
+          icon: Icons.account_balance_wallet_outlined,
+          supportingText: 'Ledger-derived',
+          width: null,
+        ),
+      ],
+    );
+  }
+}
+
+class _NoVaultsCard extends StatelessWidget {
+  const _NoVaultsCard({required this.onCreate});
+
+  final VoidCallback? onCreate;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        EmptyState(
+          icon: Icons.savings_outlined,
+          title: 'No vaults yet',
+          message: 'Create a manual ledger for a future expense.',
+          action: AppActionPill.primary(
+            label: 'Create vault',
+            icon: Icons.add,
+            onPressed: onCreate,
+          ),
+        ),
       ],
     );
   }
@@ -217,45 +353,41 @@ class _PiggyBankList extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isWide = MediaQuery.sizeOf(context).width >= 860;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        const AppSectionHeading(
+          title: 'Vault ledgers',
+          subtitle: 'Choose the ledger to review or update.',
+        ),
+        const SizedBox(height: 16),
+        LayoutBuilder(
+          builder: (context, constraints) {
+            final availableWidth = constraints.hasBoundedWidth
+                ? constraints.maxWidth
+                : MediaQuery.sizeOf(context).width;
+            final columns = (availableWidth / 320).floor().clamp(1, 3);
+            final cardWidth = (availableWidth - (16 * (columns - 1))) / columns;
 
-    if (!isWide) {
-      return Column(
-        children: [
-          for (final piggyBank in piggyBanks)
-            Padding(
-              padding: const EdgeInsets.only(bottom: 10),
-              child: _PiggyBankCard(
-                piggyBank: piggyBank,
-                isSelected: piggyBank.id == selectedPiggyBank.id,
-                onSelect: () => onSelect(piggyBank),
-                onEdit: onEdit == null ? null : () => onEdit!(piggyBank),
-              ),
-            ),
-        ],
-      );
-    }
-
-    return GridView.builder(
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
-        maxCrossAxisExtent: 360,
-        mainAxisExtent: 210,
-        crossAxisSpacing: 12,
-        mainAxisSpacing: 12,
-      ),
-      itemCount: piggyBanks.length,
-      itemBuilder: (context, index) {
-        final piggyBank = piggyBanks[index];
-
-        return _PiggyBankCard(
-          piggyBank: piggyBank,
-          isSelected: piggyBank.id == selectedPiggyBank.id,
-          onSelect: () => onSelect(piggyBank),
-          onEdit: onEdit == null ? null : () => onEdit!(piggyBank),
-        );
-      },
+            return Wrap(
+              spacing: 16,
+              runSpacing: 16,
+              children: [
+                for (final piggyBank in piggyBanks)
+                  SizedBox(
+                    width: cardWidth,
+                    child: _PiggyBankCard(
+                      piggyBank: piggyBank,
+                      isSelected: piggyBank.id == selectedPiggyBank.id,
+                      onSelect: () => onSelect(piggyBank),
+                      onEdit: onEdit == null ? null : () => onEdit!(piggyBank),
+                    ),
+                  ),
+              ],
+            );
+          },
+        ),
+      ],
     );
   }
 }
@@ -278,80 +410,92 @@ class _PiggyBankCard extends StatelessWidget {
     final theme = Theme.of(context);
     final progress = (piggyBank.targetProgress ?? 0).clamp(0, 1).toDouble();
     final borderColor = isSelected
-        ? theme.colorScheme.primary
+        ? AppThemeTokens.primary
         : theme.colorScheme.outlineVariant;
 
-    return Card(
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(8),
-        side: BorderSide(color: borderColor),
-      ),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(8),
+    return Semantics(
+      button: true,
+      selected: isSelected,
+      label: '${piggyBank.name} vault',
+      child: AppContentCard(
         onTap: onSelect,
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Icon(
+        borderSide: BorderSide(color: borderColor, width: isSelected ? 2 : 1),
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  width: 40,
+                  height: 40,
+                  decoration: ShapeDecoration(
+                    color: theme.colorScheme.surfaceContainerHigh,
+                    shape: const OvalBorder(),
+                  ),
+                  child: Icon(
                     Icons.savings_outlined,
-                    color: theme.colorScheme.primary,
+                    color: theme.colorScheme.onSurface,
                   ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          piggyBank.name,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: theme.textTheme.titleMedium,
-                        ),
-                        if (piggyBank.description != null &&
-                            piggyBank.description!.trim().isNotEmpty)
-                          Text(
-                            piggyBank.description!,
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                            style: theme.textTheme.bodySmall,
-                          ),
-                      ],
-                    ),
-                  ),
-                  IconButton(
-                    tooltip: 'Edit piggy bank',
-                    onPressed: onEdit,
-                    icon: const Icon(Icons.edit_outlined),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 16),
-              Text(
-                formatMoney(
-                  piggyBank.balanceAmount,
-                  currencyCode: piggyBank.currencyCode,
                 ),
-                style: theme.textTheme.headlineSmall,
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        piggyBank.name,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: theme.textTheme.titleMedium,
+                      ),
+                      if (piggyBank.description != null &&
+                          piggyBank.description!.trim().isNotEmpty)
+                        Text(
+                          piggyBank.description!,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: theme.textTheme.bodySmall,
+                        ),
+                    ],
+                  ),
+                ),
+                IconButton(
+                  tooltip: 'Edit vault',
+                  onPressed: onEdit,
+                  icon: const Icon(Icons.edit_outlined),
+                ),
+              ],
+            ),
+            const SizedBox(height: 20),
+            LargeAmountText(
+              formatMoney(
+                piggyBank.balanceAmount,
+                currencyCode: piggyBank.currencyCode,
               ),
-              const SizedBox(height: 8),
-              LinearProgressIndicator(value: progress),
-              const SizedBox(height: 8),
-              Wrap(
-                spacing: 10,
-                runSpacing: 4,
-                children: [
-                  Text(_targetLabel(piggyBank)),
-                  if (piggyBank.targetDate != null)
-                    Text('By ${dateString(piggyBank.targetDate!)}'),
-                ],
+              style: theme.textTheme.headlineSmall?.copyWith(
+                fontWeight: FontWeight.w900,
+                letterSpacing: 0,
+                height: 1,
               ),
-            ],
-          ),
+            ),
+            const SizedBox(height: 12),
+            _VaultProgressBar(value: progress),
+            const SizedBox(height: 10),
+            Wrap(
+              spacing: 10,
+              runSpacing: 4,
+              children: [
+                Text(_targetLabel(piggyBank), style: theme.textTheme.bodySmall),
+                if (piggyBank.targetDate != null)
+                  Text(
+                    'By ${dateString(piggyBank.targetDate!)}',
+                    style: theme.textTheme.bodySmall,
+                  ),
+              ],
+            ),
+          ],
         ),
       ),
     );
@@ -366,9 +510,10 @@ class _PiggyBankCard extends StatelessWidget {
 }
 
 class _PiggyBankDetail extends ConsumerWidget {
-  const _PiggyBankDetail({required this.piggyBank});
+  const _PiggyBankDetail({required this.piggyBank, required this.onEdit});
 
   final PiggyBankSummary piggyBank;
+  final VoidCallback? onEdit;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -384,10 +529,11 @@ class _PiggyBankDetail extends ConsumerWidget {
     );
 
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        _PiggyBankDetailHeader(
+        _VaultHeroCard(
           piggyBank: piggyBank,
+          onEdit: onEdit,
           onAddEntry: (entryType) {
             _showEntryDialog(
               context: context,
@@ -399,6 +545,8 @@ class _PiggyBankDetail extends ConsumerWidget {
           },
         ),
         const SizedBox(height: 20),
+        _VaultDetailMetrics(piggyBank: piggyBank),
+        const SizedBox(height: 24),
         switch (entries) {
           AsyncValue(:final value?) => _EntryTimeline(entries: value),
           AsyncValue(hasError: true, :final error) => EmptyState(
@@ -406,7 +554,10 @@ class _PiggyBankDetail extends ConsumerWidget {
             title: 'Entries unavailable',
             message: error.toString(),
           ),
-          _ => const Center(child: CircularProgressIndicator()),
+          _ => const AppLoadingState(
+            title: 'Loading entries',
+            message: 'Reading deposits, withdrawals, and adjustments.',
+          ),
         },
       ],
     );
@@ -450,87 +601,350 @@ class _PiggyBankDetail extends ConsumerWidget {
   }
 }
 
-class _PiggyBankDetailHeader extends StatelessWidget {
-  const _PiggyBankDetailHeader({
+class _VaultHeroCard extends StatelessWidget {
+  const _VaultHeroCard({
     required this.piggyBank,
+    required this.onEdit,
     required this.onAddEntry,
   });
 
   final PiggyBankSummary piggyBank;
+  final VoidCallback? onEdit;
   final ValueChanged<String> onAddEntry;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final progress = piggyBank.targetProgress;
-    final remaining = piggyBank.remainingToTarget;
+    final progress = (piggyBank.targetProgress ?? 0).clamp(0, 1).toDouble();
+    final targetText = piggyBank.targetAmount == null
+        ? 'No target'
+        : formatMoney(
+            piggyBank.targetAmount!,
+            currencyCode: piggyBank.currencyCode,
+          );
+    final targetDetails = piggyBank.targetDate == null
+        ? 'No target date'
+        : 'By ${dateString(piggyBank.targetDate!)}';
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(piggyBank.name, style: theme.textTheme.titleLarge),
-        const SizedBox(height: 12),
-        Wrap(
+    return AppContentCard(
+      padding: const EdgeInsets.all(24),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      piggyBank.name,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: theme.textTheme.headlineSmall?.copyWith(
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: 0,
+                      ),
+                    ),
+                    if (piggyBank.description != null &&
+                        piggyBank.description!.trim().isNotEmpty) ...[
+                      const SizedBox(height: 4),
+                      Text(
+                        piggyBank.description!,
+                        maxLines: 3,
+                        overflow: TextOverflow.ellipsis,
+                        style: theme.textTheme.bodyMedium,
+                      ),
+                    ],
+                    const SizedBox(height: 8),
+                    Text(
+                      'Target date: ${piggyBank.targetDate == null ? 'Not set' : dateString(piggyBank.targetDate!)}',
+                      style: theme.textTheme.bodySmall,
+                    ),
+                  ],
+                ),
+              ),
+              IconButton(
+                tooltip: 'Edit vault',
+                onPressed: onEdit,
+                icon: const Icon(Icons.edit_outlined),
+              ),
+            ],
+          ),
+          const SizedBox(height: 28),
+          LargeAmountText(
+            formatMoney(
+              piggyBank.balanceAmount,
+              currencyCode: piggyBank.currencyCode,
+            ),
+            textAlign: TextAlign.center,
+            style: theme.textTheme.displayMedium?.copyWith(
+              fontWeight: FontWeight.w900,
+              letterSpacing: 0,
+              height: 0.95,
+            ),
+          ),
+          const SizedBox(height: 28),
+          _VaultProgressBar(value: progress),
+          const SizedBox(height: 16),
+          _VaultDetailRow(label: 'Target', value: targetText),
+          const SizedBox(height: 10),
+          _VaultDetailRow(label: 'Target details', value: targetDetails),
+          const SizedBox(height: 24),
+          _VaultActionGrid(
+            actions: [
+              _VaultEntryActionButton(
+                label: 'Deposit',
+                icon: Icons.add,
+                onPressed: () => onAddEntry('deposit'),
+              ),
+              _VaultEntryActionButton(
+                label: 'Withdraw',
+                icon: Icons.remove,
+                onPressed: piggyBank.balanceAmount <= 0
+                    ? null
+                    : () => onAddEntry('withdrawal'),
+              ),
+              _VaultEntryActionButton(
+                label: 'Adjust',
+                icon: Icons.tune_outlined,
+                onPressed: () => onAddEntry('adjustment'),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _VaultActionGrid extends StatelessWidget {
+  const _VaultActionGrid({required this.actions});
+
+  final List<Widget> actions;
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final availableWidth = constraints.hasBoundedWidth
+            ? constraints.maxWidth
+            : MediaQuery.sizeOf(context).width;
+        final columns = availableWidth >= 560 ? actions.length : 2;
+        final width = (availableWidth - (12 * (columns - 1))) / columns;
+
+        return Wrap(
           spacing: 12,
           runSpacing: 12,
           children: [
-            MetricCard(
-              label: 'Current balance',
-              value: formatMoney(
-                piggyBank.balanceAmount,
-                currencyCode: piggyBank.currencyCode,
-              ),
-              icon: Icons.account_balance_wallet_outlined,
-              supportingText: 'From entries',
-            ),
-            MetricCard(
-              label: 'Target progress',
-              value: progress == null ? 'No target' : formatPercent(progress),
-              icon: Icons.track_changes_outlined,
-              supportingText: piggyBank.targetAmount == null
-                  ? 'Set a target to track'
-                  : 'Target ${formatMoney(piggyBank.targetAmount!, currencyCode: piggyBank.currencyCode)}',
-            ),
-            MetricCard(
-              label: 'Remaining',
-              value: remaining == null
-                  ? 'No target'
-                  : formatMoney(
-                      remaining < 0 ? 0 : remaining,
-                      currencyCode: piggyBank.currencyCode,
-                    ),
-              icon: Icons.flag_outlined,
-              supportingText: piggyBank.targetDate == null
-                  ? 'No target date'
-                  : 'By ${dateString(piggyBank.targetDate!)}',
-            ),
+            for (final action in actions) SizedBox(width: width, child: action),
           ],
+        );
+      },
+    );
+  }
+}
+
+class _VaultEntryActionButton extends StatelessWidget {
+  const _VaultEntryActionButton({
+    required this.label,
+    required this.icon,
+    required this.onPressed,
+  });
+
+  final String label;
+  final IconData icon;
+  final VoidCallback? onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return FilledButton(
+      onPressed: onPressed,
+      style: FilledButton.styleFrom(
+        backgroundColor: theme.colorScheme.surfaceContainerHigh,
+        foregroundColor: theme.colorScheme.onSurface,
+        disabledBackgroundColor: theme.colorScheme.surfaceContainerHighest,
+        disabledForegroundColor: theme.colorScheme.outline,
+        minimumSize: const Size(0, 48),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppThemeTokens.buttonRadius),
         ),
-        const SizedBox(height: 16),
-        Wrap(
-          spacing: 8,
-          runSpacing: 8,
-          children: [
-            FilledButton.icon(
-              onPressed: () => onAddEntry('deposit'),
-              icon: const Icon(Icons.add),
-              label: const Text('Deposit'),
-            ),
-            OutlinedButton.icon(
-              onPressed: piggyBank.balanceAmount <= 0
-                  ? null
-                  : () => onAddEntry('withdrawal'),
-              icon: const Icon(Icons.remove),
-              label: const Text('Withdraw'),
-            ),
-            OutlinedButton.icon(
-              onPressed: () => onAddEntry('adjustment'),
-              icon: const Icon(Icons.tune_outlined),
-              label: const Text('Adjust'),
-            ),
-          ],
+        textStyle: theme.textTheme.labelLarge?.copyWith(letterSpacing: 0),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 20),
+          const SizedBox(width: 8),
+          Flexible(
+            child: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _VaultDetailMetrics extends StatelessWidget {
+  const _VaultDetailMetrics({required this.piggyBank});
+
+  final PiggyBankSummary piggyBank;
+
+  @override
+  Widget build(BuildContext context) {
+    final progress = piggyBank.targetProgress;
+    final remaining = piggyBank.remainingToTarget;
+
+    return MetricCardGrid(
+      minTileWidth: 220,
+      spacing: 16,
+      runSpacing: 16,
+      children: [
+        MetricCard(
+          label: 'Current balance',
+          value: formatMoney(
+            piggyBank.balanceAmount,
+            currencyCode: piggyBank.currencyCode,
+          ),
+          icon: Icons.account_balance_outlined,
+          supportingText: 'From entries',
+          width: null,
+        ),
+        MetricCard(
+          label: 'Target progress',
+          value: progress == null ? 'No target' : formatPercent(progress),
+          icon: Icons.track_changes_outlined,
+          supportingText: piggyBank.targetAmount == null
+              ? 'Set a target to track'
+              : 'Target ${formatMoney(piggyBank.targetAmount!, currencyCode: piggyBank.currencyCode)}',
+          width: null,
+        ),
+        MetricCard(
+          label: 'Remaining',
+          value: remaining == null
+              ? 'No target'
+              : formatMoney(
+                  remaining < 0 ? 0 : remaining,
+                  currencyCode: piggyBank.currencyCode,
+                ),
+          icon: Icons.flag_outlined,
+          supportingText: piggyBank.targetDate == null
+              ? 'No target date'
+              : 'By ${dateString(piggyBank.targetDate!)}',
+          width: null,
         ),
       ],
+    );
+  }
+}
+
+class _VaultProgressBar extends StatelessWidget {
+  const _VaultProgressBar({required this.value});
+
+  final double value;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(999),
+      child: LinearProgressIndicator(
+        value: value,
+        minHeight: 12,
+        backgroundColor: theme.colorScheme.surfaceContainerHigh,
+      ),
+    );
+  }
+}
+
+class _VaultDetailRow extends StatelessWidget {
+  const _VaultDetailRow({required this.label, required this.value});
+
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return Row(
+      children: [
+        Expanded(
+          child: Text(
+            label,
+            style: theme.textTheme.bodyMedium?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
+          ),
+        ),
+        const SizedBox(width: 16),
+        Flexible(
+          child: Text(
+            value,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            textAlign: TextAlign.right,
+            style: theme.textTheme.bodyMedium?.copyWith(
+              color: theme.colorScheme.onSurface,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _EmptyEntriesCard extends StatelessWidget {
+  const _EmptyEntriesCard();
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return AppContentCard(
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 48),
+      child: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 340),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 64,
+                height: 64,
+                decoration: ShapeDecoration(
+                  color: theme.colorScheme.surfaceContainerHigh,
+                  shape: const OvalBorder(),
+                ),
+                child: Icon(
+                  Icons.timeline_outlined,
+                  color: theme.colorScheme.primary,
+                  size: 30,
+                ),
+              ),
+              const SizedBox(height: 20),
+              Text(
+                'No entries yet',
+                textAlign: TextAlign.center,
+                style: theme.textTheme.titleMedium,
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Deposits, withdrawals, and adjustments will appear here.',
+                textAlign: TextAlign.center,
+                style: theme.textTheme.bodyMedium,
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }
@@ -542,26 +956,17 @@ class _EntryTimeline extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
-    if (entries.isEmpty) {
-      return const EmptyState(
-        icon: Icons.timeline_outlined,
-        title: 'No entries yet',
-        message: 'Deposits, withdrawals, and adjustments will appear here.',
-      );
-    }
+    if (entries.isEmpty) return const _EmptyEntriesCard();
 
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Text('Entry timeline', style: theme.textTheme.titleLarge),
-        const SizedBox(height: 12),
-        for (final entry in entries)
-          Padding(
-            padding: const EdgeInsets.only(bottom: 8),
-            child: _EntryCard(entry: entry),
-          ),
+        const AppSectionHeading(title: 'Entry timeline'),
+        const SizedBox(height: 16),
+        for (final entry in entries) ...[
+          _EntryCard(entry: entry),
+          const SizedBox(height: 12),
+        ],
       ],
     );
   }
@@ -575,20 +980,66 @@ class _EntryCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final semanticColors = theme.extension<AppSemanticColors>();
     final signedAmount = entry.signedAmount;
     final amountColor = signedAmount < 0
-        ? theme.colorScheme.error
-        : theme.colorScheme.primary;
+        ? semanticColors?.negative ?? theme.colorScheme.error
+        : semanticColors?.positive ?? theme.colorScheme.primary;
+    final label = _entryLabel(entry.entryType);
+    final amount = Text(
+      formatSignedMoney(signedAmount),
+      maxLines: 1,
+      overflow: TextOverflow.ellipsis,
+      style: theme.textTheme.titleMedium?.copyWith(
+        color: amountColor,
+        fontWeight: FontWeight.w900,
+        letterSpacing: 0,
+      ),
+    );
+    final leading = IconChip(
+      icon: _entryIcon(entry.entryType),
+      label: label,
+      backgroundColor: theme.colorScheme.surfaceContainerHigh,
+      foregroundColor: theme.colorScheme.onSurface,
+      maxWidth: 180,
+    );
+    final details = Text(
+      _entrySubtitle(entry),
+      style: theme.textTheme.bodySmall,
+      maxLines: 2,
+      overflow: TextOverflow.ellipsis,
+    );
 
-    return Card(
-      child: ListTile(
-        leading: Icon(_entryIcon(entry.entryType), color: amountColor),
-        title: Text(_entryLabel(entry.entryType)),
-        subtitle: Text(_entrySubtitle(entry)),
-        trailing: Text(
-          formatSignedMoney(signedAmount),
-          style: theme.textTheme.titleMedium?.copyWith(color: amountColor),
-        ),
+    return AppContentCard(
+      padding: const EdgeInsets.all(20),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final stacks =
+              constraints.hasBoundedWidth && constraints.maxWidth < 420;
+          if (stacks) {
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                leading,
+                const SizedBox(height: 12),
+                details,
+                const SizedBox(height: 12),
+                Align(alignment: Alignment.centerRight, child: amount),
+              ],
+            );
+          }
+
+          return Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              leading,
+              const SizedBox(width: 16),
+              Expanded(child: details),
+              const SizedBox(width: 16),
+              amount,
+            ],
+          );
+        },
       ),
     );
   }
@@ -637,11 +1088,9 @@ class _PiggyBankDialogState extends ConsumerState<_PiggyBankDialog> {
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      title: Text(
-        widget.piggyBank == null ? 'Create piggy bank' : 'Edit piggy bank',
-      ),
-      content: SizedBox(
-        width: 520,
+      title: Text(widget.piggyBank == null ? 'Create vault' : 'Edit vault'),
+      content: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 520),
         child: Form(
           key: _formKey,
           child: SingleChildScrollView(
@@ -850,8 +1299,8 @@ class _PiggyBankEntryDialogState extends ConsumerState<_PiggyBankEntryDialog> {
   Widget build(BuildContext context) {
     return AlertDialog(
       title: Text('${_entryLabel(_entryType)} entry'),
-      content: SizedBox(
-        width: 560,
+      content: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 560),
         child: Form(
           key: _formKey,
           child: SingleChildScrollView(

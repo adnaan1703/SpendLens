@@ -956,6 +956,8 @@ Completion notes:
 
 ## M46 - Vaults Screen
 
+Status: completed on 2026-06-14.
+
 Purpose: restyle Piggy Banks as the visible Vaults destination.
 
 Instructions:
@@ -1010,6 +1012,42 @@ Completion summary requirements:
 - Assumptions made
 - Mocks created
 - Mocks used
+
+Completion notes:
+
+- Restyled the existing Piggy Banks route as the visible Vaults destination
+  using the Stitch hierarchy: `Vaults` display title, New Vault action, Active
+  ledgers and Total balance summary cards, selected-vault hero card, deposit
+  and withdraw actions, Current balance, Target progress, Remaining, and
+  redesigned empty/timeline entry states.
+- Preserved create/edit vault behavior, selected ledger behavior, deposit,
+  withdrawal, and adjustment entries, no-overdraft validation, and
+  ledger-derived balance/progress reads while keeping database, RPC,
+  repository, model, and route contracts in piggy-bank terminology.
+- Added adaptive stacked mobile cards and constrained responsive grids for
+  wider layouts, with compact selected-vault hero action buttons that fit the
+  390px Android viewport without overflow.
+- Updated focused finance coverage from visible Piggy Banks copy to Vaults and
+  exercised create/deposit/withdraw/progress behavior at 390px width.
+- Next recommended implementation milestone is M47, Settings Focused Screen
+  and Theme Selector.
+- Verification:
+  - `cd apps/mobile && dart format lib/src/features/piggy_banks/piggy_banks_screen.dart test/finance_features_test.dart`
+  - `cd apps/mobile && flutter analyze`
+  - `cd apps/mobile && flutter test test/finance_features_test.dart`
+  - `cd apps/mobile && flutter test`
+  - `git diff --check`
+- Assumptions made:
+  - `/piggy-banks` and `PiggyBank*` names remain implementation details for
+    M46; visible navigation and screen copy say Vaults.
+  - Adjustment remains available as a compact third action beside Deposit and
+    Withdraw to preserve existing ledger behavior.
+- Mocks created:
+  - None.
+- Mocks used:
+  - `docs/design-references/stitch/themed-dashboard-ui-redesign/screens/vaults-scandi-fintech-refinement.jpg`
+  - `docs/design-references/stitch/themed-dashboard-ui-redesign/html/vaults-scandi-fintech-refinement.html`
+  - `docs/design-references/stitch/themed-dashboard-ui-redesign/metadata/vaults-scandi-fintech-refinement.screen.json`
 
 ## M47 - Settings Focused Screen and Theme Selector
 

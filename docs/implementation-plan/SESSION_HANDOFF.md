@@ -4,10 +4,9 @@ Use this file to coordinate work across multiple implementation sessions. Update
 
 ## Current Status
 
-- Current milestone: None. Milestone 44 was completed on 2026-06-14.
+- Current milestone: None. Milestone 46 was completed on 2026-06-14.
   Milestones 18-21 remain deferred by user request.
-- Last completed milestone: Milestone 44, Transaction Metadata Editor
-  Redesign.
+- Last completed milestone: Milestone 46, Vaults Redesign.
 - Current implementation state: Flutter Android app scaffold exists in
   `apps/mobile` with SpendLens Google sign-in, route protection, authenticated
   shell, RLS-safe profile/default-household bootstrap, household
@@ -141,10 +140,16 @@ Use this file to coordinate work across multiple implementation sessions. Update
   redesigned metric cards, Gmail parse failure diagnostics, warning-rail queue
   cards, classification/confidence chips, full-width Resolve actions, lazy
   queue rendering, loading/error/caught-up states, and preserved metadata
-  editor correction behavior.
+  editor correction behavior. Milestone 46 restyles the existing Piggy Banks
+  route as the visible Vaults destination with Vaults copy, New Vault action,
+  active-ledger and total-balance summary cards, selected-vault hero card,
+  compact deposit, withdraw, and adjust actions, current-balance,
+  target-progress, and remaining cards, redesigned empty/timeline entry states,
+  and preserved piggy-bank repository and ledger behavior.
   Milestones 18-21 remain planned and deferred by user request.
 - Remote deployment state: On 2026-06-08, user confirmed Supabase project `bslsitzdvrdosubbdxpd` as the intended dev/staging target. All local migrations through `20260607174515_ai_ready_layer_llm_features.sql` were pushed there, hosted expense Q&A and the now-retired legacy AI lookup function were active with JWT verification, and `GEMINI_API_KEY` was present in hosted Edge Function secrets by name. After the user signed in through the Android emulator, hosted profile/household bootstrap and authenticated Gemini Edge Function smoke passed. On 2026-06-08 for Milestone 13, `gmail-oauth-start` was deployed as version 2 with JWT verification, `gmail-sync` was deployed as version 2 without JWT verification, and new `gmail-backfill-range` was deployed as version 1 without JWT verification. Hosted `gmail-backfill-range` `OPTIONS` smoke returned 200, and an unauthenticated POST returned the expected service-key error. The live May Gmail backfill itself was not run because it requires the user to connect the target Gmail mailbox and invoke the runbook with a Supabase secret key from a local/platform secret store. On 2026-06-09, M16 deleted the hosted legacy AI lookup function from `bslsitzdvrdosubbdxpd` and a follow-up function list verified it absent. The M16 database migration and updated active Suggest function were verified locally but not pushed/deployed to hosted in this implementation session.
-- Next recommended milestone: Milestone 46, Vaults Redesign. Execute only M46
+- Next recommended milestone: Milestone 47, Settings Focused Screen and Theme
+  Selector. Execute only M47
   in the next implementation thread unless the user explicitly requests a
   different milestone. Milestones 18-21 remain
   deferred unless the user resumes push notifications. If continuing hosted
@@ -301,7 +306,7 @@ Do not ask the user to perform all setup at once. Ask only when the relevant mil
 - Milestone 43, Transaction Details Redesign: completed.
 - Milestone 44, Transaction Metadata Editor Redesign: completed.
 - Milestone 45, Review Redesign: completed.
-- Milestone 46, Vaults Redesign: planned.
+- Milestone 46, Vaults Redesign: completed.
 - Milestone 47, Settings Focused Screen and Theme Selector: planned.
 - Milestone 48, Sign-In and Household Gate Redesign: planned.
 - Milestone 49, Ask / AI Redesign: planned.
@@ -732,6 +737,47 @@ When an architecture decision changes:
 - Mocks used:
   - `docs/design-references/stitch/themed-dashboard-ui-redesign/screens/review-unified-navigation.jpg`
   - `docs/design-references/stitch/themed-dashboard-ui-redesign/html/review-unified-navigation.html`
+
+## Milestone 46 Completion Notes
+
+- Completed on 2026-06-14.
+- Restyled the existing Piggy Banks route as the visible `Vaults` destination
+  with the Stitch hierarchy: display title, New Vault action, Active ledgers
+  and Total balance summary cards, selected-vault hero card, deposit and
+  withdraw actions, Current balance, Target progress, Remaining, and empty
+  entries card.
+- Preserved create/edit vault behavior, selected ledger behavior, deposit,
+  withdrawal, and adjustment entries, no-overdraft validation, and
+  ledger-derived balance/progress reads without renaming database, RPC,
+  repository, or model contracts away from piggy-bank terminology.
+- Added responsive stacked cards on mobile and constrained responsive card
+  grids on wider layouts, including compact hero action buttons that fit the
+  390px Android viewport without overflow.
+- Updated focused finance coverage from visible Piggy Banks copy to Vaults and
+  exercised the create/deposit/withdraw/progress flow at 390px width.
+- No Settings focused screen/theme selector work, sign-in/Ask/dialog/export/OCR
+  redesign, Supabase/backend/schema/RPC work, push-notification work, M47, or
+  later-milestone work was started.
+- Verification run:
+  - `cd apps/mobile && dart format lib/src/features/piggy_banks/piggy_banks_screen.dart test/finance_features_test.dart`
+  - `cd apps/mobile && flutter analyze`
+  - `cd apps/mobile && flutter test test/finance_features_test.dart`
+  - `cd apps/mobile && flutter test`
+  - `git diff --check`
+- Known gaps:
+  - None.
+- Assumptions made:
+  - The public `/piggy-banks` route and `PiggyBank*` repository/model names
+    remain implementation details from the existing contract; only visible UI
+    copy changes to Vaults in M46.
+  - Adjustment entries remain available as a compact third hero action beside
+    Deposit and Withdraw to preserve existing ledger behavior.
+- Mocks created:
+  - None.
+- Mocks used:
+  - `docs/design-references/stitch/themed-dashboard-ui-redesign/screens/vaults-scandi-fintech-refinement.jpg`
+  - `docs/design-references/stitch/themed-dashboard-ui-redesign/html/vaults-scandi-fintech-refinement.html`
+  - `docs/design-references/stitch/themed-dashboard-ui-redesign/metadata/vaults-scandi-fintech-refinement.screen.json`
 
 ## Milestone 1 Completion Notes
 
