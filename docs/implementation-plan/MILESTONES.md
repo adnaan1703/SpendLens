@@ -2350,7 +2350,7 @@ Redesign the non-primary Ask route consistently with the new UI system.
 
 ### Status
 
-Planned. See
+Completed on 2026-06-14. See
 [UI Redesign](UI_REDESIGN.md#m50---dialogs-forms-empty-states-and-motion-pass).
 
 ### Objective
@@ -2379,6 +2379,36 @@ redesigns.
 ### Deferred Scope
 
 - New product behavior.
+
+### Completion Notes
+
+- Added shared reduced-motion-aware modal, entrance, and press-scale primitives
+  and used them to normalize category creation, monthly cap, label, taxonomy,
+  category merge/delete, transaction-label, and vault dialog/sheet/form chrome.
+- Themed app snackbars as floating rounded toast surfaces, replaced remaining
+  Settings empty/detail legacy chrome with shared empty/card primitives, and
+  kept long modal action rows visible under constrained viewport heights.
+- Added low-cost motion for shared filter pills, Activity mode selection,
+  modal/empty/loading entrance, action button press feedback, and vault entry
+  type transitions while respecting accessible navigation.
+- Preserved existing repository calls, navigation, validation, AI/auth/backend
+  semantics, and test keys; no Supabase, schema, RPC, Edge Function, hosted,
+  product-behavior, push-notification, M51, or later-milestone work was
+  started.
+- Verification:
+  - `cd apps/mobile && dart format lib/src/features/activity/activity_screen.dart lib/src/shared/widgets/empty_state.dart lib/src/shared/widgets/app_card.dart lib/src/shared/widgets/action_pill.dart lib/src/shared/widgets/chips.dart lib/src/core/theme/app_theme.dart lib/src/features/categories/category_creation_dialog.dart lib/src/features/dashboard/dashboard_screen.dart lib/src/features/transactions/transactions_screen.dart lib/src/features/settings/settings_screen.dart lib/src/features/piggy_banks/piggy_banks_screen.dart`
+  - `cd apps/mobile && flutter analyze`
+  - `cd apps/mobile && flutter test test/finance_features_test.dart --plain-name "settings merges categories after explicit subcategory mapping"`
+  - `cd apps/mobile && flutter test`
+  - `git diff --check`
+- Assumptions made:
+  - M50 uses the committed Stitch transaction/details/settings/vault references
+    plus `DESIGN.md`; there is no separate dedicated dialog-state Stitch asset
+    beyond those screen exports.
+- Mocks created:
+  - None.
+- Mocks used:
+  - None.
 
 ## Milestone 51: UI Redesign Final Regression, Responsive QA, and Docs Closeout
 

@@ -113,7 +113,8 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     final formValue = await showModalBottomSheet<_CapFormValue>(
       context: context,
       isScrollControlled: true,
-      showDragHandle: true,
+      showDragHandle: false,
+      backgroundColor: Colors.transparent,
       builder: (context) {
         return _CapFormSheet(
           categories: snapshot.categoryOptions,
@@ -159,22 +160,23 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) {
-        return AlertDialog(
-          title: Text('Stop ${cap.name}?'),
-          content: Text(
-            'This stops the cap from ${formatMonth(snapshot.selectedMonth)} onward. Earlier months stay visible, and transactions, categories, labels, merchant rules, and review rows stay unchanged.',
-          ),
+        return AppModalDialog(
+          title: 'Stop ${cap.name}?',
+          maxWidth: 520,
           actions: [
-            TextButton(
+            AppActionPill.secondary(
+              label: 'Cancel',
               onPressed: () => Navigator.of(context).pop(false),
-              child: const Text('Cancel'),
             ),
-            FilledButton.icon(
+            AppActionPill.destructive(
+              label: 'Stop cap',
+              icon: Icons.delete_outline,
               onPressed: () => Navigator.of(context).pop(true),
-              icon: const Icon(Icons.delete_outline),
-              label: const Text('Stop cap'),
             ),
           ],
+          child: Text(
+            'This stops the cap from ${formatMonth(snapshot.selectedMonth)} onward. Earlier months stay visible, and transactions, categories, labels, merchant rules, and review rows stay unchanged.',
+          ),
         );
       },
     );
@@ -846,7 +848,6 @@ class _CapFormSheetState extends State<_CapFormSheet> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final bottomInset = MediaQuery.viewInsetsOf(context).bottom;
     final name = _nameController.text.trim();
     final amount = double.tryParse(_amountController.text.trim());
     final hasTargets =
@@ -854,136 +855,111 @@ class _CapFormSheetState extends State<_CapFormSheet> {
     final isValid =
         name.isNotEmpty && amount != null && amount >= 0 && hasTargets;
 
-    return AnimatedPadding(
-      duration: const Duration(milliseconds: 180),
-      curve: Curves.easeOut,
-      padding: EdgeInsets.only(bottom: bottomInset),
-      child: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                widget.existingCap == null ? 'Add cap' : 'Edit cap',
-                style: theme.textTheme.titleLarge,
-              ),
-              const SizedBox(height: 4),
-              Text(
-                widget.existingCap == null
-                    ? 'Starts in ${formatMonth(widget.selectedMonth)} and repeats until stopped.'
-                    : 'Saves from ${formatMonth(widget.selectedMonth)} onward.',
-                style: theme.textTheme.bodySmall,
-              ),
-              const SizedBox(height: 16),
-              TextField(
-                key: const ValueKey('cap-name-field'),
-                controller: _nameController,
-                autofocus: widget.existingCap == null,
-                decoration: InputDecoration(
-                  labelText: 'Name',
-                  errorText: name.isEmpty ? 'Name is required' : null,
-                ),
-                textInputAction: TextInputAction.next,
-                onChanged: (_) => setState(() {}),
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                key: const ValueKey('cap-amount-field'),
-                controller: _amountController,
-                keyboardType: const TextInputType.numberWithOptions(
-                  decimal: true,
-                ),
-                decoration: InputDecoration(
-                  labelText: 'Monthly amount',
-                  prefixText: 'INR ',
-                  errorText: amount == null || amount < 0
-                      ? 'Enter a valid amount'
-                      : null,
-                ),
-                textInputAction: TextInputAction.done,
-                onChanged: (_) => setState(() {}),
-              ),
-              const SizedBox(height: 8),
-              SwitchListTile.adaptive(
-                key: const ValueKey('cap-carry-forward-switch'),
-                contentPadding: EdgeInsets.zero,
-                title: const Text('Carry forward remainder'),
-                value: _carryForwardEnabled,
-                onChanged: (value) =>
-                    setState(() => _carryForwardEnabled = value),
-              ),
-              const SizedBox(height: 16),
-              Text('Categories', style: theme.textTheme.titleSmall),
-              const SizedBox(height: 8),
-              _TargetSelector<CategoryOption>(
-                options: widget.categories,
-                selectedIds: _selectedCategoryIds,
-                icon: Icons.category_outlined,
-                nameFor: (category) => category.name,
-                idFor: (category) => category.id,
-                onToggle: (id) =>
-                    setState(() => _toggle(_selectedCategoryIds, id)),
-              ),
-              const SizedBox(height: 16),
-              Text('Labels', style: theme.textTheme.titleSmall),
-              const SizedBox(height: 8),
-              _TargetSelector<LabelOption>(
-                options: widget.labels,
-                selectedIds: _selectedLabelIds,
-                icon: Icons.label_outline,
-                nameFor: (label) => label.name,
-                idFor: (label) => label.id,
-                onToggle: (id) =>
-                    setState(() => _toggle(_selectedLabelIds, id)),
-              ),
-              if (!hasTargets) ...[
-                const SizedBox(height: 8),
-                Text(
-                  'Choose at least one target',
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: theme.colorScheme.error,
-                  ),
-                ),
-              ],
-              const SizedBox(height: 20),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.end,
-                children: [
-                  TextButton(
-                    onPressed: () => Navigator.of(context).pop(),
-                    child: const Text('Cancel'),
-                  ),
-                  const SizedBox(width: 8),
-                  FilledButton.icon(
-                    onPressed: isValid
-                        ? () => Navigator.of(context).pop(
-                            _CapFormValue(
-                              name: name,
-                              amount: amount,
-                              carryForwardEnabled: _carryForwardEnabled,
-                              categoryIds: _orderedSelectedIds(
-                                widget.categories,
-                                _selectedCategoryIds,
-                                (category) => category.id,
-                              ),
-                              labelIds: _orderedSelectedIds(
-                                widget.labels,
-                                _selectedLabelIds,
-                                (label) => label.id,
-                              ),
-                            ),
-                          )
-                        : null,
-                    icon: const Icon(Icons.check),
-                    label: const Text('Save'),
-                  ),
-                ],
-              ),
-            ],
-          ),
+    return AppModalCardShell(
+      title: widget.existingCap == null ? 'Add cap' : 'Edit cap',
+      subtitle: widget.existingCap == null
+          ? 'Starts in ${formatMonth(widget.selectedMonth)} and repeats until stopped.'
+          : 'Saves from ${formatMonth(widget.selectedMonth)} onward.',
+      maxWidth: 560,
+      actions: [
+        AppActionPill.secondary(
+          label: 'Cancel',
+          onPressed: () => Navigator.of(context).pop(),
         ),
+        AppActionPill.primary(
+          label: 'Save',
+          icon: Icons.check,
+          onPressed: isValid
+              ? () => Navigator.of(context).pop(
+                  _CapFormValue(
+                    name: name,
+                    amount: amount,
+                    carryForwardEnabled: _carryForwardEnabled,
+                    categoryIds: _orderedSelectedIds(
+                      widget.categories,
+                      _selectedCategoryIds,
+                      (category) => category.id,
+                    ),
+                    labelIds: _orderedSelectedIds(
+                      widget.labels,
+                      _selectedLabelIds,
+                      (label) => label.id,
+                    ),
+                  ),
+                )
+              : null,
+        ),
+      ],
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          TextField(
+            key: const ValueKey('cap-name-field'),
+            controller: _nameController,
+            autofocus: widget.existingCap == null,
+            decoration: InputDecoration(
+              labelText: 'Name',
+              errorText: name.isEmpty ? 'Name is required' : null,
+            ),
+            textInputAction: TextInputAction.next,
+            onChanged: (_) => setState(() {}),
+          ),
+          const SizedBox(height: 12),
+          TextField(
+            key: const ValueKey('cap-amount-field'),
+            controller: _amountController,
+            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+            decoration: InputDecoration(
+              labelText: 'Monthly amount',
+              prefixText: 'INR ',
+              errorText: amount == null || amount < 0
+                  ? 'Enter a valid amount'
+                  : null,
+            ),
+            textInputAction: TextInputAction.done,
+            onChanged: (_) => setState(() {}),
+          ),
+          const SizedBox(height: 8),
+          SwitchListTile.adaptive(
+            key: const ValueKey('cap-carry-forward-switch'),
+            contentPadding: EdgeInsets.zero,
+            title: const Text('Carry forward remainder'),
+            value: _carryForwardEnabled,
+            onChanged: (value) => setState(() => _carryForwardEnabled = value),
+          ),
+          const SizedBox(height: 16),
+          Text('Categories', style: theme.textTheme.titleSmall),
+          const SizedBox(height: 8),
+          _TargetSelector<CategoryOption>(
+            options: widget.categories,
+            selectedIds: _selectedCategoryIds,
+            icon: Icons.category_outlined,
+            nameFor: (category) => category.name,
+            idFor: (category) => category.id,
+            onToggle: (id) => setState(() => _toggle(_selectedCategoryIds, id)),
+          ),
+          const SizedBox(height: 16),
+          Text('Labels', style: theme.textTheme.titleSmall),
+          const SizedBox(height: 8),
+          _TargetSelector<LabelOption>(
+            options: widget.labels,
+            selectedIds: _selectedLabelIds,
+            icon: Icons.label_outline,
+            nameFor: (label) => label.name,
+            idFor: (label) => label.id,
+            onToggle: (id) => setState(() => _toggle(_selectedLabelIds, id)),
+          ),
+          if (!hasTargets) ...[
+            const SizedBox(height: 8),
+            Text(
+              'Choose at least one target',
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.error,
+              ),
+            ),
+          ],
+        ],
       ),
     );
   }

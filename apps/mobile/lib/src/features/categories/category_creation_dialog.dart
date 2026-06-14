@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../data/repositories/finance_repository.dart';
+import '../../shared/widgets/app_primitives.dart';
 
 void refreshCategoryLookups(WidgetRef ref, String householdId) {
   ref.invalidate(transactionCategoriesProvider(householdId));
@@ -34,80 +35,20 @@ Future<CategoryCreationResult?> showCategoryCreationDialog({
 
       return StatefulBuilder(
         builder: (context, setDialogState) {
-          return AlertDialog(
-            title: const Text('Create category'),
-            content: SizedBox(
-              width: 420,
-              child: Form(
-                key: formKey,
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    TextFormField(
-                      autofocus: true,
-                      textInputAction: TextInputAction.next,
-                      decoration: const InputDecoration(
-                        labelText: 'Category name',
-                        prefixIcon: Icon(Icons.category_outlined),
-                      ),
-                      onChanged: (value) {
-                        categoryName = value;
-                      },
-                      validator: (value) {
-                        if ((value ?? '').trim().isEmpty) {
-                          return 'Category name is required';
-                        }
-
-                        return null;
-                      },
-                    ),
-                    const SizedBox(height: 12),
-                    TextFormField(
-                      textInputAction: TextInputAction.done,
-                      decoration: const InputDecoration(
-                        labelText: 'Subcategory name',
-                        prefixIcon: Icon(Icons.sell_outlined),
-                      ),
-                      onChanged: (value) {
-                        subcategoryName = value;
-                      },
-                      validator: (value) {
-                        if ((value ?? '').trim().isEmpty) {
-                          return 'Subcategory name is required';
-                        }
-
-                        return null;
-                      },
-                      onFieldSubmitted: (_) async {
-                        if (isSaving || !formKey.currentState!.validate()) {
-                          return;
-                        }
-
-                        await _saveCategory(
-                          dialogContext: dialogContext,
-                          ref: ref,
-                          householdId: householdId,
-                          categoryName: categoryName,
-                          subcategoryName: subcategoryName,
-                          setDialogState: setDialogState,
-                          setSaving: (value) {
-                            isSaving = value;
-                          },
-                        );
-                      },
-                    ),
-                  ],
-                ),
-              ),
-            ),
+          return AppModalDialog(
+            title: 'Create category',
+            maxWidth: 468,
             actions: [
-              TextButton(
+              AppActionPill.secondary(
+                label: 'Cancel',
                 onPressed: isSaving
                     ? null
                     : () => Navigator.of(dialogContext).pop(),
-                child: const Text('Cancel'),
               ),
-              FilledButton.icon(
+              AppActionPill.primary(
+                label: 'Create',
+                icon: Icons.add,
+                isLoading: isSaving,
                 onPressed: isSaving
                     ? null
                     : () async {
@@ -125,15 +66,69 @@ Future<CategoryCreationResult?> showCategoryCreationDialog({
                           },
                         );
                       },
-                icon: isSaving
-                    ? const SizedBox.square(
-                        dimension: 18,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : const Icon(Icons.add),
-                label: const Text('Create'),
               ),
             ],
+            child: Form(
+              key: formKey,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  TextFormField(
+                    autofocus: true,
+                    textInputAction: TextInputAction.next,
+                    decoration: const InputDecoration(
+                      labelText: 'Category name',
+                      prefixIcon: Icon(Icons.category_outlined),
+                    ),
+                    onChanged: (value) {
+                      categoryName = value;
+                    },
+                    validator: (value) {
+                      if ((value ?? '').trim().isEmpty) {
+                        return 'Category name is required';
+                      }
+
+                      return null;
+                    },
+                  ),
+                  const SizedBox(height: 12),
+                  TextFormField(
+                    textInputAction: TextInputAction.done,
+                    decoration: const InputDecoration(
+                      labelText: 'Subcategory name',
+                      prefixIcon: Icon(Icons.sell_outlined),
+                    ),
+                    onChanged: (value) {
+                      subcategoryName = value;
+                    },
+                    validator: (value) {
+                      if ((value ?? '').trim().isEmpty) {
+                        return 'Subcategory name is required';
+                      }
+
+                      return null;
+                    },
+                    onFieldSubmitted: (_) async {
+                      if (isSaving || !formKey.currentState!.validate()) {
+                        return;
+                      }
+
+                      await _saveCategory(
+                        dialogContext: dialogContext,
+                        ref: ref,
+                        householdId: householdId,
+                        categoryName: categoryName,
+                        subcategoryName: subcategoryName,
+                        setDialogState: setDialogState,
+                        setSaving: (value) {
+                          isSaving = value;
+                        },
+                      );
+                    },
+                  ),
+                ],
+              ),
+            ),
           );
         },
       );

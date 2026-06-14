@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../core/theme/app_theme.dart';
+import 'app_card.dart';
 
 enum AppActionPillVariant { primary, secondary, destructive }
 
@@ -11,6 +12,7 @@ class AppActionPill extends StatelessWidget {
     required this.onPressed,
     this.icon,
     this.tooltip,
+    this.isLoading = false,
   }) : variant = AppActionPillVariant.primary;
 
   const AppActionPill.secondary({
@@ -19,6 +21,7 @@ class AppActionPill extends StatelessWidget {
     required this.onPressed,
     this.icon,
     this.tooltip,
+    this.isLoading = false,
   }) : variant = AppActionPillVariant.secondary;
 
   const AppActionPill.destructive({
@@ -27,12 +30,14 @@ class AppActionPill extends StatelessWidget {
     required this.onPressed,
     this.icon,
     this.tooltip,
+    this.isLoading = false,
   }) : variant = AppActionPillVariant.destructive;
 
   final String label;
   final VoidCallback? onPressed;
   final IconData? icon;
   final String? tooltip;
+  final bool isLoading;
   final AppActionPillVariant variant;
 
   @override
@@ -62,12 +67,24 @@ class AppActionPill extends StatelessWidget {
       ),
       textStyle: theme.textTheme.labelLarge?.copyWith(letterSpacing: 0),
     );
-    final child = icon == null
+    final loadingIndicator = SizedBox.square(
+      dimension: 18,
+      child: CircularProgressIndicator(
+        strokeWidth: 2,
+        color: switch (variant) {
+          AppActionPillVariant.primary => AppThemeTokens.onPrimary,
+          AppActionPillVariant.secondary => theme.colorScheme.onSurface,
+          AppActionPillVariant.destructive =>
+            semanticColors?.onNegative ?? theme.colorScheme.onError,
+        },
+      ),
+    );
+    final child = icon == null && !isLoading
         ? Text(label, maxLines: 1, overflow: TextOverflow.ellipsis)
         : Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(icon, size: 20),
+              if (isLoading) loadingIndicator else Icon(icon, size: 20),
               const SizedBox(width: 8),
               ConstrainedBox(
                 constraints: const BoxConstraints(maxWidth: 220),
@@ -79,10 +96,9 @@ class AppActionPill extends StatelessWidget {
               ),
             ],
           );
-    final button = FilledButton(
-      onPressed: onPressed,
-      style: style,
-      child: child,
+    final button = AppPressedScale(
+      enabled: onPressed != null,
+      child: FilledButton(onPressed: onPressed, style: style, child: child),
     );
 
     if (tooltip == null) return button;

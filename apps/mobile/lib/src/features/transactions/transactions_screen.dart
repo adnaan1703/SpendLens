@@ -1301,11 +1301,11 @@ Future<TransactionLabelsSetResult?> showTransactionLabelEditor({
   return showModalBottomSheet<TransactionLabelsSetResult>(
     context: context,
     isScrollControlled: true,
-    showDragHandle: true,
+    showDragHandle: false,
+    backgroundColor: Colors.transparent,
     builder: (sheetContext) {
       return StatefulBuilder(
         builder: (context, setSheetState) {
-          final keyboardBottom = MediaQuery.viewInsetsOf(context).bottom;
           final hasChanges =
               !_sameStringSet(initialLabelIds, selectedLabelIds) ||
               newLabelNames.isNotEmpty;
@@ -1333,172 +1333,147 @@ Future<TransactionLabelsSetResult?> showTransactionLabelEditor({
             });
           }
 
-          return SafeArea(
-            child: Padding(
-              padding: EdgeInsets.fromLTRB(24, 8, 24, keyboardBottom + 24),
-              child: SingleChildScrollView(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      'Edit labels',
-                      style: Theme.of(context).textTheme.headlineSmall,
-                    ),
-                    const SizedBox(height: 4),
-                    Text(transaction.statementMerchant),
-                    const SizedBox(height: 12),
-                    Text(
-                      'Labels apply only to this transaction. They do not change merchant rules, categories, or matching transactions.',
-                      style: Theme.of(context).textTheme.bodySmall,
-                    ),
-                    const SizedBox(height: 16),
-                    if (availableLabels.isEmpty)
-                      const Text('No existing labels yet.')
-                    else
-                      Wrap(
-                        spacing: 8,
-                        runSpacing: 8,
-                        children: [
-                          for (final label in availableLabels)
-                            FilterChip(
-                              label: Text(label.name),
-                              selected: selectedLabelIds.contains(label.id),
-                              onSelected: isSaving
-                                  ? null
-                                  : (selected) {
-                                      setSheetState(() {
-                                        if (selected) {
-                                          selectedLabelIds.add(label.id);
-                                        } else {
-                                          selectedLabelIds.remove(label.id);
-                                        }
-                                        errorMessage = null;
-                                      });
-                                    },
-                            ),
-                        ],
-                      ),
-                    if (newLabelNames.isNotEmpty) ...[
-                      const SizedBox(height: 12),
-                      Wrap(
-                        spacing: 8,
-                        runSpacing: 8,
-                        children: [
-                          for (final name in newLabelNames)
-                            InputChip(
-                              label: Text(name),
-                              onDeleted: isSaving
-                                  ? null
-                                  : () {
-                                      setSheetState(() {
-                                        newLabelNames = [
-                                          for (final candidate in newLabelNames)
-                                            if (candidate != name) candidate,
-                                        ];
-                                        errorMessage = null;
-                                      });
-                                    },
-                            ),
-                        ],
-                      ),
-                    ],
-                    const SizedBox(height: 16),
-                    TextField(
-                      controller: newLabelController,
-                      enabled: !isSaving,
-                      textInputAction: TextInputAction.done,
-                      decoration: InputDecoration(
-                        labelText: 'New label',
-                        prefixIcon: const Icon(Icons.add),
-                        suffixIcon: IconButton(
-                          tooltip: 'Add label',
-                          onPressed: isSaving ? null : addNewLabel,
-                          icon: const Icon(Icons.check),
-                        ),
-                      ),
-                      onSubmitted: (_) => isSaving ? null : addNewLabel(),
-                    ),
-                    if (errorMessage != null) ...[
-                      const SizedBox(height: 12),
-                      Text(
-                        errorMessage!,
-                        style: TextStyle(
-                          color: Theme.of(context).colorScheme.error,
-                        ),
-                      ),
-                    ],
-                    const SizedBox(height: 20),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.end,
-                      children: [
-                        TextButton(
-                          onPressed: isSaving
+          return AppModalCardShell(
+            title: 'Edit labels',
+            subtitle: transaction.statementMerchant,
+            maxWidth: 560,
+            actions: [
+              AppActionPill.secondary(
+                label: 'Cancel',
+                onPressed: isSaving
+                    ? null
+                    : () => Navigator.of(sheetContext).pop(),
+              ),
+              AppActionPill.primary(
+                label: 'Save',
+                icon: Icons.check,
+                isLoading: isSaving,
+                onPressed: isSaving || !hasChanges
+                    ? null
+                    : () async {
+                        setSheetState(() {
+                          isSaving = true;
+                          errorMessage = null;
+                        });
+
+                        try {
+                          final result = await ref
+                              .read(financeRepositoryProvider)
+                              .setTransactionLabels(
+                                TransactionLabelsSetRequest(
+                                  householdId: householdId,
+                                  transactionId: transaction.id,
+                                  labelIds: selectedLabelIds.toList()..sort(),
+                                  newLabelNames: newLabelNames,
+                                ),
+                              );
+
+                          availableLabels = _mergeLabels(
+                            availableLabels,
+                            result.labels,
+                          );
+                          if (sheetContext.mounted) {
+                            Navigator.of(sheetContext).pop(result);
+                          }
+                        } catch (error) {
+                          setSheetState(() {
+                            isSaving = false;
+                            errorMessage = error.toString();
+                          });
+                          if (sheetContext.mounted) {
+                            ScaffoldMessenger.of(sheetContext).showSnackBar(
+                              SnackBar(content: Text(error.toString())),
+                            );
+                          }
+                        }
+                      },
+              ),
+            ],
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  'Labels apply only to this transaction. They do not change merchant rules, categories, or matching transactions.',
+                  style: Theme.of(context).textTheme.bodySmall,
+                ),
+                const SizedBox(height: 16),
+                if (availableLabels.isEmpty)
+                  const Text('No existing labels yet.')
+                else
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: [
+                      for (final label in availableLabels)
+                        FilterChip(
+                          label: Text(label.name),
+                          selected: selectedLabelIds.contains(label.id),
+                          onSelected: isSaving
                               ? null
-                              : () => Navigator.of(sheetContext).pop(),
-                          child: const Text('Cancel'),
-                        ),
-                        const SizedBox(width: 12),
-                        FilledButton.icon(
-                          onPressed: isSaving || !hasChanges
-                              ? null
-                              : () async {
+                              : (selected) {
                                   setSheetState(() {
-                                    isSaving = true;
+                                    if (selected) {
+                                      selectedLabelIds.add(label.id);
+                                    } else {
+                                      selectedLabelIds.remove(label.id);
+                                    }
                                     errorMessage = null;
                                   });
-
-                                  try {
-                                    final result = await ref
-                                        .read(financeRepositoryProvider)
-                                        .setTransactionLabels(
-                                          TransactionLabelsSetRequest(
-                                            householdId: householdId,
-                                            transactionId: transaction.id,
-                                            labelIds: selectedLabelIds.toList()
-                                              ..sort(),
-                                            newLabelNames: newLabelNames,
-                                          ),
-                                        );
-
-                                    availableLabels = _mergeLabels(
-                                      availableLabels,
-                                      result.labels,
-                                    );
-                                    if (sheetContext.mounted) {
-                                      Navigator.of(sheetContext).pop(result);
-                                    }
-                                  } catch (error) {
-                                    setSheetState(() {
-                                      isSaving = false;
-                                      errorMessage = error.toString();
-                                    });
-                                    if (sheetContext.mounted) {
-                                      ScaffoldMessenger.of(
-                                        sheetContext,
-                                      ).showSnackBar(
-                                        SnackBar(
-                                          content: Text(error.toString()),
-                                        ),
-                                      );
-                                    }
-                                  }
                                 },
-                          icon: isSaving
-                              ? const SizedBox.square(
-                                  dimension: 18,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                  ),
-                                )
-                              : const Icon(Icons.check),
-                          label: const Text('Save'),
                         ),
-                      ],
+                    ],
+                  ),
+                if (newLabelNames.isNotEmpty) ...[
+                  const SizedBox(height: 12),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: [
+                      for (final name in newLabelNames)
+                        InputChip(
+                          label: Text(name),
+                          onDeleted: isSaving
+                              ? null
+                              : () {
+                                  setSheetState(() {
+                                    newLabelNames = [
+                                      for (final candidate in newLabelNames)
+                                        if (candidate != name) candidate,
+                                    ];
+                                    errorMessage = null;
+                                  });
+                                },
+                        ),
+                    ],
+                  ),
+                ],
+                const SizedBox(height: 16),
+                TextField(
+                  controller: newLabelController,
+                  enabled: !isSaving,
+                  textInputAction: TextInputAction.done,
+                  decoration: InputDecoration(
+                    labelText: 'New label',
+                    prefixIcon: const Icon(Icons.add),
+                    suffixIcon: IconButton(
+                      tooltip: 'Add label',
+                      onPressed: isSaving ? null : addNewLabel,
+                      icon: const Icon(Icons.check),
                     ),
-                  ],
+                  ),
+                  onSubmitted: (_) => isSaving ? null : addNewLabel(),
                 ),
-              ),
+                if (errorMessage != null) ...[
+                  const SizedBox(height: 12),
+                  Text(
+                    errorMessage!,
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.error,
+                    ),
+                  ),
+                ],
+              ],
             ),
           );
         },

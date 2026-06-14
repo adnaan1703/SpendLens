@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../core/theme/app_theme.dart';
+import 'app_card.dart';
 
 enum AppStatusTone { neutral, positive, warning, negative }
 
@@ -38,46 +39,60 @@ class FilterPill extends StatelessWidget {
       button: true,
       selected: selected,
       enabled: onSelected != null,
-      child: Material(
-        color: background,
-        shape: StadiumBorder(side: BorderSide(color: borderColor)),
-        clipBehavior: Clip.antiAlias,
-        child: InkWell(
-          onTap: onSelected == null ? null : () => onSelected!(!selected),
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(minHeight: 44),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  if (icon != null) ...[
-                    Icon(icon, size: 18, color: foreground),
-                    const SizedBox(width: 8),
-                  ],
-                  ConstrainedBox(
-                    constraints: const BoxConstraints(maxWidth: 180),
-                    child: Text(
-                      label,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: theme.textTheme.labelLarge?.copyWith(
-                        color: foreground,
-                        letterSpacing: 0,
-                      ),
-                    ),
+      child: AppPressedScale(
+        enabled: onSelected != null,
+        pressedScale: 0.97,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 160),
+          curve: Curves.easeOut,
+          decoration: ShapeDecoration(
+            color: background,
+            shape: StadiumBorder(side: BorderSide(color: borderColor)),
+          ),
+          clipBehavior: Clip.antiAlias,
+          child: Material(
+            color: Colors.transparent,
+            child: InkWell(
+              onTap: onSelected == null ? null : () => onSelected!(!selected),
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(minHeight: 44),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 10,
                   ),
-                  if (badgeCount != null) ...[
-                    const SizedBox(width: 8),
-                    _PillBadge(
-                      label: badgeCount!.toString(),
-                      foreground: foreground,
-                      background: selected
-                          ? AppThemeTokens.primaryActive
-                          : theme.colorScheme.surfaceContainerHigh,
-                    ),
-                  ],
-                ],
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      if (icon != null) ...[
+                        Icon(icon, size: 18, color: foreground),
+                        const SizedBox(width: 8),
+                      ],
+                      ConstrainedBox(
+                        constraints: const BoxConstraints(maxWidth: 180),
+                        child: Text(
+                          label,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: theme.textTheme.labelLarge?.copyWith(
+                            color: foreground,
+                            letterSpacing: 0,
+                          ),
+                        ),
+                      ),
+                      if (badgeCount != null) ...[
+                        const SizedBox(width: 8),
+                        _PillBadge(
+                          label: badgeCount!.toString(),
+                          foreground: foreground,
+                          background: selected
+                              ? AppThemeTokens.primaryActive
+                              : theme.colorScheme.surfaceContainerHigh,
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
               ),
             ),
           ),

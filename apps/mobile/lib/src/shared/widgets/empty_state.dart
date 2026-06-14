@@ -22,51 +22,53 @@ class EmptyState extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
-    return AppContentCard(
-      padding: EdgeInsets.all(compact ? 20 : 24),
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          final stacks =
-              constraints.hasBoundedWidth && constraints.maxWidth < 420;
-          final iconFrame = Container(
-            width: compact ? 40 : 48,
-            height: compact ? 40 : 48,
-            decoration: ShapeDecoration(
-              color: theme.colorScheme.primaryContainer,
-              shape: const OvalBorder(),
-            ),
-            child: Icon(
-              icon,
-              color: theme.colorScheme.onPrimaryContainer,
-              size: compact ? 22 : 26,
-            ),
-          );
-          final text = Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(title, style: theme.textTheme.titleMedium),
-              const SizedBox(height: 6),
-              Text(message, style: theme.textTheme.bodyMedium),
-              if (action != null) ...[const SizedBox(height: 16), action!],
-            ],
-          );
-
-          if (stacks) {
-            return Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [iconFrame, const SizedBox(height: 16), text],
+    return AppEntranceMotion(
+      child: AppContentCard(
+        padding: EdgeInsets.all(compact ? 20 : 24),
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final stacks =
+                constraints.hasBoundedWidth && constraints.maxWidth < 420;
+            final iconFrame = Container(
+              width: compact ? 40 : 48,
+              height: compact ? 40 : 48,
+              decoration: ShapeDecoration(
+                color: theme.colorScheme.primaryContainer,
+                shape: const OvalBorder(),
+              ),
+              child: Icon(
+                icon,
+                color: theme.colorScheme.onPrimaryContainer,
+                size: compact ? 22 : 26,
+              ),
             );
-          }
+            final text = Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(title, style: theme.textTheme.titleMedium),
+                const SizedBox(height: 6),
+                Text(message, style: theme.textTheme.bodyMedium),
+                if (action != null) ...[const SizedBox(height: 16), action!],
+              ],
+            );
 
-          return Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              iconFrame,
-              const SizedBox(width: 16),
-              Expanded(child: text),
-            ],
-          );
-        },
+            if (stacks) {
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [iconFrame, const SizedBox(height: 16), text],
+              );
+            }
+
+            return Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                iconFrame,
+                const SizedBox(width: 16),
+                Expanded(child: text),
+              ],
+            );
+          },
+        ),
       ),
     );
   }
@@ -82,33 +84,35 @@ class AppLoadingState extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
-    return AppContentCard(
-      child: Center(
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 360),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const SizedBox(
-                width: 32,
-                height: 32,
-                child: CircularProgressIndicator(strokeWidth: 3),
-              ),
-              const SizedBox(height: 16),
-              Text(
-                title,
-                textAlign: TextAlign.center,
-                style: theme.textTheme.titleMedium,
-              ),
-              if (message != null) ...[
-                const SizedBox(height: 6),
-                Text(
-                  message!,
-                  textAlign: TextAlign.center,
-                  style: theme.textTheme.bodyMedium,
+    return AppEntranceMotion(
+      child: AppContentCard(
+        child: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 360),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const SizedBox(
+                  width: 32,
+                  height: 32,
+                  child: CircularProgressIndicator(strokeWidth: 3),
                 ),
+                const SizedBox(height: 16),
+                Text(
+                  title,
+                  textAlign: TextAlign.center,
+                  style: theme.textTheme.titleMedium,
+                ),
+                if (message != null) ...[
+                  const SizedBox(height: 6),
+                  Text(
+                    message!,
+                    textAlign: TextAlign.center,
+                    style: theme.textTheme.bodyMedium,
+                  ),
+                ],
               ],
-            ],
+            ),
           ),
         ),
       ),

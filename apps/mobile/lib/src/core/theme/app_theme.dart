@@ -396,6 +396,19 @@ class AppTheme {
         color: AppThemeTokens.primary,
         circularTrackColor: AppThemeTokens.primaryPale,
       ),
+      snackBarTheme: SnackBarThemeData(
+        behavior: SnackBarBehavior.floating,
+        backgroundColor: colorScheme.inverseSurface,
+        contentTextStyle: textTheme.bodySmall?.copyWith(
+          color: colorScheme.onInverseSurface,
+          fontWeight: FontWeight.w600,
+        ),
+        elevation: 0,
+        insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppThemeTokens.cardRadius),
+        ),
+      ),
       extensions: [semanticColors],
     );
   }

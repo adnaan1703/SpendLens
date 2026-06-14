@@ -1087,123 +1087,115 @@ class _PiggyBankDialogState extends ConsumerState<_PiggyBankDialog> {
 
   @override
   Widget build(BuildContext context) {
-    return AlertDialog(
-      title: Text(widget.piggyBank == null ? 'Create vault' : 'Edit vault'),
-      content: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 520),
-        child: Form(
-          key: _formKey,
-          child: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
+    return AppModalDialog(
+      title: widget.piggyBank == null ? 'Create vault' : 'Edit vault',
+      maxWidth: 560,
+      actions: [
+        AppActionPill.secondary(
+          label: 'Cancel',
+          onPressed: _isSaving ? null : () => Navigator.of(context).pop(),
+        ),
+        AppActionPill.primary(
+          label: 'Save',
+          icon: Icons.check,
+          isLoading: _isSaving,
+          onPressed: _isSaving ? null : _save,
+        ),
+      ],
+      child: Form(
+        key: _formKey,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextFormField(
+              initialValue: _name,
+              autofocus: true,
+              textInputAction: TextInputAction.next,
+              decoration: const InputDecoration(
+                labelText: 'Name',
+                prefixIcon: Icon(Icons.savings_outlined),
+              ),
+              onChanged: (value) {
+                _name = value;
+              },
+              validator: (value) {
+                final text = value?.trim() ?? '';
+                if (text.isEmpty) return 'Name is required';
+
+                return null;
+              },
+            ),
+            const SizedBox(height: 12),
+            TextFormField(
+              initialValue: _description,
+              minLines: 2,
+              maxLines: 4,
+              decoration: const InputDecoration(
+                labelText: 'Description',
+                prefixIcon: Icon(Icons.notes_outlined),
+              ),
+              onChanged: (value) {
+                _description = value;
+              },
+            ),
+            const SizedBox(height: 12),
+            TextFormField(
+              initialValue: _targetAmount,
+              keyboardType: const TextInputType.numberWithOptions(
+                decimal: true,
+              ),
+              inputFormatters: [
+                FilteringTextInputFormatter.allow(RegExp(r'[0-9.]')),
+              ],
+              decoration: const InputDecoration(
+                labelText: 'Target amount',
+                prefixIcon: Icon(Icons.flag_outlined),
+                prefixText: 'INR ',
+              ),
+              onChanged: (value) {
+                _targetAmount = value;
+              },
+              validator: (value) {
+                final text = value?.trim() ?? '';
+                if (text.isEmpty) return null;
+
+                final parsed = double.tryParse(text);
+                if (parsed == null) return 'Enter a valid amount';
+                if (parsed < 0) return 'Target amount cannot be negative';
+
+                return null;
+              },
+            ),
+            const SizedBox(height: 12),
+            Row(
               children: [
-                TextFormField(
-                  initialValue: _name,
-                  autofocus: true,
-                  textInputAction: TextInputAction.next,
-                  decoration: const InputDecoration(
-                    labelText: 'Name',
-                    prefixIcon: Icon(Icons.savings_outlined),
-                  ),
-                  onChanged: (value) {
-                    _name = value;
-                  },
-                  validator: (value) {
-                    final text = value?.trim() ?? '';
-                    if (text.isEmpty) return 'Name is required';
-
-                    return null;
-                  },
-                ),
-                const SizedBox(height: 12),
-                TextFormField(
-                  initialValue: _description,
-                  minLines: 2,
-                  maxLines: 4,
-                  decoration: const InputDecoration(
-                    labelText: 'Description',
-                    prefixIcon: Icon(Icons.notes_outlined),
-                  ),
-                  onChanged: (value) {
-                    _description = value;
-                  },
-                ),
-                const SizedBox(height: 12),
-                TextFormField(
-                  initialValue: _targetAmount,
-                  keyboardType: const TextInputType.numberWithOptions(
-                    decimal: true,
-                  ),
-                  inputFormatters: [
-                    FilteringTextInputFormatter.allow(RegExp(r'[0-9.]')),
-                  ],
-                  decoration: const InputDecoration(
-                    labelText: 'Target amount',
-                    prefixIcon: Icon(Icons.flag_outlined),
-                    prefixText: 'INR ',
-                  ),
-                  onChanged: (value) {
-                    _targetAmount = value;
-                  },
-                  validator: (value) {
-                    final text = value?.trim() ?? '';
-                    if (text.isEmpty) return null;
-
-                    final parsed = double.tryParse(text);
-                    if (parsed == null) return 'Enter a valid amount';
-                    if (parsed < 0) return 'Target amount cannot be negative';
-
-                    return null;
-                  },
-                ),
-                const SizedBox(height: 12),
-                Row(
-                  children: [
-                    Expanded(
-                      child: OutlinedButton.icon(
-                        onPressed: _pickTargetDate,
-                        icon: const Icon(Icons.event_outlined),
-                        label: Text(
-                          _targetDate == null
-                              ? 'Target date'
-                              : dateString(_targetDate!),
-                        ),
-                      ),
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: _pickTargetDate,
+                    icon: const Icon(Icons.event_outlined),
+                    label: Text(
+                      _targetDate == null
+                          ? 'Target date'
+                          : dateString(_targetDate!),
                     ),
-                    IconButton(
-                      tooltip: 'Clear target date',
-                      onPressed: _targetDate == null
-                          ? null
-                          : () {
-                              setState(() {
-                                _targetDate = null;
-                              });
-                            },
-                      icon: const Icon(Icons.close),
-                    ),
-                  ],
+                  ),
+                ),
+                IconButton(
+                  tooltip: 'Clear target date',
+                  onPressed: _targetDate == null
+                      ? null
+                      : () {
+                          setState(() {
+                            _targetDate = null;
+                          });
+                        },
+                  icon: const Icon(Icons.close),
                 ),
               ],
             ),
-          ),
+          ],
         ),
       ),
-      actions: [
-        TextButton(
-          onPressed: _isSaving ? null : () => Navigator.of(context).pop(),
-          child: const Text('Cancel'),
-        ),
-        FilledButton.icon(
-          onPressed: _isSaving ? null : _save,
-          icon: _isSaving
-              ? const SizedBox.square(
-                  dimension: 18,
-                  child: CircularProgressIndicator(strokeWidth: 2),
-                )
-              : const Icon(Icons.check),
-          label: const Text('Save'),
-        ),
-      ],
     );
   }
 
@@ -1297,145 +1289,156 @@ class _PiggyBankEntryDialogState extends ConsumerState<_PiggyBankEntryDialog> {
 
   @override
   Widget build(BuildContext context) {
-    return AlertDialog(
-      title: Text('${_entryLabel(_entryType)} entry'),
-      content: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 560),
-        child: Form(
-          key: _formKey,
-          child: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
+    return AppModalDialog(
+      title: '${_entryLabel(_entryType)} entry',
+      maxWidth: 600,
+      actions: [
+        AppActionPill.secondary(
+          label: 'Cancel',
+          onPressed: _isSaving ? null : () => Navigator.of(context).pop(),
+        ),
+        AppActionPill.primary(
+          label: 'Save',
+          icon: Icons.check,
+          isLoading: _isSaving,
+          onPressed: _isSaving ? null : _save,
+        ),
+      ],
+      child: Form(
+        key: _formKey,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            SegmentedButton<String>(
+              segments: const [
+                ButtonSegment(
+                  value: 'deposit',
+                  icon: Icon(Icons.add),
+                  label: Text('Deposit'),
+                ),
+                ButtonSegment(
+                  value: 'withdrawal',
+                  icon: Icon(Icons.remove),
+                  label: Text('Withdraw'),
+                ),
+                ButtonSegment(
+                  value: 'adjustment',
+                  icon: Icon(Icons.tune_outlined),
+                  label: Text('Adjust'),
+                ),
+              ],
+              selected: {_entryType},
+              onSelectionChanged: _isSaving
+                  ? null
+                  : (values) {
+                      setState(() {
+                        _entryType = values.single;
+                        _amount = '';
+                      });
+                    },
+            ),
+            const SizedBox(height: 16),
+            AnimatedSwitcher(
+              duration: const Duration(milliseconds: 180),
+              switchInCurve: Curves.easeOutCubic,
+              switchOutCurve: Curves.easeOutCubic,
+              transitionBuilder: (child, animation) {
+                final offsetAnimation = Tween<Offset>(
+                  begin: const Offset(0, 0.04),
+                  end: Offset.zero,
+                ).animate(animation);
+
+                return FadeTransition(
+                  opacity: animation,
+                  child: SlideTransition(
+                    position: offsetAnimation,
+                    child: child,
+                  ),
+                );
+              },
+              child: TextFormField(
+                key: ValueKey(_entryType),
+                initialValue: _amount,
+                autofocus: true,
+                keyboardType: const TextInputType.numberWithOptions(
+                  decimal: true,
+                  signed: true,
+                ),
+                inputFormatters: [
+                  FilteringTextInputFormatter.allow(
+                    _entryType == 'adjustment'
+                        ? RegExp(r'[-0-9.]')
+                        : RegExp(r'[0-9.]'),
+                  ),
+                ],
+                decoration: InputDecoration(
+                  labelText: _entryType == 'adjustment'
+                      ? 'Adjustment amount'
+                      : 'Amount',
+                  prefixIcon: Icon(_entryIcon(_entryType)),
+                  prefixText: 'INR ',
+                ),
+                onChanged: (value) {
+                  _amount = value;
+                },
+                validator: _validateAmount,
+              ),
+            ),
+            const SizedBox(height: 12),
+            Row(
               children: [
-                SegmentedButton<String>(
-                  segments: const [
-                    ButtonSegment(
-                      value: 'deposit',
-                      icon: Icon(Icons.add),
-                      label: Text('Deposit'),
-                    ),
-                    ButtonSegment(
-                      value: 'withdrawal',
-                      icon: Icon(Icons.remove),
-                      label: Text('Withdraw'),
-                    ),
-                    ButtonSegment(
-                      value: 'adjustment',
-                      icon: Icon(Icons.tune_outlined),
-                      label: Text('Adjust'),
-                    ),
-                  ],
-                  selected: {_entryType},
-                  onSelectionChanged: _isSaving
-                      ? null
-                      : (values) {
-                          setState(() {
-                            _entryType = values.single;
-                            _amount = '';
-                          });
-                        },
-                ),
-                const SizedBox(height: 16),
-                TextFormField(
-                  key: ValueKey(_entryType),
-                  initialValue: _amount,
-                  autofocus: true,
-                  keyboardType: const TextInputType.numberWithOptions(
-                    decimal: true,
-                    signed: true,
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: _pickEntryDate,
+                    icon: const Icon(Icons.event_outlined),
+                    label: Text(dateString(_entryDate)),
                   ),
-                  inputFormatters: [
-                    FilteringTextInputFormatter.allow(
-                      _entryType == 'adjustment'
-                          ? RegExp(r'[-0-9.]')
-                          : RegExp(r'[0-9.]'),
-                    ),
-                  ],
-                  decoration: InputDecoration(
-                    labelText: _entryType == 'adjustment'
-                        ? 'Adjustment amount'
-                        : 'Amount',
-                    prefixIcon: Icon(_entryIcon(_entryType)),
-                    prefixText: 'INR ',
-                  ),
-                  onChanged: (value) {
-                    _amount = value;
-                  },
-                  validator: _validateAmount,
-                ),
-                const SizedBox(height: 12),
-                Row(
-                  children: [
-                    Expanded(
-                      child: OutlinedButton.icon(
-                        onPressed: _pickEntryDate,
-                        icon: const Icon(Icons.event_outlined),
-                        label: Text(dateString(_entryDate)),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 12),
-                DropdownButtonFormField<String>(
-                  isExpanded: true,
-                  initialValue: _linkedTransactionId,
-                  decoration: const InputDecoration(
-                    labelText: 'Linked transaction',
-                    prefixIcon: Icon(Icons.receipt_long_outlined),
-                  ),
-                  items: [
-                    const DropdownMenuItem(
-                      value: null,
-                      child: Text('No linked transaction'),
-                    ),
-                    for (final transaction in widget.linkableTransactions)
-                      DropdownMenuItem(
-                        value: transaction.id,
-                        child: Text(
-                          _transactionLabel(transaction),
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                  ],
-                  onChanged: _isSaving
-                      ? null
-                      : (value) {
-                          _linkedTransactionId = value;
-                        },
-                ),
-                const SizedBox(height: 12),
-                TextFormField(
-                  minLines: 2,
-                  maxLines: 4,
-                  decoration: const InputDecoration(
-                    labelText: 'Note',
-                    prefixIcon: Icon(Icons.notes_outlined),
-                  ),
-                  onChanged: (value) {
-                    _note = value;
-                  },
                 ),
               ],
             ),
-          ),
+            const SizedBox(height: 12),
+            DropdownButtonFormField<String>(
+              isExpanded: true,
+              initialValue: _linkedTransactionId,
+              decoration: const InputDecoration(
+                labelText: 'Linked transaction',
+                prefixIcon: Icon(Icons.receipt_long_outlined),
+              ),
+              items: [
+                const DropdownMenuItem(
+                  value: null,
+                  child: Text('No linked transaction'),
+                ),
+                for (final transaction in widget.linkableTransactions)
+                  DropdownMenuItem(
+                    value: transaction.id,
+                    child: Text(
+                      _transactionLabel(transaction),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+              ],
+              onChanged: _isSaving
+                  ? null
+                  : (value) {
+                      _linkedTransactionId = value;
+                    },
+            ),
+            const SizedBox(height: 12),
+            TextFormField(
+              minLines: 2,
+              maxLines: 4,
+              decoration: const InputDecoration(
+                labelText: 'Note',
+                prefixIcon: Icon(Icons.notes_outlined),
+              ),
+              onChanged: (value) {
+                _note = value;
+              },
+            ),
+          ],
         ),
       ),
-      actions: [
-        TextButton(
-          onPressed: _isSaving ? null : () => Navigator.of(context).pop(),
-          child: const Text('Cancel'),
-        ),
-        FilledButton.icon(
-          onPressed: _isSaving ? null : _save,
-          icon: _isSaving
-              ? const SizedBox.square(
-                  dimension: 18,
-                  child: CircularProgressIndicator(strokeWidth: 2),
-                )
-              : const Icon(Icons.check),
-          label: const Text('Save'),
-        ),
-      ],
     );
   }
 

@@ -247,9 +247,12 @@ class AppModalCardShell extends StatelessWidget {
         ],
       ],
     );
-    final shell = AppContentCard(
-      padding: padding ?? const EdgeInsets.all(24),
-      child: scrollable ? SingleChildScrollView(child: content) : content,
+    final shell = AppEntranceMotion(
+      slideOffset: const Offset(0, 12),
+      child: AppContentCard(
+        padding: padding ?? const EdgeInsets.all(24),
+        child: scrollable ? SingleChildScrollView(child: content) : content,
+      ),
     );
 
     return Padding(
@@ -263,6 +266,163 @@ class AppModalCardShell extends StatelessWidget {
             child: shell,
           ),
         ),
+      ),
+    );
+  }
+}
+
+class AppModalDialog extends StatelessWidget {
+  const AppModalDialog({
+    super.key,
+    required this.child,
+    this.title,
+    this.subtitle,
+    this.actions = const [],
+    this.padding,
+    this.maxWidth = AppResponsiveBreakpoints.modalMaxWidth,
+    this.scrollable = true,
+  });
+
+  final Widget child;
+  final String? title;
+  final String? subtitle;
+  final List<Widget> actions;
+  final EdgeInsetsGeometry? padding;
+  final double maxWidth;
+  final bool scrollable;
+
+  @override
+  Widget build(BuildContext context) {
+    final viewInsets = MediaQuery.viewInsetsOf(context);
+    final screenHeight = MediaQuery.sizeOf(context).height;
+    final availableHeight = screenHeight - viewInsets.bottom - 48;
+    final maxDialogHeight = availableHeight < 240
+        ? screenHeight
+        : availableHeight;
+    final body = scrollable
+        ? Flexible(
+            fit: FlexFit.loose,
+            child: SingleChildScrollView(child: child),
+          )
+        : child;
+    final content = Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        if (title != null || subtitle != null) ...[
+          _ModalHeader(title: title, subtitle: subtitle),
+          const SizedBox(height: 20),
+        ],
+        body,
+        if (actions.isNotEmpty) ...[
+          const SizedBox(height: 24),
+          Align(
+            alignment: Alignment.centerRight,
+            child: Wrap(spacing: 12, runSpacing: 12, children: actions),
+          ),
+        ],
+      ],
+    );
+
+    return Dialog(
+      elevation: 0,
+      insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+      backgroundColor: Colors.transparent,
+      surfaceTintColor: Colors.transparent,
+      child: AppEntranceMotion(
+        slideOffset: const Offset(0, 10),
+        child: Padding(
+          padding: EdgeInsets.only(bottom: viewInsets.bottom),
+          child: SafeArea(
+            child: ConstrainedBox(
+              constraints: BoxConstraints(
+                maxWidth: maxWidth,
+                maxHeight: maxDialogHeight,
+              ),
+              child: AppContentCard(
+                padding: padding ?? const EdgeInsets.all(24),
+                child: content,
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class AppEntranceMotion extends StatelessWidget {
+  const AppEntranceMotion({
+    super.key,
+    required this.child,
+    this.slideOffset = const Offset(0, 8),
+    this.duration = const Duration(milliseconds: 180),
+  });
+
+  final Widget child;
+  final Offset slideOffset;
+  final Duration duration;
+
+  @override
+  Widget build(BuildContext context) {
+    final mediaQuery = MediaQuery.maybeOf(context);
+    if (mediaQuery?.accessibleNavigation ?? false) return child;
+
+    return TweenAnimationBuilder<double>(
+      tween: Tween(begin: 0, end: 1),
+      duration: duration,
+      curve: Curves.easeOutCubic,
+      builder: (context, value, child) {
+        return Opacity(
+          opacity: value,
+          child: Transform.translate(
+            offset: Offset(
+              slideOffset.dx * (1 - value),
+              slideOffset.dy * (1 - value),
+            ),
+            child: child,
+          ),
+        );
+      },
+      child: child,
+    );
+  }
+}
+
+class AppPressedScale extends StatefulWidget {
+  const AppPressedScale({
+    super.key,
+    required this.child,
+    this.enabled = true,
+    this.pressedScale = 0.98,
+  });
+
+  final Widget child;
+  final bool enabled;
+  final double pressedScale;
+
+  @override
+  State<AppPressedScale> createState() => _AppPressedScaleState();
+}
+
+class _AppPressedScaleState extends State<AppPressedScale> {
+  bool _pressed = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final mediaQuery = MediaQuery.maybeOf(context);
+    final reduceMotion = mediaQuery?.accessibleNavigation ?? false;
+    if (!widget.enabled || reduceMotion) return widget.child;
+
+    return Listener(
+      onPointerDown: (_) => setState(() => _pressed = true),
+      onPointerUp: (_) => setState(() => _pressed = false),
+      onPointerCancel: (_) => setState(() => _pressed = false),
+      child: AnimatedScale(
+        scale: _pressed ? widget.pressedScale : 1,
+        duration: const Duration(milliseconds: 110),
+        curve: Curves.easeOut,
+        child: widget.child,
       ),
     );
   }

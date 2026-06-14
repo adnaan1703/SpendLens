@@ -524,22 +524,13 @@ class _LabelManager extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final textTheme = Theme.of(context).textTheme;
-
     if (snapshot.isEmpty) {
-      return Padding(
-        padding: const EdgeInsets.symmetric(vertical: 16),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              Icons.label_outline,
-              color: Theme.of(context).colorScheme.outline,
-            ),
-            const SizedBox(height: 8),
-            Text('No labels yet', style: textTheme.bodyMedium),
-          ],
-        ),
+      return EmptyState(
+        icon: Icons.label_outline,
+        title: 'No labels yet',
+        message:
+            'Create labels to group transactions without changing categories.',
+        compact: true,
       );
     }
 
@@ -779,24 +770,15 @@ class _CategoryManager extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final textTheme = Theme.of(context).textTheme;
     final categories = snapshot.categories;
     final subcategories = snapshot.subcategories;
 
     if (categories.isEmpty) {
-      return Padding(
-        padding: const EdgeInsets.symmetric(vertical: 16),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              Icons.category_outlined,
-              color: Theme.of(context).colorScheme.outline,
-            ),
-            const SizedBox(height: 8),
-            Text('No categories yet', style: textTheme.bodyMedium),
-          ],
-        ),
+      return EmptyState(
+        icon: Icons.category_outlined,
+        title: 'No categories yet',
+        message: 'Create a category and subcategory to classify transactions.',
+        compact: true,
       );
     }
 
@@ -1179,71 +1161,66 @@ class _CategoryUsagePanel extends StatelessWidget {
     final theme = Theme.of(context);
     final title = subcategory?.name ?? category.name;
 
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        border: Border.all(color: theme.colorScheme.outlineVariant),
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            LayoutBuilder(
-              builder: (context, constraints) {
-                final summary = Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+    return AppContentCard(
+      padding: const EdgeInsets.all(16),
+      borderSide: BorderSide(color: theme.colorScheme.outlineVariant),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final summary = Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: theme.textTheme.titleSmall,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 4),
+                  Text(_usageLabel(usage), style: theme.textTheme.labelLarge),
+                ],
+              );
+              final button = FilledButton.tonalIcon(
+                onPressed: onViewTransactions,
+                icon: const Icon(Icons.receipt_long_outlined),
+                label: const Text('View transactions'),
+              );
+
+              if (constraints.maxWidth < 360) {
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    Text(
-                      title,
-                      style: theme.textTheme.titleSmall,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    const SizedBox(height: 4),
-                    Text(_usageLabel(usage), style: theme.textTheme.labelLarge),
+                    summary,
+                    const SizedBox(height: 12),
+                    Align(alignment: Alignment.centerLeft, child: button),
                   ],
                 );
-                final button = FilledButton.tonalIcon(
-                  onPressed: onViewTransactions,
-                  icon: const Icon(Icons.receipt_long_outlined),
-                  label: const Text('View transactions'),
-                );
+              }
 
-                if (constraints.maxWidth < 360) {
-                  return Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      summary,
-                      const SizedBox(height: 12),
-                      Align(alignment: Alignment.centerLeft, child: button),
-                    ],
-                  );
-                }
-
-                return Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Expanded(child: summary),
-                    const SizedBox(width: 12),
-                    button,
-                  ],
-                );
-              },
-            ),
-            const SizedBox(height: 12),
-            switch (preview) {
-              AsyncValue(:final value?) => _RecentCategoryTransactions(
-                transactions: value.recentTransactions,
-              ),
-              AsyncValue(hasError: true, :final error) => Text(
-                error.toString(),
-                style: theme.textTheme.bodySmall,
-              ),
-              _ => const Center(child: CircularProgressIndicator()),
+              return Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(child: summary),
+                  const SizedBox(width: 12),
+                  button,
+                ],
+              );
             },
-          ],
-        ),
+          ),
+          const SizedBox(height: 12),
+          switch (preview) {
+            AsyncValue(:final value?) => _RecentCategoryTransactions(
+              transactions: value.recentTransactions,
+            ),
+            AsyncValue(hasError: true, :final error) => Text(
+              error.toString(),
+              style: theme.textTheme.bodySmall,
+            ),
+            _ => const Center(child: CircularProgressIndicator()),
+          },
+        ],
       ),
     );
   }
@@ -1316,67 +1293,20 @@ Future<TaxonomyDeleteResult?> _showTaxonomyDeleteDialog({
 
       return StatefulBuilder(
         builder: (context, setDialogState) {
-          return AlertDialog(
-            title: Text(title),
-            content: SizedBox(
-              width: 520,
-              child: SingleChildScrollView(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      targetName,
-                      style: Theme.of(context).textTheme.titleMedium,
-                    ),
-                    const SizedBox(height: 8),
-                    Text(body),
-                    const SizedBox(height: 16),
-                    Wrap(
-                      spacing: 8,
-                      runSpacing: 8,
-                      children: [
-                        _ImpactChip(
-                          icon: Icons.receipt_long_outlined,
-                          label: _countLabel(
-                            usage.transactionCount,
-                            'transaction',
-                          ),
-                        ),
-                        _ImpactChip(
-                          icon: Icons.rule_folder_outlined,
-                          label: _countLabel(
-                            usage.activeMappingRuleCount,
-                            'active rule',
-                          ),
-                        ),
-                        _ImpactChip(
-                          icon: Icons.savings_outlined,
-                          label: _countLabel(usage.capCount, 'cap'),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 16),
-                    Text(
-                      'Recent transactions',
-                      style: Theme.of(context).textTheme.titleSmall,
-                    ),
-                    const SizedBox(height: 8),
-                    _RecentCategoryTransactions(
-                      transactions: preview.recentTransactions,
-                    ),
-                  ],
-                ),
-              ),
-            ),
+          return AppModalDialog(
+            title: title,
+            maxWidth: 560,
             actions: [
-              TextButton(
+              AppActionPill.secondary(
+                label: 'Cancel',
                 onPressed: isDeleting
                     ? null
                     : () => Navigator.of(dialogContext).pop(),
-                child: const Text('Cancel'),
               ),
-              FilledButton.icon(
+              AppActionPill.destructive(
+                label: 'Delete',
+                icon: Icons.delete_outline,
+                isLoading: isDeleting,
                 onPressed: isDeleting
                     ? null
                     : () async {
@@ -1400,15 +1330,51 @@ Future<TaxonomyDeleteResult?> _showTaxonomyDeleteDialog({
                           );
                         }
                       },
-                icon: isDeleting
-                    ? const SizedBox.square(
-                        dimension: 18,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : const Icon(Icons.delete_outline),
-                label: const Text('Delete'),
               ),
             ],
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  targetName,
+                  style: Theme.of(context).textTheme.titleMedium,
+                ),
+                const SizedBox(height: 8),
+                Text(body),
+                const SizedBox(height: 16),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    _ImpactChip(
+                      icon: Icons.receipt_long_outlined,
+                      label: _countLabel(usage.transactionCount, 'transaction'),
+                    ),
+                    _ImpactChip(
+                      icon: Icons.rule_folder_outlined,
+                      label: _countLabel(
+                        usage.activeMappingRuleCount,
+                        'active rule',
+                      ),
+                    ),
+                    _ImpactChip(
+                      icon: Icons.savings_outlined,
+                      label: _countLabel(usage.capCount, 'cap'),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  'Recent transactions',
+                  style: Theme.of(context).textTheme.titleSmall,
+                ),
+                const SizedBox(height: 8),
+                _RecentCategoryTransactions(
+                  transactions: preview.recentTransactions,
+                ),
+              ],
+            ),
           );
         },
       );
@@ -1478,63 +1444,57 @@ class _LabelNameDialogState extends State<_LabelNameDialog> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
-    return AlertDialog(
-      title: Text(widget.title),
-      content: SizedBox(
-        width: 420,
-        child: Form(
-          key: _formKey,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              TextFormField(
-                key: const ValueKey('label-name-field'),
-                controller: _controller,
-                autofocus: true,
-                enabled: !_isSaving,
-                decoration: const InputDecoration(
-                  labelText: 'Label name',
-                  prefixIcon: Icon(Icons.label_outline),
-                ),
-                validator: (value) {
-                  if ((value ?? '').trim().isEmpty) {
-                    return 'Label name is required';
-                  }
-
-                  return null;
-                },
-                onFieldSubmitted: (_) => _isSaving ? null : _save(),
-              ),
-              if (_errorMessage != null) ...[
-                const SizedBox(height: 12),
-                Text(
-                  _errorMessage!,
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: theme.colorScheme.error,
-                  ),
-                ),
-              ],
-            ],
-          ),
-        ),
-      ),
+    return AppModalDialog(
+      title: widget.title,
+      maxWidth: 468,
       actions: [
-        TextButton(
+        AppActionPill.secondary(
+          label: 'Cancel',
           onPressed: _isSaving ? null : () => Navigator.of(context).pop(),
-          child: const Text('Cancel'),
         ),
-        FilledButton.icon(
+        AppActionPill.primary(
+          label: widget.actionLabel,
+          icon: Icons.check,
+          isLoading: _isSaving,
           onPressed: _isSaving ? null : _save,
-          icon: _isSaving
-              ? const SizedBox.square(
-                  dimension: 18,
-                  child: CircularProgressIndicator(strokeWidth: 2),
-                )
-              : const Icon(Icons.check),
-          label: Text(widget.actionLabel),
         ),
       ],
+      child: Form(
+        key: _formKey,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            TextFormField(
+              key: const ValueKey('label-name-field'),
+              controller: _controller,
+              autofocus: true,
+              enabled: !_isSaving,
+              decoration: const InputDecoration(
+                labelText: 'Label name',
+                prefixIcon: Icon(Icons.label_outline),
+              ),
+              validator: (value) {
+                if ((value ?? '').trim().isEmpty) {
+                  return 'Label name is required';
+                }
+
+                return null;
+              },
+              onFieldSubmitted: (_) => _isSaving ? null : _save(),
+            ),
+            if (_errorMessage != null) ...[
+              const SizedBox(height: 12),
+              Text(
+                _errorMessage!,
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: theme.colorScheme.error,
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
     );
   }
 }
@@ -1552,46 +1512,20 @@ Future<LabelDeleteResult?> _showLabelDeleteDialog({
 
       return StatefulBuilder(
         builder: (context, setDialogState) {
-          return AlertDialog(
-            title: const Text('Delete label'),
-            content: SizedBox(
-              width: 480,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Text(
-                    label.name,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: Theme.of(context).textTheme.titleMedium,
-                  ),
-                  const SizedBox(height: 12),
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: [
-                      _ImpactChip(
-                        icon: Icons.receipt_long_outlined,
-                        label: _countLabel(transactionCount, 'transaction'),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
-                  const Text(
-                    'Deleting detaches this label from those transactions. Transactions stay intact.',
-                  ),
-                ],
-              ),
-            ),
+          return AppModalDialog(
+            title: 'Delete label',
+            maxWidth: 520,
             actions: [
-              TextButton(
+              AppActionPill.secondary(
+                label: 'Cancel',
                 onPressed: isDeleting
                     ? null
                     : () => Navigator.of(dialogContext).pop(),
-                child: const Text('Cancel'),
               ),
-              FilledButton.icon(
+              AppActionPill.destructive(
+                label: 'Delete',
+                icon: Icons.delete_outline,
+                isLoading: isDeleting,
                 onPressed: isDeleting
                     ? null
                     : () async {
@@ -1615,15 +1549,35 @@ Future<LabelDeleteResult?> _showLabelDeleteDialog({
                           }
                         }
                       },
-                icon: isDeleting
-                    ? const SizedBox.square(
-                        dimension: 18,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : const Icon(Icons.delete_outline),
-                label: const Text('Delete'),
               ),
             ],
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Text(
+                  label.name,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(context).textTheme.titleMedium,
+                ),
+                const SizedBox(height: 12),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    _ImpactChip(
+                      icon: Icons.receipt_long_outlined,
+                      label: _countLabel(transactionCount, 'transaction'),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                const Text(
+                  'Deleting detaches this label from those transactions. Transactions stay intact.',
+                ),
+              ],
+            ),
           );
         },
       );
@@ -1835,174 +1789,160 @@ class _CategoryMergeDialogState extends ConsumerState<_CategoryMergeDialog> {
     );
     final validationMessage = _validationMessage;
 
-    return AlertDialog(
-      title: const Text('Merge categories'),
-      content: SizedBox(
-        width: 640,
-        child: SingleChildScrollView(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              DropdownButtonFormField<String>(
-                key: const ValueKey('category-merge-destination'),
-                initialValue: _destinationCategoryId,
-                decoration: const InputDecoration(
-                  labelText: 'Destination category',
-                  prefixIcon: Icon(Icons.category_outlined),
-                ),
-                items: [
-                  for (final category in widget.snapshot.categories)
-                    DropdownMenuItem(
-                      value: category.id,
-                      child: Text(category.name),
-                    ),
-                ],
-                onChanged: _isSaving || widget.snapshot.categories.length < 2
-                    ? null
-                    : (value) {
-                        if (value == null) return;
-                        _selectDestination(value);
-                      },
-              ),
-              const SizedBox(height: 12),
-              TextFormField(
-                key: const ValueKey('category-merge-name'),
-                controller: _destinationNameController,
-                enabled: !_isSaving,
-                decoration: const InputDecoration(
-                  labelText: 'Surviving category name',
-                  prefixIcon: Icon(Icons.edit_outlined),
-                ),
-                onChanged: (_) => setState(() {}),
-              ),
-              const SizedBox(height: 16),
-              Text('Source categories', style: theme.textTheme.titleSmall),
-              const SizedBox(height: 8),
-              for (final category in widget.snapshot.categories.where(
-                (category) => category.id != _destinationCategoryId,
-              ))
-                CheckboxListTile(
-                  key: ValueKey('category-merge-source-${category.id}'),
-                  contentPadding: EdgeInsets.zero,
-                  value: _sourceCategoryIds.contains(category.id),
-                  onChanged: _isSaving
-                      ? null
-                      : (value) => _toggleSource(category, value ?? false),
-                  title: Text(category.name),
-                  subtitle: Text(
-                    _usageLabel(widget.snapshot.categoryUsage(category.id)),
-                  ),
-                ),
-              const SizedBox(height: 12),
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: [
-                  _ImpactChip(
-                    icon: Icons.receipt_long_outlined,
-                    label: _countLabel(
-                      sourceUsage.transactionCount,
-                      'transaction',
-                    ),
-                  ),
-                  _ImpactChip(
-                    icon: Icons.currency_rupee,
-                    label: formatMoney(sourceUsage.netSpend),
-                  ),
-                  _ImpactChip(
-                    icon: Icons.rule_folder_outlined,
-                    label: _countLabel(
-                      sourceUsage.activeMappingRuleCount,
-                      'active rule',
-                    ),
-                  ),
-                  _ImpactChip(
-                    icon: Icons.savings_outlined,
-                    label: _countLabel(sourceUsage.capCount, 'cap'),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 16),
-              Text('Subcategory mapping', style: theme.textTheme.titleSmall),
-              const SizedBox(height: 8),
-              if (_sourceSubcategories.isEmpty)
-                Text(
-                  'Selected source categories have no subcategories to map.',
-                  style: theme.textTheme.bodySmall,
-                )
-              else
-                for (final subcategory in _sourceSubcategories) ...[
-                  _SubcategoryMappingRow(
-                    destinationCategoryId: _destinationCategoryId,
-                    sourceCategory: widget.snapshot.categories
-                        .where(
-                          (category) => category.id == subcategory.categoryId,
-                        )
-                        .first,
-                    sourceSubcategory: subcategory,
-                    destinationSubcategories: _destinationSubcategories,
-                    selection: _mappings[subcategory.id],
-                    isSaving: _isSaving,
-                    onExistingSelected: (destinationId) =>
-                        _mapToExisting(subcategory, destinationId),
-                    onNewNameChanged: (name) => _mapToNew(subcategory, name),
-                    onNewSelected: () => _mapToNew(
-                      subcategory,
-                      _mappings[subcategory.id]?.destinationSubcategoryName ??
-                          '',
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                ],
-              if (_sourceCategories.isNotEmpty) ...[
-                const SizedBox(height: 4),
-                Text(
-                  'Recent transaction examples',
-                  style: theme.textTheme.titleSmall,
-                ),
-                const SizedBox(height: 8),
-                for (final category in _sourceCategories) ...[
-                  Text(category.name, style: theme.textTheme.labelLarge),
-                  const SizedBox(height: 4),
-                  _MergeSourceRecentTransactions(
-                    request: CategoryUsagePreviewRequest(
-                      householdId: widget.householdId,
-                      categoryId: category.id,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                ],
-              ],
-              if (validationMessage != null) ...[
-                const SizedBox(height: 8),
-                Text(
-                  validationMessage,
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: theme.colorScheme.error,
-                  ),
-                ),
-              ],
-            ],
-          ),
-        ),
-      ),
+    return AppModalDialog(
+      title: 'Merge categories',
+      maxWidth: 680,
       actions: [
-        TextButton(
+        AppActionPill.secondary(
+          label: 'Cancel',
           onPressed: _isSaving ? null : () => Navigator.of(context).pop(),
-          child: const Text('Cancel'),
         ),
-        FilledButton.icon(
+        AppActionPill.primary(
+          label: 'Save',
+          icon: Icons.merge_type_outlined,
+          isLoading: _isSaving,
           onPressed: _isSaving || validationMessage != null ? null : _save,
-          icon: _isSaving
-              ? const SizedBox.square(
-                  dimension: 18,
-                  child: CircularProgressIndicator(strokeWidth: 2),
-                )
-              : const Icon(Icons.merge_type_outlined),
-          label: const Text('Save'),
         ),
       ],
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          DropdownButtonFormField<String>(
+            key: const ValueKey('category-merge-destination'),
+            initialValue: _destinationCategoryId,
+            decoration: const InputDecoration(
+              labelText: 'Destination category',
+              prefixIcon: Icon(Icons.category_outlined),
+            ),
+            items: [
+              for (final category in widget.snapshot.categories)
+                DropdownMenuItem(
+                  value: category.id,
+                  child: Text(category.name),
+                ),
+            ],
+            onChanged: _isSaving || widget.snapshot.categories.length < 2
+                ? null
+                : (value) {
+                    if (value == null) return;
+                    _selectDestination(value);
+                  },
+          ),
+          const SizedBox(height: 12),
+          TextFormField(
+            key: const ValueKey('category-merge-name'),
+            controller: _destinationNameController,
+            enabled: !_isSaving,
+            decoration: const InputDecoration(
+              labelText: 'Surviving category name',
+              prefixIcon: Icon(Icons.edit_outlined),
+            ),
+            onChanged: (_) => setState(() {}),
+          ),
+          const SizedBox(height: 16),
+          Text('Source categories', style: theme.textTheme.titleSmall),
+          const SizedBox(height: 8),
+          for (final category in widget.snapshot.categories.where(
+            (category) => category.id != _destinationCategoryId,
+          ))
+            CheckboxListTile(
+              key: ValueKey('category-merge-source-${category.id}'),
+              contentPadding: EdgeInsets.zero,
+              value: _sourceCategoryIds.contains(category.id),
+              onChanged: _isSaving
+                  ? null
+                  : (value) => _toggleSource(category, value ?? false),
+              title: Text(category.name),
+              subtitle: Text(
+                _usageLabel(widget.snapshot.categoryUsage(category.id)),
+              ),
+            ),
+          const SizedBox(height: 12),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              _ImpactChip(
+                icon: Icons.receipt_long_outlined,
+                label: _countLabel(sourceUsage.transactionCount, 'transaction'),
+              ),
+              _ImpactChip(
+                icon: Icons.currency_rupee,
+                label: formatMoney(sourceUsage.netSpend),
+              ),
+              _ImpactChip(
+                icon: Icons.rule_folder_outlined,
+                label: _countLabel(
+                  sourceUsage.activeMappingRuleCount,
+                  'active rule',
+                ),
+              ),
+              _ImpactChip(
+                icon: Icons.savings_outlined,
+                label: _countLabel(sourceUsage.capCount, 'cap'),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Text('Subcategory mapping', style: theme.textTheme.titleSmall),
+          const SizedBox(height: 8),
+          if (_sourceSubcategories.isEmpty)
+            Text(
+              'Selected source categories have no subcategories to map.',
+              style: theme.textTheme.bodySmall,
+            )
+          else
+            for (final subcategory in _sourceSubcategories) ...[
+              _SubcategoryMappingRow(
+                destinationCategoryId: _destinationCategoryId,
+                sourceCategory: widget.snapshot.categories
+                    .where((category) => category.id == subcategory.categoryId)
+                    .first,
+                sourceSubcategory: subcategory,
+                destinationSubcategories: _destinationSubcategories,
+                selection: _mappings[subcategory.id],
+                isSaving: _isSaving,
+                onExistingSelected: (destinationId) =>
+                    _mapToExisting(subcategory, destinationId),
+                onNewNameChanged: (name) => _mapToNew(subcategory, name),
+                onNewSelected: () => _mapToNew(
+                  subcategory,
+                  _mappings[subcategory.id]?.destinationSubcategoryName ?? '',
+                ),
+              ),
+              const SizedBox(height: 12),
+            ],
+          if (_sourceCategories.isNotEmpty) ...[
+            const SizedBox(height: 4),
+            Text(
+              'Recent transaction examples',
+              style: theme.textTheme.titleSmall,
+            ),
+            const SizedBox(height: 8),
+            for (final category in _sourceCategories) ...[
+              Text(category.name, style: theme.textTheme.labelLarge),
+              const SizedBox(height: 4),
+              _MergeSourceRecentTransactions(
+                request: CategoryUsagePreviewRequest(
+                  householdId: widget.householdId,
+                  categoryId: category.id,
+                ),
+              ),
+              const SizedBox(height: 8),
+            ],
+          ],
+          if (validationMessage != null) ...[
+            const SizedBox(height: 8),
+            Text(
+              validationMessage,
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.error,
+              ),
+            ),
+          ],
+        ],
+      ),
     );
   }
 }
@@ -2247,84 +2187,76 @@ class _CategoryTaxonomyDialogState
 
   @override
   Widget build(BuildContext context) {
-    return AlertDialog(
-      title: const Text('Edit category'),
-      content: SizedBox(
-        width: 520,
-        child: SingleChildScrollView(
-          child: Form(
-            key: _formKey,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                TextFormField(
-                  key: const ValueKey('category-taxonomy-name'),
-                  controller: _categoryController,
-                  autofocus: true,
-                  decoration: const InputDecoration(
-                    labelText: 'Category name',
-                    prefixIcon: Icon(Icons.category_outlined),
+    return AppModalDialog(
+      title: 'Edit category',
+      maxWidth: 560,
+      actions: [
+        AppActionPill.secondary(
+          label: 'Cancel',
+          onPressed: _isSaving ? null : () => Navigator.of(context).pop(),
+        ),
+        AppActionPill.primary(
+          label: 'Save',
+          icon: Icons.save_outlined,
+          isLoading: _isSaving,
+          onPressed: _isSaving ? null : _save,
+        ),
+      ],
+      child: Form(
+        key: _formKey,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextFormField(
+              key: const ValueKey('category-taxonomy-name'),
+              controller: _categoryController,
+              autofocus: true,
+              decoration: const InputDecoration(
+                labelText: 'Category name',
+                prefixIcon: Icon(Icons.category_outlined),
+              ),
+              validator: (value) {
+                if ((value ?? '').trim().isEmpty) {
+                  return 'Category name is required';
+                }
+
+                return null;
+              },
+            ),
+            const SizedBox(height: 16),
+            for (var index = 0; index < _subcategoryFields.length; index++)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 12),
+                child: TextFormField(
+                  key: ValueKey(
+                    'subcategory-taxonomy-${_subcategoryFields[index].id ?? 'new-$index'}',
+                  ),
+                  controller: _subcategoryFields[index].controller,
+                  decoration: InputDecoration(
+                    labelText: 'Subcategory ${index + 1}',
+                    prefixIcon: const Icon(Icons.sell_outlined),
                   ),
                   validator: (value) {
-                    if ((value ?? '').trim().isEmpty) {
-                      return 'Category name is required';
+                    if (_subcategoryFields[index].id != null &&
+                        (value ?? '').trim().isEmpty) {
+                      return 'Subcategory name is required';
                     }
 
                     return null;
                   },
                 ),
-                const SizedBox(height: 16),
-                for (var index = 0; index < _subcategoryFields.length; index++)
-                  Padding(
-                    padding: const EdgeInsets.only(bottom: 12),
-                    child: TextFormField(
-                      key: ValueKey(
-                        'subcategory-taxonomy-${_subcategoryFields[index].id ?? 'new-$index'}',
-                      ),
-                      controller: _subcategoryFields[index].controller,
-                      decoration: InputDecoration(
-                        labelText: 'Subcategory ${index + 1}',
-                        prefixIcon: const Icon(Icons.sell_outlined),
-                      ),
-                      validator: (value) {
-                        if (_subcategoryFields[index].id != null &&
-                            (value ?? '').trim().isEmpty) {
-                          return 'Subcategory name is required';
-                        }
-
-                        return null;
-                      },
-                    ),
-                  ),
-                Align(
-                  alignment: Alignment.centerLeft,
-                  child: TextButton.icon(
-                    onPressed: _isSaving ? null : _addSubcategory,
-                    icon: const Icon(Icons.add),
-                    label: const Text('Add subcategory'),
-                  ),
-                ),
-              ],
+              ),
+            Align(
+              alignment: Alignment.centerLeft,
+              child: TextButton.icon(
+                onPressed: _isSaving ? null : _addSubcategory,
+                icon: const Icon(Icons.add),
+                label: const Text('Add subcategory'),
+              ),
             ),
-          ),
+          ],
         ),
       ),
-      actions: [
-        TextButton(
-          onPressed: _isSaving ? null : () => Navigator.of(context).pop(),
-          child: const Text('Cancel'),
-        ),
-        FilledButton.icon(
-          onPressed: _isSaving ? null : _save,
-          icon: _isSaving
-              ? const SizedBox.square(
-                  dimension: 18,
-                  child: CircularProgressIndicator(strokeWidth: 2),
-                )
-              : const Icon(Icons.save_outlined),
-          label: const Text('Save'),
-        ),
-      ],
     );
   }
 }

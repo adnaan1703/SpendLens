@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../data/repositories/household_repository.dart';
-import '../../shared/widgets/app_page.dart';
+import '../../shared/widgets/app_primitives.dart';
 import '../transactions/transactions_screen.dart';
 import '../trends/trends_screen.dart';
 import 'activity_route.dart';
@@ -123,23 +123,32 @@ class _ActivityModeButton extends StatelessWidget {
     return Semantics(
       button: true,
       selected: selected,
-      child: Material(
-        color: selected ? theme.colorScheme.surface : Colors.transparent,
-        shape: const StadiumBorder(),
-        clipBehavior: Clip.antiAlias,
-        child: InkWell(
-          onTap: onTap,
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(minHeight: 44),
-            child: Center(
-              child: Text(
-                label,
-                style: theme.textTheme.labelLarge?.copyWith(
-                  color: selected
-                      ? theme.colorScheme.onSurface
-                      : theme.colorScheme.onSurfaceVariant,
-                  fontWeight: FontWeight.w700,
-                  letterSpacing: 0,
+      child: AppPressedScale(
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 160),
+          curve: Curves.easeOut,
+          decoration: ShapeDecoration(
+            color: selected ? theme.colorScheme.surface : Colors.transparent,
+            shape: const StadiumBorder(),
+          ),
+          clipBehavior: Clip.antiAlias,
+          child: Material(
+            color: Colors.transparent,
+            child: InkWell(
+              onTap: onTap,
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(minHeight: 44),
+                child: Center(
+                  child: Text(
+                    label,
+                    style: theme.textTheme.labelLarge?.copyWith(
+                      color: selected
+                          ? theme.colorScheme.onSurface
+                          : theme.colorScheme.onSurfaceVariant,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 0,
+                    ),
+                  ),
                 ),
               ),
             ),
