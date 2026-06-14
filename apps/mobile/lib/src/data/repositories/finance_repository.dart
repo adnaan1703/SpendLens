@@ -1530,6 +1530,68 @@ final class TransactionLabelsSetResult {
   }
 }
 
+final class TransactionDeleteRequest {
+  const TransactionDeleteRequest({
+    required this.householdId,
+    required this.transactionId,
+    this.reason,
+  });
+
+  final String householdId;
+  final String transactionId;
+  final String? reason;
+}
+
+final class TransactionDeleteResult {
+  const TransactionDeleteResult({
+    required this.deletedTransactionId,
+    required this.sourceType,
+    required this.sourceFingerprint,
+    required this.deletedLabelCount,
+    required this.deletedSourceRowCount,
+    required this.deletedReviewItemCount,
+    required this.unlinkedPiggyBankEntryCount,
+    required this.unlinkedGmailParseAttemptCount,
+    required this.deletedAt,
+  });
+
+  final String deletedTransactionId;
+  final String sourceType;
+  final String sourceFingerprint;
+  final int deletedLabelCount;
+  final int deletedSourceRowCount;
+  final int deletedReviewItemCount;
+  final int unlinkedPiggyBankEntryCount;
+  final int unlinkedGmailParseAttemptCount;
+  final DateTime deletedAt;
+
+  factory TransactionDeleteResult.fromRows(List<dynamic> rows) {
+    if (rows.isEmpty) {
+      throw StateError('Transaction deletion did not return a result.');
+    }
+
+    return TransactionDeleteResult.fromJson(rows.first as Map<String, dynamic>);
+  }
+
+  factory TransactionDeleteResult.fromJson(Map<String, dynamic> json) {
+    return TransactionDeleteResult(
+      deletedTransactionId: json['deleted_transaction_id'] as String,
+      sourceType: json['source_type'] as String,
+      sourceFingerprint: json['source_fingerprint'] as String,
+      deletedLabelCount: _asInt(json['deleted_label_count']),
+      deletedSourceRowCount: _asInt(json['deleted_source_row_count']),
+      deletedReviewItemCount: _asInt(json['deleted_review_item_count']),
+      unlinkedPiggyBankEntryCount: _asInt(
+        json['unlinked_piggy_bank_entry_count'],
+      ),
+      unlinkedGmailParseAttemptCount: _asInt(
+        json['unlinked_gmail_parse_attempt_count'],
+      ),
+      deletedAt: DateTime.parse(json['deleted_at'] as String),
+    );
+  }
+}
+
 final class LabelRenameRequest {
   const LabelRenameRequest({
     required this.householdId,
@@ -2350,6 +2412,10 @@ abstract interface class FinanceRepository {
     TransactionLabelsSetRequest request,
   );
 
+  Future<TransactionDeleteResult> deleteTransaction(
+    TransactionDeleteRequest request,
+  );
+
   Future<LabelOption> renameHouseholdLabel(LabelRenameRequest request);
 
   Future<LabelDeleteResult> deleteHouseholdLabel(LabelDeleteRequest request);
@@ -3073,6 +3139,22 @@ final class SupabaseFinanceRepository implements FinanceRepository {
   }
 
   @override
+  Future<TransactionDeleteResult> deleteTransaction(
+    TransactionDeleteRequest request,
+  ) async {
+    final rows = await _client.rpc<List<dynamic>>(
+      'delete_transaction',
+      params: {
+        'p_household_id': request.householdId,
+        'p_transaction_id': request.transactionId,
+        'p_reason': request.reason,
+      },
+    );
+
+    return TransactionDeleteResult.fromRows(rows);
+  }
+
+  @override
   Future<LabelOption> renameHouseholdLabel(LabelRenameRequest request) async {
     final rows = await _client.rpc<List<dynamic>>(
       'rename_household_label',
@@ -3693,6 +3775,13 @@ final class DisabledFinanceRepository implements FinanceRepository {
   @override
   Future<TransactionLabelsSetResult> setTransactionLabels(
     TransactionLabelsSetRequest request,
+  ) {
+    throw const SupabaseNotConfiguredException();
+  }
+
+  @override
+  Future<TransactionDeleteResult> deleteTransaction(
+    TransactionDeleteRequest request,
   ) {
     throw const SupabaseNotConfiguredException();
   }

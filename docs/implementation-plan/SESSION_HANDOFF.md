@@ -4,11 +4,10 @@ Use this file to coordinate work across multiple implementation sessions. Update
 
 ## Current Status
 
-- Current milestone: None. Milestone 53 was completed on 2026-06-14.
-  Milestones 54-55 remain planned for Activity delete UX and final
-  transaction-deletion regression/docs cleanup. Milestones 18-21 remain
-  deferred by user request.
-- Last completed milestone: Milestone 53, Import Resurrection Guard.
+- Current milestone: None. Milestone 54 was completed on 2026-06-14.
+  Milestone 55 remains planned for final transaction-deletion regression/docs
+  cleanup. Milestones 18-21 remain deferred by user request.
+- Last completed milestone: Milestone 54, Activity Transaction Delete UX.
 - Current implementation state: Flutter Android app scaffold exists in
   `apps/mobile` with redesigned SpendLens Google sign-in, route protection,
   authenticated shell, RLS-safe profile/default-household bootstrap,
@@ -183,11 +182,17 @@ Use this file to coordinate work across multiple implementation sessions. Update
   resurrection suppression by consulting source tombstones before transaction
   upserts, adjusting workbook importer validation/reporting for suppressed rows,
   returning sanitized suppressed Gmail ingestion results, and treating those
-  Gmail parses as handled work. Milestones 54-55 remain planned for Activity
-  delete UX and final regression/docs cleanup.
+  Gmail parses as handled work. Milestone 54 adds owner-only Activity
+  transaction delete UX through the existing `delete_transaction` RPC,
+  destructive confirmation copy, successful provider refreshes, in-place RPC
+  error handling, page-back behavior for empty pages, and focused Flutter
+  coverage for owner/non-owner visibility, cancel/confirm/error, list removal,
+  and narrow layout behavior. Milestone 55 remains planned for final
+  transaction-deletion regression/docs cleanup.
   Milestones 18-21 remain planned and deferred by user request.
 - Remote deployment state: On 2026-06-08, user confirmed Supabase project `bslsitzdvrdosubbdxpd` as the intended dev/staging target. All local migrations through `20260607174515_ai_ready_layer_llm_features.sql` were pushed there, hosted expense Q&A and the now-retired legacy AI lookup function were active with JWT verification, and `GEMINI_API_KEY` was present in hosted Edge Function secrets by name. After the user signed in through the Android emulator, hosted profile/household bootstrap and authenticated Gemini Edge Function smoke passed. On 2026-06-08 for Milestone 13, `gmail-oauth-start` was deployed as version 2 with JWT verification, `gmail-sync` was deployed as version 2 without JWT verification, and new `gmail-backfill-range` was deployed as version 1 without JWT verification. Hosted `gmail-backfill-range` `OPTIONS` smoke returned 200, and an unauthenticated POST returned the expected service-key error. The live May Gmail backfill itself was not run because it requires the user to connect the target Gmail mailbox and invoke the runbook with a Supabase secret key from a local/platform secret store. On 2026-06-09, M16 deleted the hosted legacy AI lookup function from `bslsitzdvrdosubbdxpd` and a follow-up function list verified it absent. The M16 database migration and updated active Suggest function were verified locally but not pushed/deployed to hosted in this implementation session.
-- Next recommended milestone: Milestone 54, Activity Transaction Delete UX.
+- Next recommended milestone: Milestone 55, Transaction Deletion Regression,
+  Docs, and Cleanup.
   Milestones 18-21 remain deferred unless the user resumes push
   notifications. If continuing hosted rollout separately, push the M16,
   M26, M29, M32, and M33 migrations and deploy `transaction-metadata-suggest`;
@@ -199,7 +204,7 @@ Use this file to coordinate work across multiple implementation sessions. Update
   `docs/implementation-plan/UI_REDESIGN.md` is the active companion plan for
   completed Milestones 37-51.
   `docs/implementation-plan/TRANSACTION_DELETION.md` is the active companion
-  plan for completed Milestones 52-53 and planned Milestones 54-55.
+  plan for completed Milestones 52-54 and planned Milestone 55.
 
 ## Required Reading for New Threads
 
@@ -360,7 +365,7 @@ Do not ask the user to perform all setup at once. Ask only when the relevant mil
   completed.
 - Milestone 52, Transaction Delete Database Contract: completed.
 - Milestone 53, Import Resurrection Guard: completed.
-- Milestone 54, Activity Transaction Delete UX: planned.
+- Milestone 54, Activity Transaction Delete UX: completed.
 - Milestone 55, Transaction Deletion Regression, Docs, and Cleanup: planned.
 
 ## Transaction Deletion M52 Notes
@@ -403,8 +408,8 @@ Do not ask the user to perform all setup at once. Ask only when the relevant mil
   - `supabase db advisors --local --fail-on none`
   - `git diff --check`
 - Known gaps:
-  - M54 still needs to expose deletion from Activity and refresh affected
-    Flutter providers.
+  - M54 later exposed deletion from Activity and refreshed affected Flutter
+    providers.
   - M55 still needs final end-to-end transaction deletion regression/docs
     cleanup.
   - No hosted Supabase migration push was run.
@@ -465,8 +470,8 @@ Do not ask the user to perform all setup at once. Ask only when the relevant mil
   - `supabase db advisors --local --fail-on none`
   - `git diff --check`
 - Known gaps:
-  - M54 still needs to expose owner-only deletion from Activity and refresh
-    affected Flutter providers.
+  - M54 later exposed owner-only deletion from Activity and refreshed affected
+    Flutter providers.
   - M55 still needs final deletion regression/docs cleanup.
   - No hosted Supabase migration push or Edge Function deployment was run.
 - Assumptions made:
@@ -480,6 +485,59 @@ Do not ask the user to perform all setup at once. Ask only when the relevant mil
   - None.
 - Mocks used:
   - None.
+
+## Transaction Deletion M54 Notes
+
+- Completed on 2026-06-14.
+- Added `TransactionDeleteRequest`, `TransactionDeleteResult`, and
+  `FinanceRepository.deleteTransaction(...)`, with Supabase RPC, disabled
+  repository, and fake repository support.
+- Added an owner-only destructive Delete action to the Activity transaction
+  detail surface. Admin, member, viewer, and unauthenticated states do not get
+  the action.
+- Added an `AppModalDialog` confirmation that explains Activity/spend/trend/
+  label/review/monthly-cap removal, preserved but unlinked Vault entries and
+  service diagnostics, and workbook/Gmail re-import suppression.
+- Successful deletion calls `delete_transaction`, closes the detail sheet,
+  shows a success snackbar, refreshes affected Activity, Dashboard, Trend,
+  Review, Label, month, and Vault providers, and moves back one page if the
+  current Activity page becomes empty.
+- RPC errors stay in the confirmation flow and leave the current Activity state
+  intact.
+- Tightened `AppActionPill` label shrinking so compact modal actions do not
+  overflow at narrow widths.
+- Added focused Flutter coverage in
+  `apps/mobile/test/finance_features_test.dart` for owner visibility,
+  non-owner hiding, cancellation, confirmation/list removal, RPC error
+  handling, provider-refetch observability, narrow delete layout, and
+  deterministic Settings category drilldown setup inside the
+  transaction-focused test subset.
+- Verification:
+  - `cd apps/mobile && dart format lib/src/data/repositories/finance_repository.dart lib/src/features/settings/settings_screen.dart lib/src/features/transactions/transactions_screen.dart lib/src/shared/widgets/action_pill.dart test/finance_features_test.dart`
+  - `cd apps/mobile && flutter test test/finance_features_test.dart --name "transaction"`
+  - `cd apps/mobile && flutter analyze`
+  - `cd apps/mobile && flutter test`
+  - `git diff --check`
+- Known gaps:
+  - M55 still needs final end-to-end transaction deletion regression/docs
+    cleanup.
+  - No hosted Supabase rollout was run.
+- Deferred scope was not started: new Supabase schema, Gmail/workbook ingestion
+  changes, restore, undo, bulk delete, push notifications, hosted rollout, iOS,
+  web, and M55.
+- Assumptions made:
+  - M54 does not collect an optional deletion reason in the UI; the repository
+    model supports it for the existing RPC contract, but the action remains a
+    confirmation-only destructive flow.
+  - Owner visibility continues to use `HouseholdContext.memberRole == 'owner'`
+    as planned, with Postgres retaining final authorization.
+- Mocks created:
+  - None.
+- Mocks used:
+  - Extended the existing `_FakeFinanceRepository` in
+    `apps/mobile/test/finance_features_test.dart` to record delete requests,
+    mutate in-memory transactions, and expose fetch counts for provider refresh
+    assertions.
 
 ## Update Rules
 
@@ -519,9 +577,9 @@ When an architecture decision changes:
   - Milestone 53: Import Resurrection Guard.
   - Milestone 54: Activity Transaction Delete UX.
   - Milestone 55: Transaction Deletion Regression, Docs, and Cleanup.
-- Implementation remains planned. No migrations, Dart code, Flutter UI, tests,
+- This planning update did not start migrations, Dart code, Flutter UI, tests,
   workbook importer behavior, Gmail Edge Function behavior, or hosted Supabase
-  changes were started by this planning update.
+  changes.
 - Verification run:
   - Planning docs and existing transaction, label, cap, importer, and Gmail
     ingestion paths were inspected before editing.

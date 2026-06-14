@@ -409,6 +409,9 @@ Completion notes:
 Purpose: expose the owner-only transaction deletion contract from Activity while
 keeping the destructive action explicit and recover-free.
 
+Status: completed on 2026-06-14. Next recommended implementation milestone is
+M55, Transaction Deletion Regression, Docs, And Cleanup.
+
 Instructions:
 
 - Start by reading:
@@ -486,7 +489,7 @@ Acceptance criteria:
 Verification:
 
 ```bash
-cd apps/mobile && dart format lib/src/data/repositories/finance_repository.dart lib/src/features/transactions/transactions_screen.dart test/finance_features_test.dart
+cd apps/mobile && dart format lib/src/data/repositories/finance_repository.dart lib/src/features/settings/settings_screen.dart lib/src/features/transactions/transactions_screen.dart lib/src/shared/widgets/action_pill.dart test/finance_features_test.dart
 cd apps/mobile && flutter test test/finance_features_test.dart --name "transaction"
 cd apps/mobile && flutter analyze
 cd apps/mobile && flutter test
@@ -498,6 +501,51 @@ Completion summary requirements:
 - Assumptions made
 - Mocks created
 - Mocks used
+
+Completion notes:
+
+- Added `TransactionDeleteRequest`, `TransactionDeleteResult`, and
+  `FinanceRepository.deleteTransaction(...)`, with `SupabaseFinanceRepository`
+  calling `public.delete_transaction(...)` and disabled/fake repository support.
+- Added an owner-only destructive Delete action to Activity transaction details
+  using `HouseholdContext.memberRole == 'owner'`.
+- Added `AppModalDialog` confirmation copy that states the transaction is
+  removed from Activity, monthly spend, merchant spend, trends, labels, review,
+  and monthly caps; linked Vault entries and service diagnostics are preserved
+  but unlinked; and the source is blocked from future workbook or Gmail
+  re-import.
+- Successful deletion closes the detail sheet, shows a success snackbar,
+  refreshes affected Activity, Dashboard, Trend, Review, Label, month, and
+  Vault providers, and moves back one page if the current Activity page becomes
+  empty.
+- RPC errors stay visible in the confirmation flow without losing current
+  Activity state.
+- Tightened shared `AppActionPill` label shrinking so compact modal actions do
+  not overflow at narrow widths.
+- Added focused Flutter tests for owner visibility, admin/member/viewer hiding,
+  cancellation, confirmation/list removal, provider-refetch observability, RPC
+  error handling, narrow-width delete layout, and deterministic Settings
+  category drilldown setup in the transaction-focused subset.
+- Verified with:
+  - `cd apps/mobile && dart format lib/src/data/repositories/finance_repository.dart lib/src/features/settings/settings_screen.dart lib/src/features/transactions/transactions_screen.dart lib/src/shared/widgets/action_pill.dart test/finance_features_test.dart`
+  - `cd apps/mobile && flutter test test/finance_features_test.dart --name "transaction"`
+  - `cd apps/mobile && flutter analyze`
+  - `cd apps/mobile && flutter test`
+  - `git diff --check`
+- Deferred scope was not started: new Supabase schema, Gmail/workbook ingestion
+  changes, restore, undo, bulk delete, push notifications, hosted rollout, iOS,
+  web, and M55.
+- Assumptions made:
+  - M54 keeps deletion reason entry out of the UI; the Dart request still
+    supports the optional RPC reason field for future use.
+  - Flutter hides delete based on `HouseholdContext.memberRole == 'owner'`;
+    Postgres remains the final owner-only authorization layer.
+- Mocks created:
+  - None.
+- Mocks used:
+  - Extended the existing `_FakeFinanceRepository` in
+    `apps/mobile/test/finance_features_test.dart` for delete mutation,
+    request capture, and provider-refresh request counts.
 
 ## M55 - Transaction Deletion Regression, Docs, And Cleanup
 

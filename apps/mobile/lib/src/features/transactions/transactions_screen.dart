@@ -264,6 +264,13 @@ class _TransactionListPaneState extends ConsumerState<TransactionListPane> {
                       labels: labels.value ?? const [],
                     );
                   },
+            onDelete: householdContext?.memberRole == 'owner'
+                ? (transaction) => _confirmAndDeleteTransaction(
+                    householdContext: householdContext!,
+                    transaction: transaction,
+                    visibleItemCount: value.items.length,
+                  )
+                : null,
           ),
           AsyncValue(hasError: true, :final error) => EmptyState(
             icon: Icons.error_outline,
@@ -413,6 +420,122 @@ class _TransactionListPaneState extends ConsumerState<TransactionListPane> {
       );
     }
   }
+
+  Future<bool> _confirmAndDeleteTransaction({
+    required HouseholdContext householdContext,
+    required FinanceTransaction transaction,
+    required int visibleItemCount,
+  }) async {
+    final result = await showDialog<TransactionDeleteResult>(
+      context: context,
+      builder: (dialogContext) {
+        var isDeleting = false;
+
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AppModalDialog(
+              title: 'Delete transaction?',
+              maxWidth: 560,
+              actions: [
+                AppActionPill.secondary(
+                  label: 'Cancel',
+                  onPressed: isDeleting
+                      ? null
+                      : () => Navigator.of(dialogContext).pop(),
+                ),
+                AppActionPill.destructive(
+                  label: 'Confirm delete',
+                  icon: Icons.delete_outline,
+                  isLoading: isDeleting,
+                  onPressed: isDeleting
+                      ? null
+                      : () async {
+                          setDialogState(() {
+                            isDeleting = true;
+                          });
+
+                          try {
+                            final result = await ref
+                                .read(financeRepositoryProvider)
+                                .deleteTransaction(
+                                  TransactionDeleteRequest(
+                                    householdId: householdContext.household.id,
+                                    transactionId: transaction.id,
+                                  ),
+                                );
+
+                            if (dialogContext.mounted) {
+                              Navigator.of(dialogContext).pop(result);
+                            }
+                          } catch (error) {
+                            if (!dialogContext.mounted) return;
+
+                            setDialogState(() {
+                              isDeleting = false;
+                            });
+                            ScaffoldMessenger.of(dialogContext).showSnackBar(
+                              SnackBar(content: Text(error.toString())),
+                            );
+                          }
+                        },
+                ),
+              ],
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: const [
+                  Text(
+                    'This removes the transaction from Activity, monthly spend, merchant spend, trends, labels, review, and monthly caps.',
+                  ),
+                  SizedBox(height: 12),
+                  Text(
+                    'Linked Vault entries and service diagnostics are preserved but unlinked.',
+                  ),
+                  SizedBox(height: 12),
+                  Text(
+                    'The source will be blocked from future workbook or Gmail re-import.',
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+
+    if (result == null) return false;
+    if (!mounted) return true;
+
+    if (_page > 0 && visibleItemCount <= 1) {
+      setState(() {
+        _page -= 1;
+      });
+    }
+
+    _refreshAfterTransactionDelete(householdContext.household.id);
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          'Deleted transaction. Removed ${result.deletedLabelCount} labels, ${result.deletedReviewItemCount} review items, and unlinked ${result.unlinkedPiggyBankEntryCount} Vault entries.',
+        ),
+      ),
+    );
+
+    return true;
+  }
+
+  void _refreshAfterTransactionDelete(String householdId) {
+    ref.invalidate(transactionsProvider);
+    ref.invalidate(dashboardSnapshotProvider);
+    ref.invalidate(trendReportProvider);
+    ref.invalidate(merchantReviewQueueProvider(householdId));
+    ref.invalidate(transactionLabelsProvider(householdId));
+    ref.invalidate(labelManagerSnapshotProvider(householdId));
+    ref.invalidate(availableMonthsProvider(householdId));
+    ref.invalidate(piggyBanksProvider(householdId));
+    ref.invalidate(piggyBankEntriesProvider);
+  }
 }
 
 class _TransactionFilters extends StatelessWidget {
@@ -490,8 +613,8 @@ class _TransactionFilters extends StatelessWidget {
         final clearButtonSpacing = 8.0;
         final periodDropdownWidth = compact
             ? (layoutWidth - clearButtonTotalWidth)
-                .clamp(180.0, double.infinity)
-                .toDouble()
+                  .clamp(180.0, double.infinity)
+                  .toDouble()
             : dropdownWidth;
         final periodControlWidth = compact
             ? layoutWidth
@@ -669,24 +792,24 @@ class _TransactionFilters extends StatelessWidget {
             ),
             SizedBox(
               width: periodControlWidth,
-                  child: Row(
-                    children: [
-                      SizedBox(
-                        width: periodDropdownWidth,
-                        child: PeriodFilterDropdown(
-                          availableMonths: availableMonths,
-                          selectedRange: dateRange,
-                          pillStyle: true,
-                          width: periodDropdownWidth,
-                          onChanged: onPeriodChanged,
-                        ),
-                      ),
-                      SizedBox(width: clearButtonSpacing),
-                      IconButton.filledTonal(
-                        tooltip: 'Clear filters',
-                        onPressed: hasFilters ? onClear : null,
-                        icon: const Icon(Icons.filter_alt_off_outlined),
-                      ),
+              child: Row(
+                children: [
+                  SizedBox(
+                    width: periodDropdownWidth,
+                    child: PeriodFilterDropdown(
+                      availableMonths: availableMonths,
+                      selectedRange: dateRange,
+                      pillStyle: true,
+                      width: periodDropdownWidth,
+                      onChanged: onPeriodChanged,
+                    ),
+                  ),
+                  SizedBox(width: clearButtonSpacing),
+                  IconButton.filledTonal(
+                    tooltip: 'Clear filters',
+                    onPressed: hasFilters ? onClear : null,
+                    icon: const Icon(Icons.filter_alt_off_outlined),
+                  ),
                 ],
               ),
             ),
@@ -704,6 +827,7 @@ class _TransactionList extends StatelessWidget {
     required this.onNextPage,
     required this.onEdit,
     required this.onEditLabels,
+    required this.onDelete,
   });
 
   final PagedTransactions page;
@@ -711,6 +835,7 @@ class _TransactionList extends StatelessWidget {
   final VoidCallback? onNextPage;
   final ValueChanged<FinanceTransaction>? onEdit;
   final ValueChanged<FinanceTransaction>? onEditLabels;
+  final Future<bool> Function(FinanceTransaction transaction)? onDelete;
 
   @override
   Widget build(BuildContext context) {
@@ -731,6 +856,7 @@ class _TransactionList extends StatelessWidget {
               transaction: transaction,
               onEdit: onEdit,
               onEditLabels: onEditLabels,
+              onDelete: onDelete,
             ),
           ),
         const SizedBox(height: 8),
@@ -761,11 +887,13 @@ class _TransactionCard extends StatelessWidget {
     required this.transaction,
     required this.onEdit,
     required this.onEditLabels,
+    required this.onDelete,
   });
 
   final FinanceTransaction transaction;
   final ValueChanged<FinanceTransaction>? onEdit;
   final ValueChanged<FinanceTransaction>? onEditLabels;
+  final Future<bool> Function(FinanceTransaction transaction)? onDelete;
 
   @override
   Widget build(BuildContext context) {
@@ -903,6 +1031,14 @@ class _TransactionCard extends StatelessWidget {
                     Navigator.of(sheetContext).pop();
                     onEdit!(transaction);
                   },
+            onDelete: onDelete == null
+                ? null
+                : () async {
+                    final deleted = await onDelete!(transaction);
+                    if (deleted && sheetContext.mounted) {
+                      Navigator.of(sheetContext).pop();
+                    }
+                  },
           ),
         );
       },
@@ -917,6 +1053,7 @@ class _TransactionDetailSurface extends StatelessWidget {
     required this.onClose,
     required this.onEditLabels,
     required this.onEdit,
+    required this.onDelete,
   });
 
   final FinanceTransaction transaction;
@@ -924,6 +1061,7 @@ class _TransactionDetailSurface extends StatelessWidget {
   final VoidCallback onClose;
   final VoidCallback? onEditLabels;
   final VoidCallback? onEdit;
+  final Future<void> Function()? onDelete;
 
   @override
   Widget build(BuildContext context) {
@@ -1052,6 +1190,13 @@ class _TransactionDetailSurface extends StatelessWidget {
                 runSpacing: 12,
                 alignment: WrapAlignment.end,
                 children: [
+                  if (onDelete != null)
+                    AppActionPill.destructive(
+                      label: 'Delete',
+                      icon: Icons.delete_outline,
+                      tooltip: 'Delete transaction',
+                      onPressed: onDelete,
+                    ),
                   OutlinedButton.icon(
                     onPressed: onEditLabels,
                     icon: const Icon(Icons.label_outline),

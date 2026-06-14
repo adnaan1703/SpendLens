@@ -292,7 +292,7 @@ void main() {
         child: const PiggyBanksScreen(),
       );
       expect(find.text('Vaults'), findsWidgets);
-      expect(find.text('New Vault'), findsOneWidget);
+      expect(find.text('Create Vault'), findsOneWidget);
       expect(find.text('No vaults yet'), findsOneWidget);
 
       await _pumpRedesignSurface(
@@ -1072,6 +1072,162 @@ void main() {
       ),
       findsOneWidget,
     );
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('transaction delete action is owner-only in detail', (
+    tester,
+  ) async {
+    final ownerRepository = _FakeFinanceRepository();
+
+    await tester.pumpWidget(
+      _financeTestApp(
+        repository: ownerRepository,
+        child: const ActivityScreen(),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await _openTransactionDetail(tester, 'Swiggy Instamart');
+
+    expect(find.widgetWithText(FilledButton, 'Delete'), findsOneWidget);
+
+    for (final role in ['admin', 'member', 'viewer']) {
+      await tester.pumpWidget(const SizedBox());
+      await tester.pumpAndSettle();
+
+      final repository = _FakeFinanceRepository();
+      await tester.pumpWidget(
+        _financeTestApp(
+          repository: repository,
+          householdContext: _householdContextWithRole(role),
+          child: const ActivityScreen(),
+        ),
+      );
+      await tester.pumpAndSettle();
+      await _openTransactionDetail(tester, 'Swiggy Instamart');
+
+      expect(
+        find.widgetWithText(FilledButton, 'Delete'),
+        findsNothing,
+        reason: role,
+      );
+      expect(find.widgetWithText(FilledButton, 'Edit'), findsOneWidget);
+    }
+  });
+
+  testWidgets('transaction delete confirmation can be canceled', (
+    tester,
+  ) async {
+    final repository = _FakeFinanceRepository();
+
+    await tester.pumpWidget(
+      _financeTestApp(repository: repository, child: const ActivityScreen()),
+    );
+    await tester.pumpAndSettle();
+    await _openTransactionDetail(tester, 'Swiggy Instamart');
+
+    await _tapTransactionDeleteAction(tester);
+
+    expect(find.text('Delete transaction?'), findsOneWidget);
+    expect(
+      find.textContaining('monthly spend, merchant spend, trends'),
+      findsOneWidget,
+    );
+    expect(
+      find.textContaining('Vault entries and service diagnostics'),
+      findsOneWidget,
+    );
+    expect(
+      find.textContaining('future workbook or Gmail re-import'),
+      findsOneWidget,
+    );
+
+    await tester.tap(find.widgetWithText(FilledButton, 'Cancel'));
+    await tester.pumpAndSettle();
+
+    expect(repository.transactionDeleteRequests, isEmpty);
+    expect(find.byTooltip('Close transaction details'), findsOneWidget);
+    expect(find.text('Swiggy Instamart'), findsWidgets);
+  });
+
+  testWidgets('transaction delete confirms and removes Activity row', (
+    tester,
+  ) async {
+    final repository = _FakeFinanceRepository();
+
+    await tester.pumpWidget(
+      _financeTestApp(repository: repository, child: const ActivityScreen()),
+    );
+    await tester.pumpAndSettle();
+    final initialFetchCount = repository.transactionFetchCount;
+    await _openTransactionDetail(tester, 'Swiggy Instamart');
+
+    await _tapTransactionDeleteAction(tester);
+    await tester.tap(find.widgetWithText(FilledButton, 'Confirm delete'));
+    await tester.pumpAndSettle();
+
+    expect(repository.transactionDeleteRequests, hasLength(1));
+    expect(
+      repository.transactionDeleteRequests.single.householdId,
+      'household-1',
+    );
+    expect(repository.transactionDeleteRequests.single.transactionId, 'txn-1');
+    expect(
+      repository.transactions.any((transaction) => transaction.id == 'txn-1'),
+      isFalse,
+    );
+    expect(repository.transactionFetchCount, greaterThan(initialFetchCount));
+    expect(find.byType(BottomSheet), findsNothing);
+    expect(find.text('Swiggy Instamart'), findsNothing);
+    expect(find.textContaining('Deleted transaction.'), findsOneWidget);
+  });
+
+  testWidgets('transaction delete error keeps current Activity state', (
+    tester,
+  ) async {
+    final repository = _FakeFinanceRepository()
+      ..transactionDeleteError = StateError('RPC unavailable');
+
+    await tester.pumpWidget(
+      _financeTestApp(repository: repository, child: const ActivityScreen()),
+    );
+    await tester.pumpAndSettle();
+    await _openTransactionDetail(tester, 'Swiggy Instamart');
+
+    await _tapTransactionDeleteAction(tester);
+    await tester.tap(find.widgetWithText(FilledButton, 'Confirm delete'));
+    await tester.pumpAndSettle();
+
+    expect(repository.transactionDeleteRequests, hasLength(1));
+    expect(
+      repository.transactions.any((transaction) => transaction.id == 'txn-1'),
+      isTrue,
+    );
+    expect(find.text('Delete transaction?'), findsOneWidget);
+    expect(find.text('Swiggy Instamart'), findsWidgets);
+    expect(find.textContaining('Bad state: RPC unavailable'), findsOneWidget);
+  });
+
+  testWidgets('transaction delete dialog fits narrow Activity layout', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(320, 760);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(() {
+      tester.view.resetPhysicalSize();
+      tester.view.resetDevicePixelRatio();
+    });
+    final repository = _FakeFinanceRepository();
+
+    await tester.pumpWidget(
+      _financeTestApp(repository: repository, child: const ActivityScreen()),
+    );
+    await tester.pumpAndSettle();
+    await _openTransactionDetail(tester, 'Swiggy Instamart');
+    await _tapTransactionDeleteAction(tester);
+
+    expect(find.text('Delete transaction?'), findsOneWidget);
+    expect(find.widgetWithText(FilledButton, 'Confirm delete'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 
@@ -1920,7 +2076,7 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    await tester.ensureVisible(find.text('Categories'));
+    await _expandSettingsSection(tester, 'Categories');
     await tester.tap(find.widgetWithText(FilledButton, 'Create').first);
     await tester.pumpAndSettle();
     await tester.enterText(find.byType(TextFormField).at(0), 'Travel');
@@ -1934,6 +2090,8 @@ void main() {
       repository.createdCategoryRequests.single.subcategoryName,
       'Flights',
     );
+    await _selectSettingsCategory(tester, 'Travel');
+
     expect(find.text('Travel'), findsWidgets);
     expect(find.text('Flights'), findsOneWidget);
     expect(find.text('Created Travel'), findsOneWidget);
@@ -1949,7 +2107,7 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    await tester.ensureVisible(find.text('Labels'));
+    await _expandSettingsSection(tester, 'Labels');
     expect(find.text('Groceries'), findsWidgets);
     expect(find.text('1 transaction - last used 2026-03-12'), findsOneWidget);
 
@@ -2043,6 +2201,9 @@ void main() {
     );
     await tester.pumpAndSettle();
 
+    await _expandSettingsSection(tester, 'Categories');
+    await _selectSettingsCategory(tester, 'Food');
+
     expect(find.text('Food'), findsWidgets);
     expect(find.text('Delivery'), findsWidgets);
     expect(find.text('1 transaction - INR 1,200'), findsWidgets);
@@ -2063,6 +2224,9 @@ void main() {
       _financeRouterTestApp(repository: repository, router: router),
     );
     await tester.pumpAndSettle();
+
+    await _expandSettingsSection(tester, 'Categories');
+    await _selectSettingsCategory(tester, 'Food');
 
     await tester.ensureVisible(
       find.widgetWithText(FilledButton, 'View transactions'),
@@ -2096,6 +2260,9 @@ void main() {
     );
     await tester.pumpAndSettle();
 
+    await _expandSettingsSection(tester, 'Categories');
+    await _selectSettingsCategory(tester, 'Food');
+
     await tester.ensureVisible(
       find.widgetWithText(FilledButton, 'View transactions'),
     );
@@ -2115,6 +2282,9 @@ void main() {
       _financeTestApp(repository: repository, child: const SettingsScreen()),
     );
     await tester.pumpAndSettle();
+
+    await _expandSettingsSection(tester, 'Categories');
+    await _selectSettingsCategory(tester, 'Food');
 
     await tester.ensureVisible(find.byTooltip('Edit category').first);
     await tester.tap(find.byTooltip('Edit category').first);
@@ -2166,6 +2336,9 @@ void main() {
     );
     await tester.pumpAndSettle();
 
+    await _expandSettingsSection(tester, 'Categories');
+    await _selectSettingsCategory(tester, 'Food');
+
     await tester.ensureVisible(find.byTooltip('Delete subcategory').first);
     await tester.tap(find.byTooltip('Delete subcategory').first);
     await tester.pumpAndSettle();
@@ -2213,6 +2386,8 @@ void main() {
     );
     await tester.pumpAndSettle();
 
+    await _expandSettingsSection(tester, 'Categories');
+
     await tester.ensureVisible(find.byTooltip('Delete category').last);
     await tester.tap(find.byTooltip('Delete category').last);
     await tester.pumpAndSettle();
@@ -2259,6 +2434,8 @@ void main() {
       _financeTestApp(repository: repository, child: const SettingsScreen()),
     );
     await tester.pumpAndSettle();
+
+    await _expandSettingsSection(tester, 'Categories');
 
     await tester.ensureVisible(find.widgetWithText(FilledButton, 'Merge'));
     await tester.tap(find.widgetWithText(FilledButton, 'Merge'));
@@ -2369,6 +2546,8 @@ void main() {
       repository.categories.map((category) => category.name),
       isNot(contains('Shopping')),
     );
+    await _selectSettingsCategory(tester, 'Food & Dining');
+
     expect(find.text('Food & Dining'), findsWidgets);
     expect(find.text('Online Shopping'), findsWidgets);
     expect(
@@ -2535,7 +2714,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Vaults'), findsWidgets);
-    expect(find.text('New Vault'), findsOneWidget);
+    expect(find.text('Create Vault'), findsOneWidget);
     expect(find.text('No vaults yet'), findsOneWidget);
 
     await tester.ensureVisible(find.text('Create vault'));
@@ -2586,6 +2765,7 @@ Widget _financeTestApp({
   required _FakeFinanceRepository repository,
   required Widget child,
   Key? appKey,
+  HouseholdContext householdContext = _householdContext,
   ThemeData? theme,
   ThemeData? darkTheme,
   ThemeMode themeMode = ThemeMode.light,
@@ -2595,7 +2775,7 @@ Widget _financeTestApp({
       appBootstrapProvider.overrideWithValue(
         const AppBootstrap(supabaseStatus: SupabaseStatus.ready),
       ),
-      householdContextProvider.overrideWithValue(AsyncData(_householdContext)),
+      householdContextProvider.overrideWithValue(AsyncData(householdContext)),
       financeRepositoryProvider.overrideWithValue(repository),
     ],
     child: MaterialApp(
@@ -2606,6 +2786,53 @@ Widget _financeTestApp({
       home: Scaffold(body: child),
     ),
   );
+}
+
+HouseholdContext _householdContextWithRole(String memberRole) {
+  return HouseholdContext(
+    profile: _householdContext.profile,
+    household: _householdContext.household,
+    memberRole: memberRole,
+  );
+}
+
+Future<void> _openTransactionDetail(
+  WidgetTester tester,
+  String merchantName,
+) async {
+  await tester.ensureVisible(find.text(merchantName).first);
+  await tester.tap(find.text(merchantName).first);
+  await tester.pumpAndSettle();
+}
+
+Future<void> _tapTransactionDeleteAction(WidgetTester tester) async {
+  final deleteButton = find.widgetWithText(FilledButton, 'Delete');
+  await tester.ensureVisible(deleteButton);
+  await tester.pumpAndSettle();
+  await tester.tap(deleteButton);
+  await tester.pumpAndSettle();
+}
+
+Future<void> _expandSettingsSection(
+  WidgetTester tester,
+  String sectionTitle,
+) async {
+  final section = find.text(sectionTitle).first;
+  await tester.ensureVisible(section);
+  await tester.pumpAndSettle();
+  await tester.tap(section);
+  await tester.pumpAndSettle();
+}
+
+Future<void> _selectSettingsCategory(
+  WidgetTester tester,
+  String categoryName,
+) async {
+  final category = find.text(categoryName).first;
+  await tester.ensureVisible(category);
+  await tester.pumpAndSettle();
+  await tester.tap(category);
+  await tester.pumpAndSettle();
 }
 
 Future<void> _pumpRedesignSurface(
@@ -2744,7 +2971,13 @@ GoRouter _shellTestRouter({
         routes: [
           GoRoute(
             path: DashboardScreen.routePath,
-            builder: (_, _) => const Center(child: Text('Dashboard shell')),
+            builder: (context, _) => Center(
+              child: IconButton(
+                tooltip: 'Open settings',
+                onPressed: () => context.go(SettingsScreen.routePath),
+                icon: const Icon(Icons.settings_outlined),
+              ),
+            ),
           ),
           GoRoute(
             path: ActivityScreen.routePath,
@@ -2861,15 +3094,26 @@ final class _FakeFinanceRepository implements FinanceRepository {
   final labelSetRequests = <TransactionLabelsSetRequest>[];
   final labelRenameRequests = <LabelRenameRequest>[];
   final labelDeleteRequests = <LabelDeleteRequest>[];
+  final transactionDeleteRequests = <TransactionDeleteRequest>[];
   final expenseQuestions = <ExpenseQuestionRequest>[];
   final metadataSuggestionRequests = <TransactionMetadataSuggestionRequest>[];
   final piggyBanks = <PiggyBankSummary>[];
   final piggyEntries = <PiggyBankEntry>[];
   Object? reviewQueueError;
   Object? gmailParseFailuresError;
+  Object? transactionDeleteError;
   TransactionMetadataSuggestionResult? nextMetadataSuggestion;
   Object? metadataSuggestionError;
   Object? expenseQuestionError;
+  int dashboardFetchCount = 0;
+  int availableMonthsFetchCount = 0;
+  int labelFetchCount = 0;
+  int labelManagerFetchCount = 0;
+  int reviewQueueFetchCount = 0;
+  int piggyBanksFetchCount = 0;
+  int piggyEntriesFetchCount = 0;
+  int transactionFetchCount = 0;
+  int trendReportFetchCount = 0;
   final aiStatus = AiBudgetStatus(
     householdId: 'household-1',
     provider: 'gemini',
@@ -3134,6 +3378,7 @@ final class _FakeFinanceRepository implements FinanceRepository {
     required String householdId,
     DateTime? requestedMonth,
   }) async {
+    dashboardFetchCount += 1;
     final selectedMonth = firstDayOfMonth(requestedMonth ?? DateTime(2026, 3));
     final isMarch2026 = isSameMonth(selectedMonth, DateTime(2026, 3));
 
@@ -3223,6 +3468,7 @@ final class _FakeFinanceRepository implements FinanceRepository {
   Future<List<DateTime>> fetchAvailableMonths({
     required String householdId,
   }) async {
+    availableMonthsFetchCount += 1;
     return availableMonths;
   }
 
@@ -3259,6 +3505,7 @@ final class _FakeFinanceRepository implements FinanceRepository {
 
   @override
   Future<List<LabelOption>> fetchLabels({required String householdId}) async {
+    labelFetchCount += 1;
     return [...labels]..sort(_compareTestLabels);
   }
 
@@ -3266,6 +3513,7 @@ final class _FakeFinanceRepository implements FinanceRepository {
   Future<LabelManagerSnapshot> fetchLabelManagerSnapshot({
     required String householdId,
   }) async {
+    labelManagerFetchCount += 1;
     return LabelManagerSnapshot(
       labels: [
         for (final label in labels)
@@ -3657,6 +3905,7 @@ final class _FakeFinanceRepository implements FinanceRepository {
   Future<List<MerchantReviewItem>> fetchMerchantReviewQueue({
     required String householdId,
   }) async {
+    reviewQueueFetchCount += 1;
     final error = reviewQueueError;
     if (error != null) throw error;
 
@@ -3723,6 +3972,7 @@ final class _FakeFinanceRepository implements FinanceRepository {
   Future<List<PiggyBankSummary>> fetchPiggyBanks({
     required String householdId,
   }) async {
+    piggyBanksFetchCount += 1;
     return piggyBanks
         .where((piggyBank) => piggyBank.householdId == householdId)
         .map(_summaryWithCurrentBalance)
@@ -3770,6 +4020,7 @@ final class _FakeFinanceRepository implements FinanceRepository {
     required String householdId,
     required String piggyBankId,
   }) async {
+    piggyEntriesFetchCount += 1;
     return piggyEntries
         .where(
           (entry) =>
@@ -3837,6 +4088,7 @@ final class _FakeFinanceRepository implements FinanceRepository {
 
   @override
   Future<PagedTransactions> fetchTransactions(TransactionQuery query) async {
+    transactionFetchCount += 1;
     lastQuery = query;
     final search = query.searchText.trim().toLowerCase();
     final filtered = transactions.where((transaction) {
@@ -3924,6 +4176,61 @@ final class _FakeFinanceRepository implements FinanceRepository {
   }
 
   @override
+  Future<TransactionDeleteResult> deleteTransaction(
+    TransactionDeleteRequest request,
+  ) async {
+    transactionDeleteRequests.add(request);
+    final error = transactionDeleteError;
+    if (error != null) throw error;
+
+    final index = transactions.indexWhere(
+      (transaction) => transaction.id == request.transactionId,
+    );
+    if (index == -1) {
+      throw StateError('Transaction not found.');
+    }
+
+    final transaction = transactions.removeAt(index);
+    final deletedReviewItemCount = reviewItems
+        .where((item) => item.transactionId == request.transactionId)
+        .length;
+    reviewItems.removeWhere(
+      (item) => item.transactionId == request.transactionId,
+    );
+    final unlinkedPiggyBankEntryCount = piggyEntries
+        .where((entry) => entry.linkedTransactionId == request.transactionId)
+        .length;
+    for (var index = 0; index < piggyEntries.length; index += 1) {
+      final entry = piggyEntries[index];
+      if (entry.linkedTransactionId != request.transactionId) continue;
+
+      piggyEntries[index] = _copyPiggyEntry(
+        entry,
+        clearLinkedTransaction: true,
+      );
+    }
+    trendTransactions.removeWhere(
+      (trendTransaction) =>
+          trendTransaction.id == transaction.id ||
+          trendTransaction.statementMerchant == transaction.statementMerchant ||
+          trendTransaction.merchantGroup ==
+              (transaction.merchantName ?? transaction.statementMerchant),
+    );
+
+    return TransactionDeleteResult(
+      deletedTransactionId: transaction.id,
+      sourceType: 'workbook',
+      sourceFingerprint: 'workbook:${transaction.id}',
+      deletedLabelCount: transaction.labels.length,
+      deletedSourceRowCount: 1,
+      deletedReviewItemCount: deletedReviewItemCount,
+      unlinkedPiggyBankEntryCount: unlinkedPiggyBankEntryCount,
+      unlinkedGmailParseAttemptCount: 0,
+      deletedAt: DateTime(2026, 3, 20, 12),
+    );
+  }
+
+  @override
   Future<LabelOption> renameHouseholdLabel(LabelRenameRequest request) async {
     labelRenameRequests.add(request);
     final name = request.name.trim();
@@ -4002,6 +4309,7 @@ final class _FakeFinanceRepository implements FinanceRepository {
 
   @override
   Future<TrendReport> fetchTrendReport(TrendQuery query) async {
+    trendReportFetchCount += 1;
     lastTrendQuery = query;
     final filtered = trendTransactions.where((transaction) {
       final matchesCategory =
@@ -4241,6 +4549,26 @@ FinanceTransaction _copyTransaction(
     cardholderName: transaction.cardholderName,
     notes: transaction.notes,
     labels: labels ?? transaction.labels,
+  );
+}
+
+PiggyBankEntry _copyPiggyEntry(
+  PiggyBankEntry entry, {
+  bool clearLinkedTransaction = false,
+}) {
+  return PiggyBankEntry(
+    id: entry.id,
+    householdId: entry.householdId,
+    piggyBankId: entry.piggyBankId,
+    entryType: entry.entryType,
+    amount: entry.amount,
+    entryDate: entry.entryDate,
+    note: entry.note,
+    linkedTransactionId: clearLinkedTransaction
+        ? null
+        : entry.linkedTransactionId,
+    createdBy: entry.createdBy,
+    createdAt: entry.createdAt,
   );
 }
 

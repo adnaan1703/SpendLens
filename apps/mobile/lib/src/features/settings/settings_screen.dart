@@ -67,7 +67,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 'Unknown user',
             householdName:
                 householdContext?.household.name.toTitleCaseWords() ??
-                    'Loading',
+                'Loading',
             role: householdContext?.memberRole ?? 'Loading',
             isSigningOut: _isSigningOut,
             onSignOut: _isSigningOut ? null : _signOut,
@@ -201,7 +201,9 @@ class _ThemeSelectorCard extends ConsumerWidget {
                 showSelectedIcon: false,
                 style: SegmentedButton.styleFrom(
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(AppThemeTokens.buttonRadius),
+                    borderRadius: BorderRadius.circular(
+                      AppThemeTokens.buttonRadius,
+                    ),
                   ),
                 ),
                 segments: const [
@@ -300,10 +302,7 @@ class _AiSettingsCard extends ConsumerWidget {
     return AppContentCard(
       backgroundColor: AppThemeTokens.ink,
       foregroundColor: AppThemeTokens.primary,
-      borderSide: BorderSide(
-        color: theme.colorScheme.outlineVariant,
-        width: 1,
-      ),
+      borderSide: BorderSide(color: theme.colorScheme.outlineVariant, width: 1),
       child: status.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (error, _) => Column(
@@ -403,7 +402,7 @@ class _LabelManagerCardState extends ConsumerState<_LabelManagerCard> {
 
     _refreshLabelLookups(ref, widget.householdId);
 
-    if (mounted) {
+    if (context.mounted) {
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(SnackBar(content: Text('Created ${label.name}')));
@@ -440,7 +439,7 @@ class _LabelManagerCardState extends ConsumerState<_LabelManagerCard> {
 
     _refreshLabelLookups(ref, widget.householdId);
 
-    if (mounted) {
+    if (context.mounted) {
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(SnackBar(content: Text('Renamed ${renamed.name}')));
@@ -471,7 +470,7 @@ class _LabelManagerCardState extends ConsumerState<_LabelManagerCard> {
 
     _refreshLabelLookups(ref, widget.householdId);
 
-    if (mounted) {
+    if (context.mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
@@ -485,7 +484,9 @@ class _LabelManagerCardState extends ConsumerState<_LabelManagerCard> {
   @override
   Widget build(BuildContext context) {
     final textTheme = Theme.of(context).textTheme;
-    final snapshot = ref.watch(labelManagerSnapshotProvider(widget.householdId));
+    final snapshot = ref.watch(
+      labelManagerSnapshotProvider(widget.householdId),
+    );
 
     return AppContentCard(
       child: Column(
@@ -506,9 +507,7 @@ class _LabelManagerCardState extends ConsumerState<_LabelManagerCard> {
                 children: [
                   const Icon(Icons.label_outline),
                   const SizedBox(width: 10),
-                  Expanded(
-                    child: Text('Labels', style: textTheme.titleMedium),
-                  ),
+                  Expanded(child: Text('Labels', style: textTheme.titleMedium)),
                   Icon(
                     _isLabelsSectionExpanded
                         ? Icons.expand_less
@@ -680,10 +679,7 @@ class _CategoryManagerCardState extends ConsumerState<_CategoryManagerCard> {
   final Set<String> _expandedCategoryIds = <String>{};
   bool _isCategoriesSectionExpanded = false;
 
-  void _setCategoryExpanded(
-    String categoryId,
-    bool isExpanded,
-  ) {
+  void _setCategoryExpanded(String categoryId, bool isExpanded) {
     setState(() {
       if (isExpanded) {
         _expandedCategoryIds.add(categoryId);
@@ -745,9 +741,7 @@ class _CategoryManagerCardState extends ConsumerState<_CategoryManagerCard> {
     }
   }
 
-  Future<void> _mergeCategories(
-    CategoryManagerSnapshot snapshot,
-  ) async {
+  Future<void> _mergeCategories(CategoryManagerSnapshot snapshot) async {
     final result = await showDialog<CategoryMergeResult>(
       context: context,
       builder: (context) {
@@ -807,7 +801,9 @@ class _CategoryManagerCardState extends ConsumerState<_CategoryManagerCard> {
                 children: [
                   Icon(Icons.category_outlined),
                   const SizedBox(width: 10),
-                  Expanded(child: Text('Categories', style: textTheme.titleMedium)),
+                  Expanded(
+                    child: Text('Categories', style: textTheme.titleMedium),
+                  ),
                   Icon(
                     _isCategoriesSectionExpanded
                         ? Icons.expand_less
@@ -838,7 +834,7 @@ class _CategoryManagerCardState extends ConsumerState<_CategoryManagerCard> {
                   ),
                   FilledButton.tonalIcon(
                     onPressed: canMerge
-                        ? () => _mergeCategories(snapshotValue!)
+                        ? () => _mergeCategories(snapshotValue)
                         : null,
                     icon: const Icon(Icons.merge_type_outlined),
                     label: const Text('Merge'),
@@ -870,7 +866,10 @@ class _CategoryManagerCardState extends ConsumerState<_CategoryManagerCard> {
                   });
                 },
                 onEditCategory: (category, subcategories) {
-                  _editCategory(category: category, subcategories: subcategories);
+                  _editCategory(
+                    category: category,
+                    subcategories: subcategories,
+                  );
                 },
               ),
               AsyncValue(hasError: true, :final error) => Column(
@@ -977,10 +976,8 @@ class _CategoryManager extends ConsumerWidget {
                     onToggleExpanded: (value) {
                       onCategoryExpandedChanged(category.id, value);
                     },
-                    onEdit: () => onEditCategory(
-                      category,
-                      categorySubcategories,
-                    ),
+                    onEdit: () =>
+                        onEditCategory(category, categorySubcategories),
                     onDelete: () => _deleteCategory(
                       context: context,
                       ref: ref,
@@ -996,10 +993,8 @@ class _CategoryManager extends ConsumerWidget {
                         isSelected: selectedSubcategory?.id == subcategory.id,
                         onTap: () =>
                             onSubcategorySelected(category.id, subcategory.id),
-                        onEdit: () => onEditCategory(
-                          category,
-                          categorySubcategories,
-                        ),
+                        onEdit: () =>
+                            onEditCategory(category, categorySubcategories),
                         onDelete: () => _deleteSubcategory(
                           context: context,
                           ref: ref,

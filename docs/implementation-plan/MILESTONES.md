@@ -2669,7 +2669,7 @@ transactions cannot be recreated by reruns, retries, sync jobs, or backfills.
 
 ### Status
 
-Planned. See
+Completed on 2026-06-14. See
 [Transaction Deletion](TRANSACTION_DELETION.md#m54---activity-transaction-delete-ux).
 
 ### Objective
@@ -2705,6 +2705,24 @@ surface using the database and ingestion contracts from M52-M53.
 
 - New Supabase schema, Gmail/workbook ingestion changes, restore, undo, bulk
   delete, push notifications, hosted rollout, iOS, and web.
+
+### Completion Notes
+
+- Added Flutter delete request/result models and
+  `FinanceRepository.deleteTransaction(...)`, wired to the existing
+  `public.delete_transaction(...)` Supabase RPC with disabled and fake
+  repository support.
+- Added owner-only destructive delete from Activity transaction details with
+  confirmation copy for spend/trend/label/review/monthly-cap impact, preserved
+  but unlinked Vault diagnostics, and workbook/Gmail source suppression.
+- Successful deletion closes detail, shows a snackbar, refreshes affected
+  Activity/Dashboard/Trend/Review/Label/month/Vault providers, and moves back a
+  page when the current Activity page becomes empty.
+- Added focused tests for owner/non-owner visibility, cancel/confirm/error
+  flows, list removal, provider-refetch observability, and narrow layout
+  behavior.
+- No schema, ingestion, restore, undo, bulk delete, push notification, hosted
+  rollout, iOS, web, or Milestone 55 work was started.
 
 ## Milestone 55: Transaction Deletion Regression, Docs, and Cleanup
 

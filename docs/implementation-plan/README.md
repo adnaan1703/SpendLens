@@ -75,8 +75,10 @@ This is not a "no backend" architecture. It is a backend without a permanently r
   contract, minimal household-scoped source tombstones, cascade/unlink behavior,
   and database regression coverage. Milestone 53 made workbook and Gmail
   ingestion suppress tombstoned source fingerprints with adjusted importer
-  validation and sanitized Gmail diagnostics. Milestones 54-55 remain planned
-  for Activity UI and final regression/docs cleanup.
+  validation and sanitized Gmail diagnostics. Milestone 54 exposed owner-only
+  deletion from Activity transaction details with confirmation, provider
+  refreshes, and narrow-layout coverage. Milestone 55 remains planned for final
+  regression/docs cleanup.
 - Multi-target monthly caps: required-name recurring caps can include multiple
   categories, multiple labels, or both. A transaction counts once inside a cap
   when any selected category or label matches; overlapping caps are allowed.

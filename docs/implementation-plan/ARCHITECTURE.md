@@ -164,7 +164,7 @@ The worker should consume jobs from Supabase and write results back to Postgres.
 3. Balance is ledger-derived, not editable directly.
 4. Entries may optionally link to real transactions.
 
-### Transaction Deletion (M52-M53 completed, M54-M55 planned)
+### Transaction Deletion (M52-M54 completed, M55 planned)
 
 1. A household owner deletes a faulty transaction from Activity.
 2. Postgres records a minimal source tombstone keyed by household and
@@ -179,8 +179,8 @@ The worker should consume jobs from Supabase and write results back to Postgres.
 
 Milestone 52 completed the Postgres deletion contract, tombstone table, trigger,
 owner-only direct delete policy, and `delete_transaction` RPC. Milestone 53
-wired workbook and Gmail ingestion to consult tombstones before upsert; Milestone
-54 still owns the Activity UI.
+wired workbook and Gmail ingestion to consult tombstones before upsert.
+Milestone 54 exposed owner-only deletion from Activity transaction details.
 
 ### LLM Q&A
 
