@@ -134,20 +134,20 @@ components:
     backgroundColor: "{colors.primary}"
     textColor: "{colors.on-primary}"
     typography: "{typography.button-md}"
-    rounded: "{rounded.xl}"
+    rounded: "{rounded.md}"
     padding: "{spacing.md} {spacing.xl}"
   button-secondary:
     backgroundColor: "{colors.canvas-soft}"
     textColor: "{colors.ink}"
     typography: "{typography.button-md}"
-    rounded: "{rounded.xl}"
+    rounded: "{rounded.md}"
     padding: "{spacing.md} {spacing.xl}"
   button-tertiary:
     backgroundColor: "{colors.canvas}"
     textColor: "{colors.ink}"
     borderColor: "{colors.ink}"
     typography: "{typography.button-md}"
-    rounded: "{rounded.xl}"
+    rounded: "{rounded.md}"
     padding: "{spacing.md} {spacing.xl}"
   button-icon-circular:
     backgroundColor: "{colors.canvas}"
@@ -295,12 +295,12 @@ Wise — the global money-transfer brand — wears its identity in a single sign
 
 Display typography is the second decisive voice. The proprietary `Wise Sans` family carries hero displays at weight 900 in scales from 64 px up to 126 px on the largest hero. The brand pairs Wise Sans 900 with Inter at weight 600 for sub-displays — the contrast between the chunky proprietary face and Inter's neutrality creates a particular hierarchy: Wise Sans for the brand moment, Inter for everything else.
 
-Cards are universally pill-rounded — `{rounded.xl}` 24 px is the brand's signature card radius. Buttons take the same 24 px pill-rectangle shape. The brand never uses sharp corners on UI elements; the visual softness is part of the friendly fintech voice.
+Cards are universally pill-rounded — `{rounded.xl}` 24 px is the brand's signature card radius. Buttons now use `{rounded.md}` (12 px) for a rectangular-soft balance while preserving the soft, friendly system.
 
 **Key Characteristics:**
 - A single lime-green CTA accent `{colors.primary}` (`#9fe870`) — the brand's universal primary action color. No second accent.
 - Two-face display typography — Wise Sans (proprietary, weight 900, hero scale) + Inter (weight 600, sub-display scale). The contrast is the brand's typographic story.
-- `{rounded.xl}` 24 px is the canonical card and button radius. Generous, friendly.
+- `{rounded.xl}` 24 px is the canonical card radius. Buttons are now `{rounded.md}` (12 px) for a flatter, more rectangular CTA style.
 - Sage-tinted canvas `{colors.canvas-soft}` (`#e8ebe6`) is the brand's hero surface; white `{colors.canvas}` is reserved for cards within the sage band.
 - A full semantic palette: positive green family, warning yellow family, negative red family — each documented with content / hover / active variants for in-product use.
 - Currency-converter card on the hero — the brand's signature interactive component, hosting from/to amount inputs.
@@ -422,7 +422,7 @@ The brand uses surface contrast (`{colors.canvas-soft}` background vs `{colors.c
 | `{rounded.sm}` | 8px | Inline pills, small badges. |
 | `{rounded.md}` | 12px | Form inputs, smaller chrome. |
 | `{rounded.lg}` | 16px | Mid-size cards. |
-| `{rounded.xl}` | 24px | The brand's canonical button + card radius. |
+| `{rounded.xl}` | 24px | Card radius. |
 | `{rounded.pill}` | 9999px | Status pills and full-radius accents. |
 | `{rounded.full}` | 9999px | Circular icon containers. |
 
@@ -431,13 +431,13 @@ The brand uses surface contrast (`{colors.canvas-soft}` background vs `{colors.c
 ### Buttons
 
 **`button-primary`** — the lime-green CTA pill.
-- Background `{colors.primary}`, text `{colors.on-primary}`, label `{typography.button-md}`, padding `{spacing.md} {spacing.xl}`, shape `{rounded.xl}` 24 px.
+- Background `{colors.primary}`, text `{colors.on-primary}`, label `{typography.button-md}`, padding `{spacing.md} {spacing.xl}`, shape `{rounded.md}` 12 px.
 
 **`button-secondary`** — the sage-tinted secondary.
-- Background `{colors.canvas-soft}`, text `{colors.ink}`, same typography / padding / shape.
+- Background `{colors.canvas-soft}`, text `{colors.ink}`, same typography / padding / shape `{rounded.md}`.
 
 **`button-tertiary`** — the white outline tertiary.
-- Background `{colors.canvas}`, text `{colors.ink}`, 1 px solid `{colors.ink}` border, same typography / padding / shape.
+- Background `{colors.canvas}`, text `{colors.ink}`, 1 px solid `{colors.ink}` border, same typography / padding, shape `{rounded.md}` 12 px.
 
 **`button-icon-circular`** — the circular icon button.
 - Background `{colors.canvas}`, ink icon, shape `{rounded.full}`.
@@ -532,13 +532,21 @@ The brand uses surface contrast (`{colors.canvas-soft}` background vs `{colors.c
 ### Do
 - Reserve `{colors.primary}` Wise green for every primary CTA. The lime-green pill IS the brand's conversion signature.
 - Set hero headlines in `{typography.display-mega}` / `{typography.display-xl}` Wise Sans weight 900. Never lighter.
-- Use `{rounded.xl}` 24 px for buttons and cards. The generous radius is the brand's friendliness signature.
+- Use `{rounded.md}` 12 px for buttons and `{rounded.xl}` 24px for cards. Buttons use a flatter geometry while keeping a soft visual language.
 - Cycle page surfaces in `{colors.canvas-soft}` sage canvas → `{colors.canvas}` white cards. Surface contrast carries elevation.
 - Use the full semantic palette (positive / warning / negative) for in-product status — never repurpose Wise green as success indicator since it IS the brand CTA.
 
 ### Don't
 - Don't introduce a second brand accent. Wise green is the sole identity colour.
 - Don't render the hero in weight 700 or lighter. The brand's display weight is 900.
-- Don't render CTAs as sharp rectangles. The 24 px pill geometry is non-negotiable.
+- Don't render CTAs as sharp rectangles. Avoid `{rounded.full}` for standard buttons unless an explicit pill style is requested.
 - Don't pair the green CTA with a green background. The brand always sits Wise green on neutral surfaces (sage / white / ink).
 - Don't replace Wise Sans with a generic geometric sans for hero typography — the proprietary face IS the brand's voice.
+
+## Settings screen behavior
+
+- In the Settings page, the Categories section is an accordion.
+- The section starts collapsed by default.
+- The Categories header row is clickable and expands/collapses the section.
+- The header uses a full-width, 48+ px tap target with no press splash feedback.
+- Category rows still expose expand/collapse controls and keep edit/delete actions in the row.

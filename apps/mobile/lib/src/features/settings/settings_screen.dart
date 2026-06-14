@@ -5,6 +5,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/bootstrap/app_bootstrap.dart';
 import '../../core/config/app_config.dart';
+import '../../core/theme/app_theme.dart';
 import '../../core/theme/theme_mode_controller.dart';
 import '../../data/repositories/finance_repository.dart';
 import '../../data/repositories/household_repository.dart';
@@ -195,6 +196,11 @@ class _ThemeSelectorCard extends ConsumerWidget {
                 key: const ValueKey('settings-theme-selector'),
                 direction: isCompact ? Axis.vertical : Axis.horizontal,
                 showSelectedIcon: false,
+                style: SegmentedButton.styleFrom(
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(AppThemeTokens.buttonRadius),
+                  ),
+                ),
                 segments: const [
                   ButtonSegment(
                     value: AppThemeMode.system,
@@ -285,9 +291,16 @@ class _AiSettingsCard extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final textTheme = Theme.of(context).textTheme;
+    final theme = Theme.of(context);
     final status = ref.watch(aiBudgetStatusProvider(householdId));
 
-    return DarkFeatureCard(
+    return AppContentCard(
+      backgroundColor: AppThemeTokens.ink,
+      foregroundColor: AppThemeTokens.primary,
+      borderSide: BorderSide(
+        color: theme.colorScheme.outlineVariant,
+        width: 1,
+      ),
       child: status.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (error, _) => Column(
@@ -310,6 +323,7 @@ class _AiSettingsCard extends ConsumerWidget {
           ],
         ),
         data: (ai) => Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             _SettingsSectionHeader(
               icon: Icons.auto_awesome,
@@ -350,10 +364,17 @@ class _AiSettingsCard extends ConsumerWidget {
   }
 }
 
-class _LabelManagerCard extends ConsumerWidget {
+class _LabelManagerCard extends ConsumerStatefulWidget {
   const _LabelManagerCard({required this.householdId});
 
   final String householdId;
+
+  @override
+  ConsumerState<_LabelManagerCard> createState() => _LabelManagerCardState();
+}
+
+class _LabelManagerCardState extends ConsumerState<_LabelManagerCard> {
+  bool _isLabelsSectionExpanded = false;
 
   Future<void> _createLabel(BuildContext context, WidgetRef ref) async {
     final label = await showDialog<LabelOption>(
@@ -366,7 +387,10 @@ class _LabelManagerCard extends ConsumerWidget {
             return ref
                 .read(financeRepositoryProvider)
                 .createHouseholdLabel(
-                  LabelCreateRequest(householdId: householdId, name: name),
+                  LabelCreateRequest(
+                    householdId: widget.householdId,
+                    name: name,
+                  ),
                 );
           },
         );
@@ -374,9 +398,9 @@ class _LabelManagerCard extends ConsumerWidget {
     );
     if (label == null) return;
 
-    _refreshLabelLookups(ref, householdId);
+    _refreshLabelLookups(ref, widget.householdId);
 
-    if (context.mounted) {
+    if (mounted) {
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(SnackBar(content: Text('Created ${label.name}')));
@@ -400,7 +424,7 @@ class _LabelManagerCard extends ConsumerWidget {
                 .read(financeRepositoryProvider)
                 .renameHouseholdLabel(
                   LabelRenameRequest(
-                    householdId: householdId,
+                    householdId: widget.householdId,
                     labelId: label.id,
                     name: name,
                   ),
@@ -411,9 +435,9 @@ class _LabelManagerCard extends ConsumerWidget {
     );
     if (renamed == null) return;
 
-    _refreshLabelLookups(ref, householdId);
+    _refreshLabelLookups(ref, widget.householdId);
 
-    if (context.mounted) {
+    if (mounted) {
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(SnackBar(content: Text('Renamed ${renamed.name}')));
@@ -434,7 +458,7 @@ class _LabelManagerCard extends ConsumerWidget {
             .read(financeRepositoryProvider)
             .deleteHouseholdLabel(
               LabelDeleteRequest(
-                householdId: householdId,
+                householdId: widget.householdId,
                 labelId: usage.label.id,
               ),
             );
@@ -442,9 +466,9 @@ class _LabelManagerCard extends ConsumerWidget {
     );
     if (result == null) return;
 
-    _refreshLabelLookups(ref, householdId);
+    _refreshLabelLookups(ref, widget.householdId);
 
-    if (context.mounted) {
+    if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
@@ -456,55 +480,85 @@ class _LabelManagerCard extends ConsumerWidget {
   }
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
     final textTheme = Theme.of(context).textTheme;
-    final snapshot = ref.watch(labelManagerSnapshotProvider(householdId));
+    final snapshot = ref.watch(labelManagerSnapshotProvider(widget.householdId));
 
     return AppContentCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          _SettingsSectionHeader(
-            icon: Icons.label_outline,
-            title: 'Labels',
-            action: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                IconButton(
-                  tooltip: 'Refresh labels',
-                  onPressed: () => _refreshLabelLookups(ref, householdId),
-                  icon: const Icon(Icons.refresh),
-                ),
-                const SizedBox(width: 8),
-                FilledButton.tonalIcon(
-                  onPressed: snapshot.isLoading
-                      ? null
-                      : () => _createLabel(context, ref),
-                  icon: const Icon(Icons.add),
-                  label: const Text('Create'),
-                ),
-              ],
+          GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTap: () {
+              setState(() {
+                _isLabelsSectionExpanded = !_isLabelsSectionExpanded;
+              });
+            },
+            child: Container(
+              width: double.infinity,
+              constraints: const BoxConstraints(minHeight: 48),
+              padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 4),
+              child: Row(
+                children: [
+                  const Icon(Icons.label_outline),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text('Labels', style: textTheme.titleMedium),
+                  ),
+                  Icon(
+                    _isLabelsSectionExpanded
+                        ? Icons.expand_less
+                        : Icons.expand_more,
+                  ),
+                ],
+              ),
             ),
           ),
-          const SizedBox(height: 16),
-          switch (snapshot) {
-            AsyncValue(:final value?) => _LabelManager(
-              snapshot: value,
-              onRename: (label) =>
-                  _renameLabel(context: context, ref: ref, label: label),
-              onDelete: (usage) =>
-                  _deleteLabel(context: context, ref: ref, usage: usage),
+          if (_isLabelsSectionExpanded) ...[
+            const SizedBox(height: 16),
+            Align(
+              alignment: Alignment.centerRight,
+              child: Wrap(
+                alignment: WrapAlignment.end,
+                spacing: 8,
+                children: [
+                  IconButton(
+                    tooltip: 'Refresh labels',
+                    onPressed: () =>
+                        _refreshLabelLookups(ref, widget.householdId),
+                    icon: const Icon(Icons.refresh),
+                  ),
+                  FilledButton.tonalIcon(
+                    onPressed: snapshot.isLoading
+                        ? null
+                        : () => _createLabel(context, ref),
+                    icon: const Icon(Icons.add),
+                    label: const Text('Create'),
+                  ),
+                ],
+              ),
             ),
-            AsyncValue(hasError: true, :final error) => Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Text('Labels unavailable', style: textTheme.titleSmall),
-                const SizedBox(height: 6),
-                Text(error.toString(), style: textTheme.bodySmall),
-              ],
-            ),
-            _ => const Center(child: CircularProgressIndicator()),
-          },
+            const SizedBox(height: 16),
+            switch (snapshot) {
+              AsyncValue(:final value?) => _LabelManager(
+                snapshot: value,
+                onRename: (label) =>
+                    _renameLabel(context: context, ref: ref, label: label),
+                onDelete: (usage) =>
+                    _deleteLabel(context: context, ref: ref, usage: usage),
+              ),
+              AsyncValue(hasError: true, :final error) => Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Text('Labels unavailable', style: textTheme.titleSmall),
+                  const SizedBox(height: 6),
+                  Text(error.toString(), style: textTheme.bodySmall),
+                ],
+              ),
+              _ => const Center(child: CircularProgressIndicator()),
+            },
+          ],
         ],
       ),
     );
@@ -620,6 +674,21 @@ class _CategoryManagerCard extends ConsumerStatefulWidget {
 class _CategoryManagerCardState extends ConsumerState<_CategoryManagerCard> {
   String? _selectedCategoryId;
   String? _selectedSubcategoryId;
+  final Set<String> _expandedCategoryIds = <String>{};
+  bool _isCategoriesSectionExpanded = false;
+
+  void _setCategoryExpanded(
+    String categoryId,
+    bool isExpanded,
+  ) {
+    setState(() {
+      if (isExpanded) {
+        _expandedCategoryIds.add(categoryId);
+      } else {
+        _expandedCategoryIds.remove(categoryId);
+      }
+    });
+  }
 
   Future<void> _createCategory() async {
     final result = await showCategoryCreationDialog(
@@ -673,71 +742,145 @@ class _CategoryManagerCardState extends ConsumerState<_CategoryManagerCard> {
     }
   }
 
+  Future<void> _mergeCategories(
+    CategoryManagerSnapshot snapshot,
+  ) async {
+    final result = await showDialog<CategoryMergeResult>(
+      context: context,
+      builder: (context) {
+        return _CategoryMergeDialog(
+          householdId: widget.householdId,
+          snapshot: snapshot,
+        );
+      },
+    );
+    if (result == null) return;
+
+    refreshCategoryLookups(ref, widget.householdId);
+    setState(() {
+      _selectedCategoryId = result.destinationCategory.id;
+      _selectedSubcategoryId = null;
+    });
+
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Merged into ${result.destinationCategory.name}; moved ${result.changedTransactionCount} transactions',
+          ),
+        ),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final textTheme = Theme.of(context).textTheme;
     final snapshot = ref.watch(
       categoryManagerSnapshotProvider(widget.householdId),
     );
+    final snapshotValue = snapshot is AsyncData<CategoryManagerSnapshot>
+        ? snapshot.value
+        : null;
+    final canMerge =
+        snapshotValue != null && snapshotValue.categories.length > 1;
 
     return AppContentCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          _SettingsSectionHeader(
-            icon: Icons.category_outlined,
-            title: 'Categories',
-            action: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                IconButton(
-                  tooltip: 'Refresh',
-                  onPressed: () =>
-                      refreshCategoryLookups(ref, widget.householdId),
-                  icon: const Icon(Icons.refresh),
-                ),
-                const SizedBox(width: 8),
-                FilledButton.tonalIcon(
-                  onPressed: snapshot.isLoading ? null : _createCategory,
-                  icon: const Icon(Icons.add),
-                  label: const Text('Create'),
-                ),
-              ],
+          GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTap: () {
+              setState(() {
+                _isCategoriesSectionExpanded = !_isCategoriesSectionExpanded;
+              });
+            },
+            child: Container(
+              width: double.infinity,
+              constraints: const BoxConstraints(minHeight: 48),
+              padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 4),
+              child: Row(
+                children: [
+                  Icon(Icons.category_outlined),
+                  const SizedBox(width: 10),
+                  Expanded(child: Text('Categories', style: textTheme.titleMedium)),
+                  Icon(
+                    _isCategoriesSectionExpanded
+                        ? Icons.expand_less
+                        : Icons.expand_more,
+                  ),
+                ],
+              ),
             ),
           ),
-          const SizedBox(height: 16),
-          switch (snapshot) {
-            AsyncValue(:final value?) => _CategoryManager(
-              snapshot: value,
-              selectedCategoryId: _selectedCategoryId,
-              selectedSubcategoryId: _selectedSubcategoryId,
-              householdId: widget.householdId,
-              onCategorySelected: (categoryId) {
-                setState(() {
-                  _selectedCategoryId = categoryId;
-                  _selectedSubcategoryId = null;
-                });
-              },
-              onSubcategorySelected: (categoryId, subcategoryId) {
-                setState(() {
-                  _selectedCategoryId = categoryId;
-                  _selectedSubcategoryId = subcategoryId;
-                });
-              },
-              onEditCategory: (category, subcategories) {
-                _editCategory(category: category, subcategories: subcategories);
-              },
+          if (_isCategoriesSectionExpanded) ...[
+            const SizedBox(height: 16),
+            Align(
+              alignment: Alignment.centerRight,
+              child: Wrap(
+                alignment: WrapAlignment.end,
+                spacing: 8,
+                children: [
+                  IconButton(
+                    tooltip: 'Refresh',
+                    onPressed: () =>
+                        refreshCategoryLookups(ref, widget.householdId),
+                    icon: const Icon(Icons.refresh),
+                  ),
+                  FilledButton.tonalIcon(
+                    onPressed: snapshot.isLoading ? null : _createCategory,
+                    icon: const Icon(Icons.add),
+                    label: const Text('Create'),
+                  ),
+                  FilledButton.tonalIcon(
+                    onPressed: canMerge
+                        ? () => _mergeCategories(snapshotValue!)
+                        : null,
+                    icon: const Icon(Icons.merge_type_outlined),
+                    label: const Text('Merge'),
+                  ),
+                ],
+              ),
             ),
-            AsyncValue(hasError: true, :final error) => Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Text('Categories unavailable', style: textTheme.titleSmall),
-                const SizedBox(height: 6),
-                Text(error.toString(), style: textTheme.bodySmall),
-              ],
-            ),
-            _ => const Center(child: CircularProgressIndicator()),
-          },
+            const SizedBox(height: 16),
+            switch (snapshot) {
+              AsyncValue(:final value?) => _CategoryManager(
+                snapshot: value,
+                expandedCategoryIds: _expandedCategoryIds,
+                selectedCategoryId: _selectedCategoryId,
+                selectedSubcategoryId: _selectedSubcategoryId,
+                householdId: widget.householdId,
+                onCategoryExpandedChanged: _setCategoryExpanded,
+                onCategorySelected: (categoryId) {
+                  setState(() {
+                    _selectedCategoryId = categoryId;
+                    _selectedSubcategoryId = null;
+                    _expandedCategoryIds.add(categoryId);
+                  });
+                },
+                onSubcategorySelected: (categoryId, subcategoryId) {
+                  setState(() {
+                    _selectedCategoryId = categoryId;
+                    _selectedSubcategoryId = subcategoryId;
+                    _expandedCategoryIds.add(categoryId);
+                  });
+                },
+                onEditCategory: (category, subcategories) {
+                  _editCategory(category: category, subcategories: subcategories);
+                },
+              ),
+              AsyncValue(hasError: true, :final error) => Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Text('Categories unavailable', style: textTheme.titleSmall),
+                  const SizedBox(height: 6),
+                  Text(error.toString(), style: textTheme.bodySmall),
+                ],
+              ),
+              _ => const Center(child: CircularProgressIndicator()),
+            },
+          ],
         ],
       ),
     );
@@ -747,18 +890,23 @@ class _CategoryManagerCardState extends ConsumerState<_CategoryManagerCard> {
 class _CategoryManager extends ConsumerWidget {
   const _CategoryManager({
     required this.snapshot,
+    required this.expandedCategoryIds,
     required this.selectedCategoryId,
     required this.selectedSubcategoryId,
     required this.householdId,
+    required this.onCategoryExpandedChanged,
     required this.onCategorySelected,
     required this.onSubcategorySelected,
     required this.onEditCategory,
   });
 
   final CategoryManagerSnapshot snapshot;
+  final Set<String> expandedCategoryIds;
   final String? selectedCategoryId;
   final String? selectedSubcategoryId;
   final String householdId;
+  final void Function(String categoryId, bool isExpanded)
+  onCategoryExpandedChanged;
   final ValueChanged<String> onCategorySelected;
   final void Function(String categoryId, String subcategoryId)
   onSubcategorySelected;
@@ -804,106 +952,81 @@ class _CategoryManager extends ConsumerWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Align(
-          alignment: Alignment.centerRight,
-          child: FilledButton.tonalIcon(
-            onPressed: categories.length < 2
-                ? null
-                : () => _mergeCategories(context: context, ref: ref),
-            icon: const Icon(Icons.merge_type_outlined),
-            label: const Text('Merge'),
-          ),
-        ),
-        const SizedBox(height: 8),
         for (final category in categories) ...[
-          _CategoryRow(
-            category: category,
-            usage: snapshot.categoryUsage(category.id),
-            isSelected:
-                selectedCategory.id == category.id &&
-                selectedSubcategory == null,
-            onTap: () => onCategorySelected(category.id),
-            onEdit: () => onEditCategory(
-              category,
-              subcategories
+          Builder(
+            builder: (context) {
+              final categorySubcategories = subcategories
                   .where((subcategory) => subcategory.categoryId == category.id)
-                  .toList(growable: false),
-            ),
-            onDelete: () => _deleteCategory(
-              context: context,
-              ref: ref,
-              category: category,
-              usage: snapshot.categoryUsage(category.id),
-            ),
+                  .toList(growable: false);
+              final isExpanded = expandedCategoryIds.contains(category.id);
+
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  _CategoryRow(
+                    category: category,
+                    usage: snapshot.categoryUsage(category.id),
+                    isSelected:
+                        selectedCategory.id == category.id &&
+                        selectedSubcategory == null,
+                    isExpanded: isExpanded,
+                    onTap: () => onCategorySelected(category.id),
+                    onToggleExpanded: (value) {
+                      onCategoryExpandedChanged(category.id, value);
+                    },
+                    onEdit: () => onEditCategory(
+                      category,
+                      categorySubcategories,
+                    ),
+                    onDelete: () => _deleteCategory(
+                      context: context,
+                      ref: ref,
+                      category: category,
+                      usage: snapshot.categoryUsage(category.id),
+                    ),
+                  ),
+                  if (isExpanded) ...[
+                    for (final subcategory in categorySubcategories)
+                      _SubcategoryRow(
+                        subcategory: subcategory,
+                        usage: snapshot.subcategoryUsage(subcategory.id),
+                        isSelected: selectedSubcategory?.id == subcategory.id,
+                        onTap: () =>
+                            onSubcategorySelected(category.id, subcategory.id),
+                        onEdit: () => onEditCategory(
+                          category,
+                          categorySubcategories,
+                        ),
+                        onDelete: () => _deleteSubcategory(
+                          context: context,
+                          ref: ref,
+                          category: category,
+                          subcategory: subcategory,
+                          usage: snapshot.subcategoryUsage(subcategory.id),
+                        ),
+                      ),
+                    if (selectedCategory.id == category.id) ...[
+                      const SizedBox(height: 8),
+                      _CategoryUsagePanel(
+                        category: selectedCategory,
+                        subcategory: selectedSubcategory,
+                        usage: selectedSubcategory == null
+                            ? snapshot.categoryUsage(selectedCategory.id)
+                            : snapshot.subcategoryUsage(selectedSubcategory.id),
+                        preview: preview,
+                        onViewTransactions: () =>
+                            _openTransactions(context, selectedCategory.id),
+                      ),
+                    ],
+                  ],
+                ],
+              );
+            },
           ),
-          for (final subcategory in subcategories.where(
-            (subcategory) => subcategory.categoryId == category.id,
-          ))
-            _SubcategoryRow(
-              subcategory: subcategory,
-              usage: snapshot.subcategoryUsage(subcategory.id),
-              isSelected: selectedSubcategory?.id == subcategory.id,
-              onTap: () => onSubcategorySelected(category.id, subcategory.id),
-              onEdit: () => onEditCategory(
-                category,
-                subcategories
-                    .where((candidate) => candidate.categoryId == category.id)
-                    .toList(growable: false),
-              ),
-              onDelete: () => _deleteSubcategory(
-                context: context,
-                ref: ref,
-                category: category,
-                subcategory: subcategory,
-                usage: snapshot.subcategoryUsage(subcategory.id),
-              ),
-            ),
-          if (selectedCategory.id == category.id) ...[
-            const SizedBox(height: 8),
-            _CategoryUsagePanel(
-              category: selectedCategory,
-              subcategory: selectedSubcategory,
-              usage: selectedSubcategory == null
-                  ? snapshot.categoryUsage(selectedCategory.id)
-                  : snapshot.subcategoryUsage(selectedSubcategory.id),
-              preview: preview,
-              onViewTransactions: () =>
-                  _openTransactions(context, selectedCategory.id),
-            ),
-          ],
           if (category != categories.last) const Divider(height: 12),
         ],
       ],
     );
-  }
-
-  Future<void> _mergeCategories({
-    required BuildContext context,
-    required WidgetRef ref,
-  }) async {
-    final result = await showDialog<CategoryMergeResult>(
-      context: context,
-      builder: (context) {
-        return _CategoryMergeDialog(
-          householdId: householdId,
-          snapshot: snapshot,
-        );
-      },
-    );
-    if (result == null) return;
-
-    refreshCategoryLookups(ref, householdId);
-    onCategorySelected(result.destinationCategory.id);
-
-    if (context.mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            'Merged into ${result.destinationCategory.name}; moved ${result.changedTransactionCount} transactions',
-          ),
-        ),
-      );
-    }
   }
 
   void _openTransactions(BuildContext context, String categoryId) {
@@ -1049,6 +1172,8 @@ class _CategoryRow extends StatelessWidget {
     required this.usage,
     required this.isSelected,
     required this.onTap,
+    required this.isExpanded,
+    required this.onToggleExpanded,
     required this.onEdit,
     required this.onDelete,
   });
@@ -1057,6 +1182,8 @@ class _CategoryRow extends StatelessWidget {
   final CategoryUsageSummary usage;
   final bool isSelected;
   final VoidCallback onTap;
+  final bool isExpanded;
+  final ValueChanged<bool> onToggleExpanded;
   final VoidCallback onEdit;
   final VoidCallback onDelete;
 
@@ -1073,6 +1200,11 @@ class _CategoryRow extends StatelessWidget {
       trailing: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
+          IconButton(
+            tooltip: isExpanded ? 'Collapse category' : 'Expand category',
+            onPressed: () => onToggleExpanded(!isExpanded),
+            icon: Icon(isExpanded ? Icons.expand_less : Icons.expand_more),
+          ),
           IconButton(
             tooltip: 'Edit category',
             onPressed: onEdit,
@@ -2507,41 +2639,24 @@ class _SettingsSectionHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     final textTheme = Theme.of(context).textTheme;
 
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final titleRow = Row(
-          children: [
-            Icon(icon),
-            const SizedBox(width: 10),
-            Expanded(child: Text(title, style: textTheme.titleMedium)),
-          ],
-        );
-        final trailing = action;
+    final titleRow = Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Icon(icon),
+        const SizedBox(width: 10),
+        Expanded(child: Text(title, style: textTheme.titleMedium)),
+      ],
+    );
 
-        if (trailing == null) return titleRow;
+    if (action == null) return titleRow;
 
-        if (constraints.hasBoundedWidth && constraints.maxWidth < 500) {
-          return Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              titleRow,
-              const SizedBox(height: 12),
-              Align(alignment: Alignment.centerLeft, child: trailing),
-            ],
-          );
-        }
-
-        return Row(
-          children: [
-            Icon(icon),
-            const SizedBox(width: 10),
-            Expanded(child: Text(title, style: textTheme.titleMedium)),
-            Flexible(
-              child: Align(alignment: Alignment.centerRight, child: trailing),
-            ),
-          ],
-        );
-      },
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        titleRow,
+        const SizedBox(height: 12),
+        Align(alignment: Alignment.centerLeft, child: action),
+      ],
     );
   }
 }
@@ -2556,33 +2671,13 @@ class _SettingsRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final textTheme = Theme.of(context).textTheme;
 
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        if (constraints.hasBoundedWidth && constraints.maxWidth < 420) {
-          return Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(label, style: textTheme.labelLarge),
-              const SizedBox(height: 4),
-              Text(value, style: textTheme.bodyMedium),
-            ],
-          );
-        }
-
-        return Row(
-          children: [
-            Expanded(child: Text(label, style: textTheme.labelLarge)),
-            const SizedBox(width: 16),
-            Flexible(
-              child: Text(
-                value,
-                textAlign: TextAlign.end,
-                style: textTheme.bodyMedium,
-              ),
-            ),
-          ],
-        );
-      },
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(label, style: textTheme.labelLarge),
+        const SizedBox(height: 4),
+        Text(value, style: textTheme.bodyMedium),
+      ],
     );
   }
 }

@@ -38,7 +38,7 @@ class AppThemeTokens {
   static const darkMutedText = Color(0xFFACB7A5);
 
   static const cardRadius = 24.0;
-  static const buttonRadius = 24.0;
+  static const buttonRadius = 12.0;
   static const inputRadius = 12.0;
 }
 

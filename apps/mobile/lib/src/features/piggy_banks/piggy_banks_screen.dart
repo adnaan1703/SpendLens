@@ -158,16 +158,10 @@ class _VaultsHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final title = Text(
-      'Vaults',
-      maxLines: 1,
-      overflow: TextOverflow.ellipsis,
-      style: theme.textTheme.displaySmall?.copyWith(
-        fontWeight: FontWeight.w900,
-        letterSpacing: 0,
-        height: 0.98,
-      ),
+    final heading = const AppDisplayHeading(
+      title: 'Vaults',
+      subtitle:
+          'Create dedicated vaults for each savings goal to track deposits, withdrawals, and progress clearly.',
     );
     final actions = Row(
       mainAxisSize: MainAxisSize.min,
@@ -181,7 +175,7 @@ class _VaultsHeader extends StatelessWidget {
         ),
         const SizedBox(width: 8),
         AppActionPill.secondary(
-          label: 'New Vault',
+          label: 'Create Vault',
           icon: Icons.add,
           onPressed: onNewVault,
         ),
@@ -190,19 +184,22 @@ class _VaultsHeader extends StatelessWidget {
 
     return LayoutBuilder(
       builder: (context, constraints) {
-        final stacks =
-            constraints.hasBoundedWidth && constraints.maxWidth < 330;
+        final stacks = constraints.hasBoundedWidth && constraints.maxWidth < 640;
         if (stacks) {
           return Column(
             crossAxisAlignment: CrossAxisAlignment.start,
-            children: [title, const SizedBox(height: 16), actions],
+            children: [
+              heading,
+              const SizedBox(height: 16),
+              Align(alignment: Alignment.centerRight, child: actions),
+            ],
           );
         }
 
         return Row(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            Expanded(child: title),
+            Expanded(child: heading),
             const SizedBox(width: 16),
             actions,
           ],

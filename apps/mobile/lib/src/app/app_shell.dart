@@ -45,8 +45,8 @@ const appDestinations = [
   AppDestination(
     label: 'Vaults',
     path: PiggyBanksScreen.routePath,
-    icon: Icons.savings_outlined,
-    selectedIcon: Icons.savings,
+    icon: Icons.account_balance_wallet_outlined,
+    selectedIcon: Icons.account_balance_wallet,
   ),
 ];
 
