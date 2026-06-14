@@ -4,11 +4,11 @@ Use this file to coordinate work across multiple implementation sessions. Update
 
 ## Current Status
 
-- Current milestone: None. Milestone 51 was completed on 2026-06-14.
-  Milestones 52-55 are planned for owner-only transaction deletion and source
-  tombstone suppression. Milestones 18-21 remain deferred by user request.
-- Last completed milestone: Milestone 51, UI Redesign Final Regression,
-  Responsive QA, and Docs Closeout.
+- Current milestone: None. Milestone 52 was completed on 2026-06-14.
+  Milestones 53-55 remain planned for import resurrection suppression, Activity
+  delete UX, and final transaction-deletion regression/docs cleanup. Milestones
+  18-21 remain deferred by user request.
+- Last completed milestone: Milestone 52, Transaction Delete Database Contract.
 - Current implementation state: Flutter Android app scaffold exists in
   `apps/mobile` with redesigned SpendLens Google sign-in, route protection,
   authenticated shell, RLS-safe profile/default-household bootstrap,
@@ -175,14 +175,17 @@ Use this file to coordinate work across multiple implementation sessions. Update
   redesigned shell, core authenticated surfaces, sign-in, household gates,
   transaction details, and metadata editor; fixes a Dashboard desktop
   spending-card layout regression; and folds final UI behavior into durable
-  docs. Milestones 52-55 are planned to add owner-only hard transaction
-  deletion from Activity, source tombstones that suppress workbook/Gmail
-  resurrection, importer/Gmail suppression tests, Activity delete UX, and final
+  docs. Milestone 52 added the owner-only Postgres transaction deletion
+  contract: `public.deleted_transaction_sources`, a delete tombstone trigger,
+  owner-only authenticated direct delete policy, the `delete_transaction` RPC,
+  and focused pgTAP coverage for cascade/unlink, spend-summary, monthly-cap,
+  tombstone, and direct-delete RLS behavior. Milestones 53-55 remain planned to
+  add workbook/Gmail resurrection suppression, Activity delete UX, and final
   regression/docs cleanup.
   Milestones 18-21 remain planned and deferred by user request.
 - Remote deployment state: On 2026-06-08, user confirmed Supabase project `bslsitzdvrdosubbdxpd` as the intended dev/staging target. All local migrations through `20260607174515_ai_ready_layer_llm_features.sql` were pushed there, hosted expense Q&A and the now-retired legacy AI lookup function were active with JWT verification, and `GEMINI_API_KEY` was present in hosted Edge Function secrets by name. After the user signed in through the Android emulator, hosted profile/household bootstrap and authenticated Gemini Edge Function smoke passed. On 2026-06-08 for Milestone 13, `gmail-oauth-start` was deployed as version 2 with JWT verification, `gmail-sync` was deployed as version 2 without JWT verification, and new `gmail-backfill-range` was deployed as version 1 without JWT verification. Hosted `gmail-backfill-range` `OPTIONS` smoke returned 200, and an unauthenticated POST returned the expected service-key error. The live May Gmail backfill itself was not run because it requires the user to connect the target Gmail mailbox and invoke the runbook with a Supabase secret key from a local/platform secret store. On 2026-06-09, M16 deleted the hosted legacy AI lookup function from `bslsitzdvrdosubbdxpd` and a follow-up function list verified it absent. The M16 database migration and updated active Suggest function were verified locally but not pushed/deployed to hosted in this implementation session.
-- Next recommended milestone: Milestone 52, Transaction Delete Database
-  Contract. Milestones 18-21 remain deferred unless the user resumes push
+- Next recommended milestone: Milestone 53, Import Resurrection Guard.
+  Milestones 18-21 remain deferred unless the user resumes push
   notifications. If continuing hosted rollout separately, push the M16,
   M26, M29, M32, and M33 migrations and deploy `transaction-metadata-suggest`;
   iOS and web remain deferred future milestones unless explicitly resumed.
@@ -191,8 +194,9 @@ Use this file to coordinate work across multiple implementation sessions. Update
   2026-06-12. `docs/implementation-plan/MONTHLY_CAPS.md` remains active as the
   companion plan for completed Milestones 29-35.
   `docs/implementation-plan/UI_REDESIGN.md` is the active companion plan for
-  Milestones 37-51. `docs/implementation-plan/TRANSACTION_DELETION.md` is the
-  active companion plan for planned Milestones 52-55.
+  completed Milestones 37-51.
+  `docs/implementation-plan/TRANSACTION_DELETION.md` is the active companion
+  plan for completed Milestone 52 and planned Milestones 53-55.
 
 ## Required Reading for New Threads
 
@@ -351,10 +355,69 @@ Do not ask the user to perform all setup at once. Ask only when the relevant mil
 - Milestone 50, Dialogs, Forms, Empty States, and Motion Pass: completed.
 - Milestone 51, UI Redesign Final Regression, Responsive QA, and Docs Closeout:
   completed.
-- Milestone 52, Transaction Delete Database Contract: planned.
+- Milestone 52, Transaction Delete Database Contract: completed.
 - Milestone 53, Import Resurrection Guard: planned.
 - Milestone 54, Activity Transaction Delete UX: planned.
 - Milestone 55, Transaction Deletion Regression, Docs, and Cleanup: planned.
+
+## Transaction Deletion M52 Notes
+
+- Completed on 2026-06-14.
+- Added migration
+  `supabase/migrations/20260614113615_transaction_delete_database_contract.sql`
+  with `public.deleted_transaction_sources`, source suppression lookup indexes,
+  owner select/insert tombstone RLS, service-role tombstone read access, an
+  internal transaction-delete tombstone trigger, and an owner-only direct delete
+  policy for authenticated users.
+- Added `public.delete_transaction(p_household_id, p_transaction_id, p_reason)`
+  as the app-facing `security invoker` RPC. It requires the signed-in profile
+  to be an owner, rejects missing and cross-household transaction ids, deletes
+  the `public.transactions` row, relies on existing FK behavior for cascade and
+  unlink semantics, and returns source identity plus deleted/unlinked
+  association counts.
+- Kept `public.gmail_parse_attempts` service-only. A private owner-scoped helper
+  lets the RPC count linked Gmail parse attempts without granting authenticated
+  table reads.
+- Added `supabase/tests/transaction_deletion.sql` with 43 pgTAP checks for
+  owner deletion, role denial, direct non-owner RLS blocking, cascade/unlink
+  behavior, monthly spend/category/merchant/monthly-cap recalculation, minimal
+  tombstone shape, direct owner delete trigger coverage, and service-role
+  tombstone reads. Added `deleted_transaction_sources` to the broad
+  `supabase/tests/rls_isolation.sql` table audit.
+- No Flutter repository, Activity UI, workbook importer, Gmail sync, Edge
+  Function, hosted rollout, push notification, iOS, web, M53, M54, or M55 work
+  was started.
+- Verification:
+  - `supabase --version`
+  - `supabase migration --help`
+  - `supabase db --help`
+  - Supabase changelog/docs scan for relevant schema, RLS, grants, and security
+    guidance.
+  - `supabase db reset --local`
+  - `supabase test db --local supabase/tests/transaction_deletion.sql`
+  - `supabase test db --local supabase/tests`
+  - `supabase db lint --local --schema app_private,public --fail-on error`
+  - `supabase db advisors --local --fail-on none`
+  - `git diff --check`
+- Known gaps:
+  - M53 still needs to make workbook import and Gmail ingestion read
+    `deleted_transaction_sources` before upserting transactions, source rows,
+    or review items.
+  - M54 still needs to expose deletion from Activity and refresh affected
+    Flutter providers.
+  - No hosted Supabase migration push was run.
+- Assumptions made:
+  - Optional deletion reasons are app/user metadata and must not contain raw
+    transaction payloads, merchant details, amounts, cardholder names, notes,
+    raw email bodies, parsed email body snippets, or diagnostics.
+  - The existing hard-delete FK behavior is the intended M52 contract:
+    transaction labels, transaction sources, and transaction-scoped review rows
+    cascade; piggy-bank entries and Gmail parse attempts are preserved and
+    unlinked.
+- Mocks created:
+  - None.
+- Mocks used:
+  - None.
 
 ## Update Rules
 

@@ -2488,7 +2488,7 @@ Verify the full redesign and fold final UI behavior into durable docs.
 
 ### Status
 
-Planned. See
+Completed on 2026-06-14. See
 [Transaction Deletion](TRANSACTION_DELETION.md#m52---transaction-delete-database-contract).
 
 ### Objective
@@ -2528,6 +2528,50 @@ regression coverage that make hard transaction deletion safe.
 
 - Workbook importer suppression, Gmail sync suppression, Activity UI, restore,
   undo, bulk delete, push notifications, hosted rollout, iOS, and web.
+
+### Completion Notes
+
+- Added `public.deleted_transaction_sources` as a minimal household-scoped
+  tombstone table with owner select/insert RLS, no authenticated delete grant,
+  service-role read access, source lookup indexes, and explicit privacy-focused
+  constraints/comments.
+- Added an `app_private` delete trigger that records tombstones before
+  transaction child rows cascade, copying only source identity from the
+  transaction and current `transaction_sources` rows.
+- Tightened direct authenticated transaction deletes from admin-or-owner to
+  owner-only while preserving service-role maintenance behavior.
+- Added `public.delete_transaction(...)` as the app-facing `security invoker`
+  RPC. It validates signed-in owner access, rejects cross-household and missing
+  transactions, deletes the transaction row, and returns source identity plus
+  deleted/unlinked association counts.
+- Added focused pgTAP coverage in `supabase/tests/transaction_deletion.sql`
+  and added the tombstone table to the existing RLS isolation audit.
+- Confirmed deferred scope remains unchanged: workbook importer suppression,
+  Gmail sync suppression, Activity UI, restore/undo/bulk delete, push
+  notifications, hosted rollout, iOS, web, M53, and later milestones were not
+  started.
+- Verification:
+  - `supabase --version`
+  - `supabase migration --help`
+  - `supabase db --help`
+  - Supabase changelog/docs scan for relevant schema, RLS, grants, and
+    security guidance.
+  - `supabase db reset --local`
+  - `supabase test db --local supabase/tests/transaction_deletion.sql`
+  - `supabase test db --local supabase/tests`
+  - `supabase db lint --local --schema app_private,public --fail-on error`
+  - `supabase db advisors --local --fail-on none`
+  - `git diff --check`
+- Assumptions made:
+  - `gmail_parse_attempts` remains service-only; the app-facing RPC uses a
+    private owner-scoped count helper instead of granting authenticated table
+    read access.
+  - Optional deletion reasons are user-entered metadata and must not contain raw
+    transaction payloads or email body content.
+- Mocks created:
+  - None.
+- Mocks used:
+  - None.
 
 ## Milestone 53: Import Resurrection Guard
 

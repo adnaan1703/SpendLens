@@ -71,12 +71,11 @@ This is not a "no backend" architecture. It is a backend without a permanently r
   counts and delete-with-detach confirmation. Label changes do not alter
   merchant mapping, categories, review state, monthly caps, summaries, or future
   imports.
-- Transaction deletion: planned Milestones 52-55 add owner-only hard deletion
-  from Activity. Deleted transactions stop contributing to monthly spend,
-  merchant spend, trends, labels, review, and monthly caps. A minimal
-  household-scoped source tombstone prevents the same workbook row or Gmail email
-  from recreating the deleted transaction, while linked Vault entries and
-  service diagnostics remain preserved but unlinked.
+- Transaction deletion: Milestone 52 added the owner-only Postgres hard-delete
+  contract, minimal household-scoped source tombstones, cascade/unlink behavior,
+  and database regression coverage. Milestones 53-55 remain planned for workbook
+  and Gmail resurrection suppression, Activity UI, and final regression/docs
+  cleanup.
 - Multi-target monthly caps: required-name recurring caps can include multiple
   categories, multiple labels, or both. A transaction counts once inside a cap
   when any selected category or label matches; overlapping caps are allowed.

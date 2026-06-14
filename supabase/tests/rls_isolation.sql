@@ -31,6 +31,7 @@ select is(
         'merchant_aliases',
         'merchant_mapping_rules',
         'transactions',
+        'deleted_transaction_sources',
         'transaction_sources',
         'review_items',
         'piggy_banks',

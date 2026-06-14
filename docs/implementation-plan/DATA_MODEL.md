@@ -595,11 +595,12 @@ Planned transaction deletion rules for Milestones 52-55:
 - Piggy-bank entries and service diagnostics that reference the transaction are
   preserved but unlinked.
 
-### `deleted_transaction_sources` (planned M52)
+### `deleted_transaction_sources` (added in M52)
 
 Minimal household-scoped tombstones for deleted transaction source identities.
-This table prevents idempotent import paths from recreating transactions the
-owner intentionally removed.
+This table is the database foundation for preventing idempotent import paths
+from recreating transactions the owner intentionally removed. Milestone 53
+wires workbook and Gmail ingestion to consult these tombstones before upsert.
 
 Important fields:
 
@@ -620,10 +621,11 @@ Rules:
 - Store only minimal source identity. Do not store amount, merchant, category,
   cardholder, notes, raw email body, parsed email body, or full transaction
   payload data.
-- Owners can create tombstones through transaction deletion. Ingestion service
-  code can read tombstones to suppress re-import.
-- Tombstones block workbook and Gmail transaction creation for matching source
-  fingerprints.
+- Owners can create tombstones through transaction deletion. Service-role
+  ingestion code can read tombstones for suppression.
+- Tombstones are recorded in M52. Workbook and Gmail transaction creation will
+  be blocked for matching source fingerprints after M53 wires the ingestion
+  checks.
 
 ### Transaction labels
 

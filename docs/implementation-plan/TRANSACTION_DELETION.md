@@ -98,6 +98,9 @@ through the app-facing deletion contract.
 Purpose: create the durable database contract for owner-only hard deletion and
 source tombstones before changing ingestion or Flutter UI.
 
+Status: completed on 2026-06-14. Next recommended implementation milestone is
+M53, Import Resurrection Guard.
+
 Instructions:
 
 - Start by reading:
@@ -221,6 +224,42 @@ Completion summary requirements:
 - Assumptions made
 - Mocks created
 - Mocks used
+
+Completion notes:
+
+- Added `20260614113615_transaction_delete_database_contract.sql` with
+  `public.deleted_transaction_sources`, source lookup indexes, owner-only RLS,
+  service-role read access, an internal delete tombstone trigger, an
+  owner-only direct delete policy for authenticated users, and the app-facing
+  `public.delete_transaction(...)` RPC.
+- Kept the RPC `security invoker`. A small `app_private` owner-scoped helper
+  counts linked `gmail_parse_attempts` without exposing the service-only
+  diagnostics table to authenticated clients.
+- Added `supabase/tests/transaction_deletion.sql` for owner RPC deletion,
+  admin/member/viewer/non-member/other-household denial, cascade/unlink
+  behavior, monthly spend/category/merchant/monthly-cap recalculation,
+  minimal tombstone shape, direct owner delete trigger coverage, direct
+  non-owner RLS blocking, and service-role tombstone reads.
+- Updated `supabase/tests/rls_isolation.sql` so the tombstone table remains in
+  the broad RLS audit.
+- Verified with:
+  - `supabase db reset --local`
+  - `supabase test db --local supabase/tests/transaction_deletion.sql`
+  - `supabase test db --local supabase/tests`
+  - `supabase db lint --local --schema app_private,public --fail-on error`
+  - `supabase db advisors --local --fail-on none`
+  - `git diff --check`
+- Deferred scope was not started: workbook importer suppression, Gmail sync
+  suppression, Activity UI, restore, undo, bulk delete, push notifications,
+  hosted rollout, iOS, web, M53, M54, and M55.
+- Assumptions made:
+  - `gmail_parse_attempts` remains service-only in M52.
+  - Optional deletion reasons are app/user metadata and must not include raw
+    transaction payloads or email body content.
+- Mocks created:
+  - None.
+- Mocks used:
+  - None.
 
 ## M53 - Import Resurrection Guard
 
