@@ -4,14 +4,15 @@ Use this file to coordinate work across multiple implementation sessions. Update
 
 ## Current Status
 
-- Current milestone: None. Milestone 47 was completed on 2026-06-14.
+- Current milestone: None. Milestone 48 was completed on 2026-06-14.
   Milestones 18-21 remain deferred by user request.
-- Last completed milestone: Milestone 47, Settings Focused Screen and Theme
-  Selector.
+- Last completed milestone: Milestone 48, Sign-In and Household Gate
+  Redesign.
 - Current implementation state: Flutter Android app scaffold exists in
-  `apps/mobile` with SpendLens Google sign-in, route protection, authenticated
-  shell, RLS-safe profile/default-household bootstrap, household
-  loading/error states, sign-out, package `com.olympus.spendlens`, core
+  `apps/mobile` with redesigned SpendLens Google sign-in, route protection,
+  authenticated shell, RLS-safe profile/default-household bootstrap,
+  redesigned household loading/error states, sign-out, package
+  `com.olympus.spendlens`, core
   packages, environment templates, tests, and Supabase folder structure.
   Supabase local config applies migrations for schema, RLS, views,
   workbook-derived default categories, merchant review corrections,
@@ -153,10 +154,14 @@ Use this file to coordinate work across multiple implementation sessions. Update
   navigation while Settings is active, wires System default/Light/Dark theme
   selection to the local M37 theme-mode controller, and preserves existing
   Settings management flows and Activity drilldowns.
+  Milestone 48 restyles sign-in as a DESIGN.md auth card on the sage canvas,
+  restyles household loading and error gates as responsive redesigned entry
+  states, preserves Supabase readiness messaging, Google sign-in, route guards,
+  retry, and sign-out behavior, and adds focused light/dark/system gate
+  coverage.
   Milestones 18-21 remain planned and deferred by user request.
 - Remote deployment state: On 2026-06-08, user confirmed Supabase project `bslsitzdvrdosubbdxpd` as the intended dev/staging target. All local migrations through `20260607174515_ai_ready_layer_llm_features.sql` were pushed there, hosted expense Q&A and the now-retired legacy AI lookup function were active with JWT verification, and `GEMINI_API_KEY` was present in hosted Edge Function secrets by name. After the user signed in through the Android emulator, hosted profile/household bootstrap and authenticated Gemini Edge Function smoke passed. On 2026-06-08 for Milestone 13, `gmail-oauth-start` was deployed as version 2 with JWT verification, `gmail-sync` was deployed as version 2 without JWT verification, and new `gmail-backfill-range` was deployed as version 1 without JWT verification. Hosted `gmail-backfill-range` `OPTIONS` smoke returned 200, and an unauthenticated POST returned the expected service-key error. The live May Gmail backfill itself was not run because it requires the user to connect the target Gmail mailbox and invoke the runbook with a Supabase secret key from a local/platform secret store. On 2026-06-09, M16 deleted the hosted legacy AI lookup function from `bslsitzdvrdosubbdxpd` and a follow-up function list verified it absent. The M16 database migration and updated active Suggest function were verified locally but not pushed/deployed to hosted in this implementation session.
-- Next recommended milestone: Milestone 48, Sign-In and Household Gate
-  Redesign. Execute only M48
+- Next recommended milestone: Milestone 49, Ask / AI Redesign. Execute only M49
   in the next implementation thread unless the user explicitly requests a
   different milestone. Milestones 18-21 remain
   deferred unless the user resumes push notifications. If continuing hosted
@@ -315,7 +320,7 @@ Do not ask the user to perform all setup at once. Ask only when the relevant mil
 - Milestone 45, Review Redesign: completed.
 - Milestone 46, Vaults Redesign: completed.
 - Milestone 47, Settings Focused Screen and Theme Selector: completed.
-- Milestone 48, Sign-In and Household Gate Redesign: planned.
+- Milestone 48, Sign-In and Household Gate Redesign: completed.
 - Milestone 49, Ask / AI Redesign: planned.
 - Milestone 50, Dialogs, Forms, Empty States, and Motion Pass: planned.
 - Milestone 51, UI Redesign Final Regression, Responsive QA, and Docs Closeout:
@@ -826,6 +831,41 @@ When an architecture decision changes:
   - `docs/design-references/stitch/themed-dashboard-ui-redesign/screens/settings-focused-view-no-nav.jpg`
   - `docs/design-references/stitch/themed-dashboard-ui-redesign/html/settings-focused-view-no-nav.html`
   - `docs/design-references/stitch/themed-dashboard-ui-redesign/metadata/settings-focused-view-no-nav.screen.json`
+
+## Milestone 48 Completion Notes
+
+- Completed on 2026-06-14.
+- Restyled sign-in as a responsive DESIGN.md auth surface on the sage canvas
+  with a rounded auth card, branded wallet mark, environment badge, preserved
+  Supabase readiness notices, and preserved Google sign-in action.
+- Restyled household loading as a focused branded loading card and household
+  error as a redesigned gate card with retry and sign-out actions wired to the
+  existing providers.
+- Added focused auth/gate widget coverage for light, dark, and system theme
+  rendering plus sign-in, retry, and sign-out behavior.
+- No auth repository/OAuth behavior changes, Ask/AI redesign, dialog/form
+  polish, Supabase/backend/schema/RPC/Edge Function/hosted work,
+  push-notification work, M49, or later-milestone work was started.
+- Verification run:
+  - `cd apps/mobile && dart format lib/src/app/router.dart lib/src/features/auth/sign_in_screen.dart lib/src/shared/widgets/app_gate_scaffold.dart lib/src/shared/widgets/app_primitives.dart test/widget_test.dart`
+  - `cd apps/mobile && flutter analyze`
+  - `cd apps/mobile && flutter test test/widget_test.dart`
+  - `cd apps/mobile && flutter test integration_test/app_test.dart` (blocked:
+    no supported Android device connected; macOS/web are not generated for this
+    project)
+  - `cd apps/mobile && flutter test`
+  - `git diff --check`
+  - Conflict-marker scan over changed files.
+- Known gaps:
+  - No Android-emulator manual smoke was run; the integration smoke could not
+    run because no supported Android device was connected.
+- Assumptions made:
+  - M48 has no dedicated Stitch auth/gate reference, so the implementation uses
+    DESIGN.md plus existing M38 primitives as the visual authority.
+- Mocks created:
+  - None.
+- Mocks used:
+  - None.
 
 ## Milestone 1 Completion Notes
 

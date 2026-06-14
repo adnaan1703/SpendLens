@@ -1185,6 +1185,36 @@ Completion summary requirements:
 - Mocks created
 - Mocks used
 
+Completion notes:
+
+- Restyled the sign-in entry as a responsive DESIGN.md auth surface on the
+  sage canvas with a rounded auth card, branded wallet mark, environment badge,
+  preserved Supabase readiness notices, and preserved Google sign-in action.
+- Restyled household loading and household error gates as width-constrained
+  redesigned entry states using M38 primitives, with retry and sign-out actions
+  still wired to the existing providers.
+- Added focused auth/gate widget coverage for light, dark, and system theme
+  rendering plus sign-in, retry, and sign-out behavior.
+- No auth repository/OAuth behavior changes, Supabase/backend/schema/RPC/Edge
+  Function/hosted work, push-notification work, M49, or later-milestone work was
+  started.
+- Verification:
+  - `cd apps/mobile && dart format lib/src/app/router.dart lib/src/features/auth/sign_in_screen.dart lib/src/shared/widgets/app_gate_scaffold.dart lib/src/shared/widgets/app_primitives.dart test/widget_test.dart`
+  - `cd apps/mobile && flutter analyze`
+  - `cd apps/mobile && flutter test test/widget_test.dart`
+  - `cd apps/mobile && flutter test integration_test/app_test.dart` (blocked:
+    no supported Android device connected; macOS/web are not generated for this
+    project)
+  - `cd apps/mobile && flutter test`
+  - `git diff --check`
+- Assumptions made:
+  - M48 has no dedicated Stitch auth/gate reference, so the implementation uses
+    DESIGN.md plus existing M38 primitives as the visual authority.
+- Mocks created:
+  - None.
+- Mocks used:
+  - None.
+
 ## M49 - Ask / AI Screen
 
 Purpose: redesign the non-primary Ask route consistently with the new system.
