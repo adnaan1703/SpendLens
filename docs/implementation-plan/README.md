@@ -25,7 +25,7 @@ behavior has been folded into this README, [Data Model](DATA_MODEL.md),
 
 SpendLens is a personal and household expense intelligence app. The current implementation plan is Android-first: build the Flutter Android app first and defer iOS and web until later.
 
-The app imports historical credit-card analysis from `docs/Credit Card Spend Analysis - FY 2025-26.xlsx`, then moves to ongoing ingestion from Gmail transaction emails for credit cards and UPI. It presents spend by category, named monthly caps with category and label targets, recurring cap carry-forward semantics, transaction details, merchant review workflows, trends, manual piggy-bank ledgers for future goals, backend-mediated Gemini expense Q&A, household category management, transaction labels, and planned Android push notifications for newly processed transactions. Milestones 37-51 plan a UI redesign that consolidates Transactions and Trends into Activity, presents Piggy Banks as Vaults, removes Settings from bottom navigation, and adds light/dark/system theme support.
+The app imports historical credit-card analysis from `docs/Credit Card Spend Analysis - FY 2025-26.xlsx`, then moves to ongoing ingestion from Gmail transaction emails for credit cards and UPI. It presents spend by category, named monthly caps with category and label targets, recurring cap carry-forward semantics, transaction details, merchant review workflows, Activity list and chart views, manual piggy-bank ledgers surfaced as Vaults, backend-mediated Gemini expense Q&A, household category management, transaction labels, and planned Android push notifications for newly processed transactions. Milestones 37-51 completed the UI redesign that consolidated Transactions and Trends into Activity, presented Piggy Banks as Vaults, removed Settings from primary navigation, and added local light/dark/system theme support.
 
 ## Architecture Decision
 
@@ -83,7 +83,9 @@ This is not a "no backend" architecture. It is a backend without a permanently r
   are layout references only. The redesigned primary navigation is Dashboard,
   Activity, Review, and Vaults; Settings is a focused page opened from a global
   settings action. Theme mode supports system, light, and dark, with system as
-  the default and local device persistence.
+  the default and local device persistence. Milestone 51 completed responsive
+  and theme regression coverage at 390px, 768px, and 1024px widths and confirmed
+  the final UI behavior in durable docs.
 - iOS app: deferred, not part of the current implementation milestones.
 - Web interface: deferred, not part of the current implementation milestones.
 

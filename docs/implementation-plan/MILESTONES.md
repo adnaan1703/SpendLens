@@ -2414,7 +2414,7 @@ redesigns.
 
 ### Status
 
-Planned. See
+Completed on 2026-06-14. See
 [UI Redesign](UI_REDESIGN.md#m51---final-regression-responsive-qa-and-docs-closeout).
 
 ### Objective
@@ -2444,6 +2444,45 @@ Verify the full redesign and fold final UI behavior into durable docs.
 ### Deferred Scope
 
 - Push notifications, iOS, web, hosted rollout, and new finance semantics.
+
+### Completion Notes
+
+- Added final UI regression coverage for the redesigned shell and core
+  authenticated surfaces at 390px mobile, 768px tablet, and 1024px large-window
+  widths while cycling light, dark, and system theme modes.
+- Extended sign-in and household gate theme coverage to the same representative
+  width set.
+- Fixed a Dashboard desktop-width layout regression where the wide spending-card
+  row could receive unbounded scroll height; the row now preserves equal card
+  height through finite intrinsic layout.
+- Documented the final UI behavior in the root README, implementation-plan
+  README, this milestone tracker, `SESSION_HANDOFF.md`, and `UI_REDESIGN.md`.
+- Confirmed deferred scope remains unchanged: Milestones 18-21 push
+  notifications, iOS, web, hosted rollout, and later/future milestones were not
+  started.
+- Verification:
+  - `cd apps/mobile && dart format lib/src/features/dashboard/dashboard_screen.dart test/finance_features_test.dart test/widget_test.dart`
+  - `cd apps/mobile && flutter test test/finance_features_test.dart --name "app shell exposes settings outside primary navigation|redesigned core surfaces render at M51 widths and theme modes"`
+  - `cd apps/mobile && flutter test test/widget_test.dart --plain-name "auth entry and household gate states render in app themes"`
+  - `cd apps/mobile && flutter analyze`
+  - `cd apps/mobile && flutter test`
+  - `git diff --check`
+  - Conflict-marker scan over changed files.
+- Assumptions made:
+  - The stored 390px Stitch screenshots remain the visual reference for mobile
+    hierarchy; tablet and desktop QA is verified through Flutter responsive
+    breakpoints and widget coverage.
+- Mocks created:
+  - None.
+- Mocks used:
+  - `docs/design-references/stitch/themed-dashboard-ui-redesign/screens/dashboard-unified-navigation.jpg`
+  - `docs/design-references/stitch/themed-dashboard-ui-redesign/screens/activity-scandi-fintech-refinement.jpg`
+  - `docs/design-references/stitch/themed-dashboard-ui-redesign/screens/activity-unified-navigation.jpg`
+  - `docs/design-references/stitch/themed-dashboard-ui-redesign/screens/review-unified-navigation.jpg`
+  - `docs/design-references/stitch/themed-dashboard-ui-redesign/screens/vaults-scandi-fintech-refinement.jpg`
+  - `docs/design-references/stitch/themed-dashboard-ui-redesign/screens/settings-focused-view-no-nav.jpg`
+  - `docs/design-references/stitch/themed-dashboard-ui-redesign/screens/transactions-details-refined-shapes.jpg`
+  - `docs/design-references/stitch/themed-dashboard-ui-redesign/screens/transactions-edit-metadata.jpg`
 
 ## Cross-Milestone Consistency Rules
 

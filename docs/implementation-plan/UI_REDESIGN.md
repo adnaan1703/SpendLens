@@ -1411,6 +1411,51 @@ Completion summary requirements:
 - Mocks created
 - Mocks used
 
+Completion notes:
+
+- Completed on 2026-06-14.
+- Added final responsive/theme regression coverage for the redesigned shell and
+  core authenticated surfaces:
+  - 390px mobile with light theme.
+  - 768px tablet with dark theme.
+  - 1024px large window with system theme resolving to dark platform brightness.
+- The M51 surface matrix covers Dashboard, Activity List, Activity Charts,
+  Review, Vaults, Settings, Ask, transaction details, and the transaction
+  metadata editor. The sign-in and household loading/error gates use the same
+  representative width/theme matrix in `widget_test.dart`.
+- Fixed the Dashboard desktop spending-card row so the wide two-card layout no
+  longer receives infinite height inside the scrollable page; the intended equal
+  card height is preserved with a finite intrinsic row.
+- Documented final behavior in `README.md`,
+  `docs/implementation-plan/README.md`, `MILESTONES.md`, and
+  `SESSION_HANDOFF.md`.
+- No Supabase/backend/schema/RPC/Edge Function/hosted, push-notification, iOS,
+  web, product-behavior, M18-M21, or later/deferred future milestone work was
+  started.
+- Verification:
+  - `cd apps/mobile && dart format lib/src/features/dashboard/dashboard_screen.dart test/finance_features_test.dart test/widget_test.dart`
+  - `cd apps/mobile && flutter test test/finance_features_test.dart --name "app shell exposes settings outside primary navigation|redesigned core surfaces render at M51 widths and theme modes"`
+  - `cd apps/mobile && flutter test test/widget_test.dart --plain-name "auth entry and household gate states render in app themes"`
+  - `cd apps/mobile && flutter analyze`
+  - `cd apps/mobile && flutter test`
+  - `git diff --check`
+  - Conflict-marker scan over changed files.
+- Assumptions made:
+  - The committed Stitch screenshots are 390px mobile references; tablet and
+    desktop validation comes from Flutter responsive breakpoints, route/shell
+    behavior, and widget coverage rather than wider Stitch screenshots.
+- Mocks created:
+  - None.
+- Mocks used:
+  - `docs/design-references/stitch/themed-dashboard-ui-redesign/screens/dashboard-unified-navigation.jpg`
+  - `docs/design-references/stitch/themed-dashboard-ui-redesign/screens/activity-scandi-fintech-refinement.jpg`
+  - `docs/design-references/stitch/themed-dashboard-ui-redesign/screens/activity-unified-navigation.jpg`
+  - `docs/design-references/stitch/themed-dashboard-ui-redesign/screens/review-unified-navigation.jpg`
+  - `docs/design-references/stitch/themed-dashboard-ui-redesign/screens/vaults-scandi-fintech-refinement.jpg`
+  - `docs/design-references/stitch/themed-dashboard-ui-redesign/screens/settings-focused-view-no-nav.jpg`
+  - `docs/design-references/stitch/themed-dashboard-ui-redesign/screens/transactions-details-refined-shapes.jpg`
+  - `docs/design-references/stitch/themed-dashboard-ui-redesign/screens/transactions-edit-metadata.jpg`
+
 ## Deferred Scope
 
 - Push notification implementation in M18-M21.

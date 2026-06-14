@@ -405,13 +405,15 @@ class _SpendingSection extends StatelessWidget {
             );
           }
 
-          return Row(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Expanded(flex: 3, child: netCard),
-              const SizedBox(width: 16),
-              Expanded(flex: 2, child: changeCard),
-            ],
+          return IntrinsicHeight(
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Expanded(flex: 3, child: netCard),
+                const SizedBox(width: 16),
+                Expanded(flex: 2, child: changeCard),
+              ],
+            ),
           );
         },
       ),

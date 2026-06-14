@@ -69,13 +69,34 @@ void main() {
     tester,
   ) async {
     final scenarios = [
-      _ThemeScenario(ThemeMode.light, Brightness.light),
-      _ThemeScenario(ThemeMode.dark, Brightness.light),
-      _ThemeScenario(ThemeMode.system, Brightness.dark),
+      _ThemeScenario(
+        '390px light mobile',
+        const Size(390, 900),
+        ThemeMode.light,
+        Brightness.light,
+      ),
+      _ThemeScenario(
+        '768px dark tablet',
+        const Size(768, 1024),
+        ThemeMode.dark,
+        Brightness.light,
+      ),
+      _ThemeScenario(
+        '1024px system desktop',
+        const Size(1024, 900),
+        ThemeMode.system,
+        Brightness.dark,
+      ),
     ];
-    addTearDown(tester.platformDispatcher.clearPlatformBrightnessTestValue);
+    addTearDown(() {
+      tester.platformDispatcher.clearPlatformBrightnessTestValue();
+      tester.view.resetPhysicalSize();
+      tester.view.resetDevicePixelRatio();
+    });
 
     for (final scenario in scenarios) {
+      tester.view.devicePixelRatio = 1;
+      tester.view.physicalSize = scenario.size;
       tester.platformDispatcher.platformBrightnessTestValue =
           scenario.platformBrightness;
 
@@ -90,7 +111,7 @@ void main() {
       expect(find.text('SpendLens'), findsOneWidget);
       expect(find.text('Continue with Google'), findsOneWidget);
       expect(find.text('Supabase setup required'), findsOneWidget);
-      expect(tester.takeException(), isNull);
+      expect(tester.takeException(), isNull, reason: scenario.label);
 
       await tester.pumpWidget(
         _authGateTestApp(
@@ -101,7 +122,7 @@ void main() {
       await tester.pump();
 
       expect(find.text('Loading household context'), findsOneWidget);
-      expect(tester.takeException(), isNull);
+      expect(tester.takeException(), isNull, reason: scenario.label);
 
       await tester.pumpWidget(
         _authGateTestApp(
@@ -117,7 +138,7 @@ void main() {
       expect(find.text('Household setup failed'), findsOneWidget);
       expect(find.text('Try again'), findsOneWidget);
       expect(find.text('Sign out'), findsOneWidget);
-      expect(tester.takeException(), isNull);
+      expect(tester.takeException(), isNull, reason: scenario.label);
     }
   });
 
@@ -200,8 +221,15 @@ Widget _authGateTestApp({
 }
 
 final class _ThemeScenario {
-  const _ThemeScenario(this.themeMode, this.platformBrightness);
+  const _ThemeScenario(
+    this.label,
+    this.size,
+    this.themeMode,
+    this.platformBrightness,
+  );
 
+  final String label;
+  final Size size;
   final ThemeMode themeMode;
   final Brightness platformBrightness;
 }

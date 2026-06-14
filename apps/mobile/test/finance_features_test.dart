@@ -14,6 +14,8 @@ import 'package:spendlens/src/features/dashboard/dashboard_screen.dart';
 import 'package:spendlens/src/features/merchant_review/merchant_review_screen.dart';
 import 'package:spendlens/src/features/piggy_banks/piggy_banks_screen.dart';
 import 'package:spendlens/src/features/settings/settings_screen.dart';
+import 'package:spendlens/src/features/trends/trends_screen.dart';
+import 'package:spendlens/src/shared/widgets/app_primitives.dart';
 
 void main() {
   test('trend report aggregates monthly category and merchant totals', () {
@@ -171,31 +173,178 @@ void main() {
   testWidgets('app shell exposes settings outside primary navigation', (
     tester,
   ) async {
-    tester.view.physicalSize = const Size(390, 844);
-    tester.view.devicePixelRatio = 1;
     addTearDown(() {
       tester.view.resetPhysicalSize();
       tester.view.resetDevicePixelRatio();
     });
-    final router = _shellTestRouter();
-    addTearDown(router.dispose);
 
-    await tester.pumpWidget(MaterialApp.router(routerConfig: router));
-    await tester.pumpAndSettle();
+    for (final size in [
+      const Size(390, 844),
+      const Size(768, 1024),
+      const Size(1024, 900),
+    ]) {
+      tester.view.devicePixelRatio = 1;
+      tester.view.physicalSize = size;
+      final router = _shellTestRouter();
 
-    expect(find.byType(NavigationDestination), findsNWidgets(4));
-    expect(find.text('Dashboard'), findsWidgets);
-    expect(find.text('Activity'), findsWidgets);
-    expect(find.text('Review'), findsWidgets);
-    expect(find.text('Vaults'), findsWidgets);
-    expect(find.text('Settings'), findsNothing);
+      await tester.pumpWidget(MaterialApp.router(routerConfig: router));
+      await tester.pumpAndSettle();
 
-    await tester.tap(find.byTooltip('Open settings'));
-    await tester.pumpAndSettle();
+      if (size.width < 768) {
+        expect(find.byType(NavigationDestination), findsNWidgets(4));
+        expect(find.byType(NavigationRail), findsNothing);
+      } else {
+        expect(find.byType(NavigationRail), findsOneWidget);
+        expect(find.byType(NavigationDestination), findsNothing);
+      }
+      expect(find.text('Dashboard'), findsWidgets);
+      expect(find.text('Activity'), findsWidgets);
+      expect(find.text('Review'), findsWidgets);
+      expect(find.text('Vaults'), findsWidgets);
+      expect(find.text('Settings'), findsNothing);
 
-    expect(router.routeInformationProvider.value.uri.path, '/settings');
-    expect(find.byType(NavigationDestination), findsNothing);
-    expect(find.text('Focused settings'), findsOneWidget);
+      await tester.tap(find.byTooltip('Open settings'));
+      await tester.pumpAndSettle();
+
+      expect(router.routeInformationProvider.value.uri.path, '/settings');
+      expect(find.byType(NavigationDestination), findsNothing);
+      expect(find.byType(NavigationRail), findsNothing);
+      expect(find.text('Focused settings'), findsOneWidget);
+
+      router.dispose();
+    }
+  });
+
+  testWidgets('redesigned core surfaces render at M51 widths and theme modes', (
+    tester,
+  ) async {
+    final scenarios = [
+      _RedesignQaScenario(
+        '390px light mobile',
+        const Size(390, 900),
+        ThemeMode.light,
+        Brightness.light,
+      ),
+      _RedesignQaScenario(
+        '768px dark tablet',
+        const Size(768, 1024),
+        ThemeMode.dark,
+        Brightness.light,
+      ),
+      _RedesignQaScenario(
+        '1024px system desktop',
+        const Size(1024, 900),
+        ThemeMode.system,
+        Brightness.dark,
+      ),
+    ];
+    addTearDown(() {
+      tester.platformDispatcher.clearPlatformBrightnessTestValue();
+      tester.view.resetPhysicalSize();
+      tester.view.resetDevicePixelRatio();
+    });
+
+    for (final scenario in scenarios) {
+      await _pumpRedesignSurface(
+        tester,
+        scenario,
+        repository: _FakeFinanceRepository(),
+        child: const DashboardScreen(),
+      );
+      expect(find.text('Dashboard'), findsOneWidget);
+      expect(find.text('Spending'), findsOneWidget);
+      expect(find.text('Review Queue'), findsOneWidget);
+
+      await _pumpRedesignSurface(
+        tester,
+        scenario,
+        repository: _FakeFinanceRepository(),
+        child: const ActivityScreen(),
+      );
+      expect(find.text('Activity'), findsOneWidget);
+      expect(find.text('List'), findsOneWidget);
+      expect(find.text('Merchant search'), findsOneWidget);
+      expect(find.text('Swiggy Instamart'), findsWidgets);
+
+      await _pumpRedesignSurface(
+        tester,
+        scenario,
+        repository: _FakeFinanceRepository(),
+        child: const SingleChildScrollView(child: ActivityChartsPane()),
+      );
+      expect(find.text('Monthly Net Spend'), findsOneWidget);
+      expect(find.text('Gross, Refunds, Net'), findsOneWidget);
+
+      await _pumpRedesignSurface(
+        tester,
+        scenario,
+        repository: _FakeFinanceRepository(),
+        child: const MerchantReviewScreen(),
+      );
+      expect(find.text('Review'), findsOneWidget);
+      expect(find.text('Open Reviews'), findsOneWidget);
+      expect(find.text('AMZN MKTP IN'), findsOneWidget);
+
+      await _pumpRedesignSurface(
+        tester,
+        scenario,
+        repository: _FakeFinanceRepository(),
+        child: const PiggyBanksScreen(),
+      );
+      expect(find.text('Vaults'), findsWidgets);
+      expect(find.text('New Vault'), findsOneWidget);
+      expect(find.text('No vaults yet'), findsOneWidget);
+
+      await _pumpRedesignSurface(
+        tester,
+        scenario,
+        repository: _FakeFinanceRepository(),
+        child: const SettingsScreen(),
+      );
+      expect(find.text('Settings'), findsOneWidget);
+      expect(find.text('Account & Runtime'), findsOneWidget);
+      expect(find.text('Theme'), findsOneWidget);
+      expect(find.text('System default'), findsOneWidget);
+
+      await _pumpRedesignSurface(
+        tester,
+        scenario,
+        repository: _FakeFinanceRepository(),
+        child: const AiScreen(),
+      );
+      expect(find.text('Ask Expenses'), findsOneWidget);
+      expect(find.text('Question'), findsOneWidget);
+      expect(find.text('AI budget'), findsOneWidget);
+
+      await _pumpRedesignSurface(
+        tester,
+        scenario,
+        repository: _FakeFinanceRepository(),
+        child: const ActivityScreen(),
+      );
+      final transactionTitle = find.text('Swiggy Instamart').first;
+      await tester.ensureVisible(transactionTitle);
+      final transactionCard = find.ancestor(
+        of: transactionTitle,
+        matching: find.byType(AppContentCard),
+      );
+      await tester.tap(transactionCard.first);
+      await tester.pumpAndSettle();
+      expect(find.byType(BottomSheet), findsOneWidget);
+      expect(find.byTooltip('Close transaction details'), findsOneWidget);
+      expect(find.text('Debit Spend'), findsOneWidget);
+
+      await tester.ensureVisible(find.widgetWithText(FilledButton, 'Edit'));
+      await tester.tap(find.widgetWithText(FilledButton, 'Edit'));
+      await tester.pumpAndSettle();
+      expect(
+        find.byKey(const ValueKey('metadata-editor-card')),
+        findsOneWidget,
+      );
+      expect(find.text('Edit metadata'), findsOneWidget);
+      expect(find.text('Suggest'), findsOneWidget);
+      expect(tester.takeException(), isNull, reason: scenario.label);
+    }
   });
 
   test('label repository contract mutates one transaction label set', () async {
@@ -2436,7 +2585,10 @@ void main() {
 Widget _financeTestApp({
   required _FakeFinanceRepository repository,
   required Widget child,
+  Key? appKey,
   ThemeData? theme,
+  ThemeData? darkTheme,
+  ThemeMode themeMode = ThemeMode.light,
 }) {
   return ProviderScope(
     overrides: [
@@ -2447,10 +2599,51 @@ Widget _financeTestApp({
       financeRepositoryProvider.overrideWithValue(repository),
     ],
     child: MaterialApp(
-      theme: theme,
+      key: appKey,
+      theme: theme ?? AppTheme.light(),
+      darkTheme: darkTheme ?? AppTheme.dark(),
+      themeMode: themeMode,
       home: Scaffold(body: child),
     ),
   );
+}
+
+Future<void> _pumpRedesignSurface(
+  WidgetTester tester,
+  _RedesignQaScenario scenario, {
+  required _FakeFinanceRepository repository,
+  required Widget child,
+}) async {
+  tester.view.devicePixelRatio = 1;
+  tester.view.physicalSize = scenario.size;
+  tester.platformDispatcher.platformBrightnessTestValue =
+      scenario.platformBrightness;
+
+  await tester.pumpWidget(
+    _financeTestApp(
+      repository: repository,
+      appKey: UniqueKey(),
+      themeMode: scenario.themeMode,
+      child: child,
+    ),
+  );
+  await tester.pumpAndSettle();
+
+  expect(tester.takeException(), isNull, reason: scenario.label);
+}
+
+final class _RedesignQaScenario {
+  const _RedesignQaScenario(
+    this.label,
+    this.size,
+    this.themeMode,
+    this.platformBrightness,
+  );
+
+  final String label;
+  final Size size;
+  final ThemeMode themeMode;
+  final Brightness platformBrightness;
 }
 
 Widget _financeThemeTestApp({

@@ -4,10 +4,10 @@ Use this file to coordinate work across multiple implementation sessions. Update
 
 ## Current Status
 
-- Current milestone: None. Milestone 50 was completed on 2026-06-14.
+- Current milestone: None. Milestone 51 was completed on 2026-06-14.
   Milestones 18-21 remain deferred by user request.
-- Last completed milestone: Milestone 50, Dialogs, Forms, Empty States, and
-  Motion Pass.
+- Last completed milestone: Milestone 51, UI Redesign Final Regression,
+  Responsive QA, and Docs Closeout.
 - Current implementation state: Flutter Android app scaffold exists in
   `apps/mobile` with redesigned SpendLens Google sign-in, route protection,
   authenticated shell, RLS-safe profile/default-household bootstrap,
@@ -170,16 +170,18 @@ Use this file to coordinate work across multiple implementation sessions. Update
   forms/dialogs/sheets, theming floating snackbars, adding low-cost segmented
   and empty/loading-state motion, and fixing long-modal action layout while
   preserving existing product and repository behavior.
+  Milestone 51 adds final responsive/theme regression coverage across the
+  redesigned shell, core authenticated surfaces, sign-in, household gates,
+  transaction details, and metadata editor; fixes a Dashboard desktop
+  spending-card layout regression; and folds final UI behavior into durable
+  docs.
   Milestones 18-21 remain planned and deferred by user request.
 - Remote deployment state: On 2026-06-08, user confirmed Supabase project `bslsitzdvrdosubbdxpd` as the intended dev/staging target. All local migrations through `20260607174515_ai_ready_layer_llm_features.sql` were pushed there, hosted expense Q&A and the now-retired legacy AI lookup function were active with JWT verification, and `GEMINI_API_KEY` was present in hosted Edge Function secrets by name. After the user signed in through the Android emulator, hosted profile/household bootstrap and authenticated Gemini Edge Function smoke passed. On 2026-06-08 for Milestone 13, `gmail-oauth-start` was deployed as version 2 with JWT verification, `gmail-sync` was deployed as version 2 without JWT verification, and new `gmail-backfill-range` was deployed as version 1 without JWT verification. Hosted `gmail-backfill-range` `OPTIONS` smoke returned 200, and an unauthenticated POST returned the expected service-key error. The live May Gmail backfill itself was not run because it requires the user to connect the target Gmail mailbox and invoke the runbook with a Supabase secret key from a local/platform secret store. On 2026-06-09, M16 deleted the hosted legacy AI lookup function from `bslsitzdvrdosubbdxpd` and a follow-up function list verified it absent. The M16 database migration and updated active Suggest function were verified locally but not pushed/deployed to hosted in this implementation session.
-- Next recommended milestone: Milestone 51, UI Redesign Final Regression,
-  Responsive QA, and Docs Closeout. Execute only M51
-  in the next implementation thread unless the user explicitly requests a
-  different milestone. Milestones 18-21 remain
-  deferred unless the user resumes push notifications. If continuing hosted
-  rollout separately, push the M16, M26, M29, M32, and M33 migrations and deploy
-  `transaction-metadata-suggest`; iOS and web remain deferred future milestones
-  unless explicitly resumed.
+- Next recommended milestone: none in the UI redesign sequence; Milestones
+  37-51 are complete. Milestones 18-21 remain deferred unless the user resumes
+  push notifications. If continuing hosted rollout separately, push the M16,
+  M26, M29, M32, and M33 migrations and deploy `transaction-metadata-suggest`;
+  iOS and web remain deferred future milestones unless explicitly resumed.
 - Documentation state: completed-only companion execution plans for transaction
   metadata editing and category management were retired from `docs/` on
   2026-06-12. `docs/implementation-plan/MONTHLY_CAPS.md` remains active as the
@@ -334,9 +336,9 @@ Do not ask the user to perform all setup at once. Ask only when the relevant mil
 - Milestone 47, Settings Focused Screen and Theme Selector: completed.
 - Milestone 48, Sign-In and Household Gate Redesign: completed.
 - Milestone 49, Ask / AI Redesign: completed.
-- Milestone 50, Dialogs, Forms, Empty States, and Motion Pass: planned.
+- Milestone 50, Dialogs, Forms, Empty States, and Motion Pass: completed.
 - Milestone 51, UI Redesign Final Regression, Responsive QA, and Docs Closeout:
-  planned.
+  completed.
 
 ## Update Rules
 
@@ -877,6 +879,82 @@ When an architecture decision changes:
   - None.
 - Mocks used:
   - None.
+
+## Milestone 50 Completion Notes
+
+- Completed on 2026-06-14.
+- Added shared reduced-motion-aware modal, entrance, and press-scale primitives
+  and used them to normalize category creation, monthly cap, label, taxonomy,
+  category merge/delete, transaction-label, and vault dialog/sheet/form chrome.
+- Themed app snackbars as floating rounded toast surfaces, replaced remaining
+  Settings empty/detail legacy chrome with shared empty/card primitives, and
+  kept long modal action rows visible under constrained viewport heights.
+- Added low-cost motion for shared filter pills, Activity mode selection,
+  modal/empty/loading entrance, action button press feedback, and vault entry
+  type transitions while respecting accessible navigation.
+- Preserved existing repository calls, navigation, validation, AI/auth/backend
+  semantics, and test keys; no Supabase, schema, RPC, Edge Function, hosted,
+  product-behavior, push-notification, M51, or later-milestone work was started.
+- Verification run:
+  - `cd apps/mobile && dart format lib/src/features/activity/activity_screen.dart lib/src/shared/widgets/empty_state.dart lib/src/shared/widgets/app_card.dart lib/src/shared/widgets/action_pill.dart lib/src/shared/widgets/chips.dart lib/src/core/theme/app_theme.dart lib/src/features/categories/category_creation_dialog.dart lib/src/features/dashboard/dashboard_screen.dart lib/src/features/transactions/transactions_screen.dart lib/src/features/settings/settings_screen.dart lib/src/features/piggy_banks/piggy_banks_screen.dart`
+  - `cd apps/mobile && flutter analyze`
+  - `cd apps/mobile && flutter test test/finance_features_test.dart --plain-name "settings merges categories after explicit subcategory mapping"`
+  - `cd apps/mobile && flutter test`
+  - `git diff --check`
+- Known gaps:
+  - No Android-emulator manual smoke was run.
+- Assumptions made:
+  - M50 uses the committed Stitch transaction/details/settings/vault references
+    plus `DESIGN.md`; there is no separate dedicated dialog-state Stitch asset
+    beyond those screen exports.
+- Mocks created:
+  - None.
+- Mocks used:
+  - None.
+
+## Milestone 51 Completion Notes
+
+- Completed on 2026-06-14.
+- Added final responsive/theme regression coverage for the redesigned shell and
+  core authenticated surfaces at 390px mobile, 768px tablet, and 1024px
+  large-window widths while cycling light, dark, and system theme modes.
+- Extended sign-in and household gate theme coverage to the same representative
+  width set.
+- Fixed a Dashboard desktop-width layout regression where the wide spending-card
+  row could receive unbounded scroll height; equal card height is preserved with
+  finite intrinsic layout.
+- Documented final UI behavior in `README.md`,
+  `docs/implementation-plan/README.md`, `MILESTONES.md`, this handoff, and
+  `UI_REDESIGN.md`.
+- Confirmed deferred scope remains unchanged: Milestones 18-21 push
+  notifications, iOS, web, hosted rollout, Supabase/backend/schema/RPC/Edge
+  Function work, product-behavior changes, and later/deferred future milestones
+  were not started.
+- Verification run:
+  - `cd apps/mobile && dart format lib/src/features/dashboard/dashboard_screen.dart test/finance_features_test.dart test/widget_test.dart`
+  - `cd apps/mobile && flutter test test/finance_features_test.dart --name "app shell exposes settings outside primary navigation|redesigned core surfaces render at M51 widths and theme modes"`
+  - `cd apps/mobile && flutter test test/widget_test.dart --plain-name "auth entry and household gate states render in app themes"`
+  - `cd apps/mobile && flutter analyze`
+  - `cd apps/mobile && flutter test`
+  - `git diff --check`
+  - Conflict-marker scan over changed files.
+- Known gaps:
+  - No Android-emulator manual smoke was run.
+- Assumptions made:
+  - The committed Stitch screenshots are 390px mobile references; tablet and
+    desktop validation comes from Flutter responsive breakpoints and widget
+    coverage.
+- Mocks created:
+  - None.
+- Mocks used:
+  - `docs/design-references/stitch/themed-dashboard-ui-redesign/screens/dashboard-unified-navigation.jpg`
+  - `docs/design-references/stitch/themed-dashboard-ui-redesign/screens/activity-scandi-fintech-refinement.jpg`
+  - `docs/design-references/stitch/themed-dashboard-ui-redesign/screens/activity-unified-navigation.jpg`
+  - `docs/design-references/stitch/themed-dashboard-ui-redesign/screens/review-unified-navigation.jpg`
+  - `docs/design-references/stitch/themed-dashboard-ui-redesign/screens/vaults-scandi-fintech-refinement.jpg`
+  - `docs/design-references/stitch/themed-dashboard-ui-redesign/screens/settings-focused-view-no-nav.jpg`
+  - `docs/design-references/stitch/themed-dashboard-ui-redesign/screens/transactions-details-refined-shapes.jpg`
+  - `docs/design-references/stitch/themed-dashboard-ui-redesign/screens/transactions-edit-metadata.jpg`
 
 ## Milestone 48 Completion Notes
 
