@@ -2290,6 +2290,66 @@ void main() {
     expect(find.text('18 input tokens'), findsOneWidget);
   });
 
+  testWidgets('ask expenses renders redesigned states in light and dark', (
+    tester,
+  ) async {
+    for (final theme in [AppTheme.light(), AppTheme.dark()]) {
+      final repository = _FakeFinanceRepository();
+
+      await tester.pumpWidget(
+        _financeTestApp(
+          repository: repository,
+          theme: theme,
+          child: const AiScreen(),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('Question'), findsOneWidget);
+      expect(find.text('Ask about your expenses'), findsOneWidget);
+      expect(find.text('AI budget'), findsOneWidget);
+      expect(find.text('Monthly cap'), findsOneWidget);
+      expect(find.text('Free tier'), findsOneWidget);
+      expect(find.text('Search off'), findsOneWidget);
+
+      await tester.enterText(
+        find.byType(TextField),
+        'What did I spend on food in March?',
+      );
+      await tester.tap(find.text('Ask'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Answer'), findsOneWidget);
+      expect(
+        find.text('Food spend was INR 42,000 in Mar 2026.'),
+        findsOneWidget,
+      );
+      expect(find.text('18 input tokens'), findsOneWidget);
+      expect(find.text('9 output tokens'), findsOneWidget);
+    }
+  });
+
+  testWidgets('ask expenses shows redesigned error state', (tester) async {
+    final repository = _FakeFinanceRepository()
+      ..expenseQuestionError = StateError('AI offline');
+
+    await tester.pumpWidget(
+      _financeTestApp(repository: repository, child: const AiScreen()),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.enterText(
+      find.byType(TextField),
+      'What did I spend on food in March?',
+    );
+    await tester.tap(find.text('Ask'));
+    await tester.pumpAndSettle();
+
+    expect(repository.expenseQuestions, hasLength(1));
+    expect(find.text('Ask failed'), findsOneWidget);
+    expect(find.textContaining('AI offline'), findsWidgets);
+  });
+
   testWidgets(
     'merchant review hides retired AI suggestions and research action',
     (tester) async {
@@ -2616,6 +2676,7 @@ final class _FakeFinanceRepository implements FinanceRepository {
   Object? gmailParseFailuresError;
   TransactionMetadataSuggestionResult? nextMetadataSuggestion;
   Object? metadataSuggestionError;
+  Object? expenseQuestionError;
   final aiStatus = AiBudgetStatus(
     householdId: 'household-1',
     provider: 'gemini',
@@ -3440,6 +3501,9 @@ final class _FakeFinanceRepository implements FinanceRepository {
     ExpenseQuestionRequest request,
   ) async {
     expenseQuestions.add(request);
+    final error = expenseQuestionError;
+    if (error != null) throw error;
+
     return const ExpenseQuestionAnswer(
       answer: 'Food spend was INR 42,000 in Mar 2026.',
       jobId: 'job-1',

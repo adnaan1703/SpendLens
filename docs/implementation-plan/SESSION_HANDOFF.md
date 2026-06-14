@@ -4,10 +4,9 @@ Use this file to coordinate work across multiple implementation sessions. Update
 
 ## Current Status
 
-- Current milestone: None. Milestone 48 was completed on 2026-06-14.
+- Current milestone: None. Milestone 49 was completed on 2026-06-14.
   Milestones 18-21 remain deferred by user request.
-- Last completed milestone: Milestone 48, Sign-In and Household Gate
-  Redesign.
+- Last completed milestone: Milestone 49, Ask / AI Redesign.
 - Current implementation state: Flutter Android app scaffold exists in
   `apps/mobile` with redesigned SpendLens Google sign-in, route protection,
   authenticated shell, RLS-safe profile/default-household bootstrap,
@@ -159,9 +158,15 @@ Use this file to coordinate work across multiple implementation sessions. Update
   states, preserves Supabase readiness messaging, Google sign-in, route guards,
   retry, and sign-out behavior, and adds focused light/dark/system gate
   coverage.
+  Milestone 49 restyles the non-primary Ask route with DESIGN.md card, input,
+  action, status, loading, error, and result primitives while preserving prompt
+  input, backend-mediated expense Q&A, AI budget semantics, provider
+  invalidation after calls, and direct `/ask` route reachability outside the
+  four primary tabs.
   Milestones 18-21 remain planned and deferred by user request.
 - Remote deployment state: On 2026-06-08, user confirmed Supabase project `bslsitzdvrdosubbdxpd` as the intended dev/staging target. All local migrations through `20260607174515_ai_ready_layer_llm_features.sql` were pushed there, hosted expense Q&A and the now-retired legacy AI lookup function were active with JWT verification, and `GEMINI_API_KEY` was present in hosted Edge Function secrets by name. After the user signed in through the Android emulator, hosted profile/household bootstrap and authenticated Gemini Edge Function smoke passed. On 2026-06-08 for Milestone 13, `gmail-oauth-start` was deployed as version 2 with JWT verification, `gmail-sync` was deployed as version 2 without JWT verification, and new `gmail-backfill-range` was deployed as version 1 without JWT verification. Hosted `gmail-backfill-range` `OPTIONS` smoke returned 200, and an unauthenticated POST returned the expected service-key error. The live May Gmail backfill itself was not run because it requires the user to connect the target Gmail mailbox and invoke the runbook with a Supabase secret key from a local/platform secret store. On 2026-06-09, M16 deleted the hosted legacy AI lookup function from `bslsitzdvrdosubbdxpd` and a follow-up function list verified it absent. The M16 database migration and updated active Suggest function were verified locally but not pushed/deployed to hosted in this implementation session.
-- Next recommended milestone: Milestone 49, Ask / AI Redesign. Execute only M49
+- Next recommended milestone: Milestone 50, Dialogs, Forms, Empty States, and
+  Motion Pass. Execute only M50
   in the next implementation thread unless the user explicitly requests a
   different milestone. Milestones 18-21 remain
   deferred unless the user resumes push notifications. If continuing hosted
@@ -321,7 +326,7 @@ Do not ask the user to perform all setup at once. Ask only when the relevant mil
 - Milestone 46, Vaults Redesign: completed.
 - Milestone 47, Settings Focused Screen and Theme Selector: completed.
 - Milestone 48, Sign-In and Household Gate Redesign: completed.
-- Milestone 49, Ask / AI Redesign: planned.
+- Milestone 49, Ask / AI Redesign: completed.
 - Milestone 50, Dialogs, Forms, Empty States, and Motion Pass: planned.
 - Milestone 51, UI Redesign Final Regression, Responsive QA, and Docs Closeout:
   planned.
@@ -831,6 +836,40 @@ When an architecture decision changes:
   - `docs/design-references/stitch/themed-dashboard-ui-redesign/screens/settings-focused-view-no-nav.jpg`
   - `docs/design-references/stitch/themed-dashboard-ui-redesign/html/settings-focused-view-no-nav.html`
   - `docs/design-references/stitch/themed-dashboard-ui-redesign/metadata/settings-focused-view-no-nav.screen.json`
+
+## Milestone 49 Completion Notes
+
+- Completed on 2026-06-14.
+- Restyled the non-primary Ask route using the redesigned app primitives:
+  prompt composer, primary Ask action, AI budget/status card, status chips,
+  loading card, inline error state, and result card now follow the DESIGN.md
+  card/input/action system.
+- Preserved the existing `/ask` route, prompt input behavior,
+  backend-mediated expense Q&A call, AI budget status provider, provider
+  invalidation after successful calls, and Settings/shell route constraints that
+  keep Ask outside the four primary tabs.
+- Added focused Ask widget coverage for light and dark rendering plus inline
+  error-state rendering while keeping the existing submit-and-answer test.
+- No Edge Function, backend, Supabase schema/RPC, hosted configuration, AI
+  semantic changes, push-notification work, M50, or later-milestone work was
+  started.
+- Verification run:
+  - `cd apps/mobile && dart format lib/src/features/ai/ai_screen.dart test/finance_features_test.dart`
+  - `cd apps/mobile && flutter analyze`
+  - `cd apps/mobile && flutter test test/finance_features_test.dart`
+  - `cd apps/mobile && flutter test`
+  - `git diff --check`
+  - Conflict-marker scan over changed files.
+- Known gaps:
+  - No Android-emulator manual smoke was run.
+- Assumptions made:
+  - M49 has no dedicated Ask/AI Stitch reference asset in the committed
+    themed-dashboard export, so DESIGN.md plus existing redesigned primitives
+    are the visual authority.
+- Mocks created:
+  - None.
+- Mocks used:
+  - None.
 
 ## Milestone 48 Completion Notes
 

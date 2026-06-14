@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../core/theme/app_theme.dart';
 import '../../data/repositories/finance_repository.dart';
 import '../../data/repositories/household_repository.dart';
-import '../../shared/widgets/app_page.dart';
-import '../../shared/widgets/empty_state.dart';
+import '../../shared/widgets/app_primitives.dart';
 
 class AiScreen extends ConsumerStatefulWidget {
   const AiScreen({super.key});
@@ -18,6 +18,7 @@ class AiScreen extends ConsumerStatefulWidget {
 class _AiScreenState extends ConsumerState<AiScreen> {
   final _questionController = TextEditingController();
   ExpenseQuestionAnswer? _answer;
+  String? _askError;
   bool _isAsking = false;
 
   @override
@@ -32,6 +33,7 @@ class _AiScreenState extends ConsumerState<AiScreen> {
 
     setState(() {
       _isAsking = true;
+      _askError = null;
     });
 
     try {
@@ -47,10 +49,14 @@ class _AiScreenState extends ConsumerState<AiScreen> {
       if (mounted) {
         setState(() {
           _answer = answer;
+          _askError = null;
         });
       }
     } catch (error) {
       if (mounted) {
+        setState(() {
+          _askError = error.toString();
+        });
         ScaffoldMessenger.of(
           context,
         ).showSnackBar(SnackBar(content: Text(error.toString())));
@@ -75,6 +81,7 @@ class _AiScreenState extends ConsumerState<AiScreen> {
     return AppPage(
       title: 'Ask Expenses',
       subtitle: householdContext?.household.name ?? 'Household Q&A',
+      maxContentWidth: 920,
       actions: [
         IconButton(
           tooltip: 'Refresh',
@@ -85,7 +92,10 @@ class _AiScreenState extends ConsumerState<AiScreen> {
         ),
       ],
       child: householdId == null
-          ? const Center(child: CircularProgressIndicator())
+          ? const AppLoadingState(
+              title: 'Loading household context',
+              message: 'Preparing the household workspace.',
+            )
           : Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
@@ -96,15 +106,30 @@ class _AiScreenState extends ConsumerState<AiScreen> {
                 ),
                 const SizedBox(height: 16),
                 budgetStatus.when(
-                  loading: () => const LinearProgressIndicator(),
+                  loading: () => const AppLoadingState(
+                    title: 'Loading AI budget',
+                    message: 'Checking monthly usage and model availability.',
+                  ),
                   error: (error, _) => EmptyState(
                     icon: Icons.error_outline,
                     title: 'AI status unavailable',
                     message: error.toString(),
+                    action: AppActionPill.secondary(
+                      label: 'Retry',
+                      icon: Icons.refresh,
+                      onPressed: () =>
+                          ref.invalidate(aiBudgetStatusProvider(householdId)),
+                    ),
                   ),
                   data: (status) => _AiBudgetPanel(status: status),
                 ),
-                if (_answer != null) ...[
+                if (_isAsking) ...[
+                  const SizedBox(height: 16),
+                  const _AnswerLoadingPanel(),
+                ] else if (_askError != null) ...[
+                  const SizedBox(height: 16),
+                  _AskErrorPanel(message: _askError!),
+                ] else if (_answer != null) ...[
                   const SizedBox(height: 16),
                   _AnswerPanel(answer: _answer!),
                 ],
@@ -127,35 +152,49 @@ class _QuestionComposer extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
+    return AppContentCard(
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: EdgeInsets.zero,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
+            const AppSectionHeading(
+              title: 'Question',
+              trailing: Icon(Icons.question_answer_outlined),
+            ),
+            const SizedBox(height: 18),
             TextField(
               controller: controller,
               minLines: 3,
               maxLines: 6,
               textInputAction: TextInputAction.newline,
               decoration: const InputDecoration(
-                labelText: 'Question',
+                labelText: 'Ask about your expenses',
+                hintText: 'What did I spend on food in March?',
                 prefixIcon: Icon(Icons.question_answer_outlined),
               ),
             ),
-            const SizedBox(height: 12),
-            Align(
-              alignment: Alignment.centerRight,
-              child: FilledButton.icon(
-                onPressed: isAsking ? null : onAsk,
-                icon: isAsking
-                    ? const SizedBox.square(
-                        dimension: 18,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : const Icon(Icons.auto_awesome),
-                label: Text(isAsking ? 'Asking...' : 'Ask'),
-              ),
+            const SizedBox(height: 16),
+            LayoutBuilder(
+              builder: (context, constraints) {
+                final isCompact =
+                    constraints.hasBoundedWidth && constraints.maxWidth < 420;
+                final action = AppActionPill.primary(
+                  label: isAsking ? 'Asking...' : 'Ask',
+                  icon: Icons.auto_awesome,
+                  tooltip: 'Ask AI',
+                  onPressed: isAsking ? null : onAsk,
+                );
+
+                return Align(
+                  alignment: isCompact
+                      ? Alignment.center
+                      : Alignment.centerRight,
+                  child: isCompact
+                      ? SizedBox(width: double.infinity, child: action)
+                      : action,
+                );
+              },
             ),
           ],
         ),
@@ -172,48 +211,182 @@ class _AiBudgetPanel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final textTheme = theme.textTheme;
+    final cap = '\$${status.monthlySpendCapUsd.toStringAsFixed(2)}';
+    final usage =
+        '${status.currentMonthEventCount} calls / \$${status.currentMonthSpendUsd.toStringAsFixed(4)}';
+    final remaining =
+        '\$${status.remainingMonthlyBudgetUsd.toStringAsFixed(2)}';
 
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Wrap(
-          spacing: 16,
-          runSpacing: 12,
-          children: [
-            _AiStatusItem(label: 'Provider', value: status.provider),
-            _AiStatusItem(label: 'Model', value: status.model),
-            _AiStatusItem(label: 'Mode', value: status.modeLabel),
-            _AiStatusItem(
-              label: 'Usage',
-              value:
-                  '${status.currentMonthEventCount} calls / \$${status.currentMonthSpendUsd.toStringAsFixed(4)}',
+    return SageFeatureCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          AppSectionHeading(
+            title: 'AI budget',
+            showDivider: false,
+            trailing: StatusChip(
+              label: status.modeLabel,
+              tone: status.freeTierOnly
+                  ? AppStatusTone.neutral
+                  : AppStatusTone.positive,
+              icon: Icons.auto_awesome,
             ),
-            _AiStatusItem(
-              label: 'Cap',
-              value: '\$${status.monthlySpendCapUsd.toStringAsFixed(2)}',
-            ),
-            _AiStatusItem(
-              label: 'Suggest search',
-              value: status.transactionMetadataSuggestionSearchLabel,
-            ),
-            if (!status.expenseQaEnabled)
-              Text(
-                'Expense Q&A disabled',
-                style: theme.textTheme.bodyMedium?.copyWith(
-                  color: theme.colorScheme.error,
-                ),
+          ),
+          const SizedBox(height: 18),
+          Wrap(
+            spacing: 20,
+            runSpacing: 16,
+            children: [
+              _AiStatusItem(label: 'Provider', value: status.provider),
+              _AiStatusItem(label: 'Model', value: status.model),
+              _AiStatusItem(label: 'Usage', value: usage),
+              _AiStatusItem(label: 'Monthly cap', value: cap),
+              _AiStatusItem(label: 'Remaining', value: remaining),
+              _AiStatusItem(
+                label: 'Period',
+                value: _formatMonth(status.currentPeriodMonth),
               ),
-            if (!status.transactionMetadataSuggestionEnabled)
-              Text(
-                'Metadata suggestions disabled',
-                style: theme.textTheme.bodyMedium?.copyWith(
-                  color: theme.colorScheme.error,
-                ),
+            ],
+          ),
+          const SizedBox(height: 18),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              StatusChip(
+                label: status.expenseQaEnabled
+                    ? 'Expense Q&A on'
+                    : 'Expense Q&A off',
+                tone: status.expenseQaEnabled
+                    ? AppStatusTone.positive
+                    : AppStatusTone.negative,
+                icon: status.expenseQaEnabled
+                    ? Icons.check_circle_outline
+                    : Icons.error_outline,
               ),
+              StatusChip(
+                label: status.transactionMetadataSuggestionEnabled
+                    ? 'Metadata suggest on'
+                    : 'Metadata suggest off',
+                tone: status.transactionMetadataSuggestionEnabled
+                    ? AppStatusTone.positive
+                    : AppStatusTone.negative,
+                icon: status.transactionMetadataSuggestionEnabled
+                    ? Icons.check_circle_outline
+                    : Icons.error_outline,
+              ),
+              StatusChip(
+                label: status.transactionMetadataSuggestionSearchLabel,
+                tone: status.transactionMetadataSuggestionWebSearchEnabled
+                    ? AppStatusTone.positive
+                    : AppStatusTone.neutral,
+                icon: Icons.search,
+              ),
+            ],
+          ),
+          if (!status.expenseQaEnabled ||
+              !status.transactionMetadataSuggestionEnabled) ...[
+            const SizedBox(height: 14),
+            Text(
+              [
+                if (!status.expenseQaEnabled) 'Expense Q&A disabled',
+                if (!status.transactionMetadataSuggestionEnabled)
+                  'Metadata suggestions disabled',
+              ].join(' · '),
+              style: textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.error,
+              ),
+            ),
           ],
-        ),
+        ],
       ),
     );
+  }
+
+  String _formatMonth(DateTime value) {
+    const months = [
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec',
+    ];
+    return '${months[value.month - 1]} ${value.year}';
+  }
+}
+
+class _AnswerLoadingPanel extends StatelessWidget {
+  const _AnswerLoadingPanel();
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    const foreground = AppThemeTokens.primary;
+
+    return DarkFeatureCard(
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final stacks =
+              constraints.hasBoundedWidth && constraints.maxWidth < 420;
+          final indicator = const SizedBox.square(
+            dimension: 32,
+            child: CircularProgressIndicator(strokeWidth: 3),
+          );
+          final text = Column(
+            crossAxisAlignment: stacks
+                ? CrossAxisAlignment.center
+                : CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Preparing answer',
+                style: theme.textTheme.titleMedium?.copyWith(
+                  color: foreground,
+                  letterSpacing: 0,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                'Checking expense history and budget usage.',
+                style: theme.textTheme.bodyMedium?.copyWith(color: foreground),
+              ),
+            ],
+          );
+
+          if (stacks) {
+            return Column(
+              children: [indicator, const SizedBox(height: 14), text],
+            );
+          }
+
+          return Row(
+            children: [
+              indicator,
+              const SizedBox(width: 16),
+              Expanded(child: text),
+            ],
+          );
+        },
+      ),
+    );
+  }
+}
+
+class _AskErrorPanel extends StatelessWidget {
+  const _AskErrorPanel({required this.message});
+
+  final String message;
+
+  @override
+  Widget build(BuildContext context) {
+    return AppErrorState(title: 'Ask failed', message: message);
   }
 }
 
@@ -228,12 +401,12 @@ class _AiStatusItem extends StatelessWidget {
     final textTheme = Theme.of(context).textTheme;
 
     return ConstrainedBox(
-      constraints: const BoxConstraints(minWidth: 120),
+      constraints: const BoxConstraints(minWidth: 128, maxWidth: 220),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(label, style: textTheme.labelSmall),
-          const SizedBox(height: 2),
+          Text(label, style: textTheme.labelSmall?.copyWith(letterSpacing: 0)),
+          const SizedBox(height: 4),
           Text(value, style: textTheme.bodyMedium),
         ],
       ),
@@ -248,40 +421,36 @@ class _AnswerPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final textTheme = Theme.of(context).textTheme;
-
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Text('Answer', style: textTheme.titleMedium),
-            const SizedBox(height: 8),
-            Text(answer.answer),
-            const SizedBox(height: 12),
-            Wrap(
-              spacing: 12,
-              runSpacing: 8,
-              children: [
-                Chip(
-                  avatar: const Icon(Icons.input, size: 18),
-                  label: Text('${answer.inputTokens} input tokens'),
-                ),
-                Chip(
-                  avatar: const Icon(Icons.output, size: 18),
-                  label: Text('${answer.outputTokens} output tokens'),
-                ),
-                Chip(
-                  avatar: const Icon(Icons.payments_outlined, size: 18),
-                  label: Text(
-                    '\$${answer.estimatedCostUsd.toStringAsFixed(6)}',
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ),
+    return AppContentCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          const AppSectionHeading(
+            title: 'Answer',
+            trailing: Icon(Icons.auto_awesome),
+          ),
+          const SizedBox(height: 16),
+          Text(answer.answer),
+          const SizedBox(height: 18),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              IconChip(
+                icon: Icons.input,
+                label: '${answer.inputTokens} input tokens',
+              ),
+              IconChip(
+                icon: Icons.output,
+                label: '${answer.outputTokens} output tokens',
+              ),
+              IconChip(
+                icon: Icons.payments_outlined,
+                label: '\$${answer.estimatedCostUsd.toStringAsFixed(6)}',
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }

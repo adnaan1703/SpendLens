@@ -2291,7 +2291,8 @@ system.
 
 ### Status
 
-Planned. See [UI Redesign](UI_REDESIGN.md#m49---ask--ai-screen).
+Completed on 2026-06-14. See
+[UI Redesign](UI_REDESIGN.md#m49---ask--ai-screen).
 
 ### Objective
 
@@ -2315,6 +2316,35 @@ Redesign the non-primary Ask route consistently with the new UI system.
 ### Deferred Scope
 
 - New AI capabilities or Edge Function changes.
+
+### Completion Notes
+
+- Restyled the non-primary Ask route using the redesigned app primitives:
+  prompt composer, primary Ask action, AI budget/status card, status chips,
+  loading card, inline error state, and result card now follow the DESIGN.md
+  card/input/action system.
+- Preserved the existing `/ask` route, prompt input behavior,
+  backend-mediated expense Q&A call, AI budget status provider, provider
+  invalidation after successful calls, and the four-primary-tab IA boundary.
+- Added focused Ask widget coverage for light and dark rendering plus inline
+  error-state rendering while keeping the existing submit-and-answer test.
+- No Edge Function, backend, Supabase schema/RPC, hosted configuration, AI
+  semantic changes, push-notification work, M50, or later-milestone work was
+  started.
+- Verification:
+  - `cd apps/mobile && dart format lib/src/features/ai/ai_screen.dart test/finance_features_test.dart`
+  - `cd apps/mobile && flutter analyze`
+  - `cd apps/mobile && flutter test test/finance_features_test.dart`
+  - `cd apps/mobile && flutter test`
+  - `git diff --check`
+- Assumptions made:
+  - M49 has no dedicated Ask/AI Stitch reference asset in the committed
+    themed-dashboard export, so DESIGN.md plus existing redesigned primitives
+    are the visual authority.
+- Mocks created:
+  - None.
+- Mocks used:
+  - None.
 
 ## Milestone 50: Dialogs, Forms, Empty States, and Motion Pass
 
