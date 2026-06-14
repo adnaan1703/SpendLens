@@ -51,14 +51,19 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
         AsyncValue(:final value?) => Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            _MonthSelector(
-              months: value.availableMonths,
-              selectedMonth: value.selectedMonth,
-              onChanged: (month) {
-                setState(() {
-                  _selectedMonth = month;
-                });
-              },
+            Align(
+              alignment: Alignment.centerLeft,
+              child: IntrinsicWidth(
+                child: _MonthSelector(
+                  months: value.availableMonths,
+                  selectedMonth: value.selectedMonth,
+                  onChanged: (month) {
+                    setState(() {
+                      _selectedMonth = month;
+                    });
+                  },
+                ),
+              ),
             ),
             const SizedBox(height: 24),
             _DashboardContent(

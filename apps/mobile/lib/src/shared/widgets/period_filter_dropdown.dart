@@ -62,6 +62,9 @@ class PeriodFilterDropdown extends StatelessWidget {
     final border = pillStyle
         ? OutlineInputBorder(borderRadius: BorderRadius.circular(999))
         : null;
+    final dropdownTextStyle = theme.textTheme.bodyMedium?.copyWith(
+      color: theme.colorScheme.onSurface,
+    );
 
     return SizedBox(
       width: width,
@@ -85,6 +88,12 @@ class PeriodFilterDropdown extends StatelessWidget {
         child: DropdownButtonHideUnderline(
           child: DropdownButton<_PeriodFilterValue>(
             isExpanded: true,
+            dropdownColor: theme.colorScheme.surface,
+            borderRadius: BorderRadius.circular(12.0),
+            menuMaxHeight: 320,
+            style: dropdownTextStyle,
+            icon: const Icon(Icons.expand_more_rounded),
+            iconEnabledColor: theme.colorScheme.onSurfaceVariant,
             value: value,
             selectedItemBuilder: (context) {
               return [

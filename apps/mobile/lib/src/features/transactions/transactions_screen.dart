@@ -484,11 +484,18 @@ class _TransactionFilters extends StatelessWidget {
             ? constraints.maxWidth
             : MediaQuery.sizeOf(context).width;
         final compact = layoutWidth < 640;
+        final dropdownWidth = compact ? layoutWidth : 260.0;
         final searchWidth = compact ? layoutWidth : 360.0;
-        final categoryWidth = compact ? layoutWidth : 280.0;
-        final sourceTypeWidth = compact ? 180.0 : 220.0;
-        final sourceWidth = compact ? layoutWidth : 320.0;
-        final labelWidth = compact ? 220.0 : 260.0;
+        final clearButtonTotalWidth = 56.0;
+        final clearButtonSpacing = 8.0;
+        final periodDropdownWidth = compact
+            ? (layoutWidth - clearButtonTotalWidth)
+                .clamp(180.0, double.infinity)
+                .toDouble()
+            : dropdownWidth;
+        final periodControlWidth = compact
+            ? layoutWidth
+            : periodDropdownWidth + clearButtonTotalWidth;
         final pillBorder = OutlineInputBorder(
           borderRadius: BorderRadius.circular(999),
         );
@@ -504,6 +511,12 @@ class _TransactionFilters extends StatelessWidget {
             borderSide: BorderSide(color: theme.colorScheme.outline),
           ),
         );
+        final dropdownRadius = BorderRadius.circular(12.0);
+        final dropdownTextStyle = theme.textTheme.bodyMedium?.copyWith(
+          color: theme.colorScheme.onSurface,
+        );
+        final dropdownIconColor = theme.colorScheme.onSurfaceVariant;
+        const dropdownMenuHeight = 320.0;
 
         return Wrap(
           spacing: 12,
@@ -531,11 +544,17 @@ class _TransactionFilters extends StatelessWidget {
               ),
             ),
             SizedBox(
-              width: categoryWidth,
+              width: dropdownWidth,
               child: DropdownButtonFormField<String>(
                 key: ValueKey('category-$selectedCategoryId'),
                 isExpanded: true,
                 initialValue: selectedCategoryId,
+                dropdownColor: theme.colorScheme.surface,
+                borderRadius: dropdownRadius,
+                menuMaxHeight: dropdownMenuHeight,
+                style: dropdownTextStyle,
+                icon: const Icon(Icons.expand_more_rounded),
+                iconEnabledColor: dropdownIconColor,
                 decoration: pillDecoration.copyWith(
                   labelText: 'Category',
                   prefixIcon: const Icon(Icons.category_outlined),
@@ -560,11 +579,17 @@ class _TransactionFilters extends StatelessWidget {
               ),
             ),
             SizedBox(
-              width: sourceTypeWidth,
+              width: dropdownWidth,
               child: DropdownButtonFormField<String>(
                 key: ValueKey('source-type-$selectedSourceAccountType'),
                 isExpanded: true,
                 initialValue: selectedSourceAccountType,
+                dropdownColor: theme.colorScheme.surface,
+                borderRadius: dropdownRadius,
+                menuMaxHeight: dropdownMenuHeight,
+                style: dropdownTextStyle,
+                icon: const Icon(Icons.expand_more_rounded),
+                iconEnabledColor: dropdownIconColor,
                 decoration: pillDecoration.copyWith(
                   labelText: 'Source type',
                   prefixIcon: const Icon(Icons.account_balance_outlined),
@@ -581,11 +606,17 @@ class _TransactionFilters extends StatelessWidget {
               ),
             ),
             SizedBox(
-              width: sourceWidth,
+              width: dropdownWidth,
               child: DropdownButtonFormField<String>(
                 key: ValueKey('source-$selectedSourceAccountId'),
                 isExpanded: true,
                 initialValue: selectedSourceAccountId,
+                dropdownColor: theme.colorScheme.surface,
+                borderRadius: dropdownRadius,
+                menuMaxHeight: dropdownMenuHeight,
+                style: dropdownTextStyle,
+                icon: const Icon(Icons.expand_more_rounded),
+                iconEnabledColor: dropdownIconColor,
                 decoration: pillDecoration.copyWith(
                   labelText: 'Source',
                   prefixIcon: const Icon(Icons.credit_card_outlined),
@@ -605,11 +636,17 @@ class _TransactionFilters extends StatelessWidget {
               ),
             ),
             SizedBox(
-              width: labelWidth,
+              width: dropdownWidth,
               child: DropdownButtonFormField<String>(
                 key: ValueKey('label-$selectedLabelId'),
                 isExpanded: true,
                 initialValue: selectedLabelId,
+                dropdownColor: theme.colorScheme.surface,
+                borderRadius: dropdownRadius,
+                menuMaxHeight: dropdownMenuHeight,
+                style: dropdownTextStyle,
+                icon: const Icon(Icons.expand_more_rounded),
+                iconEnabledColor: dropdownIconColor,
                 decoration: pillDecoration.copyWith(
                   labelText: 'Label',
                   prefixIcon: const Icon(Icons.label_outline),
@@ -630,17 +667,28 @@ class _TransactionFilters extends StatelessWidget {
                 onChanged: onLabelChanged,
               ),
             ),
-            PeriodFilterDropdown(
-              availableMonths: availableMonths,
-              selectedRange: dateRange,
-              pillStyle: true,
-              width: compact ? 220 : 260,
-              onChanged: onPeriodChanged,
-            ),
-            IconButton.filledTonal(
-              tooltip: 'Clear filters',
-              onPressed: hasFilters ? onClear : null,
-              icon: const Icon(Icons.filter_alt_off_outlined),
+            SizedBox(
+              width: periodControlWidth,
+                  child: Row(
+                    children: [
+                      SizedBox(
+                        width: periodDropdownWidth,
+                        child: PeriodFilterDropdown(
+                          availableMonths: availableMonths,
+                          selectedRange: dateRange,
+                          pillStyle: true,
+                          width: periodDropdownWidth,
+                          onChanged: onPeriodChanged,
+                        ),
+                      ),
+                      SizedBox(width: clearButtonSpacing),
+                      IconButton.filledTonal(
+                        tooltip: 'Clear filters',
+                        onPressed: hasFilters ? onClear : null,
+                        icon: const Icon(Icons.filter_alt_off_outlined),
+                      ),
+                ],
+              ),
             ),
           ],
         );

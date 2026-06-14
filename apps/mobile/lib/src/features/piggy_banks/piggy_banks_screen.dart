@@ -1293,6 +1293,8 @@ class _PiggyBankEntryDialogState extends ConsumerState<_PiggyBankEntryDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
     return AppModalDialog(
       title: '${_entryLabel(_entryType)} entry',
       maxWidth: 600,
@@ -1404,6 +1406,14 @@ class _PiggyBankEntryDialogState extends ConsumerState<_PiggyBankEntryDialog> {
             DropdownButtonFormField<String>(
               isExpanded: true,
               initialValue: _linkedTransactionId,
+              dropdownColor: theme.colorScheme.surface,
+              borderRadius: BorderRadius.circular(12.0),
+              menuMaxHeight: 320,
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: theme.colorScheme.onSurface,
+              ),
+              icon: const Icon(Icons.expand_more_rounded),
+              iconEnabledColor: theme.colorScheme.onSurfaceVariant,
               decoration: const InputDecoration(
                 labelText: 'Linked transaction',
                 prefixIcon: Icon(Icons.receipt_long_outlined),

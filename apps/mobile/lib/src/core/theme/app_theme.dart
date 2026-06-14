@@ -362,6 +362,32 @@ class AppTheme {
           borderSide: BorderSide(color: colorScheme.error, width: 2),
         ),
       ),
+      dropdownMenuTheme: DropdownMenuThemeData(
+        textStyle: textTheme.bodyMedium?.copyWith(color: textColor),
+        menuStyle: MenuStyle(
+          backgroundColor: WidgetStatePropertyAll<Color>(cardColor),
+          side: WidgetStatePropertyAll<BorderSide>(
+            BorderSide(color: colorScheme.outlineVariant),
+          ),
+          shape: WidgetStatePropertyAll<OutlinedBorder>(
+            RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(AppThemeTokens.inputRadius),
+            ),
+          ),
+          elevation: const WidgetStatePropertyAll<double>(4),
+          surfaceTintColor: const WidgetStatePropertyAll<Color>(Colors.transparent),
+        ),
+      ),
+      popupMenuTheme: PopupMenuThemeData(
+        color: cardColor,
+        surfaceTintColor: Colors.transparent,
+        elevation: 4,
+        textStyle: textTheme.bodyMedium?.copyWith(color: textColor),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppThemeTokens.inputRadius),
+          side: BorderSide(color: colorScheme.outlineVariant),
+        ),
+      ),
       chipTheme: ChipThemeData(
         backgroundColor: colorScheme.surfaceContainerLow,
         disabledColor: colorScheme.surfaceContainerHighest,

@@ -73,11 +73,17 @@ Future<TransactionMetadataCorrectionResult?> showTransactionMetadataEditor({
       return StatefulBuilder(
         builder: (context, setDialogState) {
           final isBusy = isSaving || isSuggesting;
+          final theme = Theme.of(context);
           final availableSubcategories = dialogSubcategories
               .where(
                 (subcategory) => subcategory.categoryId == selectedCategoryId,
               )
               .toList(growable: false);
+          final dropdownRadius = BorderRadius.circular(12.0);
+          final dropdownTextStyle = theme.textTheme.bodyMedium?.copyWith(
+            color: theme.colorScheme.onSurface,
+          );
+          const dropdownMenuHeight = 320.0;
 
           return _MetadataEditorModal(
             form: Form(
@@ -116,6 +122,12 @@ Future<TransactionMetadataCorrectionResult?> showTransactionMetadataEditor({
                     key: ValueKey('category-$selectedCategoryId'),
                     isExpanded: true,
                     initialValue: selectedCategoryId,
+                    dropdownColor: theme.colorScheme.surface,
+                    borderRadius: dropdownRadius,
+                    menuMaxHeight: dropdownMenuHeight,
+                    style: dropdownTextStyle,
+                    icon: const Icon(Icons.expand_more_rounded),
+                    iconEnabledColor: theme.colorScheme.onSurfaceVariant,
                     decoration: _metadataFieldDecoration(
                       context,
                       label: 'Category',
@@ -222,6 +234,12 @@ Future<TransactionMetadataCorrectionResult?> showTransactionMetadataEditor({
                     ),
                     isExpanded: true,
                     initialValue: selectedSubcategoryId,
+                    dropdownColor: theme.colorScheme.surface,
+                    borderRadius: dropdownRadius,
+                    menuMaxHeight: dropdownMenuHeight,
+                    style: dropdownTextStyle,
+                    icon: const Icon(Icons.expand_more_rounded),
+                    iconEnabledColor: theme.colorScheme.onSurfaceVariant,
                     decoration: _metadataFieldDecoration(
                       context,
                       label: 'Subcategory',
@@ -256,6 +274,12 @@ Future<TransactionMetadataCorrectionResult?> showTransactionMetadataEditor({
                   DropdownButtonFormField<String>(
                     key: ValueKey('confidence-$confidence'),
                     initialValue: confidence,
+                    dropdownColor: theme.colorScheme.surface,
+                    borderRadius: dropdownRadius,
+                    menuMaxHeight: dropdownMenuHeight,
+                    style: dropdownTextStyle,
+                    icon: const Icon(Icons.expand_more_rounded),
+                    iconEnabledColor: theme.colorScheme.onSurfaceVariant,
                     decoration: _metadataFieldDecoration(
                       context,
                       label: 'Confidence',

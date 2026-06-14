@@ -235,6 +235,12 @@ class _TrendFilters extends StatelessWidget {
             borderSide: BorderSide(color: theme.colorScheme.outline),
           ),
         );
+        final dropdownRadius = BorderRadius.circular(12.0);
+        final dropdownTextStyle = theme.textTheme.bodyMedium?.copyWith(
+          color: theme.colorScheme.onSurface,
+        );
+        final dropdownIconColor = theme.colorScheme.onSurfaceVariant;
+        const dropdownMenuHeight = 320.0;
 
         return Wrap(
           spacing: 12,
@@ -247,6 +253,12 @@ class _TrendFilters extends StatelessWidget {
                 key: ValueKey('trend-category-$selectedCategoryId'),
                 isExpanded: true,
                 initialValue: selectedCategoryId,
+                dropdownColor: theme.colorScheme.surface,
+                borderRadius: dropdownRadius,
+                menuMaxHeight: dropdownMenuHeight,
+                style: dropdownTextStyle,
+                icon: const Icon(Icons.expand_more_rounded),
+                iconEnabledColor: dropdownIconColor,
                 decoration: pillDecoration.copyWith(
                   labelText: 'Category',
                   prefixIcon: const Icon(Icons.category_outlined),
@@ -276,6 +288,12 @@ class _TrendFilters extends StatelessWidget {
                 key: ValueKey('trend-source-type-$selectedSourceAccountType'),
                 isExpanded: true,
                 initialValue: selectedSourceAccountType,
+                dropdownColor: theme.colorScheme.surface,
+                borderRadius: dropdownRadius,
+                menuMaxHeight: dropdownMenuHeight,
+                style: dropdownTextStyle,
+                icon: const Icon(Icons.expand_more_rounded),
+                iconEnabledColor: dropdownIconColor,
                 decoration: pillDecoration.copyWith(
                   labelText: 'Source type',
                   prefixIcon: const Icon(Icons.account_balance_outlined),
@@ -297,6 +315,12 @@ class _TrendFilters extends StatelessWidget {
                 key: ValueKey('trend-source-$selectedSourceAccountId'),
                 isExpanded: true,
                 initialValue: selectedSourceAccountId,
+                dropdownColor: theme.colorScheme.surface,
+                borderRadius: dropdownRadius,
+                menuMaxHeight: dropdownMenuHeight,
+                style: dropdownTextStyle,
+                icon: const Icon(Icons.expand_more_rounded),
+                iconEnabledColor: dropdownIconColor,
                 decoration: pillDecoration.copyWith(
                   labelText: 'Source',
                   prefixIcon: const Icon(Icons.credit_card_outlined),

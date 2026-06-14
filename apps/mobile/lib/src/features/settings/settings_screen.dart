@@ -1946,6 +1946,14 @@ class _CategoryMergeDialogState extends ConsumerState<_CategoryMergeDialog> {
           DropdownButtonFormField<String>(
             key: const ValueKey('category-merge-destination'),
             initialValue: _destinationCategoryId,
+            dropdownColor: theme.colorScheme.surface,
+            borderRadius: BorderRadius.circular(12.0),
+            menuMaxHeight: 320,
+            style: theme.textTheme.bodyMedium?.copyWith(
+              color: theme.colorScheme.onSurface,
+            ),
+            icon: const Icon(Icons.expand_more_rounded),
+            iconEnabledColor: theme.colorScheme.onSurfaceVariant,
             decoration: const InputDecoration(
               labelText: 'Destination category',
               prefixIcon: Icon(Icons.category_outlined),
@@ -2108,6 +2116,7 @@ class _SubcategoryMappingRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final selectedValue = selection?.dropdownValue;
+    final theme = Theme.of(context);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -2117,6 +2126,14 @@ class _SubcategoryMappingRow extends StatelessWidget {
             'category-merge-map-$destinationCategoryId-${sourceSubcategory.id}',
           ),
           initialValue: selectedValue,
+          dropdownColor: theme.colorScheme.surface,
+          borderRadius: BorderRadius.circular(12.0),
+          menuMaxHeight: 320,
+          style: theme.textTheme.bodyMedium?.copyWith(
+            color: theme.colorScheme.onSurface,
+          ),
+          icon: const Icon(Icons.expand_more_rounded),
+          iconEnabledColor: theme.colorScheme.onSurfaceVariant,
           decoration: InputDecoration(
             labelText: '${sourceCategory.name} / ${sourceSubcategory.name}',
             prefixIcon: const Icon(Icons.sell_outlined),
