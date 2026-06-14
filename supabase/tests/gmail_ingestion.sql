@@ -3,7 +3,7 @@ begin;
 create extension if not exists pgtap with schema extensions;
 set search_path = public, extensions;
 
-select plan(23);
+select plan(29);
 
 select isnt(
   (select installed_version from pg_available_extensions where name = 'supabase_vault'),
@@ -431,6 +431,116 @@ select is(
   (select count(*)::integer from public.review_items where status = 'open'),
   2,
   'unknown UPI payee creates an open review item'
+);
+
+set local role authenticated;
+set local request.jwt.claim.sub = '11000000-0000-0000-0000-000000000001';
+set local request.jwt.claim.role = 'authenticated';
+
+insert into public.deleted_transaction_sources (
+  household_id,
+  source_type,
+  source_fingerprint,
+  deleted_transaction_id,
+  source_message_id,
+  source_reference,
+  deleted_by,
+  reason
+)
+values (
+  '31000000-0000-0000-0000-000000000001',
+  'gmail',
+  'gmail-suppressed-fingerprint-1',
+  '81000000-0000-0000-0000-000000000001',
+  'gmail-suppressed-message-1',
+  'gmail-suppressed-reference-1',
+  '21000000-0000-0000-0000-000000000001',
+  'User deleted the original transaction'
+);
+
+reset role;
+set local role service_role;
+
+create temporary table suppressed_gmail_result as
+select *
+from public.ingest_gmail_transaction(
+  (select id from test_mailbox),
+  jsonb_build_object(
+    'id', 'gmail-suppressed-message-1',
+    'threadId', 'gmail-suppressed-thread-1',
+    'receivedAt', '2026-06-07 10:00:00+05:30'
+  ),
+  jsonb_build_object(
+    'parser_name', 'hdfc_credit_card_debit',
+    'parser_version', '1.0.0',
+    'transaction_date', '2026-06-07',
+    'transaction_time', '10:00:00',
+    'amount', 1234.56,
+    'currency_code', 'INR',
+    'statement_merchant', 'TOMBSTONED MERCHANT',
+    'transaction_type', 'debit_spend',
+    'source_reference', 'gmail-suppressed-reference-1',
+    'confidence', 'low',
+    'source_account_hint', jsonb_build_object(
+      'type', 'credit_card',
+      'display_name', 'HDFC Credit Card ending 9999',
+      'institution_name', 'HDFC Bank',
+      'masked_identifier', '9999'
+    ),
+    'diagnostics', jsonb_build_object('template', 'hdfc_credit_card_debit_v1')
+  ),
+  'gmail-suppressed-fingerprint-1'
+);
+
+reset role;
+
+select is(
+  (select suppressed from suppressed_gmail_result),
+  true,
+  'tombstoned Gmail fingerprint returns a suppressed handled result'
+);
+
+select is(
+  (select suppression_reason from suppressed_gmail_result),
+  'deleted_transaction_source',
+  'tombstoned Gmail fingerprint returns sanitized suppression reason'
+);
+
+select is(
+  (
+    select count(*)::integer
+    from public.transactions
+    where source_fingerprint = 'gmail-suppressed-fingerprint-1'
+  ),
+  0,
+  'tombstoned Gmail fingerprint does not recreate a transaction'
+);
+
+select is(
+  (
+    select count(*)::integer
+    from public.transaction_sources
+    where source_message_id = 'gmail-suppressed-message-1'
+  ),
+  0,
+  'tombstoned Gmail fingerprint does not recreate source metadata'
+);
+
+select is(
+  (select count(*)::integer from public.review_items where status = 'open'),
+  2,
+  'tombstoned Gmail fingerprint does not create review work'
+);
+
+select is(
+  (
+    select count(*)::integer
+    from public.source_accounts
+    where household_id = '31000000-0000-0000-0000-000000000001'
+      and masked_identifier = '9999'
+  ),
+  0,
+  'tombstoned Gmail fingerprint does not create source account side effects'
 );
 
 set local role service_role;

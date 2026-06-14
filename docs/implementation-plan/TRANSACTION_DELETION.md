@@ -361,6 +361,49 @@ Completion summary requirements:
 - Mocks created
 - Mocks used
 
+Completion notes:
+
+- Added `20260614122706_import_resurrection_guard.sql`, replacing
+  `public.ingest_gmail_transaction(...)` with a tombstone-aware contract that
+  checks `public.deleted_transaction_sources` before source-account,
+  transaction, source metadata, or review writes. Matching Gmail fingerprints
+  return `suppressed = true` and sanitized reason `deleted_transaction_source`.
+- Updated `supabase/functions/gmail-sync/index.ts` so a suppressed ingestion
+  result is counted as handled work, logged with household/mailbox/source-message
+  metadata only, and recorded in `gmail_parse_attempts` as a parsed candidate
+  with null transaction id plus sanitized suppression diagnostics.
+- Updated `tools/workbook-import/src/workbook-importer.mjs` so workbook imports
+  fetch tombstoned workbook fingerprints, skip transaction/source/review writes
+  for matching rows, report `suppressedCount`, and validate database totals
+  against the adjusted imported source set.
+- Added regression coverage:
+  - `tools/workbook-import/test/workbook-fixture.test.mjs`
+  - `supabase/tests/gmail_ingestion.sql`
+  - `supabase/functions/tests/gmail_sync.test.ts`
+- Verified with:
+  - `supabase db reset --local`
+  - `supabase test db --local supabase/tests/transaction_deletion.sql`
+  - `supabase test db --local supabase/tests/gmail_ingestion.sql`
+  - `supabase test db --local supabase/tests/gmail_parse_failures.sql`
+  - `supabase test db --local supabase/tests`
+  - `pnpm --dir tools/workbook-import test`
+  - `pnpm --dir tools/workbook-import run validate`
+  - `deno test --allow-env --allow-read supabase/functions/tests`
+  - `supabase db lint --local --schema app_private,public --fail-on error`
+  - `supabase db advisors --local --fail-on none`
+  - `git diff --check`
+- Deferred scope was not started: Flutter Activity delete UI, restore, undo,
+  bulk delete, push notifications, hosted rollout, iOS, web, M54, and M55.
+- Assumptions made:
+  - Suppressed Gmail parses should keep the existing `parsed` parse-attempt
+    status and use diagnostics for the sanitized suppression reason.
+  - Workbook reference seeding can still use the full workbook; M53 suppresses
+    only transaction-bearing writes.
+- Mocks created:
+  - None.
+- Mocks used:
+  - None.
+
 ## M54 - Activity Transaction Delete UX
 
 Purpose: expose the owner-only transaction deletion contract from Activity while

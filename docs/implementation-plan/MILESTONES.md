@@ -2577,7 +2577,7 @@ regression coverage that make hard transaction deletion safe.
 
 ### Status
 
-Planned. See
+Completed on 2026-06-14. See
 [Transaction Deletion](TRANSACTION_DELETION.md#m53---import-resurrection-guard).
 
 ### Objective
@@ -2615,6 +2615,55 @@ transactions cannot be recreated by reruns, retries, sync jobs, or backfills.
 
 - Flutter Activity delete UI, restore, undo, bulk delete, push notifications,
   hosted rollout, iOS, and web.
+
+### Completion Notes
+
+- Added `20260614122706_import_resurrection_guard.sql`, replacing
+  `public.ingest_gmail_transaction(...)` with an equivalent ingestion contract
+  that first checks `public.deleted_transaction_sources` for matching Gmail
+  fingerprints. Tombstoned fingerprints return `suppressed = true` with
+  sanitized reason `deleted_transaction_source` and create no transaction,
+  transaction source metadata, review item, or source account side effect.
+- Updated `gmail-sync` to treat suppressed Gmail parses as handled work, add a
+  `suppressed` count, preserve parse-attempt diagnostics without raw body or
+  full transaction payload data, and emit a sanitized structured suppression
+  log.
+- Updated the workbook importer to fetch tombstoned workbook fingerprints before
+  transaction writes, skip transaction/source/review upserts for those rows,
+  report `suppressedCount`, and validate imported database totals against the
+  tombstone-adjusted source set.
+- Added focused workbook fixture, Gmail ingestion pgTAP, and Gmail sync unit
+  coverage while preserving existing non-deleted idempotent import behavior.
+- Confirmed deferred scope remains unchanged: Flutter Activity delete UI,
+  restore/undo/bulk delete, push notifications, hosted rollout, iOS, web, M54,
+  and M55 were not started.
+- Verification:
+  - `supabase --version`
+  - `supabase functions --help`
+  - Supabase changelog/docs scan for relevant Edge Function, CLI, RLS, and
+    breaking-change guidance.
+  - `supabase db reset --local`
+  - `supabase test db --local supabase/tests/transaction_deletion.sql`
+  - `supabase test db --local supabase/tests/gmail_ingestion.sql`
+  - `supabase test db --local supabase/tests/gmail_parse_failures.sql`
+  - `supabase test db --local supabase/tests`
+  - `pnpm --dir tools/workbook-import test`
+  - `pnpm --dir tools/workbook-import run validate`
+  - `deno test --allow-env --allow-read supabase/functions/tests`
+  - `supabase db lint --local --schema app_private,public --fail-on error`
+  - `supabase db advisors --local --fail-on none`
+  - `git diff --check`
+- Assumptions made:
+  - A tombstoned Gmail parse should remain a `parsed` parse attempt with a null
+    transaction id and sanitized suppression diagnostics, rather than adding a
+    new parse status.
+  - Workbook category, source-account, merchant, and alias reference seeding can
+    remain based on the source workbook; only transaction-bearing rows are
+    suppressed.
+- Mocks created:
+  - None.
+- Mocks used:
+  - None.
 
 ## Milestone 54: Activity Transaction Delete UX
 

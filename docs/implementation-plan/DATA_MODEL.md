@@ -582,7 +582,7 @@ Financial rules:
 - Refunds are represented as positive `refund_amount`.
 - Dashboard summaries and monthly caps use `net_expense`.
 
-Planned transaction deletion rules for Milestones 52-55:
+Transaction deletion rules for Milestones 52-55:
 
 - Transaction deletion is owner-only and app-facing through an RLS-safe
   authenticated contract.
@@ -598,9 +598,9 @@ Planned transaction deletion rules for Milestones 52-55:
 ### `deleted_transaction_sources` (added in M52)
 
 Minimal household-scoped tombstones for deleted transaction source identities.
-This table is the database foundation for preventing idempotent import paths
-from recreating transactions the owner intentionally removed. Milestone 53
-wires workbook and Gmail ingestion to consult these tombstones before upsert.
+This table prevents idempotent import paths from recreating transactions the
+owner intentionally removed. Milestone 53 wires workbook and Gmail ingestion to
+consult these tombstones before upsert.
 
 Important fields:
 
@@ -623,9 +623,8 @@ Rules:
   payload data.
 - Owners can create tombstones through transaction deletion. Service-role
   ingestion code can read tombstones for suppression.
-- Tombstones are recorded in M52. Workbook and Gmail transaction creation will
-  be blocked for matching source fingerprints after M53 wires the ingestion
-  checks.
+- Tombstones are recorded in M52. Workbook and Gmail transaction creation is
+  blocked for matching source fingerprints after M53.
 
 ### Transaction labels
 

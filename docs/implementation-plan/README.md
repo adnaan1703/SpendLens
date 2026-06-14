@@ -27,7 +27,7 @@ behavior has been folded into this README, [Data Model](DATA_MODEL.md),
 
 SpendLens is a personal and household expense intelligence app. The current implementation plan is Android-first: build the Flutter Android app first and defer iOS and web until later.
 
-The app imports historical credit-card analysis from `docs/Credit Card Spend Analysis - FY 2025-26.xlsx`, then moves to ongoing ingestion from Gmail transaction emails for credit cards and UPI. It presents spend by category, named monthly caps with category and label targets, recurring cap carry-forward semantics, transaction details, merchant review workflows, Activity list and chart views, manual piggy-bank ledgers surfaced as Vaults, backend-mediated Gemini expense Q&A, household category management, transaction labels, planned owner-only transaction deletion with source tombstones, and planned Android push notifications for newly processed transactions. Milestones 37-51 completed the UI redesign that consolidated Transactions and Trends into Activity, presented Piggy Banks as Vaults, removed Settings from primary navigation, and added local light/dark/system theme support.
+The app imports historical credit-card analysis from `docs/Credit Card Spend Analysis - FY 2025-26.xlsx`, then moves to ongoing ingestion from Gmail transaction emails for credit cards and UPI. It presents spend by category, named monthly caps with category and label targets, recurring cap carry-forward semantics, transaction details, merchant review workflows, Activity list and chart views, manual piggy-bank ledgers surfaced as Vaults, backend-mediated Gemini expense Q&A, household category management, transaction labels, owner-only transaction deletion with source tombstones and workbook/Gmail resurrection suppression, and planned Android push notifications for newly processed transactions. Milestones 37-51 completed the UI redesign that consolidated Transactions and Trends into Activity, presented Piggy Banks as Vaults, removed Settings from primary navigation, and added local light/dark/system theme support.
 
 ## Architecture Decision
 
@@ -73,9 +73,10 @@ This is not a "no backend" architecture. It is a backend without a permanently r
   imports.
 - Transaction deletion: Milestone 52 added the owner-only Postgres hard-delete
   contract, minimal household-scoped source tombstones, cascade/unlink behavior,
-  and database regression coverage. Milestones 53-55 remain planned for workbook
-  and Gmail resurrection suppression, Activity UI, and final regression/docs
-  cleanup.
+  and database regression coverage. Milestone 53 made workbook and Gmail
+  ingestion suppress tombstoned source fingerprints with adjusted importer
+  validation and sanitized Gmail diagnostics. Milestones 54-55 remain planned
+  for Activity UI and final regression/docs cleanup.
 - Multi-target monthly caps: required-name recurring caps can include multiple
   categories, multiple labels, or both. A transaction counts once inside a cap
   when any selected category or label matches; overlapping caps are allowed.

@@ -4,11 +4,11 @@ Use this file to coordinate work across multiple implementation sessions. Update
 
 ## Current Status
 
-- Current milestone: None. Milestone 52 was completed on 2026-06-14.
-  Milestones 53-55 remain planned for import resurrection suppression, Activity
-  delete UX, and final transaction-deletion regression/docs cleanup. Milestones
-  18-21 remain deferred by user request.
-- Last completed milestone: Milestone 52, Transaction Delete Database Contract.
+- Current milestone: None. Milestone 53 was completed on 2026-06-14.
+  Milestones 54-55 remain planned for Activity delete UX and final
+  transaction-deletion regression/docs cleanup. Milestones 18-21 remain
+  deferred by user request.
+- Last completed milestone: Milestone 53, Import Resurrection Guard.
 - Current implementation state: Flutter Android app scaffold exists in
   `apps/mobile` with redesigned SpendLens Google sign-in, route protection,
   authenticated shell, RLS-safe profile/default-household bootstrap,
@@ -179,12 +179,15 @@ Use this file to coordinate work across multiple implementation sessions. Update
   contract: `public.deleted_transaction_sources`, a delete tombstone trigger,
   owner-only authenticated direct delete policy, the `delete_transaction` RPC,
   and focused pgTAP coverage for cascade/unlink, spend-summary, monthly-cap,
-  tombstone, and direct-delete RLS behavior. Milestones 53-55 remain planned to
-  add workbook/Gmail resurrection suppression, Activity delete UX, and final
-  regression/docs cleanup.
+  tombstone, and direct-delete RLS behavior. Milestone 53 adds workbook/Gmail
+  resurrection suppression by consulting source tombstones before transaction
+  upserts, adjusting workbook importer validation/reporting for suppressed rows,
+  returning sanitized suppressed Gmail ingestion results, and treating those
+  Gmail parses as handled work. Milestones 54-55 remain planned for Activity
+  delete UX and final regression/docs cleanup.
   Milestones 18-21 remain planned and deferred by user request.
 - Remote deployment state: On 2026-06-08, user confirmed Supabase project `bslsitzdvrdosubbdxpd` as the intended dev/staging target. All local migrations through `20260607174515_ai_ready_layer_llm_features.sql` were pushed there, hosted expense Q&A and the now-retired legacy AI lookup function were active with JWT verification, and `GEMINI_API_KEY` was present in hosted Edge Function secrets by name. After the user signed in through the Android emulator, hosted profile/household bootstrap and authenticated Gemini Edge Function smoke passed. On 2026-06-08 for Milestone 13, `gmail-oauth-start` was deployed as version 2 with JWT verification, `gmail-sync` was deployed as version 2 without JWT verification, and new `gmail-backfill-range` was deployed as version 1 without JWT verification. Hosted `gmail-backfill-range` `OPTIONS` smoke returned 200, and an unauthenticated POST returned the expected service-key error. The live May Gmail backfill itself was not run because it requires the user to connect the target Gmail mailbox and invoke the runbook with a Supabase secret key from a local/platform secret store. On 2026-06-09, M16 deleted the hosted legacy AI lookup function from `bslsitzdvrdosubbdxpd` and a follow-up function list verified it absent. The M16 database migration and updated active Suggest function were verified locally but not pushed/deployed to hosted in this implementation session.
-- Next recommended milestone: Milestone 53, Import Resurrection Guard.
+- Next recommended milestone: Milestone 54, Activity Transaction Delete UX.
   Milestones 18-21 remain deferred unless the user resumes push
   notifications. If continuing hosted rollout separately, push the M16,
   M26, M29, M32, and M33 migrations and deploy `transaction-metadata-suggest`;
@@ -196,7 +199,7 @@ Use this file to coordinate work across multiple implementation sessions. Update
   `docs/implementation-plan/UI_REDESIGN.md` is the active companion plan for
   completed Milestones 37-51.
   `docs/implementation-plan/TRANSACTION_DELETION.md` is the active companion
-  plan for completed Milestone 52 and planned Milestones 53-55.
+  plan for completed Milestones 52-53 and planned Milestones 54-55.
 
 ## Required Reading for New Threads
 
@@ -356,7 +359,7 @@ Do not ask the user to perform all setup at once. Ask only when the relevant mil
 - Milestone 51, UI Redesign Final Regression, Responsive QA, and Docs Closeout:
   completed.
 - Milestone 52, Transaction Delete Database Contract: completed.
-- Milestone 53, Import Resurrection Guard: planned.
+- Milestone 53, Import Resurrection Guard: completed.
 - Milestone 54, Activity Transaction Delete UX: planned.
 - Milestone 55, Transaction Deletion Regression, Docs, and Cleanup: planned.
 
@@ -400,11 +403,10 @@ Do not ask the user to perform all setup at once. Ask only when the relevant mil
   - `supabase db advisors --local --fail-on none`
   - `git diff --check`
 - Known gaps:
-  - M53 still needs to make workbook import and Gmail ingestion read
-    `deleted_transaction_sources` before upserting transactions, source rows,
-    or review items.
   - M54 still needs to expose deletion from Activity and refresh affected
     Flutter providers.
+  - M55 still needs final end-to-end transaction deletion regression/docs
+    cleanup.
   - No hosted Supabase migration push was run.
 - Assumptions made:
   - Optional deletion reasons are app/user metadata and must not contain raw
@@ -414,6 +416,66 @@ Do not ask the user to perform all setup at once. Ask only when the relevant mil
     transaction labels, transaction sources, and transaction-scoped review rows
     cascade; piggy-bank entries and Gmail parse attempts are preserved and
     unlinked.
+- Mocks created:
+  - None.
+- Mocks used:
+  - None.
+
+## Transaction Deletion M53 Notes
+
+- Completed on 2026-06-14.
+- Added migration
+  `supabase/migrations/20260614122706_import_resurrection_guard.sql`, replacing
+  `public.ingest_gmail_transaction(...)` with a tombstone-aware service-role
+  ingestion contract. The RPC checks `public.deleted_transaction_sources` before
+  source-account, transaction, transaction-source, or review writes. Matching
+  Gmail fingerprints return `suppressed = true`, `suppression_reason =
+  'deleted_transaction_source'`, null transaction/review ids, and no side
+  effects.
+- Updated `supabase/functions/gmail-sync/index.ts` so suppressed Gmail parses
+  are successful handled work, increment a `suppressed` count, write
+  `gmail_parse_attempts` with null transaction id and sanitized suppression
+  diagnostics, and emit structured logs containing only household id, mailbox
+  id, source type, source message id, and suppression reason.
+- Updated `tools/workbook-import/src/workbook-importer.mjs` so workbook imports
+  fetch tombstoned workbook fingerprints, skip transaction/source/review writes
+  for matching rows, preserve non-deleted idempotent upserts, report
+  `suppressedCount`, and validate database totals against the
+  tombstone-adjusted transaction set.
+- Added regression coverage in:
+  - `tools/workbook-import/test/workbook-fixture.test.mjs`
+  - `supabase/tests/gmail_ingestion.sql`
+  - `supabase/functions/tests/gmail_sync.test.ts`
+- No Flutter repository, Activity UI, restore/undo/bulk delete, hosted rollout,
+  push notification, iOS, web, M54, or M55 work was started.
+- Verification:
+  - `supabase --version`
+  - `supabase functions --help`
+  - Supabase changelog/docs scan for relevant Edge Function, CLI, RLS, and
+    breaking-change guidance.
+  - `supabase db reset --local`
+  - `supabase test db --local supabase/tests/transaction_deletion.sql`
+  - `supabase test db --local supabase/tests/gmail_ingestion.sql`
+  - `supabase test db --local supabase/tests/gmail_parse_failures.sql`
+  - `supabase test db --local supabase/tests`
+  - `pnpm --dir tools/workbook-import test`
+  - `pnpm --dir tools/workbook-import run validate`
+  - `deno test --allow-env --allow-read supabase/functions/tests`
+  - `supabase db lint --local --schema app_private,public --fail-on error`
+  - `supabase db advisors --local --fail-on none`
+  - `git diff --check`
+- Known gaps:
+  - M54 still needs to expose owner-only deletion from Activity and refresh
+    affected Flutter providers.
+  - M55 still needs final deletion regression/docs cleanup.
+  - No hosted Supabase migration push or Edge Function deployment was run.
+- Assumptions made:
+  - A tombstoned Gmail parse should remain a `parsed` parse attempt with null
+    transaction id and sanitized suppression diagnostics, rather than adding a
+    new parse status.
+  - Workbook category, source-account, merchant, and alias reference seeding can
+    remain based on the source workbook; only transaction-bearing rows are
+    suppressed.
 - Mocks created:
   - None.
 - Mocks used:

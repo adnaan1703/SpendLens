@@ -4,6 +4,7 @@ import {
   DEFAULT_WORKBOOK_PATH,
   EXPECTED_FIXTURE,
   classifyTransactionsWithRules,
+  filterWorkbookDataForSuppression,
   formatMoney,
   readWorkbook,
   summarizeTransactions,
@@ -44,6 +45,43 @@ test('source fingerprints are unique and Needs Review matches non-high confidenc
   assert.equal(fingerprints.size, EXPECTED_FIXTURE.transactionCount);
   assert.equal(reviewFingerprints.size, EXPECTED_FIXTURE.reviewItemCount);
   assert.deepEqual([...reviewFingerprints].sort(), [...nonHighFingerprints].sort());
+});
+
+test('tombstoned workbook fingerprints are skipped and validation totals are adjusted', async () => {
+  const data = await readWorkbook(DEFAULT_WORKBOOK_PATH);
+  const reviewTransaction = data.needsReviewTransactions[0];
+  const highConfidenceTransaction = data.transactions.find(
+    (transaction) => transaction.confidence === 'high',
+  );
+  assert.ok(reviewTransaction, 'Expected at least one Needs Review transaction');
+  assert.ok(highConfidenceTransaction, 'Expected at least one high-confidence transaction');
+
+  const { importData, suppression } = filterWorkbookDataForSuppression(
+    data,
+    new Set([
+      reviewTransaction.sourceFingerprint,
+      highConfidenceTransaction.sourceFingerprint,
+    ]),
+  );
+  const adjustedSummary = summarizeTransactions(importData.transactions);
+
+  assert.equal(suppression.suppressedCount, 2);
+  assert.equal(suppression.importedCount, EXPECTED_FIXTURE.transactionCount - 2);
+  assert.equal(
+    suppression.suppressedNetExpensePaise,
+    reviewTransaction.netExpensePaise + highConfidenceTransaction.netExpensePaise,
+  );
+  assert.equal(adjustedSummary.totals.txnCount, EXPECTED_FIXTURE.transactionCount - 2);
+  assert.equal(
+    adjustedSummary.totals.netSpendPaise,
+    EXPECTED_FIXTURE.netExpensePaise - suppression.suppressedNetExpensePaise,
+  );
+  assert.equal(
+    importData.needsReviewTransactions.some(
+      (transaction) => transaction.sourceFingerprint === reviewTransaction.sourceFingerprint,
+    ),
+    false,
+  );
 });
 
 test('manual merchant mapping rules classify future parsed transactions', () => {

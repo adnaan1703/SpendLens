@@ -453,6 +453,45 @@ export function summarizeTransactions(transactions) {
   };
 }
 
+export function filterWorkbookDataForSuppression(data, tombstonedFingerprints) {
+  const tombstones = tombstonedFingerprints instanceof Set
+    ? tombstonedFingerprints
+    : new Set(tombstonedFingerprints);
+  const transactions = [];
+  const suppressedTransactions = [];
+
+  for (const transaction of data.transactions) {
+    if (tombstones.has(transaction.sourceFingerprint)) {
+      suppressedTransactions.push(transaction);
+    } else {
+      transactions.push(transaction);
+    }
+  }
+
+  const importedFingerprints = new Set(
+    transactions.map((transaction) => transaction.sourceFingerprint),
+  );
+  const suppressedSummary = summarizeTransactions(suppressedTransactions);
+
+  return {
+    importData: {
+      ...data,
+      transactions,
+      needsReviewTransactions: data.needsReviewTransactions.filter((transaction) =>
+        importedFingerprints.has(transaction.sourceFingerprint)
+      ),
+    },
+    suppression: {
+      suppressedCount: suppressedTransactions.length,
+      importedCount: transactions.length,
+      suppressedGrossSpendPaise: suppressedSummary.totals.grossSpendPaise,
+      suppressedRefundsPaise: suppressedSummary.totals.refundsPaise,
+      suppressedNetExpensePaise: suppressedSummary.totals.netSpendPaise,
+      suppressedCardBillPaymentsPaise: suppressedSummary.totals.cardBillPaymentsPaise,
+    },
+  };
+}
+
 function compareRows(name, expectedRows, actualRows, keyFields, moneyFields, countFields = []) {
   const keyFor = (row) => keyFields.map((field) => row[field]).join('|');
   const expected = new Map(expectedRows.map((row) => [keyFor(row), row]));
@@ -882,6 +921,17 @@ async function existingFingerprints(client, options) {
   return new Set(result.rows.map((row) => row.source_fingerprint));
 }
 
+async function tombstonedWorkbookFingerprints(client, options) {
+  const result = await client.query(
+    `select source_fingerprint
+     from public.deleted_transaction_sources
+     where household_id = $1
+       and source_type = 'workbook'`,
+    [options.householdId],
+  );
+  return new Set(result.rows.map((row) => row.source_fingerprint));
+}
+
 function transactionClassificationIds(transaction, lookups) {
   const categoryId = transaction.mappingRuleCategoryId ?? lookups.categories.get(transaction.category);
   const subcategoryId = transaction.mappingRuleSubcategoryId
@@ -1274,11 +1324,15 @@ async function databaseMetadataCounts(client, options, batchId, reviewItemIds) {
 async function validateDatabaseImport(client, data, options, batchId, reviewItemIds) {
   const expectedSummary = summarizeTransactions(data.transactions);
   const totals = await databaseTotals(client, options);
-  assert.equal(totals.transactionCount, EXPECTED_FIXTURE.transactionCount, 'database transaction count');
-  assert.equal(totals.grossSpendPaise, EXPECTED_FIXTURE.grossSpendPaise, 'database gross spend');
-  assert.equal(totals.refundsPaise, EXPECTED_FIXTURE.refundsPaise, 'database refunds');
-  assert.equal(totals.netExpensePaise, EXPECTED_FIXTURE.netExpensePaise, 'database net expense');
-  assert.equal(totals.cardBillPaymentsPaise, EXPECTED_FIXTURE.cardBillPaymentsPaise, 'database card bill payments');
+  assert.equal(totals.transactionCount, expectedSummary.totals.txnCount, 'database transaction count');
+  assert.equal(totals.grossSpendPaise, expectedSummary.totals.grossSpendPaise, 'database gross spend');
+  assert.equal(totals.refundsPaise, expectedSummary.totals.refundsPaise, 'database refunds');
+  assert.equal(totals.netExpensePaise, expectedSummary.totals.netSpendPaise, 'database net expense');
+  assert.equal(
+    totals.cardBillPaymentsPaise,
+    expectedSummary.totals.cardBillPaymentsPaise,
+    'database card bill payments',
+  );
 
   compareRows(
     'database monthly summary',
@@ -1320,7 +1374,7 @@ async function validateDatabaseImport(client, data, options, batchId, reviewItem
   return { totals, metadata };
 }
 
-function validationSummary(workbookSummary, databaseSummary, importCounts) {
+function validationSummary(workbookSummary, databaseSummary, importCounts, adjustedSummary = workbookSummary) {
   return {
     status: 'passed',
     workbook: {
@@ -1333,6 +1387,13 @@ function validationSummary(workbookSummary, databaseSummary, importCounts) {
       category_rows: workbookSummary.categories.length,
       merchant_rows: workbookSummary.merchants.length,
       cardholder_rows: workbookSummary.cardholders.length,
+    },
+    adjusted_expected: {
+      transaction_count: adjustedSummary.totals.txnCount,
+      gross_spend: formatMoney(adjustedSummary.totals.grossSpendPaise),
+      refunds: formatMoney(adjustedSummary.totals.refundsPaise),
+      net_expense: formatMoney(adjustedSummary.totals.netSpendPaise),
+      card_bill_payments: formatMoney(adjustedSummary.totals.cardBillPaymentsPaise),
     },
     database: {
       transaction_count: databaseSummary.totals.transactionCount,
@@ -1348,6 +1409,14 @@ function validationSummary(workbookSummary, databaseSummary, importCounts) {
       import_batches: databaseSummary.metadata.importBatches,
     },
     import: importCounts,
+    suppression: {
+      suppressed_count: importCounts.suppressedCount ?? 0,
+      imported_transaction_count: importCounts.importedCount ?? importCounts.rowCount,
+      suppressed_gross_spend: formatMoney(importCounts.suppressedGrossSpendPaise ?? 0),
+      suppressed_refunds: formatMoney(importCounts.suppressedRefundsPaise ?? 0),
+      suppressed_net_expense: formatMoney(importCounts.suppressedNetExpensePaise ?? 0),
+      suppressed_card_bill_payments: formatMoney(importCounts.suppressedCardBillPaymentsPaise ?? 0),
+    },
     checks: {
       totals: true,
       monthly: true,
@@ -1397,6 +1466,8 @@ export async function runImport(options = {}) {
         },
       }, {
         rowCount: data.transactions.length,
+        importedCount: data.transactions.length,
+        suppressedCount: 0,
         insertedCount: 0,
         updatedCount: 0,
         duplicateCount: 0,
@@ -1415,18 +1486,30 @@ export async function runImport(options = {}) {
     const sourceAccounts = await upsertSourceAccounts(client, data, resolvedOptions);
     const merchants = await upsertMerchants(client, data, resolvedOptions, categories, subcategories);
     const merchantMappingRules = await fetchMerchantMappingRules(client, resolvedOptions);
-    const importData = {
+    const classifiedData = {
       ...data,
       transactions: classifyTransactionsWithRules(data.transactions, merchantMappingRules),
     };
-    await upsertMerchantAliases(client, importData, resolvedOptions, merchants);
-    const importCounts = await upsertTransactions(client, importData, resolvedOptions, {
+    const tombstonedFingerprints = await tombstonedWorkbookFingerprints(client, resolvedOptions);
+    const { importData, suppression } = filterWorkbookDataForSuppression(classifiedData, tombstonedFingerprints);
+    await upsertMerchantAliases(client, classifiedData, resolvedOptions, merchants);
+    const transactionCounts = await upsertTransactions(client, importData, resolvedOptions, {
       categories,
       subcategories,
       sourceAccounts,
       merchants,
     });
-    await upsertTransactionSources(client, data, resolvedOptions, batchId);
+    const importCounts = {
+      ...transactionCounts,
+      rowCount: data.transactions.length,
+      importedCount: suppression.importedCount,
+      suppressedCount: suppression.suppressedCount,
+      suppressedGrossSpendPaise: suppression.suppressedGrossSpendPaise,
+      suppressedRefundsPaise: suppression.suppressedRefundsPaise,
+      suppressedNetExpensePaise: suppression.suppressedNetExpensePaise,
+      suppressedCardBillPaymentsPaise: suppression.suppressedCardBillPaymentsPaise,
+    };
+    await upsertTransactionSources(client, importData, resolvedOptions, batchId);
     const reviewResult = await upsertReviewItems(client, importData, resolvedOptions, {
       categories,
       subcategories,
@@ -1439,7 +1522,12 @@ export async function runImport(options = {}) {
       batchId,
       reviewResult.reviewItemIds,
     );
-    const summary = validationSummary(workbookSummary, databaseSummary, importCounts);
+    const summary = validationSummary(
+      workbookSummary,
+      databaseSummary,
+      importCounts,
+      summarizeTransactions(importData.transactions),
+    );
     await client.query(
       `update public.import_batches
        set status = 'completed',
@@ -1544,6 +1632,7 @@ if (import.meta.url === pathToFileURL(process.argv[1]).href) {
           console.log(`Import batch: ${result.batchId}`);
           console.log(`Inserted: ${result.importCounts.insertedCount}`);
           console.log(`Updated: ${result.importCounts.updatedCount}`);
+          console.log(`Suppressed: ${result.importCounts.suppressedCount}`);
           console.log(`Review items: ${summary.database.review_items} (${summary.database.open_review_items} open)`);
         }
       })

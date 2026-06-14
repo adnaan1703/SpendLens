@@ -58,7 +58,17 @@ type ProcessCounts = {
   outsideDateRange: number;
   inserted: number;
   updated: number;
+  suppressed: number;
   reviewItems: number;
+};
+
+type GmailIngestResult = {
+  gmail_transaction_id?: string | null;
+  inserted?: boolean | null;
+  review_item_id?: string | null;
+  matched_mapping?: boolean | null;
+  suppressed?: boolean | null;
+  suppression_reason?: string | null;
 };
 
 type BackfillOptions = GmailMessageListOptions & {
@@ -81,6 +91,7 @@ function emptyCounts(): ProcessCounts {
     outsideDateRange: 0,
     inserted: 0,
     updated: 0,
+    suppressed: 0,
     reviewItems: 0,
   };
 }
@@ -219,6 +230,63 @@ function parseCandidateType(
     : null;
 }
 
+function diagnosticsObject(value: unknown): Record<string, unknown> {
+  return value && typeof value === "object" && !Array.isArray(value)
+    ? value as Record<string, unknown>
+    : {};
+}
+
+export function buildGmailIngestOutcome(
+  result: GmailIngestResult | null | undefined,
+  parsedRecord: Record<string, unknown>,
+  sourceFingerprint: string,
+): {
+  transactionId: string | null;
+  parsedRecord: Record<string, unknown>;
+  counts: Partial<ProcessCounts>;
+  suppressed: boolean;
+  suppressionReason: string | null;
+} {
+  const suppressed = result?.suppressed === true;
+  if (suppressed) {
+    const suppressionReason = optionalString(result?.suppression_reason) ??
+      "deleted_transaction_source";
+    return {
+      transactionId: null,
+      parsedRecord: {
+        ...parsedRecord,
+        diagnostics: {
+          ...diagnosticsObject(parsedRecord.diagnostics),
+          source_suppressed_by_deletion: true,
+          suppression_reason: suppressionReason,
+          source_fingerprint: sourceFingerprint,
+        },
+      },
+      counts: {
+        inserted: 0,
+        updated: 0,
+        suppressed: 1,
+        reviewItems: 0,
+      },
+      suppressed: true,
+      suppressionReason,
+    };
+  }
+
+  return {
+    transactionId: result?.gmail_transaction_id ?? null,
+    parsedRecord,
+    counts: {
+      inserted: result?.inserted ? 1 : 0,
+      updated: result?.inserted ? 0 : 1,
+      suppressed: 0,
+      reviewItems: result?.review_item_id ? 1 : 0,
+    },
+    suppressed: false,
+    suppressionReason: null,
+  };
+}
+
 async function recordGmailParseAttempt(
   serviceClient: ReturnType<typeof createServiceClient>,
   mailbox: MailboxRow,
@@ -323,21 +391,34 @@ async function processMessage(
   }
 
   const result = Array.isArray(data) ? data[0] : data;
+  const ingestOutcome = buildGmailIngestOutcome(
+    result,
+    parsedRecord,
+    fingerprint,
+  );
   await recordGmailParseAttempt(
     serviceClient,
     mailbox,
     metadata,
-    parsedRecord,
+    ingestOutcome.parsedRecord,
     "parsed",
-    result?.gmail_transaction_id ?? null,
+    ingestOutcome.transactionId,
   );
+
+  if (ingestOutcome.suppressed) {
+    logOperationalEvent("gmail_sync_transaction_suppressed", {
+      householdId: mailbox.household_id,
+      mailboxId: mailbox.id,
+      sourceType: "gmail",
+      sourceMessageId: String(metadata.id ?? messageId),
+      suppressionReason: ingestOutcome.suppressionReason,
+    });
+  }
 
   return {
     fetched: 1,
     parsed: 1,
-    inserted: result?.inserted ? 1 : 0,
-    updated: result?.inserted ? 0 : 1,
-    reviewItems: result?.review_item_id ? 1 : 0,
+    ...ingestOutcome.counts,
   };
 }
 
@@ -628,7 +709,7 @@ async function processJob(
   return { jobId: job.id, counts, fallbackBackfill };
 }
 
-Deno.serve(async (req: Request) => {
+export async function handler(req: Request): Promise<Response> {
   const options = handleOptions(req);
   if (options) return options;
 
@@ -756,4 +837,8 @@ Deno.serve(async (req: Request) => {
       400,
     );
   }
-});
+}
+
+if (import.meta.main) {
+  Deno.serve(handler);
+}
