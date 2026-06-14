@@ -582,6 +582,49 @@ Financial rules:
 - Refunds are represented as positive `refund_amount`.
 - Dashboard summaries and monthly caps use `net_expense`.
 
+Planned transaction deletion rules for Milestones 52-55:
+
+- Transaction deletion is owner-only and app-facing through an RLS-safe
+  authenticated contract.
+- Deletion is a hard delete of the `transactions` row.
+- Deleting a transaction removes its contribution from monthly spend, merchant
+  spend, trends, dashboard totals, labels, review, and monthly caps because
+  those reads derive from remaining transaction rows.
+- Deleting a transaction records a minimal source tombstone so the same
+  workbook row or Gmail email cannot recreate the transaction later.
+- Piggy-bank entries and service diagnostics that reference the transaction are
+  preserved but unlinked.
+
+### `deleted_transaction_sources` (planned M52)
+
+Minimal household-scoped tombstones for deleted transaction source identities.
+This table prevents idempotent import paths from recreating transactions the
+owner intentionally removed.
+
+Important fields:
+
+- `id uuid primary key`
+- `household_id uuid references households(id)`
+- `source_type source_type not null`
+- `source_fingerprint text not null`
+- `deleted_transaction_id uuid not null`
+- `source_message_id text`
+- `source_reference text`
+- `deleted_by uuid references profiles(id)`
+- `deleted_at timestamptz`
+- `reason text`
+
+Rules:
+
+- Unique `(household_id, source_fingerprint)`.
+- Store only minimal source identity. Do not store amount, merchant, category,
+  cardholder, notes, raw email body, parsed email body, or full transaction
+  payload data.
+- Owners can create tombstones through transaction deletion. Ingestion service
+  code can read tombstones to suppress re-import.
+- Tombstones block workbook and Gmail transaction creation for matching source
+  fingerprints.
+
 ### Transaction labels
 
 SpendLens uses household-shared labels for ad hoc transaction grouping. Labels

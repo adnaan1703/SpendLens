@@ -2484,6 +2484,176 @@ Verify the full redesign and fold final UI behavior into durable docs.
   - `docs/design-references/stitch/themed-dashboard-ui-redesign/screens/transactions-details-refined-shapes.jpg`
   - `docs/design-references/stitch/themed-dashboard-ui-redesign/screens/transactions-edit-metadata.jpg`
 
+## Milestone 52: Transaction Delete Database Contract
+
+### Status
+
+Planned. See
+[Transaction Deletion](TRANSACTION_DELETION.md#m52---transaction-delete-database-contract).
+
+### Objective
+
+Create the owner-only database deletion contract, source tombstones, and
+regression coverage that make hard transaction deletion safe.
+
+### Tasks
+
+- Add a source tombstone table for deleted transaction fingerprints.
+- Add RLS policies, explicit grants, and service-role read access needed for
+  ingestion suppression.
+- Add a tombstone trigger so any owner-authorized transaction delete records the
+  source fingerprint before child rows cascade.
+- Tighten authenticated transaction deletion to owner-only.
+- Add an app-facing `security invoker` `delete_transaction` RPC that returns
+  deletion impact counts.
+- Add pgTAP coverage for owner-only access, cascade/unlink behavior, tombstone
+  creation, and summary/monthly-cap spend impact.
+
+### External Work
+
+- None.
+
+### Acceptance Criteria
+
+- Owners can hard-delete their household's transactions through the database
+  contract.
+- Admins, members, viewers, non-members, and other-household owners cannot
+  delete through the app-facing contract.
+- Deleted transactions no longer contribute to spend summaries or monthly cap
+  progress.
+- Source tombstones are recorded without storing full transaction or email
+  payload data.
+
+### Deferred Scope
+
+- Workbook importer suppression, Gmail sync suppression, Activity UI, restore,
+  undo, bulk delete, push notifications, hosted rollout, iOS, and web.
+
+## Milestone 53: Import Resurrection Guard
+
+### Status
+
+Planned. See
+[Transaction Deletion](TRANSACTION_DELETION.md#m53---import-resurrection-guard).
+
+### Objective
+
+Make workbook and Gmail ingestion skip tombstoned source fingerprints so deleted
+transactions cannot be recreated by reruns, retries, sync jobs, or backfills.
+
+### Tasks
+
+- Update workbook import fingerprint handling to skip tombstoned rows.
+- Adjust workbook validation totals and import reporting for intentionally
+  suppressed rows.
+- Update Gmail ingestion SQL to return a suppressed result for tombstoned
+  fingerprints without inserting transactions, transaction sources, or review
+  items.
+- Update Gmail sync handling and sanitized diagnostics so suppression is treated
+  as handled work, not a retryable failure.
+- Add importer, pgTAP, and Edge Function tests for tombstone suppression while
+  preserving existing idempotent upsert behavior for non-deleted sources.
+
+### External Work
+
+- None.
+
+### Acceptance Criteria
+
+- Re-importing a deleted workbook row does not recreate its transaction.
+- Reprocessing a deleted Gmail transaction email does not recreate its
+  transaction.
+- Existing non-deleted source idempotency remains unchanged.
+- Suppression diagnostics do not expose raw email bodies or full transaction
+  payloads.
+
+### Deferred Scope
+
+- Flutter Activity delete UI, restore, undo, bulk delete, push notifications,
+  hosted rollout, iOS, and web.
+
+## Milestone 54: Activity Transaction Delete UX
+
+### Status
+
+Planned. See
+[Transaction Deletion](TRANSACTION_DELETION.md#m54---activity-transaction-delete-ux).
+
+### Objective
+
+Expose owner-only transaction deletion from the Activity transaction detail
+surface using the database and ingestion contracts from M52-M53.
+
+### Tasks
+
+- Extend Flutter finance repository contracts with transaction delete request
+  and result models.
+- Implement the Supabase RPC call plus disabled and fake repository support.
+- Add an owner-only destructive action to the transaction detail surface.
+- Add confirmation copy that explains spend impact, monthly cap impact,
+  preserved/unlinked Vault diagnostics, and source re-import suppression.
+- Refresh affected Activity, Dashboard, Trend, Review, Label, month, and Vault
+  providers after successful deletion.
+- Add focused widget tests for owner visibility, non-owner hiding, cancel,
+  confirm, error handling, list removal, and narrow layout behavior.
+
+### External Work
+
+- None.
+
+### Acceptance Criteria
+
+- Household owners can delete a transaction from Activity after confirmation.
+- Non-owner roles cannot see or trigger the delete action.
+- Deleted transactions disappear from Activity and affected reads refresh.
+- Existing metadata and label edit flows still work.
+
+### Deferred Scope
+
+- New Supabase schema, Gmail/workbook ingestion changes, restore, undo, bulk
+  delete, push notifications, hosted rollout, iOS, and web.
+
+## Milestone 55: Transaction Deletion Regression, Docs, and Cleanup
+
+### Status
+
+Planned. See
+[Transaction Deletion](TRANSACTION_DELETION.md#m55---transaction-deletion-regression-docs-and-cleanup).
+
+### Objective
+
+Verify the full transaction deletion flow across database, ingestion, importer,
+and Flutter surfaces, then fold final behavior into durable docs.
+
+### Tasks
+
+- Run the full local Supabase, importer, Edge Function, and Flutter verification
+  path.
+- Fill any focused regression gaps found during verification.
+- Update durable docs with the final transaction deletion, tombstone, and import
+  suppression behavior.
+- Update this tracker and `SESSION_HANDOFF.md` with completion notes for
+  M52-M55.
+- Decide whether `TRANSACTION_DELETION.md` should remain as an active companion
+  plan or be marked completed-only for later cleanup.
+
+### External Work
+
+- None.
+
+### Acceptance Criteria
+
+- Owner-only hard deletion is verified end to end.
+- Deleted transactions cannot be recreated by workbook or Gmail reprocessing.
+- Spend summaries, merchant summaries, Activity Charts, labels, review, and
+  monthly caps reflect the deletion.
+- Final docs and handoff are self-contained for future fresh-context sessions.
+
+### Deferred Scope
+
+- Restore, undo, bulk delete, push notifications, hosted rollout, iOS, web, and
+  any production data migration outside local verification.
+
 ## Cross-Milestone Consistency Rules
 
 - Ask the user before proceeding on any undocumented decision. Codex may recommend a default, but must wait for confirmation.
@@ -2496,6 +2666,8 @@ Verify the full redesign and fold final UI behavior into durable docs.
 - Exclude card bill payments from spend.
 - Treat refunds as reducing net expense.
 - Ensure imports and sync jobs are idempotent.
+- Deleted transaction source fingerprints must stay suppressed from future
+  workbook and Gmail ingestion once Milestones 52-55 are implemented.
 - Keep push delivery asynchronous so FCM failures do not block ingestion.
 - Keep category management app-facing and RLS-safe; never delete transactions
   during taxonomy deletion or merge.

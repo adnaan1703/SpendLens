@@ -164,6 +164,19 @@ The worker should consume jobs from Supabase and write results back to Postgres.
 3. Balance is ledger-derived, not editable directly.
 4. Entries may optionally link to real transactions.
 
+### Transaction Deletion (planned M52-M55)
+
+1. A household owner deletes a faulty transaction from Activity.
+2. Postgres records a minimal source tombstone keyed by household and
+   source fingerprint.
+3. The transaction row is hard-deleted, which removes its contribution from
+   summary views, merchant summaries, trends, labels, review, and monthly cap
+   progress.
+4. Ledger and diagnostic rows that should survive deletion are preserved but
+   unlinked.
+5. Workbook and Gmail ingestion check tombstones before transaction upsert so
+   reprocessing the same source does not recreate the deleted transaction.
+
 ### LLM Q&A
 
 1. User asks a question in the app.
@@ -246,6 +259,8 @@ Required controls:
 - Use deterministic merchant rules before LLM enrichment.
 - Only run Suggest web search after the household flag is explicitly enabled.
 - Keep Gmail sync idempotent to avoid retry loops and duplicate work.
+- After Milestones 52-55, treat tombstoned source fingerprints as suppressed
+  handled work so owner-deleted transactions do not reappear after retries.
 - Keep push delivery asynchronous so FCM outages do not block ingestion.
 
 ## Architecture References

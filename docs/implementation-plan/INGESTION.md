@@ -2,7 +2,11 @@
 
 ## Goals
 
-Ingestion must reliably convert historical workbook data and future Gmail transaction emails into normalized transactions. It must be idempotent, auditable, privacy-conscious, and compatible with future merchant enrichment.
+Ingestion must reliably convert historical workbook data and future Gmail
+transaction emails into normalized transactions. It must be idempotent,
+auditable, privacy-conscious, compatible with future merchant enrichment, and
+after Milestones 52-55 must honor owner-created transaction deletion
+tombstones.
 
 ## Source Types
 
@@ -65,6 +69,10 @@ The importer must validate:
 - Category net totals match `Category Summary`.
 - Merchant net totals match `Merchant Summary`.
 - Card bill payments remain excluded from net expense.
+
+After Milestone 53, validation must subtract any workbook rows suppressed by
+`deleted_transaction_sources` tombstones before comparing database totals. A
+tombstoned source row is intentionally absent, not an import failure.
 
 ### Expected Initial Workbook Facts
 
@@ -221,6 +229,19 @@ Recommended fingerprint inputs:
 - source message ID when needed
 
 Use `(household_id, source_fingerprint)` as the primary duplicate guard.
+
+After Milestone 53, ingestion must also check
+`deleted_transaction_sources` before inserting or updating a transaction. A
+matching tombstone means the source was intentionally deleted by the household
+owner and must be treated as suppressed handled work:
+
+- Do not insert or update `transactions`.
+- Do not recreate `transaction_sources`.
+- Do not recreate transaction-scoped `review_items`.
+- Preserve sanitized service diagnostics where the source path already records
+  them, especially `gmail_parse_attempts`.
+- Do not store raw email bodies or full transaction payloads in tombstones or
+  suppression diagnostics.
 
 When duplicates are plausible but not certain:
 

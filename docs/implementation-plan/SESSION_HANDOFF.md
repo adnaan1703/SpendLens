@@ -5,7 +5,8 @@ Use this file to coordinate work across multiple implementation sessions. Update
 ## Current Status
 
 - Current milestone: None. Milestone 51 was completed on 2026-06-14.
-  Milestones 18-21 remain deferred by user request.
+  Milestones 52-55 are planned for owner-only transaction deletion and source
+  tombstone suppression. Milestones 18-21 remain deferred by user request.
 - Last completed milestone: Milestone 51, UI Redesign Final Regression,
   Responsive QA, and Docs Closeout.
 - Current implementation state: Flutter Android app scaffold exists in
@@ -174,12 +175,15 @@ Use this file to coordinate work across multiple implementation sessions. Update
   redesigned shell, core authenticated surfaces, sign-in, household gates,
   transaction details, and metadata editor; fixes a Dashboard desktop
   spending-card layout regression; and folds final UI behavior into durable
-  docs.
+  docs. Milestones 52-55 are planned to add owner-only hard transaction
+  deletion from Activity, source tombstones that suppress workbook/Gmail
+  resurrection, importer/Gmail suppression tests, Activity delete UX, and final
+  regression/docs cleanup.
   Milestones 18-21 remain planned and deferred by user request.
 - Remote deployment state: On 2026-06-08, user confirmed Supabase project `bslsitzdvrdosubbdxpd` as the intended dev/staging target. All local migrations through `20260607174515_ai_ready_layer_llm_features.sql` were pushed there, hosted expense Q&A and the now-retired legacy AI lookup function were active with JWT verification, and `GEMINI_API_KEY` was present in hosted Edge Function secrets by name. After the user signed in through the Android emulator, hosted profile/household bootstrap and authenticated Gemini Edge Function smoke passed. On 2026-06-08 for Milestone 13, `gmail-oauth-start` was deployed as version 2 with JWT verification, `gmail-sync` was deployed as version 2 without JWT verification, and new `gmail-backfill-range` was deployed as version 1 without JWT verification. Hosted `gmail-backfill-range` `OPTIONS` smoke returned 200, and an unauthenticated POST returned the expected service-key error. The live May Gmail backfill itself was not run because it requires the user to connect the target Gmail mailbox and invoke the runbook with a Supabase secret key from a local/platform secret store. On 2026-06-09, M16 deleted the hosted legacy AI lookup function from `bslsitzdvrdosubbdxpd` and a follow-up function list verified it absent. The M16 database migration and updated active Suggest function were verified locally but not pushed/deployed to hosted in this implementation session.
-- Next recommended milestone: none in the UI redesign sequence; Milestones
-  37-51 are complete. Milestones 18-21 remain deferred unless the user resumes
-  push notifications. If continuing hosted rollout separately, push the M16,
+- Next recommended milestone: Milestone 52, Transaction Delete Database
+  Contract. Milestones 18-21 remain deferred unless the user resumes push
+  notifications. If continuing hosted rollout separately, push the M16,
   M26, M29, M32, and M33 migrations and deploy `transaction-metadata-suggest`;
   iOS and web remain deferred future milestones unless explicitly resumed.
 - Documentation state: completed-only companion execution plans for transaction
@@ -187,7 +191,8 @@ Use this file to coordinate work across multiple implementation sessions. Update
   2026-06-12. `docs/implementation-plan/MONTHLY_CAPS.md` remains active as the
   companion plan for completed Milestones 29-35.
   `docs/implementation-plan/UI_REDESIGN.md` is the active companion plan for
-  Milestones 37-51.
+  Milestones 37-51. `docs/implementation-plan/TRANSACTION_DELETION.md` is the
+  active companion plan for planned Milestones 52-55.
 
 ## Required Reading for New Threads
 
@@ -202,9 +207,10 @@ At the start of a new implementation thread, read:
 7. `docs/implementation-plan/TRANSACTION_LABELS.md` when executing Milestone 26, 27, or 28
 8. `docs/implementation-plan/MONTHLY_CAPS.md` when executing Milestone 29, 30, 31, 32, 33, 34, or 35
 9. `docs/implementation-plan/UI_REDESIGN.md` when executing Milestone 37 through 51
-10. `DESIGN.md` when executing Milestone 37 through 51
-11. `docs/design-references/stitch/themed-dashboard-ui-redesign/README.md` when executing Milestone 37 through 51
-12. This handoff file
+10. `docs/implementation-plan/TRANSACTION_DELETION.md` when executing Milestone 52 through 55
+11. `DESIGN.md` when executing Milestone 37 through 51
+12. `docs/design-references/stitch/themed-dashboard-ui-redesign/README.md` when executing Milestone 37 through 51
+13. This handoff file
 
 ## Current Assumptions
 
@@ -238,6 +244,12 @@ At the start of a new implementation thread, read:
   transactions, affect future imports, or send transactions to Review. Settings
   manages the shared label vocabulary with usage counts and delete-with-detach
   confirmation.
+- Transaction deletion is planned for Milestones 52-55 as an owner-only hard
+  delete from Activity. Deleted transaction rows should stop contributing to
+  monthly spend, merchant spend, trends, labels, review, and monthly caps. A
+  minimal source tombstone should prevent the same workbook row or Gmail email
+  from recreating the deleted transaction, while linked Vault entries and
+  service diagnostics remain preserved but unlinked.
 - Multi-target monthly caps require names. Caps may target categories, labels,
   or both; a transaction matches a cap when any selected category or label
   matches; one transaction counts once inside one cap; overlapping caps are
@@ -339,6 +351,10 @@ Do not ask the user to perform all setup at once. Ask only when the relevant mil
 - Milestone 50, Dialogs, Forms, Empty States, and Motion Pass: completed.
 - Milestone 51, UI Redesign Final Regression, Responsive QA, and Docs Closeout:
   completed.
+- Milestone 52, Transaction Delete Database Contract: planned.
+- Milestone 53, Import Resurrection Guard: planned.
+- Milestone 54, Activity Transaction Delete UX: planned.
+- Milestone 55, Transaction Deletion Regression, Docs, and Cleanup: planned.
 
 ## Update Rules
 
@@ -359,6 +375,45 @@ When an architecture decision changes:
 
 - Update `ARCHITECTURE.md` or `DATA_MODEL.md`.
 - Add a short note here explaining why the change was made.
+
+## Transaction Deletion Planning Notes
+
+- Completed on 2026-06-14 as a planning-only documentation update.
+- Added `docs/implementation-plan/TRANSACTION_DELETION.md` as the detailed
+  fresh-thread implementation plan for Milestones 52-55.
+- Updated `docs/implementation-plan/README.md`,
+  `docs/implementation-plan/ARCHITECTURE.md`,
+  `docs/implementation-plan/DATA_MODEL.md`,
+  `docs/implementation-plan/INGESTION.md`,
+  `docs/implementation-plan/GMAIL_CONNECTOR.md`,
+  `docs/implementation-plan/WORKBOOK_IMPORT.md`,
+  `docs/implementation-plan/MILESTONES.md`, and this handoff so transaction
+  deletion is discoverable from the repo's standard planning entrypoints.
+- Planned milestone sequence:
+  - Milestone 52: Transaction Delete Database Contract.
+  - Milestone 53: Import Resurrection Guard.
+  - Milestone 54: Activity Transaction Delete UX.
+  - Milestone 55: Transaction Deletion Regression, Docs, and Cleanup.
+- Implementation remains planned. No migrations, Dart code, Flutter UI, tests,
+  workbook importer behavior, Gmail Edge Function behavior, or hosted Supabase
+  changes were started by this planning update.
+- Verification run:
+  - Planning docs and existing transaction, label, cap, importer, and Gmail
+    ingestion paths were inspected before editing.
+  - `git diff --check`
+  - Conflict-marker scan over implementation-plan docs.
+  - Trailing-whitespace scan over edited implementation-plan docs.
+- Known gaps:
+  - No markdown linter is configured or run for implementation-plan docs.
+- Assumptions made:
+  - Transaction deletion is owner-only.
+  - Deletion is a hard delete of the transaction row.
+  - Source tombstones should block workbook and Gmail re-import resurrection.
+  - Piggy-bank entries and service diagnostics should be preserved but unlinked.
+- Mocks created:
+  - None.
+- Mocks used:
+  - None.
 
 ## Milestone 36 Completion Notes
 

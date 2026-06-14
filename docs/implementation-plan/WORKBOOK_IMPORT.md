@@ -31,7 +31,17 @@ pnpm --dir tools/workbook-import run import
 
 The script defaults to `postgresql://postgres:postgres@127.0.0.1:54322/postgres` and creates a deterministic local seed auth user, profile, household, and owner membership. It uses direct Postgres access for a local/admin import only; do not move this DB URL or any privileged credentials into Flutter client code.
 
-The import is safe to rerun. It uses deterministic IDs for the import batch, source accounts, merchants, transactions, transaction source metadata, and review items, plus the schema's stable `(household_id, source_fingerprint)` transaction guard. A second run updates the same rows instead of duplicating them.
+The import is safe to rerun. It uses deterministic IDs for the import batch,
+source accounts, merchants, transactions, transaction source metadata, and
+review items, plus the schema's stable `(household_id, source_fingerprint)`
+transaction guard. A second run updates the same rows instead of duplicating
+them.
+
+After Milestones 52-55, the importer must also honor
+`deleted_transaction_sources`. A workbook row whose source fingerprint has been
+tombstoned by owner transaction deletion is intentionally skipped and must not
+recreate a deleted transaction; validation totals should subtract suppressed
+rows before comparing imported database totals.
 
 ## Expected Fixture Totals
 
