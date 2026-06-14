@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../core/theme/app_theme.dart';
 import '../../data/repositories/finance_repository.dart';
 import '../../data/repositories/household_repository.dart';
 import '../../shared/widgets/app_primitives.dart';
+import '../settings/settings_screen.dart';
 
 class PiggyBanksScreen extends ConsumerStatefulWidget {
   const PiggyBanksScreen({super.key});
@@ -163,8 +165,18 @@ class _VaultsHeader extends StatelessWidget {
       subtitle:
           'Create dedicated vaults for each savings goal to track deposits, withdrawals, and progress clearly.',
     );
-    final actions = Row(
-      mainAxisSize: MainAxisSize.min,
+    final settingsAction = Tooltip(
+      message: 'Open settings',
+      child: IconButton(
+        onPressed: () => context.go(SettingsScreen.routePath),
+        icon: const Icon(Icons.settings_outlined),
+      ),
+    );
+    final actions = Wrap(
+      alignment: WrapAlignment.end,
+      runAlignment: WrapAlignment.center,
+      spacing: 8,
+      runSpacing: 8,
       children: [
         Tooltip(
           message: 'Refresh vaults',
@@ -173,7 +185,6 @@ class _VaultsHeader extends StatelessWidget {
             icon: const Icon(Icons.refresh),
           ),
         ),
-        const SizedBox(width: 8),
         AppActionPill.secondary(
           label: 'Create Vault',
           icon: Icons.add,
@@ -181,30 +192,26 @@ class _VaultsHeader extends StatelessWidget {
         ),
       ],
     );
-
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final stacks = constraints.hasBoundedWidth && constraints.maxWidth < 640;
-        if (stacks) {
-          return Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              heading,
-              const SizedBox(height: 16),
-              Align(alignment: Alignment.centerRight, child: actions),
-            ],
-          );
-        }
-
-        return Row(
-          crossAxisAlignment: CrossAxisAlignment.center,
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Expanded(child: heading),
             const SizedBox(width: 16),
-            actions,
+            Align(
+              alignment: Alignment.topRight,
+              child: settingsAction,
+            ),
           ],
-        );
-      },
+        ),
+        const SizedBox(height: 16),
+        Align(
+          alignment: Alignment.centerRight,
+          child: actions,
+        ),
+      ],
     );
   }
 }

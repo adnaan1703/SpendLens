@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../data/repositories/household_repository.dart';
 import '../../shared/widgets/app_primitives.dart';
+import '../../shared/string_extensions.dart';
 import '../transactions/transactions_screen.dart';
 import '../trends/trends_screen.dart';
+import '../settings/settings_screen.dart';
 import 'activity_route.dart';
 
 enum _ActivityMode { list, charts }
@@ -39,7 +42,15 @@ class _ActivityScreenState extends ConsumerState<ActivityScreen> {
 
     return AppPage(
       title: 'Activity',
-      subtitle: householdName ?? 'List and charts',
+      subtitle: householdName?.toTitleCaseWords() ?? 'List and charts',
+      stackActions: false,
+      actions: [
+        IconButton(
+          tooltip: 'Open settings',
+          onPressed: () => context.go(SettingsScreen.routePath),
+          icon: const Icon(Icons.settings_outlined),
+        ),
+      ],
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [

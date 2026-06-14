@@ -7,6 +7,7 @@ import '../../data/repositories/finance_repository.dart';
 import '../../data/repositories/household_repository.dart';
 import '../../shared/widgets/app_primitives.dart';
 import '../activity/activity_screen.dart';
+import '../settings/settings_screen.dart';
 
 class DashboardScreen extends ConsumerStatefulWidget {
   const DashboardScreen({super.key});
@@ -37,62 +38,74 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
 
     return AppPage(
       title: 'Dashboard',
+      stackActions: false,
       actions: [
         if (snapshotState.hasValue)
-          _MonthSelector(
-            months: snapshotState.value!.availableMonths,
-            selectedMonth: snapshotState.value!.selectedMonth,
-            onChanged: (month) {
-              setState(() {
-                _selectedMonth = month;
-              });
-            },
+          IconButton(
+            tooltip: 'Open settings',
+            onPressed: () => context.go(SettingsScreen.routePath),
+            icon: const Icon(Icons.settings_outlined),
           ),
       ],
       child: switch (snapshotState) {
-        AsyncValue(:final value?) => _DashboardContent(
-          snapshot: value,
-          onAddCap: householdContext == null
-              ? null
-              : () {
-                  _showCapDialog(
-                    context: context,
-                    householdContext: householdContext,
-                    snapshot: value,
-                  );
-                },
-          onEditCap: householdContext == null
-              ? null
-              : (cap) {
-                  _showCapDialog(
-                    context: context,
-                    householdContext: householdContext,
-                    snapshot: value,
-                    existingCap: cap,
-                  );
-                },
-          onDeleteCap: householdContext == null
-              ? null
-              : (cap) {
-                  _confirmDeleteCap(
-                    context: context,
-                    householdContext: householdContext,
-                    snapshot: value,
-                    cap: cap,
-                  );
-                },
-          onOpenCategory: (category) {
-            _openTransactionsDrilldown(
-              month: value.selectedMonth,
-              categoryId: category.categoryId,
-            );
-          },
-          onOpenMerchant: (merchant) {
-            _openTransactionsDrilldown(
-              month: value.selectedMonth,
-              merchant: merchant.merchantName,
-            );
-          },
+        AsyncValue(:final value?) => Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            _MonthSelector(
+              months: value.availableMonths,
+              selectedMonth: value.selectedMonth,
+              onChanged: (month) {
+                setState(() {
+                  _selectedMonth = month;
+                });
+              },
+            ),
+            const SizedBox(height: 24),
+            _DashboardContent(
+              snapshot: value,
+              onAddCap: householdContext == null
+                  ? null
+                  : () {
+                      _showCapDialog(
+                        context: context,
+                        householdContext: householdContext,
+                        snapshot: value,
+                      );
+                    },
+              onEditCap: householdContext == null
+                  ? null
+                  : (cap) {
+                      _showCapDialog(
+                        context: context,
+                        householdContext: householdContext,
+                        snapshot: value,
+                        existingCap: cap,
+                      );
+                    },
+              onDeleteCap: householdContext == null
+                  ? null
+                  : (cap) {
+                      _confirmDeleteCap(
+                        context: context,
+                        householdContext: householdContext,
+                        snapshot: value,
+                        cap: cap,
+                      );
+                    },
+              onOpenCategory: (category) {
+                _openTransactionsDrilldown(
+                  month: value.selectedMonth,
+                  categoryId: category.categoryId,
+                );
+              },
+              onOpenMerchant: (merchant) {
+                _openTransactionsDrilldown(
+                  month: value.selectedMonth,
+                  merchant: merchant.merchantName,
+                );
+              },
+            ),
+          ],
         ),
         AsyncValue(hasError: true, :final error) => EmptyState(
           icon: Icons.error_outline,

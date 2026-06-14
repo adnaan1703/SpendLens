@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../core/theme/app_theme.dart';
 import '../../data/repositories/finance_repository.dart';
 import '../../data/repositories/household_repository.dart';
 import '../../shared/widgets/app_primitives.dart';
+import '../../shared/string_extensions.dart';
+import '../settings/settings_screen.dart';
 
 class AiScreen extends ConsumerStatefulWidget {
   const AiScreen({super.key});
@@ -80,9 +83,15 @@ class _AiScreenState extends ConsumerState<AiScreen> {
 
     return AppPage(
       title: 'Ask Expenses',
-      subtitle: householdContext?.household.name ?? 'Household Q&A',
+      subtitle: householdContext?.household.name.toTitleCaseWords() ??
+          'Household Q&A',
       maxContentWidth: 920,
       actions: [
+        IconButton(
+          tooltip: 'Open settings',
+          onPressed: () => context.go(SettingsScreen.routePath),
+          icon: const Icon(Icons.settings_outlined),
+        ),
         IconButton(
           tooltip: 'Refresh',
           onPressed: householdId == null

@@ -7,6 +7,7 @@ import '../features/dashboard/dashboard_screen.dart';
 import '../features/merchant_review/merchant_review_screen.dart';
 import '../features/piggy_banks/piggy_banks_screen.dart';
 import '../features/settings/settings_screen.dart';
+import '../shared/string_extensions.dart';
 import '../shared/widgets/responsive.dart';
 
 class AppDestination {
@@ -92,12 +93,11 @@ class AppShell extends StatelessWidget {
                         leading: Padding(
                           padding: const EdgeInsets.fromLTRB(8, 12, 8, 20),
                           child: _HouseholdBadge(
-                            householdName: householdContext.household.name,
+                            householdName: householdContext
+                                .household
+                                .name
+                                .toTitleCaseWords(),
                           ),
-                        ),
-                        trailing: Padding(
-                          padding: const EdgeInsets.only(top: 16),
-                          child: _SettingsAction(isSelected: isSettingsRoute),
                         ),
                         labelType: NavigationRailLabelType.all,
                         destinations: [
@@ -133,12 +133,6 @@ class AppShell extends StatelessWidget {
                       ),
                   ],
                 ),
-          floatingActionButton: isWide || isSettingsRoute
-              ? null
-              : const _SettingsAction(
-                  isSelected: false,
-                  useFloatingButton: true,
-                ),
         );
       },
     );
@@ -151,49 +145,6 @@ class AppShell extends StatelessWidget {
     });
 
     return index == -1 ? null : index;
-  }
-}
-
-class _SettingsAction extends StatelessWidget {
-  const _SettingsAction({
-    required this.isSelected,
-    this.useFloatingButton = false,
-  });
-
-  final bool isSelected;
-  final bool useFloatingButton;
-
-  @override
-  Widget build(BuildContext context) {
-    final icon = Icon(isSelected ? Icons.settings : Icons.settings_outlined);
-
-    if (useFloatingButton) {
-      return FloatingActionButton.small(
-        heroTag: 'app-shell-settings',
-        tooltip: 'Open settings',
-        onPressed: () {
-          context.go(SettingsScreen.routePath);
-        },
-        child: icon,
-      );
-    }
-
-    return Tooltip(
-      message: 'Open settings',
-      child: isSelected
-          ? IconButton.filledTonal(
-              onPressed: () {
-                context.go(SettingsScreen.routePath);
-              },
-              icon: icon,
-            )
-          : IconButton(
-              onPressed: () {
-                context.go(SettingsScreen.routePath);
-              },
-              icon: icon,
-            ),
-    );
   }
 }
 

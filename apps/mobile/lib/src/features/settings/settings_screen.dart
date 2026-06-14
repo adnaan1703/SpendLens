@@ -10,6 +10,7 @@ import '../../core/theme/theme_mode_controller.dart';
 import '../../data/repositories/finance_repository.dart';
 import '../../data/repositories/household_repository.dart';
 import '../../shared/widgets/app_primitives.dart';
+import '../../shared/string_extensions.dart';
 import '../auth/data/auth_repository.dart';
 import '../activity/activity_screen.dart';
 import '../categories/category_creation_dialog.dart';
@@ -64,7 +65,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 householdContext?.profile.email ??
                 session?.user.email ??
                 'Unknown user',
-            householdName: householdContext?.household.name ?? 'Loading',
+            householdName:
+                householdContext?.household.name.toTitleCaseWords() ??
+                    'Loading',
             role: householdContext?.memberRole ?? 'Loading',
             isSigningOut: _isSigningOut,
             onSignOut: _isSigningOut ? null : _signOut,

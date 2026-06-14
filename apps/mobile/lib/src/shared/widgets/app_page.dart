@@ -8,6 +8,7 @@ class AppPage extends StatelessWidget {
     required this.title,
     this.subtitle,
     this.actions,
+    this.stackActions = true,
     this.maxContentWidth = AppResponsiveBreakpoints.maxContentWidth,
     this.reserveBottomNavigationSpace = true,
     this.bottomNavigationHeight,
@@ -18,6 +19,7 @@ class AppPage extends StatelessWidget {
   final String title;
   final String? subtitle;
   final List<Widget>? actions;
+  final bool stackActions;
   final double maxContentWidth;
   final bool reserveBottomNavigationSpace;
   final double? bottomNavigationHeight;
@@ -44,14 +46,15 @@ class AppPage extends StatelessWidget {
                   width: double.infinity,
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      _PageHeader(
-                        title: title,
-                        subtitle: subtitle,
-                        actions: actions,
-                      ),
-                      SizedBox(height: metrics.sectionGap),
-                      child,
+                  children: [
+                    _PageHeader(
+                      title: title,
+                      subtitle: subtitle,
+                      actions: actions,
+                      stackActions: stackActions,
+                    ),
+                    SizedBox(height: metrics.sectionGap),
+                    child,
                     ],
                   ),
                 ),
@@ -215,11 +218,13 @@ class _PageHeader extends StatelessWidget {
     required this.title,
     required this.subtitle,
     required this.actions,
+    required this.stackActions,
   });
 
   final String title;
   final String? subtitle;
   final List<Widget>? actions;
+  final bool stackActions;
 
   @override
   Widget build(BuildContext context) {
@@ -230,8 +235,9 @@ class _PageHeader extends StatelessWidget {
 
     return LayoutBuilder(
       builder: (context, constraints) {
-        final stacksActions =
-            constraints.hasBoundedWidth && constraints.maxWidth < 720;
+        final stacksActions = stackActions &&
+            constraints.hasBoundedWidth &&
+            constraints.maxWidth < 720;
         final actionBar = Wrap(
           spacing: 12,
           runSpacing: 12,

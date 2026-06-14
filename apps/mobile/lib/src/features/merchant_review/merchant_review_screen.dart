@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../core/theme/app_theme.dart';
 import '../../data/repositories/finance_repository.dart';
 import '../../data/repositories/household_repository.dart';
 import '../../shared/widgets/app_primitives.dart';
 import '../transaction_metadata/transaction_metadata_editor.dart';
+import '../settings/settings_screen.dart';
 
 class MerchantReviewScreen extends ConsumerWidget {
   const MerchantReviewScreen({super.key});
@@ -264,36 +266,44 @@ class _ReviewHeader extends StatelessWidget {
       subtitle:
           'Help SpendLens classify recent transactions for cleaner insights.',
     );
-    final refresh = IconButton.filledTonal(
-      tooltip: 'Refresh',
-      onPressed: onRefresh,
-      icon: const Icon(Icons.refresh),
+    final settingsAction = IconButton(
+      tooltip: 'Open settings',
+      onPressed: () => context.go(SettingsScreen.routePath),
+      icon: const Icon(Icons.settings_outlined),
     );
+    final actions = [
+      IconButton.filledTonal(
+        tooltip: 'Refresh',
+        onPressed: onRefresh,
+        icon: const Icon(Icons.refresh),
+      ),
+    ];
 
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final stacks =
-            constraints.hasBoundedWidth && constraints.maxWidth < 640;
-        if (stacks) {
-          return Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              heading,
-              const SizedBox(height: 16),
-              Align(alignment: Alignment.centerRight, child: refresh),
-            ],
-          );
-        }
-
-        return Row(
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Expanded(child: heading),
             const SizedBox(width: 24),
-            refresh,
+            Align(
+              alignment: Alignment.topRight,
+              child: settingsAction,
+            ),
           ],
-        );
-      },
+        ),
+        const SizedBox(height: 16),
+        Align(
+          alignment: Alignment.centerRight,
+          child: Wrap(
+            spacing: 12,
+            runSpacing: 12,
+            alignment: WrapAlignment.end,
+            children: actions,
+          ),
+        ),
+      ],
     );
   }
 }
