@@ -103,6 +103,7 @@ void main() {
     const query = TransactionQuery(
       householdId: 'household-1',
       searchText: 'swiggy',
+      merchantId: 'merchant-swiggy',
       labelId: 'label-grocery',
     );
 
@@ -111,6 +112,7 @@ void main() {
       const TransactionQuery(
         householdId: 'household-1',
         searchText: 'swiggy',
+        merchantId: 'merchant-swiggy',
         labelId: 'label-grocery',
       ),
     );
@@ -118,6 +120,11 @@ void main() {
       query.copyWith(labelId: 'label-reimburse').labelId,
       'label-reimburse',
     );
+    expect(
+      query.copyWith(merchantId: 'merchant-amazon').merchantId,
+      'merchant-amazon',
+    );
+    expect(query.copyWith(clearMerchant: true).merchantId, isNull);
     expect(query.copyWith(clearLabel: true).labelId, isNull);
   });
 
@@ -921,6 +928,7 @@ void main() {
     expect(router.routeInformationProvider.value.uri.path, '/activity');
     expect(repository.lastQuery?.categoryId, isNull);
     expect(repository.lastQuery?.searchText, 'Swiggy Instamart');
+    expect(repository.lastQuery?.merchantId, isNull);
     expect(dateString(repository.lastQuery!.startDate!), '2026-03-01');
     expect(dateString(repository.lastQuery!.endDate!), '2026-03-31');
     expect(repository.lastQuery?.page, 0);
@@ -956,6 +964,49 @@ void main() {
 
     expect(repository.lastQuery?.categoryId, 'cat-food');
   });
+
+  testWidgets(
+    'Activity merchant autocomplete filters by selected merchant id',
+    (tester) async {
+      final repository = _FakeFinanceRepository();
+
+      await tester.pumpWidget(
+        _financeTestApp(repository: repository, child: const ActivityScreen()),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.enterText(find.byType(TextField), 'swiggy');
+      await tester.pumpAndSettle();
+
+      expect(repository.lastQuery?.searchText, 'swiggy');
+      expect(repository.lastQuery?.merchantId, isNull);
+      expect(
+        find.byKey(const ValueKey('merchant-option-merchant-swiggy')),
+        findsOneWidget,
+      );
+
+      await tester.tap(
+        find.byKey(const ValueKey('merchant-option-merchant-swiggy')),
+      );
+      await tester.pumpAndSettle();
+
+      final selectedMerchantSearch = tester.widget<TextField>(
+        find.byType(TextField),
+      );
+      expect(selectedMerchantSearch.controller?.text, 'Swiggy Instamart');
+      expect(repository.lastQuery?.searchText, 'Swiggy Instamart');
+      expect(repository.lastQuery?.merchantId, 'merchant-swiggy');
+      expect(find.text('Amazon Shopping'), findsNothing);
+
+      await tester.enterText(find.byType(TextField), 'Amazon Pay');
+      await tester.pumpAndSettle();
+
+      expect(repository.lastQuery?.searchText, 'Amazon Pay');
+      expect(repository.lastQuery?.merchantId, isNull);
+      expect(find.text('Amazon Shopping'), findsOneWidget);
+      expect(find.text('Swiggy Instamart'), findsNothing);
+    },
+  );
 
   testWidgets('activity opens in list mode by default on a narrow viewport', (
     tester,
@@ -1284,6 +1335,7 @@ void main() {
     expect(find.text('Mar 2026'), findsOneWidget);
     expect(repository.lastQuery?.categoryId, 'cat-food');
     expect(repository.lastQuery?.searchText, 'Swiggy Instamart');
+    expect(repository.lastQuery?.merchantId, isNull);
     expect(dateString(repository.lastQuery!.startDate!), '2026-03-01');
     expect(dateString(repository.lastQuery!.endDate!), '2026-03-31');
     expect(repository.lastQuery?.page, 0);
@@ -1321,6 +1373,7 @@ void main() {
     expect(router.routeInformationProvider.value.uri.queryParameters, isEmpty);
     expect(repository.lastQuery?.categoryId, isNull);
     expect(repository.lastQuery?.searchText, '');
+    expect(repository.lastQuery?.merchantId, isNull);
     expect(repository.lastQuery?.startDate, isNull);
     expect(repository.lastQuery?.endDate, isNull);
     expect(repository.lastQuery?.page, 0);
@@ -3896,8 +3949,18 @@ final class _FakeFinanceRepository implements FinanceRepository {
     required String householdId,
   }) async {
     return const [
-      MerchantOption(id: 'merchant-amazon', displayName: 'Amazon Shopping'),
-      MerchantOption(id: 'merchant-swiggy', displayName: 'Swiggy Instamart'),
+      MerchantOption(
+        id: 'merchant-amazon',
+        displayName: 'Amazon Shopping',
+        categoryId: 'cat-shopping',
+        subcategoryId: 'sub-marketplace',
+      ),
+      MerchantOption(
+        id: 'merchant-swiggy',
+        displayName: 'Swiggy Instamart',
+        categoryId: 'cat-food',
+        subcategoryId: 'sub-food-delivery',
+      ),
     ];
   }
 
@@ -4091,11 +4154,12 @@ final class _FakeFinanceRepository implements FinanceRepository {
     transactionFetchCount += 1;
     lastQuery = query;
     final search = query.searchText.trim().toLowerCase();
+    final merchantId = query.merchantId?.trim();
     final filtered = transactions.where((transaction) {
-      final matchesSearch =
-          search.isEmpty ||
-          transaction.statementMerchant.toLowerCase().contains(search) ||
-          (transaction.merchantName?.toLowerCase().contains(search) ?? false);
+      final matchesSearch = merchantId != null && merchantId.isNotEmpty
+          ? transaction.merchantId == merchantId
+          : search.isEmpty ||
+                transaction.statementMerchant.toLowerCase().contains(search);
       final matchesCategory =
           query.categoryId == null ||
           transaction.categoryId == query.categoryId;

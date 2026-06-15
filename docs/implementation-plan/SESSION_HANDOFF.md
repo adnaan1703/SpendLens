@@ -4,12 +4,12 @@ Use this file to coordinate work across multiple implementation sessions. Update
 
 ## Current Status
 
-- Current milestone: None. Milestone 56 was completed on 2026-06-15 as a
-  documentation-only planning milestone. Milestone 57 is the next planned
+- Current milestone: None. Milestone 57 was completed on 2026-06-15 as the
+  next non-deferred implementation milestone. Milestone 58 is the next planned
   non-deferred implementation milestone. Milestones 18-21 remain deferred by
   user request.
-- Last completed milestone: Milestone 56, Merchant Autocomplete Planning and
-  Reference Readiness.
+- Last completed milestone: Milestone 57, Merchant Repository and Activity
+  Filter Foundation.
 - Current implementation state: Flutter Android app scaffold exists in
   `apps/mobile` with redesigned SpendLens Google sign-in, route protection,
   authenticated shell, RLS-safe profile/default-household bootstrap,
@@ -193,13 +193,16 @@ Use this file to coordinate work across multiple implementation sessions. Update
   regression pass across Supabase, workbook importer, Edge Functions, Flutter
   tests, and Android debug build, then folded the final behavior into durable
   docs. Milestone 56 added the merchant autocomplete companion plan and queued
-  Milestones 57-60 for Activity canonical merchant filtering, shared metadata
+  Milestones 57-60. Milestone 57 added Activity canonical merchant filtering
+  with one visible merchant search/autocomplete control, repository
+  `merchantId` filtering precedence, and preserved free-text statement merchant
+  route/search behavior. Milestones 58-60 remain planned for shared metadata
   editor autocomplete, close-match save confirmation, and final regression/docs
   cleanup.
   Milestones 18-21 remain planned and deferred by user request.
 - Remote deployment state: On 2026-06-08, user confirmed Supabase project `bslsitzdvrdosubbdxpd` as the intended dev/staging target. All local migrations through `20260607174515_ai_ready_layer_llm_features.sql` were pushed there, hosted expense Q&A and the now-retired legacy AI lookup function were active with JWT verification, and `GEMINI_API_KEY` was present in hosted Edge Function secrets by name. After the user signed in through the Android emulator, hosted profile/household bootstrap and authenticated Gemini Edge Function smoke passed. On 2026-06-08 for Milestone 13, `gmail-oauth-start` was deployed as version 2 with JWT verification, `gmail-sync` was deployed as version 2 without JWT verification, and new `gmail-backfill-range` was deployed as version 1 without JWT verification. Hosted `gmail-backfill-range` `OPTIONS` smoke returned 200, and an unauthenticated POST returned the expected service-key error. The live May Gmail backfill itself was not run because it requires the user to connect the target Gmail mailbox and invoke the runbook with a Supabase secret key from a local/platform secret store. On 2026-06-09, M16 deleted the hosted legacy AI lookup function from `bslsitzdvrdosubbdxpd` and a follow-up function list verified it absent. The M16 database migration and updated active Suggest function were verified locally but not pushed/deployed to hosted in this implementation session.
-- Next recommended milestone: Milestone 57, Merchant Repository and Activity
-  Filter Foundation. Milestones 18-21 remain deferred unless the user resumes
+- Next recommended milestone: Milestone 58, Shared Merchant Autocomplete in
+  Metadata Editor. Milestones 18-21 remain deferred unless the user resumes
   push notifications. If continuing hosted rollout separately, push the M16,
   M26, M29, M32, and M33 migrations and deploy `transaction-metadata-suggest`;
   iOS and web remain deferred future milestones unless explicitly resumed.
@@ -213,7 +216,7 @@ Use this file to coordinate work across multiple implementation sessions. Update
   completed Milestones 52-55 and can be removed in a later cleanup if the
   repository's completed-plan convention calls for it.
   `docs/implementation-plan/MERCHANT_AUTOCOMPLETE.md` is the active companion
-  plan for planned Milestones 57-60.
+  plan for completed Milestone 57 and planned Milestones 58-60.
 
 ## Required Reading for New Threads
 
@@ -384,7 +387,7 @@ Do not ask the user to perform all setup at once. Ask only when the relevant mil
 - Milestone 55, Transaction Deletion Regression, Docs, and Cleanup: completed.
 - Milestone 56, Merchant Autocomplete Planning and Reference Readiness:
   completed.
-- Milestone 57, Merchant Repository and Activity Filter Foundation: planned.
+- Milestone 57, Merchant Repository and Activity Filter Foundation: completed.
 - Milestone 58, Shared Merchant Autocomplete in Metadata Editor: planned.
 - Milestone 59, Close-Match Merchant Save Confirmation: planned.
 - Milestone 60, Merchant Autocomplete Regression, Docs, and Cleanup: planned.
@@ -649,6 +652,41 @@ Do not ask the user to perform all setup at once. Ask only when the relevant mil
   - None.
 - Mocks used:
   - None.
+
+## Merchant Autocomplete M57 Notes
+
+- Completed on 2026-06-15.
+- Extended `MerchantOption` with nullable `categoryId` and `subcategoryId`, and
+  extended `TransactionQuery` with nullable `merchantId`.
+- Updated `fetchMerchants(...)` to select `category_id` and `subcategory_id`
+  from `public.merchants`.
+- Updated `fetchTransactions(...)` so selected canonical merchant ids filter by
+  `merchant_id`; free typing still uses the existing `statement_merchant`
+  `ilike` search when no merchant id is selected.
+- Updated Activity List to watch `merchantOptionsProvider(householdId)`, keep
+  one visible Merchant search control, select canonical merchant suggestions
+  through Material autocomplete, clear `merchantId` when the user types after a
+  selection, and clear both typed text and selected merchant id on Clear filters.
+- Preserved Dashboard drilldown route semantics: existing `merchant` query
+  params continue to seed statement merchant text search, not canonical
+  merchant id filters.
+- No Supabase migration, importer, Edge Function, hosted rollout, push
+  notification, iOS, web, M58, M59, or M60 work was started.
+- Verification:
+  - `cd apps/mobile && flutter test test/finance_features_test.dart --name "Activity"`
+  - `cd apps/mobile && flutter test test/finance_features_test.dart --name "transaction query supports label filter equality and copyWith"`
+  - `cd apps/mobile && flutter analyze`
+- Assumptions made:
+  - Existing `public.merchants` category/subcategory fields and authenticated
+    RLS-backed reads are sufficient for M57.
+  - Canonical merchant selection remains local Activity filter state in M57; a
+    later milestone can expand route semantics only if explicitly planned.
+  - Milestones 18-21 remain deferred by user request.
+- Mocks created:
+  - None.
+- Mocks used:
+  - Existing `_FakeFinanceRepository`, extended with merchant
+    category/subcategory fields and selected merchant id filtering.
 
 ## Update Rules
 

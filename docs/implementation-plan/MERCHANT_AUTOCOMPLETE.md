@@ -112,6 +112,8 @@ Completion summary requirements:
 
 ## M57 - Merchant Repository and Activity Filter Foundation
 
+Status: Completed on 2026-06-15.
+
 Purpose: Add canonical merchant filtering to Activity while preserving current
 free-text search behavior.
 
@@ -166,6 +168,31 @@ Completion summary requirements:
 - Assumptions made
 - Mocks created
 - Mocks used
+
+Completion summary:
+
+- Implemented canonical merchant filtering in Activity with one visible merchant
+  search control backed by existing household merchant options.
+- Extended repository models/queries so `merchantId` takes precedence over
+  free-text `statement_merchant` search and merchant suggestions carry nullable
+  category/subcategory ids for later milestones.
+- Preserved Dashboard drilldown route semantics: existing `merchant` query
+  params still seed free-text statement merchant search.
+- Verification:
+  - `cd apps/mobile && flutter test test/finance_features_test.dart --name "Activity"`
+  - `cd apps/mobile && flutter test test/finance_features_test.dart --name "transaction query supports label filter equality and copyWith"`
+  - `cd apps/mobile && flutter analyze`
+- Assumptions made:
+  - Existing `public.merchants` reads are sufficient for M57; no Supabase
+    migration was needed.
+  - Canonical merchant selection should remain Activity-local state until a
+    later milestone explicitly expands routing.
+  - Milestones 18-21 remain deferred, and M58-M60 were not started.
+- Mocks created:
+  - None.
+- Mocks used:
+  - Existing `_FakeFinanceRepository`, extended with merchant
+    category/subcategory fields and canonical merchant id filtering.
 
 ## M58 - Shared Merchant Autocomplete in Metadata Editor
 

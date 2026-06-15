@@ -183,6 +183,7 @@ final class TransactionQuery {
   const TransactionQuery({
     required this.householdId,
     this.searchText = '',
+    this.merchantId,
     this.categoryId,
     this.subcategoryId,
     this.labelId,
@@ -196,6 +197,7 @@ final class TransactionQuery {
 
   final String householdId;
   final String searchText;
+  final String? merchantId;
   final String? categoryId;
   final String? subcategoryId;
   final String? labelId;
@@ -208,6 +210,8 @@ final class TransactionQuery {
 
   TransactionQuery copyWith({
     String? searchText,
+    String? merchantId,
+    bool clearMerchant = false,
     String? categoryId,
     bool clearCategory = false,
     String? subcategoryId,
@@ -227,6 +231,7 @@ final class TransactionQuery {
     return TransactionQuery(
       householdId: householdId,
       searchText: searchText ?? this.searchText,
+      merchantId: clearMerchant ? null : merchantId ?? this.merchantId,
       categoryId: clearCategory ? null : categoryId ?? this.categoryId,
       subcategoryId: clearSubcategory
           ? null
@@ -250,6 +255,7 @@ final class TransactionQuery {
     return other is TransactionQuery &&
         other.householdId == householdId &&
         other.searchText == searchText &&
+        other.merchantId == merchantId &&
         other.categoryId == categoryId &&
         other.subcategoryId == subcategoryId &&
         other.labelId == labelId &&
@@ -265,6 +271,7 @@ final class TransactionQuery {
   int get hashCode => Object.hash(
     householdId,
     searchText,
+    merchantId,
     categoryId,
     subcategoryId,
     labelId,
@@ -1401,15 +1408,24 @@ final class CategoryMergeResult {
 }
 
 final class MerchantOption {
-  const MerchantOption({required this.id, required this.displayName});
+  const MerchantOption({
+    required this.id,
+    required this.displayName,
+    this.categoryId,
+    this.subcategoryId,
+  });
 
   final String id;
   final String displayName;
+  final String? categoryId;
+  final String? subcategoryId;
 
   factory MerchantOption.fromJson(Map<String, dynamic> json) {
     return MerchantOption(
       id: json['id'] as String,
       displayName: json['display_name'] as String,
+      categoryId: json['category_id'] as String?,
+      subcategoryId: json['subcategory_id'] as String?,
     );
   }
 }
@@ -2770,7 +2786,7 @@ final class SupabaseFinanceRepository implements FinanceRepository {
   }) async {
     final rows = await _client
         .from('merchants')
-        .select('id, display_name')
+        .select('id, display_name, category_id, subcategory_id')
         .eq('household_id', householdId)
         .order('display_name');
 
@@ -3061,8 +3077,11 @@ final class SupabaseFinanceRepository implements FinanceRepository {
         )
         .eq('household_id', query.householdId);
 
+    final merchantId = query.merchantId?.trim();
     final searchText = query.searchText.trim();
-    if (searchText.isNotEmpty) {
+    if (merchantId != null && merchantId.isNotEmpty) {
+      request = request.eq('merchant_id', merchantId);
+    } else if (searchText.isNotEmpty) {
       request = request.ilike('statement_merchant', '%$searchText%');
     }
 

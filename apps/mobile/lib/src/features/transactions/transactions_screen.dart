@@ -89,7 +89,9 @@ class TransactionListPane extends ConsumerStatefulWidget {
 
 class _TransactionListPaneState extends ConsumerState<TransactionListPane> {
   final _searchController = TextEditingController();
+  final _searchFocusNode = FocusNode();
   String _searchText = '';
+  String? _merchantId;
   String? _categoryId;
   String? _labelId;
   String? _sourceAccountType;
@@ -115,6 +117,7 @@ class _TransactionListPaneState extends ConsumerState<TransactionListPane> {
 
   @override
   void dispose() {
+    _searchFocusNode.dispose();
     _searchController.dispose();
     super.dispose();
   }
@@ -136,6 +139,10 @@ class _TransactionListPaneState extends ConsumerState<TransactionListPane> {
         ? const AsyncValue<List<LabelOption>>.loading()
         : ref.watch(transactionLabelsProvider(householdId));
     final labelOptions = labels.value ?? const [];
+    final merchantOptions = householdId == null
+        ? const AsyncValue<List<MerchantOption>>.loading()
+        : ref.watch(merchantOptionsProvider(householdId));
+    final merchants = merchantOptions.value ?? const [];
     if (_labelId != null &&
         labels.hasValue &&
         !labelOptions.any((label) => label.id == _labelId)) {
@@ -148,6 +155,18 @@ class _TransactionListPaneState extends ConsumerState<TransactionListPane> {
         });
       });
     }
+    if (_merchantId != null &&
+        merchantOptions.hasValue &&
+        !merchants.any((merchant) => merchant.id == _merchantId)) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted || _merchantId == null) return;
+
+        setState(() {
+          _merchantId = null;
+          _page = 0;
+        });
+      });
+    }
     final availableMonths = householdId == null
         ? const AsyncValue<List<DateTime>>.loading()
         : ref.watch(availableMonthsProvider(householdId));
@@ -156,6 +175,7 @@ class _TransactionListPaneState extends ConsumerState<TransactionListPane> {
         : TransactionQuery(
             householdId: householdId,
             searchText: _searchText,
+            merchantId: _merchantId,
             categoryId: _categoryId,
             labelId: _labelId,
             sourceAccountType: _sourceAccountType,
@@ -173,7 +193,10 @@ class _TransactionListPaneState extends ConsumerState<TransactionListPane> {
       children: [
         _TransactionFilters(
           searchController: _searchController,
+          searchFocusNode: _searchFocusNode,
           searchText: _searchText,
+          merchantOptions: merchants,
+          selectedMerchantId: _merchantId,
           categories: categories.value ?? const [],
           selectedCategoryId: _categoryId,
           labels: labelOptions,
@@ -186,6 +209,20 @@ class _TransactionListPaneState extends ConsumerState<TransactionListPane> {
           onSearchChanged: (value) {
             setState(() {
               _searchText = value;
+              _merchantId = null;
+              _page = 0;
+            });
+          },
+          onMerchantSelected: (merchant) {
+            setState(() {
+              _searchController.value = TextEditingValue(
+                text: merchant.displayName,
+                selection: TextSelection.collapsed(
+                  offset: merchant.displayName.length,
+                ),
+              );
+              _searchText = merchant.displayName;
+              _merchantId = merchant.id;
               _page = 0;
             });
           },
@@ -321,6 +358,7 @@ class _TransactionListPaneState extends ConsumerState<TransactionListPane> {
     setState(() {
       _searchController.clear();
       _searchText = '';
+      _merchantId = null;
       _categoryId = null;
       _labelId = null;
       _sourceAccountType = null;
@@ -344,6 +382,7 @@ class _TransactionListPaneState extends ConsumerState<TransactionListPane> {
     final startDate = filters.startDate;
     final endDate = filters.endDate;
     _searchText = merchantSearchText;
+    _merchantId = null;
     _categoryId = filters.categoryId;
     _labelId = filters.labelId;
     _dateRange =
@@ -541,7 +580,10 @@ class _TransactionListPaneState extends ConsumerState<TransactionListPane> {
 class _TransactionFilters extends StatelessWidget {
   const _TransactionFilters({
     required this.searchController,
+    required this.searchFocusNode,
     required this.searchText,
+    required this.merchantOptions,
+    required this.selectedMerchantId,
     required this.categories,
     required this.selectedCategoryId,
     required this.labels,
@@ -552,6 +594,7 @@ class _TransactionFilters extends StatelessWidget {
     required this.availableMonths,
     required this.dateRange,
     required this.onSearchChanged,
+    required this.onMerchantSelected,
     required this.onCategoryChanged,
     required this.onLabelChanged,
     required this.onSourceAccountTypeChanged,
@@ -561,7 +604,10 @@ class _TransactionFilters extends StatelessWidget {
   });
 
   final TextEditingController searchController;
+  final FocusNode searchFocusNode;
   final String searchText;
+  final List<MerchantOption> merchantOptions;
+  final String? selectedMerchantId;
   final List<CategoryOption> categories;
   final String? selectedCategoryId;
   final List<LabelOption> labels;
@@ -572,6 +618,7 @@ class _TransactionFilters extends StatelessWidget {
   final List<DateTime> availableMonths;
   final DateTimeRange? dateRange;
   final ValueChanged<String> onSearchChanged;
+  final ValueChanged<MerchantOption> onMerchantSelected;
   final ValueChanged<String?> onCategoryChanged;
   final ValueChanged<String?> onLabelChanged;
   final ValueChanged<String?> onSourceAccountTypeChanged;
@@ -584,6 +631,7 @@ class _TransactionFilters extends StatelessWidget {
     final theme = Theme.of(context);
     final hasFilters =
         searchText.isNotEmpty ||
+        selectedMerchantId != null ||
         selectedCategoryId != null ||
         selectedLabelId != null ||
         selectedSourceAccountType != null ||
@@ -648,22 +696,81 @@ class _TransactionFilters extends StatelessWidget {
           children: [
             SizedBox(
               width: searchWidth,
-              child: TextField(
-                controller: searchController,
-                onChanged: onSearchChanged,
-                decoration: InputDecoration(
-                  filled: true,
-                  fillColor: theme.colorScheme.surface,
-                  prefixIcon: const Icon(Icons.search),
-                  labelText: 'Merchant search',
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(color: theme.colorScheme.outline),
-                  ),
-                ),
+              child: RawAutocomplete<MerchantOption>(
+                textEditingController: searchController,
+                focusNode: searchFocusNode,
+                displayStringForOption: (merchant) => merchant.displayName,
+                optionsBuilder: (textEditingValue) {
+                  final query = textEditingValue.text.trim().toLowerCase();
+                  if (query.isEmpty) return const Iterable.empty();
+
+                  return merchantOptions
+                      .where(
+                        (merchant) =>
+                            merchant.displayName.toLowerCase().contains(query),
+                      )
+                      .take(8);
+                },
+                onSelected: onMerchantSelected,
+                fieldViewBuilder:
+                    (context, textController, focusNode, onFieldSubmitted) {
+                      return TextField(
+                        controller: textController,
+                        focusNode: focusNode,
+                        onChanged: onSearchChanged,
+                        onSubmitted: (_) => onFieldSubmitted(),
+                        decoration: InputDecoration(
+                          filled: true,
+                          fillColor: theme.colorScheme.surface,
+                          prefixIcon: const Icon(Icons.search),
+                          suffixIcon: selectedMerchantId == null
+                              ? null
+                              : const Icon(Icons.verified_outlined),
+                          labelText: 'Merchant search',
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide(
+                              color: theme.colorScheme.outline,
+                            ),
+                          ),
+                        ),
+                      );
+                    },
+                optionsViewBuilder: (context, onSelected, options) {
+                  return Align(
+                    alignment: Alignment.topLeft,
+                    child: Material(
+                      elevation: 4,
+                      color: theme.colorScheme.surface,
+                      borderRadius: BorderRadius.circular(12),
+                      clipBehavior: Clip.antiAlias,
+                      child: SizedBox(
+                        width: searchWidth,
+                        child: ConstrainedBox(
+                          constraints: const BoxConstraints(maxHeight: 280),
+                          child: ListView.builder(
+                            padding: EdgeInsets.zero,
+                            shrinkWrap: true,
+                            itemCount: options.length,
+                            itemBuilder: (context, index) {
+                              final merchant = options.elementAt(index);
+
+                              return ListTile(
+                                key: ValueKey('merchant-option-${merchant.id}'),
+                                leading: const Icon(Icons.storefront_outlined),
+                                title: Text(merchant.displayName),
+                                onTap: () => onSelected(merchant),
+                              );
+                            },
+                          ),
+                        ),
+                      ),
+                    ),
+                  );
+                },
               ),
             ),
             SizedBox(

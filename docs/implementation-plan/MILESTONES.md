@@ -2846,7 +2846,7 @@ then wire the new M57-M60 implementation sequence into durable planning docs.
 
 ### Status
 
-Planned. See
+Completed on 2026-06-15. See
 [Merchant Autocomplete](MERCHANT_AUTOCOMPLETE.md#m57---merchant-repository-and-activity-filter-foundation).
 
 ### Objective
@@ -2861,6 +2861,33 @@ statement merchant search.
 - Selecting a suggestion filters by `merchant_id`; typing afterward returns to
   free-text search.
 - Clearing filters resets both typed merchant text and selected merchant id.
+
+### Completion Summary
+
+- Added nullable `merchantId` to `TransactionQuery`, nullable taxonomy ids to
+  `MerchantOption`, and repository filtering that prefers canonical
+  `merchant_id` when present while preserving statement merchant text search.
+- Replaced Activity's visible merchant search field with a Material
+  autocomplete-backed control that uses existing merchant options, clears
+  canonical selection on free typing, and resets both text and merchant id on
+  clear filters.
+- Added focused Activity regression coverage for free typing, suggestion
+  selection, typing after selection, and route/clear semantics.
+- Verification:
+  - `cd apps/mobile && flutter test test/finance_features_test.dart --name "Activity"`
+  - `cd apps/mobile && flutter test test/finance_features_test.dart --name "transaction query supports label filter equality and copyWith"`
+  - `cd apps/mobile && flutter analyze`
+- Assumptions made:
+  - Existing `public.merchants` category/subcategory fields and RLS-backed reads
+    are sufficient; no Supabase migration was needed for M57.
+  - Existing `merchant` route query parameters remain statement merchant text
+    filters; canonical merchant id selection is local Activity filter state.
+  - Milestones 18-21 remain deferred, and Milestones 58-60 were not started.
+- Mocks created:
+  - None.
+- Mocks used:
+  - Existing `_FakeFinanceRepository`, extended with merchant
+    category/subcategory fields and selected merchant id filtering.
 
 ## Milestone 58: Shared Merchant Autocomplete in Metadata Editor
 
