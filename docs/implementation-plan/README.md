@@ -77,8 +77,10 @@ This is not a "no backend" architecture. It is a backend without a permanently r
   ingestion suppress tombstoned source fingerprints with adjusted importer
   validation and sanitized Gmail diagnostics. Milestone 54 exposed owner-only
   deletion from Activity transaction details with confirmation, provider
-  refreshes, and narrow-layout coverage. Milestone 55 remains planned for final
-  regression/docs cleanup.
+  refreshes, and narrow-layout coverage. Milestone 55 verified the full local
+  deletion regression path across database, importer, Edge Functions, Flutter
+  tests, and Android debug build, then closed the companion plan as
+  completed-only.
 - Multi-target monthly caps: required-name recurring caps can include multiple
   categories, multiple labels, or both. A transaction counts once inside a cap
   when any selected category or label matches; overlapping caps are allowed.

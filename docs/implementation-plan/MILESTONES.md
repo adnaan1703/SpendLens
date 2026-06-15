@@ -2728,7 +2728,7 @@ surface using the database and ingestion contracts from M52-M53.
 
 ### Status
 
-Planned. See
+Completed on 2026-06-14. See
 [Transaction Deletion](TRANSACTION_DELETION.md#m55---transaction-deletion-regression-docs-and-cleanup).
 
 ### Objective
@@ -2764,6 +2764,41 @@ and Flutter surfaces, then fold final behavior into durable docs.
 
 - Restore, undo, bulk delete, push notifications, hosted rollout, iOS, web, and
   any production data migration outside local verification.
+
+### Completion Notes
+
+- Completed the final local regression pass for the M52-M55 transaction
+  deletion flow. Existing focused coverage already verified owner-only database
+  deletion, summary/monthly-cap recalculation, cascade/unlink behavior,
+  tombstone privacy shape, workbook suppression, Gmail suppression, Edge
+  Function handled-work semantics, and Activity owner-only UI behavior.
+- No additional product or schema fixes were required during M55.
+- Updated durable planning docs so the final transaction deletion behavior no
+  longer depends on the companion plan as active routing context.
+- Marked `TRANSACTION_DELETION.md` completed-only in handoff for later cleanup
+  under the repository's completed-plan convention.
+- Confirmed deferred scope remains unchanged: restore, undo, bulk delete,
+  push notifications, hosted rollout, iOS, web, and production data migration
+  work were not started.
+- Verification:
+  - `supabase --version`
+  - Supabase changelog scan for relevant breaking changes.
+  - `supabase db --help`
+  - `supabase test --help`
+  - `supabase db reset --help`
+  - `supabase db lint --help`
+  - `supabase db advisors --help`
+  - `supabase test db --help`
+  - `supabase db reset --local`
+  - `supabase test db --local supabase/tests`
+  - `supabase db lint --local --schema app_private,public --fail-on error`
+  - `supabase db advisors --local --fail-on none`
+  - `pnpm --dir tools/workbook-import test`
+  - `pnpm --dir tools/workbook-import run validate`
+  - `deno test --allow-env --allow-read supabase/functions/tests`
+  - `cd apps/mobile && flutter analyze`
+  - `cd apps/mobile && flutter test`
+  - `cd apps/mobile && flutter build apk --debug`
 
 ## Cross-Milestone Consistency Rules
 

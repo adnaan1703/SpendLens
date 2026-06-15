@@ -549,6 +549,10 @@ Completion notes:
 
 ## M55 - Transaction Deletion Regression, Docs, And Cleanup
 
+Status: completed on 2026-06-14. This companion plan is completed-only after
+M55; durable behavior has been folded into the standard implementation-plan
+entrypoints and handoff.
+
 Purpose: prove the full deletion flow end to end and fold the final behavior
 into durable docs.
 
@@ -605,6 +609,20 @@ Acceptance criteria:
   deferred.
 - No push-notification, iOS, web, hosted rollout, restore/undo, or bulk delete
   work is started.
+
+Completion notes:
+
+- Ran the full local verification path for M52-M55 and found no remaining code,
+  schema, importer, Edge Function, or Flutter regression gaps requiring M55
+  fixes.
+- Confirmed existing regression coverage verifies database summary/cap impact,
+  tombstone privacy and service-role reads, workbook/Gmail resurrection
+  suppression, sanitized Gmail suppression diagnostics, and owner-only Activity
+  delete UI behavior.
+- Folded final status into durable docs and marked this plan completed-only in
+  `SESSION_HANDOFF.md`.
+- Deferred scope was not started: restore, undo, bulk delete, push
+  notifications, hosted rollout, iOS, web, and production data migration.
 
 Verification:
 

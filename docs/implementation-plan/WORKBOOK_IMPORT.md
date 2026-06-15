@@ -37,11 +37,11 @@ review items, plus the schema's stable `(household_id, source_fingerprint)`
 transaction guard. A second run updates the same rows instead of duplicating
 them.
 
-After Milestone 53, the importer also honors `deleted_transaction_sources`. A
-workbook row whose source fingerprint has been tombstoned by owner transaction
-deletion is intentionally skipped and must not recreate a deleted transaction;
-validation totals subtract suppressed rows before comparing imported database
-totals.
+In the completed M52-M55 transaction deletion flow, the importer honors
+`deleted_transaction_sources`. A workbook row whose source fingerprint has been
+tombstoned by owner transaction deletion is intentionally skipped and must not
+recreate a deleted transaction; validation totals subtract suppressed rows
+before comparing imported database totals.
 
 ## Expected Fixture Totals
 

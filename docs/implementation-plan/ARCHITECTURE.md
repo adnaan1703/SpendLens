@@ -164,7 +164,7 @@ The worker should consume jobs from Supabase and write results back to Postgres.
 3. Balance is ledger-derived, not editable directly.
 4. Entries may optionally link to real transactions.
 
-### Transaction Deletion (M52-M54 completed, M55 planned)
+### Transaction Deletion (M52-M55 completed)
 
 1. A household owner deletes a faulty transaction from Activity.
 2. Postgres records a minimal source tombstone keyed by household and
@@ -181,6 +181,8 @@ Milestone 52 completed the Postgres deletion contract, tombstone table, trigger,
 owner-only direct delete policy, and `delete_transaction` RPC. Milestone 53
 wired workbook and Gmail ingestion to consult tombstones before upsert.
 Milestone 54 exposed owner-only deletion from Activity transaction details.
+Milestone 55 verified the final local regression path and folded the completed
+behavior into durable docs.
 
 ### LLM Q&A
 
@@ -264,8 +266,8 @@ Required controls:
 - Use deterministic merchant rules before LLM enrichment.
 - Only run Suggest web search after the household flag is explicitly enabled.
 - Keep Gmail sync idempotent to avoid retry loops and duplicate work.
-- After Milestone 53, treat tombstoned source fingerprints as suppressed handled
-  work so owner-deleted transactions do not reappear after retries.
+- Treat tombstoned source fingerprints as suppressed handled work so
+  owner-deleted transactions do not reappear after retries.
 - Keep push delivery asynchronous so FCM outages do not block ingestion.
 
 ## Architecture References

@@ -168,9 +168,10 @@ strict transaction-date window `2026-05-01 <= transaction_date < 2026-06-01`.
 Re-running the same range does not duplicate transactions because jobs use
 deterministic idempotency keys, parse attempts upsert by message/parser, and
 ingestion still upserts by `(household_id, source_fingerprint)`.
-After Milestone 53, reprocessing a parsed email whose source fingerprint is
-present in `deleted_transaction_sources` is treated as handled but suppressed,
-so the deleted transaction does not come back to the app.
+In the completed M52-M55 transaction deletion flow, reprocessing a parsed email
+whose source fingerprint is present in `deleted_transaction_sources` is treated
+as handled but suppressed, so the deleted transaction does not come back to the
+app.
 
 To reconcile candidate parsing for May by Gmail received timestamp:
 
@@ -222,8 +223,7 @@ Hosted verification should check:
   `outside_date_range` counts for UPI and credit-card candidates.
 - Source account types include expected `credit_card` and/or `upi` rows.
 - No duplicate `(household_id, source_fingerprint)` rows exist.
-- After Milestone 53, tombstoned source fingerprints are suppressed rather than
-  recreated.
+- Tombstoned source fingerprints are suppressed rather than recreated.
 - App reads May 2026 Dashboard, Transactions, Trends, and source-type filters
   without privileged credentials.
 

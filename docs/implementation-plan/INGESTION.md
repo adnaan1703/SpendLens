@@ -70,7 +70,8 @@ The importer must validate:
 - Merchant net totals match `Merchant Summary`.
 - Card bill payments remain excluded from net expense.
 
-After Milestone 53, validation must subtract any workbook rows suppressed by
+In the completed M52-M55 transaction deletion flow, validation must subtract
+any workbook rows suppressed by
 `deleted_transaction_sources` tombstones before comparing database totals. A
 tombstoned source row is intentionally absent, not an import failure.
 
@@ -230,10 +231,9 @@ Recommended fingerprint inputs:
 
 Use `(household_id, source_fingerprint)` as the primary duplicate guard.
 
-After Milestone 53, ingestion must also check
-`deleted_transaction_sources` before inserting or updating a transaction. A
-matching tombstone means the source was intentionally deleted by the household
-owner and must be treated as suppressed handled work:
+Ingestion must also check `deleted_transaction_sources` before inserting or
+updating a transaction. A matching tombstone means the source was intentionally
+deleted by the household owner and must be treated as suppressed handled work:
 
 - Do not insert or update `transactions`.
 - Do not recreate `transaction_sources`.
