@@ -45,6 +45,10 @@ flutter analyze
 flutter test
 ```
 
+For the full command catalog, including Supabase CLI testing/deployment,
+workbook importer checks, local smoke gates, and Android build sequences, see
+`docs/COMMANDS.md`.
+
 Production readiness checks and deployment runbooks live in:
 
 - `docs/implementation-plan/PRODUCTION_READINESS.md`
