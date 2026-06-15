@@ -69,6 +69,7 @@ class AppShell extends StatelessWidget {
     final isSettingsRoute =
         location == SettingsScreen.routePath ||
         location.startsWith('${SettingsScreen.routePath}/');
+    final theme = Theme.of(context);
 
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -81,6 +82,7 @@ class AppShell extends StatelessWidget {
         final showPrimaryNavigation = !isSettingsRoute;
 
         return Scaffold(
+          backgroundColor: theme.scaffoldBackgroundColor,
           body: isWide && showPrimaryNavigation
               ? Row(
                   children: [
@@ -111,10 +113,18 @@ class AppShell extends StatelessWidget {
                       ),
                     ),
                     const VerticalDivider(width: 1),
-                    Expanded(child: child),
+                    Expanded(
+                      child: ColoredBox(
+                        color: theme.scaffoldBackgroundColor,
+                        child: child,
+                      ),
+                    ),
                   ],
                 )
-              : child,
+              : ColoredBox(
+                  color: theme.scaffoldBackgroundColor,
+                  child: child,
+                ),
           bottomNavigationBar: isWide || !showPrimaryNavigation
               ? null
               : NavigationBar(

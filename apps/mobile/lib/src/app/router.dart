@@ -52,7 +52,8 @@ final appRouterProvider = Provider<GoRouter>((ref) {
     routes: [
       GoRoute(
         path: SignInScreen.routePath,
-        builder: (_, _) => const SignInScreen(),
+        pageBuilder: (context, state) =>
+            _scaffoldBackgroundPage(context, state, const SignInScreen()),
       ),
       GoRoute(path: '/', redirect: (_, _) => DashboardScreen.routePath),
       ShellRoute(
@@ -70,35 +71,66 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         routes: [
           GoRoute(
             path: DashboardScreen.routePath,
-            builder: (_, _) => const DashboardScreen(),
+            pageBuilder: (context, state) =>
+                _scaffoldBackgroundPage(context, state, const DashboardScreen()),
           ),
           GoRoute(
             path: ActivityScreen.routePath,
-            builder: (_, state) => ActivityScreen(
+            pageBuilder: (context, state) => _scaffoldBackgroundPage(
+              context,
+              state,
+              ActivityScreen(
               initialFilters: ActivityScreen.initialFiltersFromUri(state.uri),
+              ),
             ),
           ),
           GoRoute(
             path: MerchantReviewScreen.routePath,
-            builder: (_, _) => const MerchantReviewScreen(),
+            pageBuilder: (context, state) => _scaffoldBackgroundPage(
+              context,
+              state,
+              const MerchantReviewScreen(),
+            ),
           ),
           GoRoute(
             path: AiScreen.routePath,
-            builder: (_, _) => const AiScreen(),
+            pageBuilder: (context, state) =>
+                _scaffoldBackgroundPage(context, state, const AiScreen()),
           ),
           GoRoute(
             path: PiggyBanksScreen.routePath,
-            builder: (_, _) => const PiggyBanksScreen(),
+            pageBuilder: (context, state) => _scaffoldBackgroundPage(
+              context,
+              state,
+              const PiggyBanksScreen(),
+            ),
           ),
           GoRoute(
             path: SettingsScreen.routePath,
-            builder: (_, _) => const SettingsScreen(),
+            pageBuilder: (context, state) =>
+                _scaffoldBackgroundPage(context, state, const SettingsScreen()),
           ),
         ],
       ),
     ],
   );
 });
+
+Page<void> _scaffoldBackgroundPage(
+  BuildContext context,
+  GoRouterState state,
+  Widget child,
+) {
+  final theme = Theme.of(context);
+
+  return MaterialPage(
+    key: state.pageKey,
+    child: ColoredBox(
+      color: theme.scaffoldBackgroundColor,
+      child: child,
+    ),
+  );
+}
 
 class HouseholdGate extends ConsumerWidget {
   const HouseholdGate({super.key, required this.child});

@@ -2459,6 +2459,50 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets('transaction metadata editor stays usable above keyboard', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(() {
+      tester.view.resetPhysicalSize();
+      tester.view.resetDevicePixelRatio();
+      tester.view.resetViewInsets();
+    });
+    final repository = _FakeFinanceRepository();
+
+    await tester.pumpWidget(
+      _financeTestApp(repository: repository, child: const ActivityScreen()),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.ensureVisible(find.text('Swiggy Instamart').first);
+    await tester.tap(find.text('Swiggy Instamart').first);
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.widgetWithText(FilledButton, 'Edit'));
+    await tester.tap(find.widgetWithText(FilledButton, 'Edit'));
+    await tester.pumpAndSettle();
+
+    tester.view.viewInsets = const FakeViewPadding(bottom: 320);
+    await tester.pumpAndSettle();
+
+    final modal = find.byKey(const ValueKey('metadata-editor-card'));
+    expect(modal, findsOneWidget);
+    expect(tester.getSize(modal).height, greaterThanOrEqualTo(490));
+
+    final keyboardTop = tester.view.physicalSize.height - 320;
+    expect(tester.getBottomRight(modal).dy, lessThanOrEqualTo(keyboardTop + 1));
+    expect(
+      find.descendant(of: modal, matching: find.text('Merchant group')),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(of: modal, matching: find.text('Save')),
+      findsOneWidget,
+    );
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('settings theme selector updates and persists theme mode', (
     tester,
   ) async {

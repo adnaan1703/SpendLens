@@ -792,11 +792,20 @@ class _MetadataEditorModal extends StatelessWidget {
           final layoutHeight = constraints.hasBoundedHeight
               ? constraints.maxHeight
               : size.height;
-          final horizontalInset = layoutWidth < 600 ? 16.0 : 48.0;
-          final verticalInset = layoutHeight < 700 ? 12.0 : 48.0;
+          final isCompactWidth = layoutWidth < 600;
+          final horizontalInset = isCompactWidth ? 16.0 : 48.0;
+          final verticalInset =
+              isCompactWidth || mediaQuery.viewInsets.bottom > 0
+              ? 12.0
+              : layoutHeight < 700
+              ? 12.0
+              : 48.0;
           final availableHeight =
               layoutHeight - mediaQuery.viewInsets.bottom - (verticalInset * 2);
           final maxHeight = availableHeight.clamp(0.0, layoutHeight);
+          final cardHeight = isCompactWidth
+              ? maxHeight.toDouble()
+              : maxHeight.clamp(0.0, 720.0).toDouble();
 
           return Padding(
             padding: EdgeInsets.fromLTRB(
@@ -811,28 +820,30 @@ class _MetadataEditorModal extends StatelessWidget {
                   maxWidth: 560,
                   maxHeight: maxHeight.toDouble(),
                 ),
-                child: AppContentCard(
-                  key: const ValueKey('metadata-editor-card'),
-                  padding: EdgeInsets.zero,
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      const _MetadataEditorHeader(),
-                      Flexible(
-                        child: SingleChildScrollView(
-                          padding: const EdgeInsets.fromLTRB(24, 20, 24, 16),
-                          child: form,
+                child: SizedBox(
+                  height: cardHeight,
+                  child: AppContentCard(
+                    key: const ValueKey('metadata-editor-card'),
+                    padding: EdgeInsets.zero,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        const _MetadataEditorHeader(),
+                        Flexible(
+                          child: SingleChildScrollView(
+                            padding: const EdgeInsets.fromLTRB(24, 20, 24, 16),
+                            child: form,
+                          ),
                         ),
-                      ),
-                      _MetadataEditorActions(
-                        isSaving: isSaving,
-                        isSuggesting: isSuggesting,
-                        onCancel: onCancel,
-                        onSuggest: onSuggest,
-                        onSave: onSave,
-                      ),
-                    ],
+                        _MetadataEditorActions(
+                          isSaving: isSaving,
+                          isSuggesting: isSuggesting,
+                          onCancel: onCancel,
+                          onSuggest: onSuggest,
+                          onSave: onSave,
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ),

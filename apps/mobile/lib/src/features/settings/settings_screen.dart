@@ -1233,6 +1233,7 @@ class _MerchantGroupMergeDialogState
     return AppModalDialog(
       title: 'Merge merchant groups',
       maxWidth: 680,
+      expandToAvailableHeight: true,
       actions: [
         AppActionPill.secondary(
           label: 'Cancel',

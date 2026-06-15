@@ -14,7 +14,10 @@ class AppGateScaffold extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
     return Scaffold(
+      backgroundColor: theme.scaffoldBackgroundColor,
       body: SafeArea(
         child: AppResponsiveBuilder(
           maxContentWidth: maxContentWidth,

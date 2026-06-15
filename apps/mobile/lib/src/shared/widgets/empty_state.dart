@@ -75,7 +75,11 @@ class EmptyState extends StatelessWidget {
 }
 
 class AppLoadingState extends StatelessWidget {
-  const AppLoadingState({super.key, this.title = 'Loading', this.message});
+  const AppLoadingState({
+    super.key,
+    this.title = 'Loading',
+    this.message,
+  });
 
   final String title;
   final String? message;
@@ -86,6 +90,7 @@ class AppLoadingState extends StatelessWidget {
 
     return AppEntranceMotion(
       child: AppContentCard(
+        backgroundColor: theme.scaffoldBackgroundColor,
         child: Center(
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 360),

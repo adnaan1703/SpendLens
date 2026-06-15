@@ -281,6 +281,7 @@ class AppModalDialog extends StatelessWidget {
     this.padding,
     this.maxWidth = AppResponsiveBreakpoints.modalMaxWidth,
     this.scrollable = true,
+    this.expandToAvailableHeight = false,
   });
 
   final Widget child;
@@ -290,6 +291,7 @@ class AppModalDialog extends StatelessWidget {
   final EdgeInsetsGeometry? padding;
   final double maxWidth;
   final bool scrollable;
+  final bool expandToAvailableHeight;
 
   @override
   Widget build(BuildContext context) {
@@ -301,12 +303,14 @@ class AppModalDialog extends StatelessWidget {
         : availableHeight;
     final body = scrollable
         ? Flexible(
-            fit: FlexFit.loose,
+            fit: expandToAvailableHeight ? FlexFit.tight : FlexFit.loose,
             child: SingleChildScrollView(child: child),
           )
         : child;
     final content = Column(
-      mainAxisSize: MainAxisSize.min,
+      mainAxisSize: expandToAvailableHeight
+          ? MainAxisSize.max
+          : MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         if (title != null || subtitle != null) ...[
@@ -331,18 +335,18 @@ class AppModalDialog extends StatelessWidget {
       surfaceTintColor: Colors.transparent,
       child: AppEntranceMotion(
         slideOffset: const Offset(0, 10),
-        child: Padding(
-          padding: EdgeInsets.only(bottom: viewInsets.bottom),
-          child: SafeArea(
-            child: ConstrainedBox(
-              constraints: BoxConstraints(
-                maxWidth: maxWidth,
-                maxHeight: maxDialogHeight,
-              ),
-              child: AppContentCard(
-                padding: padding ?? const EdgeInsets.all(24),
-                child: content,
-              ),
+        child: SafeArea(
+          child: ConstrainedBox(
+            constraints: BoxConstraints(
+              maxWidth: maxWidth,
+              maxHeight: maxDialogHeight,
+            ),
+            child: AppContentCard(
+              padding: padding ?? const EdgeInsets.all(24),
+              constraints: expandToAvailableHeight
+                  ? BoxConstraints(minHeight: maxDialogHeight)
+                  : null,
+              child: content,
             ),
           ),
         ),
