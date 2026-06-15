@@ -2,11 +2,9 @@
 
 Last updated: 2026-06-15
 
-This document is the implementation plan for merchant autocomplete and
-save-time duplicate guarding. Each milestone below is a standalone milestone
-intended to be executed in a separate Codex thread. Stop after completing and
-documenting the current milestone; do not automatically continue to the next
-milestone.
+This document is the completed-only implementation record for merchant
+autocomplete and save-time duplicate guarding. Milestones 56-60 were executed
+as standalone milestones in separate Codex threads.
 
 ## Target Behavior
 
@@ -381,6 +379,8 @@ Completion summary:
 
 ## M60 - Merchant Autocomplete Regression, Docs, and Cleanup
 
+Status: Completed on 2026-06-15.
+
 Purpose: Verify the full merchant autocomplete flow and fold the final behavior
 into durable docs.
 
@@ -428,3 +428,34 @@ Completion summary requirements:
 - Assumptions made
 - Mocks created
 - Mocks used
+
+Completion summary:
+
+- Ran focused and full Flutter checks for Activity filters, Review resolution,
+  transaction metadata editing, narrow metadata editor layout, existing
+  transaction search behavior, and the close-match merchant guard.
+- Confirmed the final behavior: Activity supports free-text statement merchant
+  search plus canonical merchant selection, Activity and Review metadata edits
+  share the same autocomplete editor, close-match typos prompt only for the
+  documented clear matches, and freeform merchant names remain valid.
+- No regressions were found, so no app-code fix was needed during M60.
+- No Supabase schema, RPC, importer, Edge Function, hosted rollout, iOS, web,
+  or push-notification work was needed or started.
+- Marked this companion plan completed-only after folding final behavior into
+  `README.md`, `MILESTONES.md`, and `SESSION_HANDOFF.md`.
+- Verification:
+  - `cd apps/mobile && flutter test test/finance_features_test.dart --name "merchant|metadata|Activity|review|narrow"`
+  - `cd apps/mobile && flutter analyze`
+  - `cd apps/mobile && flutter test`
+  - `git diff --check`
+- Assumptions made:
+  - Existing household merchant option reads and backend exact duplicate
+    protection are sufficient for the final implementation; no schema or RPC
+    migration was needed.
+  - Close-match comparison remains limited to canonical merchant display names.
+  - Milestones 18-21 remain deferred by user request.
+- Mocks created:
+  - None.
+- Mocks used:
+  - Existing `_FakeFinanceRepository` merchant options, query capture, and
+    metadata correction test hooks.

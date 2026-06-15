@@ -2984,7 +2984,7 @@ merchant group.
 
 ### Status
 
-Planned. See
+Completed on 2026-06-15. See
 [Merchant Autocomplete](MERCHANT_AUTOCOMPLETE.md#m60---merchant-autocomplete-regression-docs-and-cleanup).
 
 ### Objective
@@ -2999,6 +2999,34 @@ durable docs.
 - Full Flutter verification passes locally.
 - README, MILESTONES, SESSION_HANDOFF, and the companion plan reflect the final
   behavior.
+
+### Completion Summary
+
+- Verified Activity free-text merchant search, canonical merchant selection,
+  Review resolution, transaction detail metadata edits, close-match
+  confirmation, existing transaction search behavior, and narrow metadata editor
+  layout through focused and full Flutter checks.
+- No merchant-autocomplete regressions were found during M60, so no app code,
+  Supabase schema, RPC, importer, Edge Function, hosted rollout, iOS, or web
+  changes were required.
+- Folded final merchant autocomplete behavior into durable docs and marked the
+  companion plan completed-only.
+- Verification:
+  - `cd apps/mobile && flutter test test/finance_features_test.dart --name "merchant|metadata|Activity|review|narrow"`
+  - `cd apps/mobile && flutter analyze`
+  - `cd apps/mobile && flutter test`
+  - `git diff --check`
+- Assumptions made:
+  - Existing household merchant option reads and backend exact duplicate
+    protection remain sufficient for the final merchant autocomplete behavior;
+    no schema or RPC migration was needed.
+  - Close-match comparison remains limited to canonical merchant display names.
+  - Milestones 18-21 remain deferred by user request.
+- Mocks created:
+  - None.
+- Mocks used:
+  - Existing `_FakeFinanceRepository` merchant options, query capture, and
+    metadata correction test hooks.
 
 ## Cross-Milestone Consistency Rules
 
