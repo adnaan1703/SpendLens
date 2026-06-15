@@ -452,6 +452,24 @@ Workbook mapping:
 
 - `Merchant Group`, `Category`, `Subcategory`, `Confidence`, `Notes`, and `Source URL`.
 
+Planned merchant group management rules from Milestones 61-64:
+
+- `merchants.display_name` is the canonical merchant group name exposed in
+  Settings.
+- Renaming a merchant group updates `display_name` globally while preserving the
+  merchant id and existing links from aliases, mapping rules, transactions,
+  review suggestions, summaries, and autocomplete.
+- Merchant group merge uses one surviving destination merchant id. Source
+  merchant aliases, mapping rules, transaction `merchant_id` references, and
+  open review suggested merchant references move to the destination merchant.
+- Merge never deletes transactions.
+- Merge category handling is explicit: preserve existing transaction/rule/review
+  category fields, or apply the destination merchant category/subcategory to
+  moved source references.
+- Statement-merchant-level reassignment, alias editing, merchant deletion, and
+  raw statement merchant editing remain out of scope for the planned Settings
+  manager.
+
 ### `merchant_aliases`
 
 Observed statement names that map to canonical merchants.
@@ -1000,6 +1018,9 @@ Create these views for app reads:
   includes positive/negative carry-forward, effective cap amounts, and
   carry-forward-aware remaining/over-budget values.
 - `v_merchant_summary`: merchant spend, refunds, net, transaction counts.
+- `v_merchant_group_usage`: planned Settings merchant group manager usage view
+  with transaction, alias, active mapping-rule, review-suggestion, taxonomy,
+  net spend, and last-transaction context.
 - `v_review_queue`: open review items with transaction and suggestions.
 - `v_piggy_bank_balances`: piggy-bank balance and target progress.
 

@@ -3028,6 +3028,117 @@ durable docs.
   - Existing `_FakeFinanceRepository` merchant options, query capture, and
     metadata correction test hooks.
 
+## Milestone 61: Merchant Group Management Planning and Reference Readiness
+
+### Status
+
+Completed on 2026-06-15.
+
+### Objective
+
+Create the companion plan for Settings merchant group management and wire the
+new M62-M64 implementation sequence into durable planning docs.
+
+### Tasks
+
+- Create [Merchant Group Management](MERCHANT_GROUP_MANAGEMENT.md) with target
+  behavior, existing foundation, global rules, implementation milestones,
+  acceptance criteria, and verification expectations.
+- Update this milestone tracker, [README](README.md), [Data Model](DATA_MODEL.md),
+  and [Session Handoff](SESSION_HANDOFF.md) so a fresh session can start M62
+  from docs alone.
+- Preserve M18-M21 push-notification deferral and leave implementation planned
+  only.
+
+### Acceptance Criteria
+
+- `MERCHANT_GROUP_MANAGEMENT.md` describes M61-M64 as serial, standalone
+  milestones.
+- M62 is the next recommended implementation milestone.
+- No Flutter, Supabase, importer, Edge Function, hosted rollout, iOS, or web
+  implementation work is started.
+
+### Completion Summary
+
+- Assumptions made:
+  - A "merchant group" is the existing canonical `public.merchants` row.
+  - Rename is a global canonical display-name update that preserves merchant
+    ids.
+  - Merge supports user-selected category strategy, with Preserve categories as
+    the default and Destination category available when the destination merchant
+    has category/subcategory values.
+  - Statement-merchant-level reassignment, alias editing, deletion, hosted
+    rollout, iOS, web, and push notifications are out of scope.
+- Mocks created:
+  - None.
+- Mocks used:
+  - None.
+
+## Milestone 62: Merchant Group Data and Repository Contract
+
+### Status
+
+Planned. See
+[Merchant Group Management](MERCHANT_GROUP_MANAGEMENT.md#m62---merchant-group-data-and-repository-contract).
+
+### Objective
+
+Add the RLS-safe Supabase and Flutter repository contract needed for merchant
+group rename and merge before building the Settings UI.
+
+### Acceptance Criteria
+
+- Database tests prove merchant rename and merge are household-scoped,
+  duplicate-safe, role-safe, and preserve or apply taxonomy according to the
+  selected strategy.
+- Repository tests prove Flutter can fetch merchant group usage, call rename,
+  call merge, parse counts, and group dashboard top merchants canonically.
+- Existing merchant autocomplete and transaction metadata correction behavior
+  still works.
+
+## Milestone 63: Settings Merchant Group Manager UX
+
+### Status
+
+Planned. See
+[Merchant Group Management](MERCHANT_GROUP_MANAGEMENT.md#m63---settings-merchant-group-manager-ux).
+
+### Objective
+
+Add the visible Settings management section for renaming and merging merchant
+groups using the M62 repository contract.
+
+### Acceptance Criteria
+
+- Settings exposes a Merchant groups section beside Categories and Labels.
+- A household writer can rename a merchant group from Settings.
+- A household writer can merge multiple source merchant groups into one
+  destination with an explicit category strategy.
+- Empty, loading, error, narrow, and long-name states remain usable.
+- Dashboard, Activity, Review, chart/report, and autocomplete data refresh
+  after saves.
+
+## Milestone 64: Merchant Group Management Regression, Docs, and Cleanup
+
+### Status
+
+Planned. See
+[Merchant Group Management](MERCHANT_GROUP_MANAGEMENT.md#m64---merchant-group-management-regression-docs-and-cleanup).
+
+### Objective
+
+Verify the full merchant group workflow and fold final behavior into durable
+docs.
+
+### Acceptance Criteria
+
+- Full Supabase and Flutter verification passes locally or any environment
+  limitation is documented.
+- Durable docs explain merchant group rename/merge behavior, category strategy,
+  provider refresh expectations, and deferred items.
+- The companion plan is marked completed-only after M64 is complete.
+- M18-M21 remain deferred unless explicitly resumed.
+
 ## Cross-Milestone Consistency Rules
 
 - Ask the user before proceeding on any undocumented decision. Codex may recommend a default, but must wait for confirmation.
@@ -3047,6 +3158,9 @@ durable docs.
   during taxonomy deletion or merge.
 - Requeue transactions to Review for category deletion, and require explicit
   subcategory mapping for category merge.
+- Keep merchant group management app-facing and RLS-safe. Rename preserves
+  merchant ids; merge never deletes transactions and must use an explicit
+  category strategy.
 - Keep transaction labels separate from categories and merchant mappings. Label
   changes must not reclassify transactions, alter future import behavior, or
   send transactions to Review.
