@@ -4,11 +4,10 @@ Use this file to coordinate work across multiple implementation sessions. Update
 
 ## Current Status
 
-- Current milestone: None. Milestone 62 was completed on 2026-06-15 as the
-  merchant group data and repository contract. Milestones 18-21 remain deferred
+- Current milestone: None. Milestone 63 was completed on 2026-06-15 as the
+  Settings merchant group manager UX. Milestones 18-21 remain deferred
   by user request.
-- Last completed milestone: Milestone 62, Merchant Group Data and Repository
-  Contract.
+- Last completed milestone: Milestone 63, Settings Merchant Group Manager UX.
 - Current implementation state: Flutter Android app scaffold exists in
   `apps/mobile` with redesigned SpendLens Google sign-in, route protection,
   authenticated shell, RLS-safe profile/default-household bootstrap,
@@ -211,14 +210,17 @@ Use this file to coordinate work across multiple implementation sessions. Update
   regression, and docs cleanup. Milestone 62 added the RLS-safe merchant group
   usage view, rename RPC, merge RPC, pgTAP coverage, Flutter repository
   contract/models/provider, fake repository hooks, and canonical Dashboard
-  top-merchant grouping; the Settings UI remains planned for M63.
+  top-merchant grouping. Milestone 63 added the visible Settings Merchant groups
+  section with rename, merge, explicit category strategy selection, impact
+  summaries, provider refreshes, and narrow/long-name widget coverage.
   Milestones 18-21 remain planned and deferred by user request.
 - Remote deployment state: On 2026-06-08, user confirmed Supabase project `bslsitzdvrdosubbdxpd` as the intended dev/staging target. All local migrations through `20260607174515_ai_ready_layer_llm_features.sql` were pushed there, hosted expense Q&A and the now-retired legacy AI lookup function were active with JWT verification, and `GEMINI_API_KEY` was present in hosted Edge Function secrets by name. After the user signed in through the Android emulator, hosted profile/household bootstrap and authenticated Gemini Edge Function smoke passed. On 2026-06-08 for Milestone 13, `gmail-oauth-start` was deployed as version 2 with JWT verification, `gmail-sync` was deployed as version 2 without JWT verification, and new `gmail-backfill-range` was deployed as version 1 without JWT verification. Hosted `gmail-backfill-range` `OPTIONS` smoke returned 200, and an unauthenticated POST returned the expected service-key error. The live May Gmail backfill itself was not run because it requires the user to connect the target Gmail mailbox and invoke the runbook with a Supabase secret key from a local/platform secret store. On 2026-06-09, M16 deleted the hosted legacy AI lookup function from `bslsitzdvrdosubbdxpd` and a follow-up function list verified it absent. The M16 database migration and updated active Suggest function were verified locally but not pushed/deployed to hosted in this implementation session.
-- Next recommended milestone: Milestone 63, Settings Merchant Group Manager
-  UX. Milestones 18-21 remain deferred unless the user resumes push
-  notifications. If continuing hosted rollout separately, push the M16,
-  M26, M29, M32, and M33 migrations and deploy `transaction-metadata-suggest`;
-  iOS and web remain deferred future milestones unless explicitly resumed.
+- Next recommended milestone: Milestone 64, Merchant Group Management
+  Regression, Docs, and Cleanup. Milestones 18-21 remain deferred unless the
+  user resumes push notifications. If continuing hosted rollout separately, push
+  the M16, M26, M29, M32, and M33 migrations and deploy
+  `transaction-metadata-suggest`; iOS and web remain deferred future milestones
+  unless explicitly resumed.
 - Documentation state: completed-only companion execution plans for transaction
   metadata editing and category management were retired from `docs/` on
   2026-06-12. `docs/implementation-plan/MONTHLY_CAPS.md` remains active as the
@@ -232,8 +234,8 @@ Use this file to coordinate work across multiple implementation sessions. Update
   completed Milestones 56-60 and can be removed in a later cleanup if the
   repository's completed-plan convention calls for it.
   `docs/implementation-plan/MERCHANT_GROUP_MANAGEMENT.md` is the active
-  companion plan for Milestones 61-64. Milestones 61-62 are complete; visible
-  Settings implementation starts at Milestone 63.
+  companion plan for Milestones 61-64. Milestones 61-63 are complete; final
+  regression and docs cleanup remains planned for Milestone 64.
 
 ## Required Reading for New Threads
 
@@ -423,7 +425,7 @@ Do not ask the user to perform all setup at once. Ask only when the relevant mil
 - Milestone 61, Merchant Group Management Planning and Reference Readiness:
   completed.
 - Milestone 62, Merchant Group Data and Repository Contract: completed.
-- Milestone 63, Settings Merchant Group Manager UX: planned.
+- Milestone 63, Settings Merchant Group Manager UX: completed.
 - Milestone 64, Merchant Group Management Regression, Docs, and Cleanup:
   planned.
 
@@ -504,6 +506,46 @@ Do not ask the user to perform all setup at once. Ask only when the relevant mil
 - Mocks used:
   - Existing fake finance repository data, extended for merchant group snapshot,
     rename, merge, alias counts, and canonical Dashboard grouping.
+
+## Merchant Group Management M63 Notes
+
+- Completed on 2026-06-15. Milestones 18-21 remained deferred and were not
+  started. Milestone 64 was not started.
+- Added the visible Settings `Merchant groups` card after Categories and before
+  Labels. The card uses `merchantGroupManagerSnapshotProvider`, shows canonical
+  merchant names, category/subcategory context, transaction/net-spend usage,
+  alias counts, active mapping-rule counts, and open Review impact, with refresh
+  and rename icon actions plus a merge action disabled until at least two
+  merchant groups exist.
+- Added a compact rename dialog backed by `renameMerchantGroup`.
+- Added a merge dialog backed by `mergeMerchantGroups` with destination
+  selection, surviving-name editing, multi-source selection, aggregate source
+  impact chips, explicit Preserve categories vs Destination category strategy,
+  Destination category disabled when the destination lacks taxonomy, validation,
+  and concise success snackbars.
+- Rename and merge saves invalidate merchant group manager data, merchant
+  options, transactions, trend reports, Dashboard snapshots, and Review queue
+  providers.
+- Added focused widget coverage for render state, rename save, merge validation,
+  preserve-strategy submission, destination-strategy disabling, provider refresh
+  effects, and narrow/long-name layout behavior.
+- Verification:
+  - `cd apps/mobile && flutter test test/finance_features_test.dart --name "Settings|merchant group|merchant|dashboard|narrow"`
+  - `cd apps/mobile && flutter analyze`
+  - `git diff --check`
+- Assumptions made:
+  - The existing M62 repository/RPC contract is sufficient for M63; no Supabase
+    migration, RPC, or repository API addition was needed.
+  - Destination category strategy requires both destination category and
+    subcategory values.
+  - Alias editing, statement-merchant reassignment, merchant deletion, hosted
+    rollout, iOS, web, and push notifications remain out of scope.
+- Mocks created:
+  - None.
+- Mocks used:
+  - Existing fake finance repository data and M62 merchant-group hooks, extended
+    with a merchant-options fetch counter, provider refresh probe, and long-name
+    merchant fixture for M63 widget coverage.
 
 ## Transaction Deletion M52 Notes
 

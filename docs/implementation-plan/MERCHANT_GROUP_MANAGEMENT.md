@@ -294,7 +294,7 @@ Completion summary:
 
 ## M63 - Settings Merchant Group Manager UX
 
-Status: Planned.
+Status: Completed on 2026-06-15.
 
 Purpose: Add the visible Settings management section for renaming and merging
 merchant groups using the M62 repository contract.
@@ -368,6 +368,46 @@ Completion summary requirements:
 - Assumptions made
 - Mocks created
 - Mocks used
+
+Completion summary:
+
+- Added a collapsible Settings `Merchant groups` card after Categories and
+  before Labels. The card reads `merchantGroupManagerSnapshotProvider`, renders
+  canonical merchant names, taxonomy context, transaction/net-spend usage, alias
+  counts, active-rule counts, and open-review counts, and exposes refresh,
+  rename, and merge actions through icon/tool controls.
+- Added a compact merchant-group rename dialog backed by `renameMerchantGroup`.
+- Added a merge dialog backed by `mergeMerchantGroups` with destination
+  selection, surviving name editing, multi-source selection, aggregate source
+  impact chips, explicit Preserve categories vs Destination category strategy,
+  Destination category disabling when the destination lacks taxonomy, validation,
+  and concise success snackbars.
+- Rename and merge saves invalidate merchant group manager data, merchant
+  options, transactions, trend reports, Dashboard snapshots, and Review queue
+  providers.
+- Added focused widget coverage for rendering, rename save, merge validation,
+  preserve-strategy submission, destination-strategy disabling, provider refresh
+  effects, and narrow/long-name layout behavior.
+- Milestones 18-21 remain deferred by user request, and Milestone 64 regression
+  and docs cleanup was not started.
+- Verification:
+  - `cd apps/mobile && flutter test test/finance_features_test.dart --name "Settings|merchant group|merchant|dashboard|narrow"`
+  - `cd apps/mobile && flutter analyze`
+  - `git diff --check`
+- Assumptions made:
+  - The existing M62 repository/provider contract is the source of truth for
+    merchant group writes; no new Supabase migration or repository method was
+    needed.
+  - Destination category remains unavailable when the destination merchant lacks
+    both category and subcategory values.
+  - Merchant alias editing, statement-merchant reassignment, merchant deletion,
+    hosted rollout, iOS, web, and push notifications remain out of scope.
+- Mocks created:
+  - None.
+- Mocks used:
+  - Existing `_FakeFinanceRepository` data and M62 merchant-group hooks, extended
+    with a merchant-options fetch counter, provider refresh probe, and long-name
+    merchant fixture for M63 widget coverage.
 
 ## M64 - Merchant Group Management Regression, Docs, and Cleanup
 

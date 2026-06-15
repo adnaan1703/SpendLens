@@ -3123,7 +3123,7 @@ group rename and merge before building the Settings UI.
 
 ### Status
 
-Planned. See
+Completed on 2026-06-15. See
 [Merchant Group Management](MERCHANT_GROUP_MANAGEMENT.md#m63---settings-merchant-group-manager-ux).
 
 ### Objective
@@ -3140,6 +3140,38 @@ groups using the M62 repository contract.
 - Empty, loading, error, narrow, and long-name states remain usable.
 - Dashboard, Activity, Review, chart/report, and autocomplete data refresh
   after saves.
+
+### Completion Summary
+
+- Added the Settings Merchant groups card using the M62 repository/provider
+  contract, including compact rows with canonical merchant name, taxonomy
+  context, transaction/net-spend usage, aliases, active rules, and open Review
+  impact.
+- Added rename and merge dialogs for merchant groups. Merge requires an explicit
+  Preserve categories or Destination category strategy, defaults to Preserve
+  categories, disables Destination category when the destination lacks taxonomy,
+  and saves through `mergeMerchantGroups`.
+- Rename and merge completion invalidates merchant group manager, merchant
+  options, transactions, trend reports, Dashboard snapshots, and Review queue
+  providers.
+- Added focused widget coverage for rendering, rename, merge validation,
+  preserve submission, destination-strategy disabling, provider refresh effects,
+  and narrow/long-name layout behavior.
+- Milestones 18-21 remain deferred by user request, and Milestone 64 regression
+  and docs cleanup was not started.
+- Assumptions made:
+  - The M62 repository/RPC contract is sufficient for M63; no Supabase migration,
+    RPC, or repository API addition was needed.
+  - Destination category strategy requires both destination category and
+    subcategory values.
+  - Alias editing, statement-merchant reassignment, merchant deletion, hosted
+    rollout, iOS, web, and push notifications remain out of scope.
+- Mocks created:
+  - None.
+- Mocks used:
+  - Existing `_FakeFinanceRepository` data and M62 merchant-group hooks, extended
+    with a merchant-options fetch counter, provider refresh probe, and long-name
+    merchant fixture for M63 widget coverage.
 
 ## Milestone 64: Merchant Group Management Regression, Docs, and Cleanup
 

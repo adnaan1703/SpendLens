@@ -467,11 +467,11 @@ Merchant group management rules from Milestones 61-64:
   category fields, or apply the destination merchant category/subcategory to
   moved source references.
 - Statement-merchant-level reassignment, alias editing, merchant deletion, and
-  raw statement merchant editing remain out of scope for the planned Settings
-  manager.
+  raw statement merchant editing remain out of scope for the Settings manager.
 - Milestone 62 added the app-facing data contract:
   `public.v_merchant_group_usage`, `rename_household_merchant(...)`, and
-  `merge_household_merchants(...)`. Visible Settings UI is planned for M63.
+  `merge_household_merchants(...)`. Milestone 63 added the visible Settings
+  rename/merge UI on top of this contract.
 
 ### `merchant_aliases`
 
@@ -1021,7 +1021,7 @@ Create these views for app reads:
   includes positive/negative carry-forward, effective cap amounts, and
   carry-forward-aware remaining/over-budget values.
 - `v_merchant_summary`: merchant spend, refunds, net, transaction counts.
-- `v_merchant_group_usage`: planned Settings merchant group manager usage view
+- `v_merchant_group_usage`: Settings merchant group manager usage view
   with transaction, alias, active mapping-rule, review-suggestion, taxonomy,
   net spend, and last-transaction context.
 - `v_review_queue`: open review items with transaction and suggestions.

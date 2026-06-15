@@ -3011,6 +3011,271 @@ void main() {
     );
   });
 
+  testWidgets('settings merchant group manager renders usage and renames', (
+    tester,
+  ) async {
+    final repository = _FakeFinanceRepository();
+
+    await tester.pumpWidget(
+      _financeTestApp(repository: repository, child: const SettingsScreen()),
+    );
+    await tester.pumpAndSettle();
+
+    await _expandSettingsSection(tester, 'Merchant groups');
+
+    expect(find.text('Merchant groups'), findsOneWidget);
+    expect(find.text('Swiggy Instamart'), findsOneWidget);
+    expect(find.text('Food / Delivery'), findsOneWidget);
+    expect(
+      find.text('1 transaction - INR 1,200 - last 2026-03-12'),
+      findsOneWidget,
+    );
+    expect(find.text('1 alias'), findsWidgets);
+    expect(find.text('1 active rule'), findsWidgets);
+
+    await tester.tap(find.byTooltip('Rename merchant group').at(1));
+    await tester.pumpAndSettle();
+    await tester.enterText(
+      find.byKey(const ValueKey('merchant-group-name-field')),
+      'Swiggy Market',
+    );
+    await tester.tap(find.widgetWithText(FilledButton, 'Save'));
+    await tester.pumpAndSettle();
+
+    expect(repository.merchantGroupRenameRequests, hasLength(1));
+    expect(
+      repository.merchantGroupRenameRequests.single.merchantId,
+      'merchant-swiggy',
+    );
+    expect(
+      repository.merchantGroupRenameRequests.single.displayName,
+      'Swiggy Market',
+    );
+    expect(find.text('Swiggy Market'), findsOneWidget);
+    expect(find.text('Renamed Swiggy Market'), findsOneWidget);
+  });
+
+  testWidgets(
+    'settings merchant group merge validates and submits preserve strategy',
+    (tester) async {
+      final repository = _FakeFinanceRepository();
+
+      await tester.pumpWidget(
+        _financeTestApp(repository: repository, child: const SettingsScreen()),
+      );
+      await tester.pumpAndSettle();
+
+      await _expandSettingsSection(tester, 'Merchant groups');
+      await tester.tap(find.widgetWithText(FilledButton, 'Merge'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Merge merchant groups'), findsOneWidget);
+      expect(
+        find.text('Choose at least one source merchant group.'),
+        findsOneWidget,
+      );
+      expect(
+        tester
+            .widget<FilledButton>(find.widgetWithText(FilledButton, 'Save'))
+            .onPressed,
+        isNull,
+      );
+
+      await tester.tap(
+        find.byKey(
+          const ValueKey('merchant-group-merge-source-merchant-swiggy'),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('1 transaction'), findsWidgets);
+      expect(find.text('INR 1,200'), findsOneWidget);
+      expect(find.text('Preserve categories'), findsOneWidget);
+      expect(
+        tester
+            .widget<FilledButton>(find.widgetWithText(FilledButton, 'Save'))
+            .onPressed,
+        isNotNull,
+      );
+
+      await tester.enterText(
+        find.byKey(const ValueKey('merchant-group-merge-name')),
+        'Amazon Collective',
+      );
+      await tester.tap(find.widgetWithText(FilledButton, 'Save'));
+      await tester.pumpAndSettle();
+
+      expect(repository.merchantGroupMergeRequests, hasLength(1));
+      expect(
+        repository.merchantGroupMergeRequests.single.destinationMerchantId,
+        'merchant-amazon',
+      );
+      expect(
+        repository.merchantGroupMergeRequests.single.destinationDisplayName,
+        'Amazon Collective',
+      );
+      expect(repository.merchantGroupMergeRequests.single.sourceMerchantIds, [
+        'merchant-swiggy',
+      ]);
+      expect(
+        repository.merchantGroupMergeRequests.single.categoryStrategy,
+        MerchantGroupMergeCategoryStrategy.preserve,
+      );
+      expect(
+        repository.transactions
+            .singleWhere((transaction) => transaction.id == 'txn-1')
+            .categoryId,
+        'cat-food',
+      );
+      expect(
+        find.text('Merged into Amazon Collective; moved 1 transaction'),
+        findsOneWidget,
+      );
+    },
+  );
+
+  testWidgets(
+    'settings merchant group merge disables destination strategy without taxonomy',
+    (tester) async {
+      final repository = _FakeFinanceRepository();
+
+      await tester.pumpWidget(
+        _financeTestApp(repository: repository, child: const SettingsScreen()),
+      );
+      await tester.pumpAndSettle();
+
+      await _expandSettingsSection(tester, 'Merchant groups');
+      await tester.tap(find.widgetWithText(FilledButton, 'Merge'));
+      await tester.pumpAndSettle();
+
+      await tester.tap(
+        find.byKey(const ValueKey('merchant-group-merge-destination')),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Uber').last);
+      await tester.pumpAndSettle();
+
+      final strategySelector = tester
+          .widget<SegmentedButton<MerchantGroupMergeCategoryStrategy>>(
+            find.byKey(const ValueKey('merchant-group-merge-strategy')),
+          );
+      expect(strategySelector.selected, {
+        MerchantGroupMergeCategoryStrategy.preserve,
+      });
+      expect(strategySelector.segments.last.enabled, isFalse);
+      expect(find.text('Uber has no category to apply.'), findsOneWidget);
+    },
+  );
+
+  testWidgets('settings merchant group saves refresh dependent providers', (
+    tester,
+  ) async {
+    final repository = _FakeFinanceRepository();
+
+    await tester.pumpWidget(
+      _financeTestApp(
+        repository: repository,
+        child: const Stack(
+          children: [SettingsScreen(), _MerchantGroupRefreshProbe()],
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final initialMerchantGroupFetches =
+        repository.merchantGroupManagerFetchCount;
+    final initialMerchantFetches = repository.merchantFetchCount;
+    final initialTransactionFetches = repository.transactionFetchCount;
+    final initialTrendFetches = repository.trendReportFetchCount;
+    final initialDashboardFetches = repository.dashboardFetchCount;
+    final initialReviewFetches = repository.reviewQueueFetchCount;
+
+    await _expandSettingsSection(tester, 'Merchant groups');
+    await tester.tap(find.byTooltip('Rename merchant group').first);
+    await tester.pumpAndSettle();
+    await tester.enterText(
+      find.byKey(const ValueKey('merchant-group-name-field')),
+      'Amazon Mall',
+    );
+    await tester.tap(find.widgetWithText(FilledButton, 'Save'));
+    await tester.pumpAndSettle();
+
+    expect(
+      repository.merchantGroupManagerFetchCount,
+      greaterThan(initialMerchantGroupFetches),
+    );
+    expect(repository.merchantFetchCount, greaterThan(initialMerchantFetches));
+    expect(
+      repository.transactionFetchCount,
+      greaterThan(initialTransactionFetches),
+    );
+    expect(repository.trendReportFetchCount, greaterThan(initialTrendFetches));
+    expect(
+      repository.dashboardFetchCount,
+      greaterThan(initialDashboardFetches),
+    );
+    expect(repository.reviewQueueFetchCount, greaterThan(initialReviewFetches));
+  });
+
+  testWidgets(
+    'settings merchant group manager fits long names in a narrow viewport',
+    (tester) async {
+      final repository = _FakeFinanceRepository()
+        ..merchants.add(
+          const MerchantOption(
+            id: 'merchant-long',
+            displayName:
+                'International marketplace subscription groceries and utilities',
+            categoryId: 'cat-shopping',
+            subcategoryId: 'sub-marketplace',
+          ),
+        )
+        ..merchantAliasCounts['merchant-long'] = 12
+        ..transactions.add(
+          FinanceTransaction(
+            id: 'txn-long-merchant',
+            transactionDate: DateTime(2026, 3, 21),
+            statementMerchant: 'LONG MARKETPLACE MERCHANT',
+            merchantId: 'merchant-long',
+            merchantName:
+                'International marketplace subscription groceries and utilities',
+            categoryId: 'cat-shopping',
+            categoryName: 'Shopping',
+            subcategoryId: 'sub-marketplace',
+            subcategoryName: 'Marketplace',
+            sourceAccountId: 'source-1',
+            transactionType: 'debit_spend',
+            amount: 999,
+            grossSpend: 999,
+            refundAmount: 0,
+            netExpense: 999,
+            currencyCode: 'INR',
+            confidence: 'high',
+          ),
+        );
+      tester.view.physicalSize = const Size(390, 844);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(() {
+        tester.view.resetPhysicalSize();
+        tester.view.resetDevicePixelRatio();
+      });
+
+      await tester.pumpWidget(
+        _financeTestApp(repository: repository, child: const SettingsScreen()),
+      );
+      await tester.pumpAndSettle();
+
+      await _expandSettingsSection(tester, 'Merchant groups');
+      await tester.ensureVisible(
+        find.text(
+          'International marketplace subscription groceries and utilities',
+        ),
+      );
+
+      expect(tester.takeException(), isNull);
+    },
+  );
+
   testWidgets('settings shows Gmail connector status', (tester) async {
     final repository = _FakeFinanceRepository();
 
@@ -3229,6 +3494,24 @@ Widget _financeTestApp({
       home: Scaffold(body: child),
     ),
   );
+}
+
+class _MerchantGroupRefreshProbe extends ConsumerWidget {
+  const _MerchantGroupRefreshProbe();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    const householdId = 'household-1';
+    ref.watch(merchantOptionsProvider(householdId));
+    ref.watch(transactionsProvider(TransactionQuery(householdId: householdId)));
+    ref.watch(trendReportProvider(TrendQuery(householdId: householdId)));
+    ref.watch(
+      dashboardSnapshotProvider(FinanceMonthRequest(householdId: householdId)),
+    );
+    ref.watch(merchantReviewQueueProvider(householdId));
+
+    return const SizedBox.shrink();
+  }
 }
 
 HouseholdContext _householdContextWithRole(String memberRole) {
@@ -3573,6 +3856,7 @@ final class _FakeFinanceRepository implements FinanceRepository {
   int availableMonthsFetchCount = 0;
   int labelFetchCount = 0;
   int labelManagerFetchCount = 0;
+  int merchantFetchCount = 0;
   int merchantGroupManagerFetchCount = 0;
   int reviewQueueFetchCount = 0;
   int piggyBanksFetchCount = 0;
@@ -4604,6 +4888,7 @@ final class _FakeFinanceRepository implements FinanceRepository {
   Future<List<MerchantOption>> fetchMerchants({
     required String householdId,
   }) async {
+    merchantFetchCount += 1;
     return [...merchants]
       ..sort((a, b) => a.displayName.compareTo(b.displayName));
   }

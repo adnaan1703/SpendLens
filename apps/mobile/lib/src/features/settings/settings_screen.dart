@@ -78,6 +78,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             const SizedBox(height: 16),
             _CategoryManagerCard(householdId: householdContext.household.id),
             const SizedBox(height: 16),
+            _MerchantGroupManagerCard(
+              householdId: householdContext.household.id,
+            ),
+            const SizedBox(height: 16),
             _LabelManagerCard(householdId: householdContext.household.id),
             const SizedBox(height: 16),
             _GmailConnectorCard(householdId: householdContext.household.id),
@@ -659,6 +663,743 @@ class _LabelUsageRow extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+class _MerchantGroupManagerCard extends ConsumerStatefulWidget {
+  const _MerchantGroupManagerCard({required this.householdId});
+
+  final String householdId;
+
+  @override
+  ConsumerState<_MerchantGroupManagerCard> createState() =>
+      _MerchantGroupManagerCardState();
+}
+
+class _MerchantGroupManagerCardState
+    extends ConsumerState<_MerchantGroupManagerCard> {
+  bool _isMerchantGroupsSectionExpanded = false;
+
+  Future<void> _renameMerchantGroup({
+    required BuildContext context,
+    required WidgetRef ref,
+    required MerchantGroupUsageSummary merchantGroup,
+  }) async {
+    final renamed = await showDialog<MerchantOption>(
+      context: context,
+      builder: (context) {
+        return _MerchantGroupNameDialog(
+          title: 'Rename merchant group',
+          initialName: merchantGroup.displayName,
+          onSave: (displayName) {
+            return ref
+                .read(financeRepositoryProvider)
+                .renameMerchantGroup(
+                  MerchantGroupRenameRequest(
+                    householdId: widget.householdId,
+                    merchantId: merchantGroup.merchantId,
+                    displayName: displayName,
+                  ),
+                );
+          },
+        );
+      },
+    );
+    if (renamed == null) return;
+
+    _refreshMerchantGroupLookups(ref, widget.householdId);
+
+    if (context.mounted) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Renamed ${renamed.displayName}')));
+    }
+  }
+
+  Future<void> _mergeMerchantGroups({
+    required BuildContext context,
+    required WidgetRef ref,
+    required MerchantGroupManagerSnapshot snapshot,
+  }) async {
+    final result = await showDialog<MerchantGroupMergeResult>(
+      context: context,
+      builder: (context) {
+        return _MerchantGroupMergeDialog(
+          householdId: widget.householdId,
+          snapshot: snapshot,
+        );
+      },
+    );
+    if (result == null) return;
+
+    _refreshMerchantGroupLookups(ref, widget.householdId);
+
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Merged into ${result.destinationDisplayName}; moved ${_countLabel(result.movedTransactionCount, 'transaction')}',
+          ),
+        ),
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final textTheme = Theme.of(context).textTheme;
+    final snapshot = ref.watch(
+      merchantGroupManagerSnapshotProvider(widget.householdId),
+    );
+    final snapshotValue = snapshot is AsyncData<MerchantGroupManagerSnapshot>
+        ? snapshot.value
+        : null;
+    final canMerge =
+        snapshotValue != null && snapshotValue.merchantGroups.length > 1;
+
+    return AppContentCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTap: () {
+              setState(() {
+                _isMerchantGroupsSectionExpanded =
+                    !_isMerchantGroupsSectionExpanded;
+              });
+            },
+            child: Container(
+              width: double.infinity,
+              constraints: const BoxConstraints(minHeight: 48),
+              padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 4),
+              child: Row(
+                children: [
+                  const Icon(Icons.storefront_outlined),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      'Merchant groups',
+                      style: textTheme.titleMedium,
+                    ),
+                  ),
+                  Icon(
+                    _isMerchantGroupsSectionExpanded
+                        ? Icons.expand_less
+                        : Icons.expand_more,
+                  ),
+                ],
+              ),
+            ),
+          ),
+          if (_isMerchantGroupsSectionExpanded) ...[
+            const SizedBox(height: 16),
+            Align(
+              alignment: Alignment.centerRight,
+              child: Wrap(
+                alignment: WrapAlignment.end,
+                spacing: 8,
+                children: [
+                  IconButton(
+                    tooltip: 'Refresh merchant groups',
+                    onPressed: () =>
+                        _refreshMerchantGroupLookups(ref, widget.householdId),
+                    icon: const Icon(Icons.refresh),
+                  ),
+                  FilledButton.tonalIcon(
+                    onPressed: canMerge
+                        ? () => _mergeMerchantGroups(
+                            context: context,
+                            ref: ref,
+                            snapshot: snapshotValue,
+                          )
+                        : null,
+                    icon: const Icon(Icons.merge_type_outlined),
+                    label: const Text('Merge'),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
+            switch (snapshot) {
+              AsyncValue(:final value?) => _MerchantGroupManager(
+                snapshot: value,
+                onRename: (merchantGroup) => _renameMerchantGroup(
+                  context: context,
+                  ref: ref,
+                  merchantGroup: merchantGroup,
+                ),
+              ),
+              AsyncValue(hasError: true, :final error) => Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Text(
+                    'Merchant groups unavailable',
+                    style: textTheme.titleSmall,
+                  ),
+                  const SizedBox(height: 6),
+                  Text(error.toString(), style: textTheme.bodySmall),
+                ],
+              ),
+              _ => const Center(child: CircularProgressIndicator()),
+            },
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _MerchantGroupManager extends StatelessWidget {
+  const _MerchantGroupManager({required this.snapshot, required this.onRename});
+
+  final MerchantGroupManagerSnapshot snapshot;
+  final ValueChanged<MerchantGroupUsageSummary> onRename;
+
+  @override
+  Widget build(BuildContext context) {
+    if (snapshot.isEmpty) {
+      return EmptyState(
+        icon: Icons.storefront_outlined,
+        title: 'No merchant groups yet',
+        message: 'Merchant groups appear after categorized transactions.',
+        compact: true,
+      );
+    }
+
+    return Column(
+      children: [
+        for (final merchantGroup in snapshot.merchantGroups) ...[
+          _MerchantGroupUsageRow(
+            usage: merchantGroup,
+            onRename: () => onRename(merchantGroup),
+          ),
+          if (merchantGroup != snapshot.merchantGroups.last)
+            const Divider(height: 16),
+        ],
+      ],
+    );
+  }
+}
+
+class _MerchantGroupUsageRow extends StatelessWidget {
+  const _MerchantGroupUsageRow({required this.usage, required this.onRename});
+
+  final MerchantGroupUsageSummary usage;
+  final VoidCallback onRename;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Padding(
+            padding: EdgeInsets.only(top: 8),
+            child: Icon(Icons.storefront_outlined),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  usage.displayName,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: theme.textTheme.titleSmall,
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  _merchantGroupCategoryLabel(usage),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: theme.textTheme.bodySmall,
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  _merchantGroupUsageText(usage),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: theme.textTheme.bodySmall,
+                ),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    _ImpactChip(
+                      icon: Icons.sell_outlined,
+                      label: _countLabel(usage.aliasCount, 'alias'),
+                    ),
+                    _ImpactChip(
+                      icon: Icons.rule_folder_outlined,
+                      label: _countLabel(
+                        usage.activeMappingRuleCount,
+                        'active rule',
+                      ),
+                    ),
+                    _ImpactChip(
+                      icon: Icons.rate_review_outlined,
+                      label: _countLabel(
+                        usage.openReviewSuggestionCount,
+                        'open review',
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 8),
+          IconButton(
+            tooltip: 'Rename merchant group',
+            onPressed: onRename,
+            icon: const Icon(Icons.edit_outlined),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _MerchantGroupNameDialog extends StatefulWidget {
+  const _MerchantGroupNameDialog({
+    required this.title,
+    required this.initialName,
+    required this.onSave,
+  });
+
+  final String title;
+  final String initialName;
+  final Future<MerchantOption> Function(String displayName) onSave;
+
+  @override
+  State<_MerchantGroupNameDialog> createState() =>
+      _MerchantGroupNameDialogState();
+}
+
+class _MerchantGroupNameDialogState extends State<_MerchantGroupNameDialog> {
+  final _formKey = GlobalKey<FormState>();
+  late final TextEditingController _controller;
+  bool _isSaving = false;
+  String? _errorMessage;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = TextEditingController(text: widget.initialName);
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  Future<void> _save() async {
+    if (!_formKey.currentState!.validate()) return;
+
+    setState(() {
+      _isSaving = true;
+      _errorMessage = null;
+    });
+
+    try {
+      final result = await widget.onSave(_controller.text.trim());
+      if (mounted) {
+        Navigator.of(context).pop(result);
+      }
+    } catch (error) {
+      if (mounted) {
+        setState(() {
+          _isSaving = false;
+          _errorMessage = error.toString();
+        });
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return AppModalDialog(
+      title: widget.title,
+      maxWidth: 468,
+      actions: [
+        AppActionPill.secondary(
+          label: 'Cancel',
+          onPressed: _isSaving ? null : () => Navigator.of(context).pop(),
+        ),
+        AppActionPill.primary(
+          label: 'Save',
+          icon: Icons.check,
+          isLoading: _isSaving,
+          onPressed: _isSaving ? null : _save,
+        ),
+      ],
+      child: Form(
+        key: _formKey,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            TextFormField(
+              key: const ValueKey('merchant-group-name-field'),
+              controller: _controller,
+              autofocus: true,
+              enabled: !_isSaving,
+              decoration: const InputDecoration(
+                labelText: 'Merchant group name',
+                prefixIcon: Icon(Icons.storefront_outlined),
+              ),
+              validator: (value) {
+                if ((value ?? '').trim().isEmpty) {
+                  return 'Merchant group name is required';
+                }
+
+                return null;
+              },
+              onFieldSubmitted: (_) => _isSaving ? null : _save(),
+            ),
+            if (_errorMessage != null) ...[
+              const SizedBox(height: 12),
+              Text(
+                _errorMessage!,
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: theme.colorScheme.error,
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _MerchantGroupMergeDialog extends ConsumerStatefulWidget {
+  const _MerchantGroupMergeDialog({
+    required this.householdId,
+    required this.snapshot,
+  });
+
+  final String householdId;
+  final MerchantGroupManagerSnapshot snapshot;
+
+  @override
+  ConsumerState<_MerchantGroupMergeDialog> createState() =>
+      _MerchantGroupMergeDialogState();
+}
+
+class _MerchantGroupMergeDialogState
+    extends ConsumerState<_MerchantGroupMergeDialog> {
+  late String _destinationMerchantId;
+  late final TextEditingController _destinationNameController;
+  final _sourceMerchantIds = <String>{};
+  var _categoryStrategy = MerchantGroupMergeCategoryStrategy.preserve;
+  bool _isSaving = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _destinationMerchantId = widget.snapshot.merchantGroups.first.merchantId;
+    _destinationNameController = TextEditingController(
+      text: widget.snapshot.merchantGroups.first.displayName,
+    );
+  }
+
+  @override
+  void dispose() {
+    _destinationNameController.dispose();
+    super.dispose();
+  }
+
+  MerchantGroupUsageSummary get _destinationMerchantGroup {
+    return widget.snapshot.merchantGroups
+        .where(
+          (merchantGroup) => merchantGroup.merchantId == _destinationMerchantId,
+        )
+        .first;
+  }
+
+  bool get _destinationHasCategory {
+    final destination = _destinationMerchantGroup;
+    return destination.categoryId != null && destination.subcategoryId != null;
+  }
+
+  List<MerchantGroupUsageSummary> get _sourceMerchantGroups {
+    return widget.snapshot.merchantGroups
+        .where(
+          (merchantGroup) =>
+              _sourceMerchantIds.contains(merchantGroup.merchantId),
+        )
+        .toList(growable: false);
+  }
+
+  String? get _validationMessage {
+    if (_destinationNameController.text.trim().isEmpty) {
+      return 'Surviving merchant name is required.';
+    }
+
+    if (_sourceMerchantIds.isEmpty) {
+      return 'Choose at least one source merchant group.';
+    }
+
+    if (_categoryStrategy == MerchantGroupMergeCategoryStrategy.destination &&
+        !_destinationHasCategory) {
+      return 'Destination category requires a categorized merchant group.';
+    }
+
+    return null;
+  }
+
+  void _selectDestination(String merchantId) {
+    final merchantGroup = widget.snapshot.merchantGroups
+        .where((candidate) => candidate.merchantId == merchantId)
+        .first;
+
+    setState(() {
+      _destinationMerchantId = merchantGroup.merchantId;
+      _destinationNameController.text = merchantGroup.displayName;
+      _sourceMerchantIds.remove(merchantGroup.merchantId);
+      if (!_destinationHasCategory) {
+        _categoryStrategy = MerchantGroupMergeCategoryStrategy.preserve;
+      }
+    });
+  }
+
+  void _toggleSource(MerchantGroupUsageSummary merchantGroup, bool selected) {
+    setState(() {
+      if (selected) {
+        _sourceMerchantIds.add(merchantGroup.merchantId);
+      } else {
+        _sourceMerchantIds.remove(merchantGroup.merchantId);
+      }
+    });
+  }
+
+  Future<void> _save() async {
+    if (_validationMessage != null) return;
+
+    setState(() {
+      _isSaving = true;
+    });
+
+    try {
+      final result = await ref
+          .read(financeRepositoryProvider)
+          .mergeMerchantGroups(
+            MerchantGroupMergeRequest(
+              householdId: widget.householdId,
+              destinationMerchantId: _destinationMerchantId,
+              destinationDisplayName: _destinationNameController.text.trim(),
+              sourceMerchantIds: [
+                for (final merchantGroup in widget.snapshot.merchantGroups)
+                  if (_sourceMerchantIds.contains(merchantGroup.merchantId))
+                    merchantGroup.merchantId,
+              ],
+              categoryStrategy: _categoryStrategy,
+            ),
+          );
+
+      if (mounted) {
+        Navigator.of(context).pop(result);
+      }
+    } catch (error) {
+      if (mounted) {
+        setState(() {
+          _isSaving = false;
+        });
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(error.toString())));
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final destination = _destinationMerchantGroup;
+    final sourceUsage = _aggregateMerchantGroupUsage(_sourceMerchantGroups);
+    final validationMessage = _validationMessage;
+
+    return AppModalDialog(
+      title: 'Merge merchant groups',
+      maxWidth: 680,
+      actions: [
+        AppActionPill.secondary(
+          label: 'Cancel',
+          onPressed: _isSaving ? null : () => Navigator.of(context).pop(),
+        ),
+        AppActionPill.primary(
+          label: 'Save',
+          icon: Icons.merge_type_outlined,
+          isLoading: _isSaving,
+          onPressed: _isSaving || validationMessage != null ? null : _save,
+        ),
+      ],
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          DropdownButtonFormField<String>(
+            key: const ValueKey('merchant-group-merge-destination'),
+            initialValue: _destinationMerchantId,
+            dropdownColor: theme.colorScheme.surface,
+            borderRadius: BorderRadius.circular(12.0),
+            menuMaxHeight: 320,
+            style: theme.textTheme.bodyMedium?.copyWith(
+              color: theme.colorScheme.onSurface,
+            ),
+            icon: const Icon(Icons.expand_more_rounded),
+            iconEnabledColor: theme.colorScheme.onSurfaceVariant,
+            decoration: const InputDecoration(
+              labelText: 'Destination merchant group',
+              prefixIcon: Icon(Icons.storefront_outlined),
+            ),
+            items: [
+              for (final merchantGroup in widget.snapshot.merchantGroups)
+                DropdownMenuItem(
+                  value: merchantGroup.merchantId,
+                  child: Text(merchantGroup.displayName),
+                ),
+            ],
+            onChanged: _isSaving || widget.snapshot.merchantGroups.length < 2
+                ? null
+                : (value) {
+                    if (value == null) return;
+                    _selectDestination(value);
+                  },
+          ),
+          const SizedBox(height: 12),
+          TextFormField(
+            key: const ValueKey('merchant-group-merge-name'),
+            controller: _destinationNameController,
+            enabled: !_isSaving,
+            decoration: const InputDecoration(
+              labelText: 'Surviving merchant name',
+              prefixIcon: Icon(Icons.edit_outlined),
+            ),
+            onChanged: (_) => setState(() {}),
+          ),
+          const SizedBox(height: 16),
+          Text('Source merchant groups', style: theme.textTheme.titleSmall),
+          const SizedBox(height: 8),
+          for (final merchantGroup in widget.snapshot.merchantGroups.where(
+            (merchantGroup) =>
+                merchantGroup.merchantId != _destinationMerchantId,
+          ))
+            CheckboxListTile(
+              key: ValueKey(
+                'merchant-group-merge-source-${merchantGroup.merchantId}',
+              ),
+              contentPadding: EdgeInsets.zero,
+              value: _sourceMerchantIds.contains(merchantGroup.merchantId),
+              onChanged: _isSaving
+                  ? null
+                  : (value) => _toggleSource(merchantGroup, value ?? false),
+              title: Text(merchantGroup.displayName),
+              subtitle: Text(_merchantGroupUsageText(merchantGroup)),
+            ),
+          const SizedBox(height: 12),
+          _MerchantGroupImpactSummary(usage: sourceUsage),
+          const SizedBox(height: 16),
+          Text('Category strategy', style: theme.textTheme.titleSmall),
+          const SizedBox(height: 8),
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final isCompact =
+                  constraints.hasBoundedWidth && constraints.maxWidth < 520;
+
+              return SegmentedButton<MerchantGroupMergeCategoryStrategy>(
+                key: const ValueKey('merchant-group-merge-strategy'),
+                direction: isCompact ? Axis.vertical : Axis.horizontal,
+                showSelectedIcon: false,
+                segments: [
+                  const ButtonSegment(
+                    value: MerchantGroupMergeCategoryStrategy.preserve,
+                    icon: Icon(Icons.layers_outlined),
+                    label: Text('Preserve categories'),
+                  ),
+                  ButtonSegment(
+                    value: MerchantGroupMergeCategoryStrategy.destination,
+                    enabled: _destinationHasCategory,
+                    icon: const Icon(Icons.category_outlined),
+                    label: const Text('Destination category'),
+                  ),
+                ],
+                selected: {_categoryStrategy},
+                onSelectionChanged: _isSaving
+                    ? null
+                    : (selection) {
+                        setState(() {
+                          _categoryStrategy = selection.single;
+                        });
+                      },
+              );
+            },
+          ),
+          if (!_destinationHasCategory) ...[
+            const SizedBox(height: 8),
+            Text(
+              '${destination.displayName} has no category to apply.',
+              style: theme.textTheme.bodySmall,
+            ),
+          ],
+          if (validationMessage != null) ...[
+            const SizedBox(height: 8),
+            Text(
+              validationMessage,
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.error,
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _MerchantGroupImpactSummary extends StatelessWidget {
+  const _MerchantGroupImpactSummary({required this.usage});
+
+  final MerchantGroupUsageSummary usage;
+
+  @override
+  Widget build(BuildContext context) {
+    return Wrap(
+      spacing: 8,
+      runSpacing: 8,
+      children: [
+        _ImpactChip(
+          icon: Icons.receipt_long_outlined,
+          label: _countLabel(usage.transactionCount, 'transaction'),
+        ),
+        _ImpactChip(
+          icon: Icons.currency_rupee,
+          label: formatMoney(usage.netSpend),
+        ),
+        _ImpactChip(
+          icon: Icons.sell_outlined,
+          label: _countLabel(usage.aliasCount, 'alias'),
+        ),
+        _ImpactChip(
+          icon: Icons.rule_folder_outlined,
+          label: _countLabel(usage.activeMappingRuleCount, 'active rule'),
+        ),
+        _ImpactChip(
+          icon: Icons.rate_review_outlined,
+          label: _countLabel(usage.openReviewSuggestionCount, 'open review'),
+        ),
+      ],
     );
   }
 }
@@ -2432,6 +3173,66 @@ String _labelUsageText(LabelUsageSummary usage) {
   if (recent == null) return countLabel;
 
   return '$countLabel - last used ${dateString(recent)}';
+}
+
+String _merchantGroupCategoryLabel(MerchantGroupUsageSummary usage) {
+  final categoryName = usage.categoryName;
+  final subcategoryName = usage.subcategoryName;
+  if (categoryName == null) return 'Uncategorized';
+  if (subcategoryName == null) return categoryName;
+
+  return '$categoryName / $subcategoryName';
+}
+
+String _merchantGroupUsageText(MerchantGroupUsageSummary usage) {
+  final parts = [
+    _countLabel(usage.transactionCount, 'transaction'),
+    formatMoney(usage.netSpend),
+    if (usage.lastTransactionDate != null)
+      'last ${dateString(usage.lastTransactionDate!)}',
+  ];
+
+  return parts.join(' - ');
+}
+
+MerchantGroupUsageSummary _aggregateMerchantGroupUsage(
+  Iterable<MerchantGroupUsageSummary> usages,
+) {
+  var transactionCount = 0;
+  var netSpend = 0.0;
+  var aliasCount = 0;
+  var activeMappingRuleCount = 0;
+  var openReviewSuggestionCount = 0;
+
+  for (final usage in usages) {
+    transactionCount += usage.transactionCount;
+    netSpend += usage.netSpend;
+    aliasCount += usage.aliasCount;
+    activeMappingRuleCount += usage.activeMappingRuleCount;
+    openReviewSuggestionCount += usage.openReviewSuggestionCount;
+  }
+
+  return MerchantGroupUsageSummary(
+    merchantId: 'selected-sources',
+    displayName: 'Selected sources',
+    transactionCount: transactionCount,
+    netSpend: netSpend,
+    aliasCount: aliasCount,
+    activeMappingRuleCount: activeMappingRuleCount,
+    openReviewSuggestionCount: openReviewSuggestionCount,
+  );
+}
+
+void _refreshMerchantGroupLookups(WidgetRef ref, String householdId) {
+  ref.invalidate(merchantGroupManagerSnapshotProvider(householdId));
+  ref.invalidate(merchantOptionsProvider(householdId));
+  ref.invalidate(transactionsProvider);
+  ref.invalidate(trendReportProvider);
+  ref.invalidate(
+    dashboardSnapshotProvider(FinanceMonthRequest(householdId: householdId)),
+  );
+  ref.invalidate(dashboardSnapshotProvider);
+  ref.invalidate(merchantReviewQueueProvider(householdId));
 }
 
 void _refreshLabelLookups(WidgetRef ref, String householdId) {
