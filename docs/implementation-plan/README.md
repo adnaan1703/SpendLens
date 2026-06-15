@@ -17,7 +17,9 @@ Read these documents in order at the start of every new implementation thread:
 11. [UI Redesign](UI_REDESIGN.md) when executing Milestones 37-51
 12. [Transaction Deletion](TRANSACTION_DELETION.md) when executing Milestones
     52-55
-13. [Session Handoff](SESSION_HANDOFF.md)
+13. [Merchant Autocomplete](MERCHANT_AUTOCOMPLETE.md) when executing
+    Milestones 56-60
+14. [Session Handoff](SESSION_HANDOFF.md)
 
 Completed-only companion execution plans are removed after their durable
 behavior has been folded into this README, [Data Model](DATA_MODEL.md),
@@ -81,6 +83,11 @@ This is not a "no backend" architecture. It is a backend without a permanently r
   deletion regression path across database, importer, Edge Functions, Flutter
   tests, and Android debug build, then closed the companion plan as
   completed-only.
+- Merchant autocomplete: Milestone 56 created the companion plan for canonical
+  merchant suggestions in Activity search and the shared transaction metadata
+  editor. Milestones 57-60 are planned to add canonical merchant filtering,
+  metadata-editor autocomplete, close-match save confirmation, and final
+  regression/docs cleanup.
 - Multi-target monthly caps: required-name recurring caps can include multiple
   categories, multiple labels, or both. A transaction counts once inside a cap
   when any selected category or label matches; overlapping caps are allowed.
@@ -126,10 +133,12 @@ When starting a new implementation thread:
 4. Read [UI Redesign](UI_REDESIGN.md) when executing Milestones 37-51.
 5. Read [Transaction Deletion](TRANSACTION_DELETION.md) when executing
    Milestones 52-55.
-6. Check [Session Handoff](SESSION_HANDOFF.md) for current status.
-7. Do only that milestone unless the user explicitly expands scope.
-8. Preserve documented invariants, especially idempotency, RLS isolation, and no raw email retention.
-9. Update milestone notes when an implementation decision changes the plan.
+6. Read [Merchant Autocomplete](MERCHANT_AUTOCOMPLETE.md) when executing
+   Milestones 56-60.
+7. Check [Session Handoff](SESSION_HANDOFF.md) for current status.
+8. Do only that milestone unless the user explicitly expands scope.
+9. Preserve documented invariants, especially idempotency, RLS isolation, and no raw email retention.
+10. Update milestone notes when an implementation decision changes the plan.
 
 ## Clarification Rule
 

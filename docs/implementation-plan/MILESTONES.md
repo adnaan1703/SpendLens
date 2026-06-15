@@ -2800,6 +2800,128 @@ and Flutter surfaces, then fold final behavior into durable docs.
   - `cd apps/mobile && flutter test`
   - `cd apps/mobile && flutter build apk --debug`
 
+## Milestone 56: Merchant Autocomplete Planning and Reference Readiness
+
+### Status
+
+Completed on 2026-06-15.
+
+### Objective
+
+Create the companion plan for merchant autocomplete and duplicate prevention,
+then wire the new M57-M60 implementation sequence into durable planning docs.
+
+### Tasks
+
+- Create [Merchant Autocomplete](MERCHANT_AUTOCOMPLETE.md) with target
+  behavior, existing foundation, global rules, implementation milestones,
+  acceptance criteria, and verification expectations.
+- Update this milestone tracker, [README](README.md), and
+  [Session Handoff](SESSION_HANDOFF.md) so a fresh session can start M57 from
+  docs alone.
+- Preserve M18-M21 push-notification deferral and leave implementation planned
+  only.
+
+### Acceptance Criteria
+
+- `MERCHANT_AUTOCOMPLETE.md` describes M56-M60 as serial, standalone
+  milestones.
+- M57 is the next recommended implementation milestone.
+- No Flutter, Supabase, importer, Edge Function, hosted rollout, iOS, or web
+  implementation work is started.
+
+### Completion Summary
+
+- Assumptions made:
+  - Merchant autocomplete should be a new non-deferred sequence after M55 while
+    M18-M21 remain deferred by user request.
+  - The feature can start without a Supabase migration because the app already
+    has household merchant lookup reads and backend exact duplicate protection.
+- Mocks created:
+  - None.
+- Mocks used:
+  - None.
+
+## Milestone 57: Merchant Repository and Activity Filter Foundation
+
+### Status
+
+Planned. See
+[Merchant Autocomplete](MERCHANT_AUTOCOMPLETE.md#m57---merchant-repository-and-activity-filter-foundation).
+
+### Objective
+
+Add canonical merchant filtering to Activity while preserving current free-text
+statement merchant search.
+
+### Acceptance Criteria
+
+- Activity supports both arbitrary merchant text search and selecting an
+  existing merchant suggestion.
+- Selecting a suggestion filters by `merchant_id`; typing afterward returns to
+  free-text search.
+- Clearing filters resets both typed merchant text and selected merchant id.
+
+## Milestone 58: Shared Merchant Autocomplete in Metadata Editor
+
+### Status
+
+Planned. See
+[Merchant Autocomplete](MERCHANT_AUTOCOMPLETE.md#m58---shared-merchant-autocomplete-in-metadata-editor).
+
+### Objective
+
+Reuse existing merchant groups while editing transaction metadata from Activity
+or Review.
+
+### Acceptance Criteria
+
+- The shared metadata editor shows merchant suggestions while typing.
+- Selecting an existing merchant fills the canonical name and compatible
+  category/subcategory values.
+- Freeform merchant names remain valid.
+- Activity edit and Review resolve flows continue to share the same editor.
+
+## Milestone 59: Close-Match Merchant Save Confirmation
+
+### Status
+
+Planned. See
+[Merchant Autocomplete](MERCHANT_AUTOCOMPLETE.md#m59---close-match-merchant-save-confirmation).
+
+### Objective
+
+Warn before saving a new merchant group that strongly resembles one existing
+merchant group.
+
+### Acceptance Criteria
+
+- Strong typo-level matches prompt the user to use the existing merchant or
+  keep the typed name.
+- Exact case-insensitive existing names skip the popup and save the canonical
+  display name.
+- Non-match examples do not interrupt saves.
+
+## Milestone 60: Merchant Autocomplete Regression, Docs, and Cleanup
+
+### Status
+
+Planned. See
+[Merchant Autocomplete](MERCHANT_AUTOCOMPLETE.md#m60---merchant-autocomplete-regression-docs-and-cleanup).
+
+### Objective
+
+Verify the full merchant autocomplete behavior and fold the final behavior into
+durable docs.
+
+### Acceptance Criteria
+
+- Activity, Review, and transaction detail metadata edits all share the final
+  merchant autocomplete behavior.
+- Full Flutter verification passes locally.
+- README, MILESTONES, SESSION_HANDOFF, and the companion plan reflect the final
+  behavior.
+
 ## Cross-Milestone Consistency Rules
 
 - Ask the user before proceeding on any undocumented decision. Codex may recommend a default, but must wait for confirmation.
