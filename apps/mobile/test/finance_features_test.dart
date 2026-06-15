@@ -1717,6 +1717,49 @@ void main() {
     expect(find.text('Resolved 1 review items'), findsOneWidget);
   });
 
+  testWidgets('merchant review metadata editor reuses merchant suggestions', (
+    tester,
+  ) async {
+    final repository = _FakeFinanceRepository();
+
+    await tester.pumpWidget(
+      _financeTestApp(
+        repository: repository,
+        child: const MerchantReviewScreen(),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Resolve'));
+    await tester.pumpAndSettle();
+
+    await tester.enterText(
+      find.byKey(const ValueKey('metadata-merchant-group-field')),
+      'swiggy',
+    );
+    await tester.pumpAndSettle();
+
+    expect(
+      find.byKey(const ValueKey('metadata-merchant-option-merchant-swiggy')),
+      findsOneWidget,
+    );
+
+    await tester.tap(
+      find.byKey(const ValueKey('metadata-merchant-option-merchant-swiggy')),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Save'));
+    await tester.pumpAndSettle();
+
+    expect(repository.corrections, hasLength(1));
+    expect(repository.corrections.single.transactionId, 'txn-review-1');
+    expect(repository.corrections.single.reviewItemId, 'review-1');
+    expect(repository.corrections.single.merchantGroup, 'Swiggy Instamart');
+    expect(repository.corrections.single.categoryId, 'cat-food');
+    expect(repository.corrections.single.subcategoryId, 'sub-food-delivery');
+  });
+
   testWidgets('merchant review shows redesigned loading state', (tester) async {
     final repository = _FakeFinanceRepository();
 
@@ -1971,6 +2014,52 @@ void main() {
     );
     expect(find.text('Updated 1 transactions'), findsOneWidget);
   });
+
+  testWidgets(
+    'transaction metadata editor autocomplete selects merchant taxonomy',
+    (tester) async {
+      final repository = _FakeFinanceRepository();
+
+      await tester.pumpWidget(
+        _financeTestApp(repository: repository, child: const ActivityScreen()),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.ensureVisible(find.text('Amazon Shopping'));
+      await tester.tap(find.text('Amazon Shopping'));
+      await tester.pumpAndSettle();
+
+      await tester.ensureVisible(find.widgetWithText(FilledButton, 'Edit'));
+      await tester.tap(find.widgetWithText(FilledButton, 'Edit'));
+      await tester.pumpAndSettle();
+
+      await tester.enterText(
+        find.byKey(const ValueKey('metadata-merchant-group-field')),
+        'ama',
+      );
+      await tester.pumpAndSettle();
+
+      expect(
+        find.byKey(const ValueKey('metadata-merchant-option-merchant-amazon')),
+        findsOneWidget,
+      );
+
+      await tester.tap(
+        find.byKey(const ValueKey('metadata-merchant-option-merchant-amazon')),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('Save'));
+      await tester.pumpAndSettle();
+
+      expect(repository.corrections, hasLength(1));
+      expect(repository.corrections.single.transactionId, 'txn-2');
+      expect(repository.corrections.single.reviewItemId, isNull);
+      expect(repository.corrections.single.merchantGroup, 'Amazon Shopping');
+      expect(repository.corrections.single.categoryId, 'cat-shopping');
+      expect(repository.corrections.single.subcategoryId, 'sub-marketplace');
+    },
+  );
 
   testWidgets('transaction metadata suggestion failure keeps form values', (
     tester,

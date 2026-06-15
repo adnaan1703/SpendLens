@@ -70,355 +70,406 @@ Future<TransactionMetadataCorrectionResult?> showTransactionMetadataEditor({
       var isSaving = false;
       var isSuggesting = false;
 
-      return StatefulBuilder(
-        builder: (context, setDialogState) {
-          final isBusy = isSaving || isSuggesting;
-          final theme = Theme.of(context);
-          final availableSubcategories = dialogSubcategories
-              .where(
-                (subcategory) => subcategory.categoryId == selectedCategoryId,
-              )
-              .toList(growable: false);
-          final dropdownRadius = BorderRadius.circular(12.0);
-          final dropdownTextStyle = theme.textTheme.bodyMedium?.copyWith(
-            color: theme.colorScheme.onSurface,
+      return Consumer(
+        builder: (context, dialogRef, _) {
+          final merchantOptions = dialogRef.watch(
+            merchantOptionsProvider(initialValue.householdId),
           );
-          const dropdownMenuHeight = 320.0;
+          final merchants = merchantOptions.value ?? const <MerchantOption>[];
 
-          return _MetadataEditorModal(
-            form: Form(
-              key: formKey,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  if (isSuggesting) ...[
-                    const LinearProgressIndicator(),
-                    const SizedBox(height: 16),
-                  ],
-                  TextFormField(
-                    key: ValueKey('merchant-group-$merchantGroup'),
-                    initialValue: merchantGroup,
-                    enabled: !isBusy,
-                    textInputAction: TextInputAction.next,
-                    decoration: _metadataFieldDecoration(
-                      context,
-                      label: 'Merchant group',
-                      icon: Icons.storefront_outlined,
-                    ),
-                    validator: (value) {
-                      if ((value ?? '').trim().isEmpty) {
-                        return 'Merchant group is required';
-                      }
+          return StatefulBuilder(
+            builder: (context, setDialogState) {
+              final isBusy = isSaving || isSuggesting;
+              final theme = Theme.of(context);
+              final availableSubcategories = dialogSubcategories
+                  .where(
+                    (subcategory) =>
+                        subcategory.categoryId == selectedCategoryId,
+                  )
+                  .toList(growable: false);
+              final dropdownRadius = BorderRadius.circular(12.0);
+              final dropdownTextStyle = theme.textTheme.bodyMedium?.copyWith(
+                color: theme.colorScheme.onSurface,
+              );
+              const dropdownMenuHeight = 320.0;
 
-                      return null;
-                    },
-                    onChanged: (value) {
-                      merchantGroup = value;
-                    },
-                  ),
-                  const SizedBox(height: 16),
-                  DropdownButtonFormField<String>(
-                    key: ValueKey('category-$selectedCategoryId'),
-                    isExpanded: true,
-                    initialValue: selectedCategoryId,
-                    dropdownColor: theme.colorScheme.surface,
-                    borderRadius: dropdownRadius,
-                    menuMaxHeight: dropdownMenuHeight,
-                    style: dropdownTextStyle,
-                    icon: const Icon(Icons.expand_more_rounded),
-                    iconEnabledColor: theme.colorScheme.onSurfaceVariant,
-                    decoration: _metadataFieldDecoration(
-                      context,
-                      label: 'Category',
-                      icon: Icons.category_outlined,
-                    ),
-                    items: [
-                      for (final category in dialogCategories)
-                        DropdownMenuItem(
-                          value: category.id,
-                          child: Text(
-                            category.name,
-                            overflow: TextOverflow.ellipsis,
-                          ),
+              return _MetadataEditorModal(
+                form: Form(
+                  key: formKey,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      if (isSuggesting) ...[
+                        const LinearProgressIndicator(),
+                        const SizedBox(height: 16),
+                      ],
+                      _MerchantAutocompleteField(
+                        value: merchantGroup,
+                        enabled: !isBusy,
+                        merchants: merchants,
+                        isLoadingSuggestions: merchantOptions.isLoading,
+                        decoration: _metadataFieldDecoration(
+                          context,
+                          label: 'Merchant group',
+                          icon: Icons.storefront_outlined,
                         ),
-                    ],
-                    validator: (value) {
-                      if (value == null) return 'Category is required';
-
-                      return null;
-                    },
-                    onChanged: isBusy
-                        ? null
-                        : (value) {
-                            setDialogState(() {
-                              selectedCategoryId = value;
-                              selectedSubcategoryId = dialogSubcategories
-                                  .where(
-                                    (subcategory) =>
-                                        subcategory.categoryId == value,
-                                  )
-                                  .firstOrNull
-                                  ?.id;
-                            });
-                          },
-                  ),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 8),
-                    child: TextButton.icon(
-                      key: const ValueKey('metadata-create-category-button'),
-                      onPressed: isBusy
-                          ? null
-                          : () async {
-                              final created = await showCategoryCreationDialog(
-                                context: dialogContext,
-                                ref: ref,
-                                householdId: initialValue.householdId,
-                              );
-                              if (created == null) return;
-
-                              refreshCategoryLookups(
-                                ref,
-                                initialValue.householdId,
-                              );
-
-                              setDialogState(() {
-                                if (!dialogCategories.any(
+                        onChanged: (value) {
+                          merchantGroup = value;
+                        },
+                        onSelected: (merchant) {
+                          setDialogState(() {
+                            merchantGroup = merchant.displayName;
+                            final merchantCategoryId = merchant.categoryId;
+                            final merchantSubcategoryId =
+                                merchant.subcategoryId;
+                            final hasCompatibleTaxonomy =
+                                merchantCategoryId != null &&
+                                merchantSubcategoryId != null &&
+                                dialogCategories.any(
                                   (category) =>
-                                      category.id == created.category.id,
-                                )) {
-                                  dialogCategories = [
-                                    ...dialogCategories,
-                                    created.category,
-                                  ]..sort((a, b) => a.name.compareTo(b.name));
-                                }
-                                if (!dialogSubcategories.any(
+                                      category.id == merchantCategoryId,
+                                ) &&
+                                dialogSubcategories.any(
                                   (subcategory) =>
-                                      subcategory.id == created.subcategory.id,
-                                )) {
-                                  dialogSubcategories = [
-                                    ...dialogSubcategories,
-                                    created.subcategory,
-                                  ]..sort((a, b) => a.name.compareTo(b.name));
-                                }
-                                selectedCategoryId = created.category.id;
-                                selectedSubcategoryId = created.subcategory.id;
-                              });
-
-                              if (dialogContext.mounted) {
-                                ScaffoldMessenger.of(
-                                  dialogContext,
-                                ).showSnackBar(
-                                  SnackBar(
-                                    content: Text(
-                                      'Created ${created.category.name}',
-                                    ),
-                                  ),
+                                      subcategory.id == merchantSubcategoryId &&
+                                      subcategory.categoryId ==
+                                          merchantCategoryId,
                                 );
-                              }
-                            },
-                      style: TextButton.styleFrom(
-                        foregroundColor: Theme.of(context).colorScheme.primary,
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 4,
-                          vertical: 8,
+                            if (!hasCompatibleTaxonomy) return;
+
+                            selectedCategoryId = merchantCategoryId;
+                            selectedSubcategoryId = merchantSubcategoryId;
+                          });
+                        },
+                      ),
+                      const SizedBox(height: 16),
+                      DropdownButtonFormField<String>(
+                        key: ValueKey('category-$selectedCategoryId'),
+                        isExpanded: true,
+                        initialValue: selectedCategoryId,
+                        dropdownColor: theme.colorScheme.surface,
+                        borderRadius: dropdownRadius,
+                        menuMaxHeight: dropdownMenuHeight,
+                        style: dropdownTextStyle,
+                        icon: const Icon(Icons.expand_more_rounded),
+                        iconEnabledColor: theme.colorScheme.onSurfaceVariant,
+                        decoration: _metadataFieldDecoration(
+                          context,
+                          label: 'Category',
+                          icon: Icons.category_outlined,
+                        ),
+                        items: [
+                          for (final category in dialogCategories)
+                            DropdownMenuItem(
+                              value: category.id,
+                              child: Text(
+                                category.name,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                        ],
+                        validator: (value) {
+                          if (value == null) return 'Category is required';
+
+                          return null;
+                        },
+                        onChanged: isBusy
+                            ? null
+                            : (value) {
+                                setDialogState(() {
+                                  selectedCategoryId = value;
+                                  selectedSubcategoryId = dialogSubcategories
+                                      .where(
+                                        (subcategory) =>
+                                            subcategory.categoryId == value,
+                                      )
+                                      .firstOrNull
+                                      ?.id;
+                                });
+                              },
+                      ),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 8),
+                        child: TextButton.icon(
+                          key: const ValueKey(
+                            'metadata-create-category-button',
+                          ),
+                          onPressed: isBusy
+                              ? null
+                              : () async {
+                                  final created =
+                                      await showCategoryCreationDialog(
+                                        context: dialogContext,
+                                        ref: ref,
+                                        householdId: initialValue.householdId,
+                                      );
+                                  if (created == null) return;
+
+                                  refreshCategoryLookups(
+                                    ref,
+                                    initialValue.householdId,
+                                  );
+
+                                  setDialogState(() {
+                                    if (!dialogCategories.any(
+                                      (category) =>
+                                          category.id == created.category.id,
+                                    )) {
+                                      dialogCategories =
+                                          [
+                                            ...dialogCategories,
+                                            created.category,
+                                          ]..sort(
+                                            (a, b) => a.name.compareTo(b.name),
+                                          );
+                                    }
+                                    if (!dialogSubcategories.any(
+                                      (subcategory) =>
+                                          subcategory.id ==
+                                          created.subcategory.id,
+                                    )) {
+                                      dialogSubcategories =
+                                          [
+                                            ...dialogSubcategories,
+                                            created.subcategory,
+                                          ]..sort(
+                                            (a, b) => a.name.compareTo(b.name),
+                                          );
+                                    }
+                                    selectedCategoryId = created.category.id;
+                                    selectedSubcategoryId =
+                                        created.subcategory.id;
+                                  });
+
+                                  if (dialogContext.mounted) {
+                                    ScaffoldMessenger.of(
+                                      dialogContext,
+                                    ).showSnackBar(
+                                      SnackBar(
+                                        content: Text(
+                                          'Created ${created.category.name}',
+                                        ),
+                                      ),
+                                    );
+                                  }
+                                },
+                          style: TextButton.styleFrom(
+                            foregroundColor: Theme.of(
+                              context,
+                            ).colorScheme.primary,
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 4,
+                              vertical: 8,
+                            ),
+                          ),
+                          icon: const Icon(Icons.add),
+                          label: const Text('Create category'),
                         ),
                       ),
-                      icon: const Icon(Icons.add),
-                      label: const Text('Create category'),
-                    ),
-                  ),
-                  DropdownButtonFormField<String>(
-                    key: ValueKey(
-                      'subcategory-$selectedCategoryId-$selectedSubcategoryId',
-                    ),
-                    isExpanded: true,
-                    initialValue: selectedSubcategoryId,
-                    dropdownColor: theme.colorScheme.surface,
-                    borderRadius: dropdownRadius,
-                    menuMaxHeight: dropdownMenuHeight,
-                    style: dropdownTextStyle,
-                    icon: const Icon(Icons.expand_more_rounded),
-                    iconEnabledColor: theme.colorScheme.onSurfaceVariant,
-                    decoration: _metadataFieldDecoration(
-                      context,
-                      label: 'Subcategory',
-                      icon: Icons.sell_outlined,
-                    ),
-                    items: [
-                      for (final subcategory in availableSubcategories)
-                        DropdownMenuItem(
-                          value: subcategory.id,
-                          child: Text(
-                            subcategory.name,
-                            overflow: TextOverflow.ellipsis,
-                          ),
+                      DropdownButtonFormField<String>(
+                        key: ValueKey(
+                          'subcategory-$selectedCategoryId-$selectedSubcategoryId',
                         ),
-                    ],
-                    validator: (value) {
-                      if (value == null) {
-                        return 'Subcategory is required';
-                      }
-
-                      return null;
-                    },
-                    onChanged: isBusy
-                        ? null
-                        : (value) {
-                            setDialogState(() {
-                              selectedSubcategoryId = value;
-                            });
-                          },
-                  ),
-                  const SizedBox(height: 16),
-                  DropdownButtonFormField<String>(
-                    key: ValueKey('confidence-$confidence'),
-                    initialValue: confidence,
-                    dropdownColor: theme.colorScheme.surface,
-                    borderRadius: dropdownRadius,
-                    menuMaxHeight: dropdownMenuHeight,
-                    style: dropdownTextStyle,
-                    icon: const Icon(Icons.expand_more_rounded),
-                    iconEnabledColor: theme.colorScheme.onSurfaceVariant,
-                    decoration: _metadataFieldDecoration(
-                      context,
-                      label: 'Confidence',
-                      icon: Icons.verified_outlined,
-                    ),
-                    items: const [
-                      DropdownMenuItem(value: 'manual', child: Text('Manual')),
-                      DropdownMenuItem(value: 'high', child: Text('High')),
-                      DropdownMenuItem(value: 'medium', child: Text('Medium')),
-                      DropdownMenuItem(value: 'low', child: Text('Low')),
-                    ],
-                    onChanged: isBusy
-                        ? null
-                        : (value) {
-                            confidence = value ?? 'manual';
-                          },
-                  ),
-                  const SizedBox(height: 16),
-                  TextFormField(
-                    key: ValueKey('notes-$notes'),
-                    initialValue: notes,
-                    enabled: !isBusy,
-                    minLines: 2,
-                    maxLines: 4,
-                    decoration: _metadataFieldDecoration(
-                      context,
-                      label: 'Notes',
-                      icon: Icons.notes_outlined,
-                      hint: 'Add notes...',
-                    ),
-                    onChanged: (value) {
-                      notes = value;
-                    },
-                  ),
-                  const SizedBox(height: 20),
-                  Text(
-                    'Applies to matching statement merchant and future imports.',
-                    style: Theme.of(context).textTheme.bodySmall,
-                  ),
-                ],
-              ),
-            ),
-            isSaving: isSaving,
-            isSuggesting: isSuggesting,
-            onCancel: isBusy ? null : () => Navigator.of(dialogContext).pop(),
-            onSuggest: isBusy
-                ? null
-                : () async {
-                    setDialogState(() {
-                      isSuggesting = true;
-                    });
-
-                    try {
-                      final suggestion = await ref
-                          .read(financeRepositoryProvider)
-                          .suggestTransactionMetadata(
-                            TransactionMetadataSuggestionRequest(
-                              householdId: initialValue.householdId,
-                              transactionId: initialValue.transactionId,
-                              reviewItemId: initialValue.reviewItemId,
+                        isExpanded: true,
+                        initialValue: selectedSubcategoryId,
+                        dropdownColor: theme.colorScheme.surface,
+                        borderRadius: dropdownRadius,
+                        menuMaxHeight: dropdownMenuHeight,
+                        style: dropdownTextStyle,
+                        icon: const Icon(Icons.expand_more_rounded),
+                        iconEnabledColor: theme.colorScheme.onSurfaceVariant,
+                        decoration: _metadataFieldDecoration(
+                          context,
+                          label: 'Subcategory',
+                          icon: Icons.sell_outlined,
+                        ),
+                        items: [
+                          for (final subcategory in availableSubcategories)
+                            DropdownMenuItem(
+                              value: subcategory.id,
+                              child: Text(
+                                subcategory.name,
+                                overflow: TextOverflow.ellipsis,
+                              ),
                             ),
+                        ],
+                        validator: (value) {
+                          if (value == null) {
+                            return 'Subcategory is required';
+                          }
+
+                          return null;
+                        },
+                        onChanged: isBusy
+                            ? null
+                            : (value) {
+                                setDialogState(() {
+                                  selectedSubcategoryId = value;
+                                });
+                              },
+                      ),
+                      const SizedBox(height: 16),
+                      DropdownButtonFormField<String>(
+                        key: ValueKey('confidence-$confidence'),
+                        initialValue: confidence,
+                        dropdownColor: theme.colorScheme.surface,
+                        borderRadius: dropdownRadius,
+                        menuMaxHeight: dropdownMenuHeight,
+                        style: dropdownTextStyle,
+                        icon: const Icon(Icons.expand_more_rounded),
+                        iconEnabledColor: theme.colorScheme.onSurfaceVariant,
+                        decoration: _metadataFieldDecoration(
+                          context,
+                          label: 'Confidence',
+                          icon: Icons.verified_outlined,
+                        ),
+                        items: const [
+                          DropdownMenuItem(
+                            value: 'manual',
+                            child: Text('Manual'),
+                          ),
+                          DropdownMenuItem(value: 'high', child: Text('High')),
+                          DropdownMenuItem(
+                            value: 'medium',
+                            child: Text('Medium'),
+                          ),
+                          DropdownMenuItem(value: 'low', child: Text('Low')),
+                        ],
+                        onChanged: isBusy
+                            ? null
+                            : (value) {
+                                confidence = value ?? 'manual';
+                              },
+                      ),
+                      const SizedBox(height: 16),
+                      TextFormField(
+                        key: ValueKey('notes-$notes'),
+                        initialValue: notes,
+                        enabled: !isBusy,
+                        minLines: 2,
+                        maxLines: 4,
+                        decoration: _metadataFieldDecoration(
+                          context,
+                          label: 'Notes',
+                          icon: Icons.notes_outlined,
+                          hint: 'Add notes...',
+                        ),
+                        onChanged: (value) {
+                          notes = value;
+                        },
+                      ),
+                      const SizedBox(height: 20),
+                      Text(
+                        'Applies to matching statement merchant and future imports.',
+                        style: Theme.of(context).textTheme.bodySmall,
+                      ),
+                    ],
+                  ),
+                ),
+                isSaving: isSaving,
+                isSuggesting: isSuggesting,
+                onCancel: isBusy
+                    ? null
+                    : () => Navigator.of(dialogContext).pop(),
+                onSuggest: isBusy
+                    ? null
+                    : () async {
+                        setDialogState(() {
+                          isSuggesting = true;
+                        });
+
+                        try {
+                          final suggestion = await ref
+                              .read(financeRepositoryProvider)
+                              .suggestTransactionMetadata(
+                                TransactionMetadataSuggestionRequest(
+                                  householdId: initialValue.householdId,
+                                  transactionId: initialValue.transactionId,
+                                  reviewItemId: initialValue.reviewItemId,
+                                ),
+                              );
+                          final hasCategory = dialogCategories.any(
+                            (category) => category.id == suggestion.categoryId,
                           );
-                      final hasCategory = dialogCategories.any(
-                        (category) => category.id == suggestion.categoryId,
-                      );
-                      final hasSubcategory = dialogSubcategories.any(
-                        (subcategory) =>
-                            subcategory.id == suggestion.subcategoryId &&
-                            subcategory.categoryId == suggestion.categoryId,
-                      );
-                      if (!hasCategory || !hasSubcategory) {
-                        throw StateError(
-                          'Suggestion returned a category that is not available in the editor.',
-                        );
-                      }
-
-                      if (!dialogContext.mounted) return;
-                      setDialogState(() {
-                        merchantGroup = suggestion.merchantGroup;
-                        notes = suggestion.notes;
-                        selectedCategoryId = suggestion.categoryId;
-                        selectedSubcategoryId = suggestion.subcategoryId;
-                        confidence = _supportedConfidence(
-                          suggestion.confidence,
-                        );
-                        isSuggesting = false;
-                      });
-                      ref.invalidate(
-                        aiBudgetStatusProvider(initialValue.householdId),
-                      );
-                    } catch (error) {
-                      if (!dialogContext.mounted) return;
-                      setDialogState(() {
-                        isSuggesting = false;
-                      });
-                      ScaffoldMessenger.of(
-                        dialogContext,
-                      ).showSnackBar(SnackBar(content: Text(error.toString())));
-                    }
-                  },
-            onSave: isBusy
-                ? null
-                : () async {
-                    if (!formKey.currentState!.validate()) return;
-
-                    setDialogState(() {
-                      isSaving = true;
-                    });
-
-                    try {
-                      final correction = await ref
-                          .read(financeRepositoryProvider)
-                          .applyTransactionMetadataCorrection(
-                            TransactionMetadataCorrectionRequest(
-                              householdId: initialValue.householdId,
-                              transactionId: initialValue.transactionId,
-                              reviewItemId: initialValue.reviewItemId,
-                              merchantGroup: merchantGroup.trim(),
-                              categoryId: selectedCategoryId!,
-                              subcategoryId: selectedSubcategoryId!,
-                              confidence: confidence,
-                              notes: notes.trim().isEmpty ? null : notes.trim(),
-                            ),
+                          final hasSubcategory = dialogSubcategories.any(
+                            (subcategory) =>
+                                subcategory.id == suggestion.subcategoryId &&
+                                subcategory.categoryId == suggestion.categoryId,
                           );
+                          if (!hasCategory || !hasSubcategory) {
+                            throw StateError(
+                              'Suggestion returned a category that is not available in the editor.',
+                            );
+                          }
 
-                      if (dialogContext.mounted) {
-                        Navigator.of(dialogContext).pop(correction);
-                      }
-                    } catch (error) {
-                      if (!dialogContext.mounted) return;
-                      setDialogState(() {
-                        isSaving = false;
-                      });
+                          if (!dialogContext.mounted) return;
+                          setDialogState(() {
+                            merchantGroup = suggestion.merchantGroup;
+                            notes = suggestion.notes;
+                            selectedCategoryId = suggestion.categoryId;
+                            selectedSubcategoryId = suggestion.subcategoryId;
+                            confidence = _supportedConfidence(
+                              suggestion.confidence,
+                            );
+                            isSuggesting = false;
+                          });
+                          ref.invalidate(
+                            aiBudgetStatusProvider(initialValue.householdId),
+                          );
+                        } catch (error) {
+                          if (!dialogContext.mounted) return;
+                          setDialogState(() {
+                            isSuggesting = false;
+                          });
+                          ScaffoldMessenger.of(dialogContext).showSnackBar(
+                            SnackBar(content: Text(error.toString())),
+                          );
+                        }
+                      },
+                onSave: isBusy
+                    ? null
+                    : () async {
+                        if (!formKey.currentState!.validate()) return;
 
-                      ScaffoldMessenger.of(
-                        dialogContext,
-                      ).showSnackBar(SnackBar(content: Text(error.toString())));
-                    }
-                  },
+                        setDialogState(() {
+                          isSaving = true;
+                        });
+
+                        try {
+                          final correction = await ref
+                              .read(financeRepositoryProvider)
+                              .applyTransactionMetadataCorrection(
+                                TransactionMetadataCorrectionRequest(
+                                  householdId: initialValue.householdId,
+                                  transactionId: initialValue.transactionId,
+                                  reviewItemId: initialValue.reviewItemId,
+                                  merchantGroup: merchantGroup.trim(),
+                                  categoryId: selectedCategoryId!,
+                                  subcategoryId: selectedSubcategoryId!,
+                                  confidence: confidence,
+                                  notes: notes.trim().isEmpty
+                                      ? null
+                                      : notes.trim(),
+                                ),
+                              );
+
+                          if (dialogContext.mounted) {
+                            Navigator.of(dialogContext).pop(correction);
+                          }
+                        } catch (error) {
+                          if (!dialogContext.mounted) return;
+                          setDialogState(() {
+                            isSaving = false;
+                          });
+
+                          ScaffoldMessenger.of(dialogContext).showSnackBar(
+                            SnackBar(content: Text(error.toString())),
+                          );
+                        }
+                      },
+              );
+            },
           );
         },
       );
@@ -465,6 +516,165 @@ InputDecoration _metadataFieldDecoration(
       borderSide: BorderSide(color: theme.colorScheme.error, width: 2),
     ),
   );
+}
+
+class _MerchantAutocompleteField extends StatefulWidget {
+  const _MerchantAutocompleteField({
+    required this.value,
+    required this.enabled,
+    required this.merchants,
+    required this.isLoadingSuggestions,
+    required this.decoration,
+    required this.onChanged,
+    required this.onSelected,
+  });
+
+  final String value;
+  final bool enabled;
+  final List<MerchantOption> merchants;
+  final bool isLoadingSuggestions;
+  final InputDecoration decoration;
+  final ValueChanged<String> onChanged;
+  final ValueChanged<MerchantOption> onSelected;
+
+  @override
+  State<_MerchantAutocompleteField> createState() =>
+      _MerchantAutocompleteFieldState();
+}
+
+class _MerchantAutocompleteFieldState
+    extends State<_MerchantAutocompleteField> {
+  late final TextEditingController _controller;
+  late final FocusNode _focusNode;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = TextEditingController(text: widget.value);
+    _focusNode = FocusNode();
+  }
+
+  @override
+  void didUpdateWidget(covariant _MerchantAutocompleteField oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.value == _controller.text) return;
+
+    final nextValue = widget.value;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted ||
+          widget.value != nextValue ||
+          _controller.text == nextValue) {
+        return;
+      }
+
+      _controller.value = TextEditingValue(
+        text: nextValue,
+        selection: TextSelection.collapsed(offset: nextValue.length),
+      );
+    });
+  }
+
+  @override
+  void dispose() {
+    _focusNode.dispose();
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final fieldWidth = constraints.hasBoundedWidth
+            ? constraints.maxWidth
+            : MediaQuery.sizeOf(context).width;
+
+        return RawAutocomplete<MerchantOption>(
+          textEditingController: _controller,
+          focusNode: _focusNode,
+          displayStringForOption: (merchant) => merchant.displayName,
+          optionsBuilder: (textEditingValue) {
+            if (!widget.enabled) return const Iterable<MerchantOption>.empty();
+
+            final query = textEditingValue.text.trim().toLowerCase();
+            if (query.isEmpty) return const Iterable<MerchantOption>.empty();
+
+            return widget.merchants
+                .where(
+                  (merchant) =>
+                      merchant.displayName.toLowerCase().contains(query),
+                )
+                .take(8);
+          },
+          onSelected: widget.onSelected,
+          fieldViewBuilder:
+              (context, textController, focusNode, onFieldSubmitted) {
+                return TextFormField(
+                  key: const ValueKey('metadata-merchant-group-field'),
+                  controller: textController,
+                  focusNode: focusNode,
+                  enabled: widget.enabled,
+                  textInputAction: TextInputAction.next,
+                  decoration: widget.decoration.copyWith(
+                    suffixIcon: widget.isLoadingSuggestions
+                        ? const Padding(
+                            padding: EdgeInsets.all(14),
+                            child: SizedBox.square(
+                              dimension: 18,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            ),
+                          )
+                        : null,
+                  ),
+                  validator: (value) {
+                    if ((value ?? '').trim().isEmpty) {
+                      return 'Merchant group is required';
+                    }
+
+                    return null;
+                  },
+                  onChanged: widget.onChanged,
+                  onFieldSubmitted: (_) => onFieldSubmitted(),
+                );
+              },
+          optionsViewBuilder: (context, onSelected, options) {
+            return Align(
+              alignment: Alignment.topLeft,
+              child: Material(
+                elevation: 4,
+                color: Theme.of(context).colorScheme.surface,
+                borderRadius: BorderRadius.circular(12),
+                clipBehavior: Clip.antiAlias,
+                child: SizedBox(
+                  width: fieldWidth,
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxHeight: 280),
+                    child: ListView.builder(
+                      padding: EdgeInsets.zero,
+                      shrinkWrap: true,
+                      itemCount: options.length,
+                      itemBuilder: (context, index) {
+                        final merchant = options.elementAt(index);
+
+                        return ListTile(
+                          key: ValueKey(
+                            'metadata-merchant-option-${merchant.id}',
+                          ),
+                          leading: const Icon(Icons.storefront_outlined),
+                          title: Text(merchant.displayName),
+                          onTap: () => onSelected(merchant),
+                        );
+                      },
+                    ),
+                  ),
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
 }
 
 class _MetadataEditorModal extends StatelessWidget {

@@ -2893,7 +2893,7 @@ statement merchant search.
 
 ### Status
 
-Planned. See
+Completed on 2026-06-15. See
 [Merchant Autocomplete](MERCHANT_AUTOCOMPLETE.md#m58---shared-merchant-autocomplete-in-metadata-editor).
 
 ### Objective
@@ -2908,6 +2908,32 @@ or Review.
   category/subcategory values.
 - Freeform merchant names remain valid.
 - Activity edit and Review resolve flows continue to share the same editor.
+
+### Completion Summary
+
+- Replaced the shared metadata editor's Merchant group text field with a
+  local Material autocomplete field backed by
+  `merchantOptionsProvider(initialValue.householdId)`.
+- Selecting an existing merchant fills the canonical display name and updates
+  category/subcategory only when both merchant taxonomy ids are available in
+  the editor option lists.
+- Preserved freeform merchant names, Suggest updates, Create category,
+  confidence, notes, validation, loading, save, cancel, and error behavior.
+- Added focused widget coverage for both Activity detail editing and Review
+  resolution through the shared editor.
+- Verification:
+  - `cd apps/mobile && flutter test test/finance_features_test.dart --name "metadata|merchant review"`
+  - `cd apps/mobile && flutter analyze`
+- Assumptions made:
+  - Existing household merchant options are sufficient for metadata-editor
+    autocomplete; no Supabase migration was needed for M58.
+  - The autocomplete helper should remain local to the shared metadata editor
+    until later milestone work proves it needs broader reuse.
+  - Milestones 18-21 remain deferred, and Milestones 59-60 were not started.
+- Mocks created:
+  - None.
+- Mocks used:
+  - Existing `_FakeFinanceRepository` merchant options and repository fakes.
 
 ## Milestone 59: Close-Match Merchant Save Confirmation
 

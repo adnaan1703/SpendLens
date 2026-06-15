@@ -86,8 +86,10 @@ This is not a "no backend" architecture. It is a backend without a permanently r
 - Merchant autocomplete: Milestone 56 created the companion plan for canonical
   merchant suggestions in Activity search and the shared transaction metadata
   editor. Milestone 57 added canonical merchant filtering to Activity while
-  preserving free-text statement merchant search. Milestones 58-60 remain planned
-  for metadata-editor autocomplete, close-match save confirmation, and final
+  preserving free-text statement merchant search. Milestone 58 added shared
+  metadata-editor merchant autocomplete for Activity and Review edits, including
+  compatible category/subcategory selection from existing merchant options.
+  Milestones 59-60 remain planned for close-match save confirmation and final
   regression/docs cleanup.
 - Multi-target monthly caps: required-name recurring caps can include multiple
   categories, multiple labels, or both. A transaction counts once inside a cap

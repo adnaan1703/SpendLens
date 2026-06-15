@@ -196,6 +196,8 @@ Completion summary:
 
 ## M58 - Shared Merchant Autocomplete in Metadata Editor
 
+Status: Completed on 2026-06-15.
+
 Purpose: Reuse existing merchant groups while editing transaction metadata from
 Activity or Review.
 
@@ -247,6 +249,31 @@ Completion summary requirements:
 - Assumptions made
 - Mocks created
 - Mocks used
+
+Completion summary:
+
+- Replaced the shared metadata editor Merchant group text field with a local
+  Material autocomplete field backed by `merchantOptionsProvider`.
+- Selecting a merchant suggestion fills the canonical display name and selects
+  compatible category/subcategory ids only when both ids are present in the
+  editor's current option lists.
+- Preserved freeform merchant entry, Suggest updates, Create category,
+  confidence, notes, validation, loading, save, cancel, and error handling.
+- Added Activity detail edit and Review resolve widget coverage for the shared
+  editor autocomplete behavior.
+- Verification:
+  - `cd apps/mobile && flutter test test/finance_features_test.dart --name "metadata|merchant review"`
+  - `cd apps/mobile && flutter analyze`
+- Assumptions made:
+  - Existing merchant option reads are sufficient for M58; no Supabase
+    migration was needed.
+  - Keeping the helper local to the metadata editor is enough for M58 because
+    Activity search already owns its separate filter-specific autocomplete.
+  - Milestones 18-21 remain deferred, and M59-M60 were not started.
+- Mocks created:
+  - None.
+- Mocks used:
+  - Existing `_FakeFinanceRepository` merchant options and repository fakes.
 
 ## M59 - Close-Match Merchant Save Confirmation
 
