@@ -96,12 +96,16 @@ This is not a "no backend" architecture. It is a backend without a permanently r
   Flutter regression and docs cleanup, confirmed no schema or RPC migration was
   needed, and left `MERCHANT_AUTOCOMPLETE.md` as a completed-only reference.
 - Merchant group management: Milestone 61 created the companion plan for
-  Settings-based canonical merchant group rename and merge. Implementation is
-  planned for Milestones 62-64. The planned contract treats `public.merchants`
-  as the group source of truth, renames by preserving merchant IDs, merges by
-  moving aliases/rules/transactions/review suggestions to a destination
-  merchant, and requires the user to choose whether merge category fields are
-  preserved or replaced by the destination merchant category/subcategory.
+  Settings-based canonical merchant group rename and merge. Milestone 62 added
+  the RLS-safe data/repository contract: `public.v_merchant_group_usage`,
+  `rename_household_merchant(...)`, `merge_household_merchants(...)`, Flutter
+  repository request/result models, and canonical Dashboard merchant grouping.
+  The contract treats `public.merchants` as the group source of truth, renames
+  by preserving merchant IDs, merges by moving aliases/rules/transactions/open
+  review suggestions to a destination merchant, deletes source merchant rows
+  after references move, and requires the user to choose whether merge category
+  fields are preserved or replaced by the destination merchant
+  category/subcategory. Visible Settings UI remains planned for Milestone 63.
 - Multi-target monthly caps: required-name recurring caps can include multiple
   categories, multiple labels, or both. A transaction counts once inside a cap
   when any selected category or label matches; overlapping caps are allowed.

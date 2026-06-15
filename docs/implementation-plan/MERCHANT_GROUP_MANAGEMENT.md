@@ -151,7 +151,7 @@ Completion summary:
 
 ## M62 - Merchant Group Data and Repository Contract
 
-Status: Planned.
+Status: Completed on 2026-06-15.
 
 Purpose: Add the RLS-safe Supabase and Flutter repository contract needed for
 merchant group rename and merge before building the Settings UI.
@@ -245,6 +245,52 @@ Completion summary requirements:
 - Assumptions made
 - Mocks created
 - Mocks used
+
+Completion summary:
+
+- Added `public.v_merchant_group_usage` as a security-invoker Settings usage
+  view with transaction, net spend, alias, active-rule, open-review, category,
+  subcategory, and last-transaction fields.
+- Added RLS-safe app-facing `rename_household_merchant(...)` and
+  `merge_household_merchants(...)` RPCs for household writers. Merge supports
+  Preserve categories and Destination category strategies, moves source
+  aliases/rules/transactions/open review suggestions to the destination, and
+  deletes source merchant rows after references move.
+- Extended the Flutter finance repository with merchant group manager snapshot,
+  rename, merge request/result models, fake repository hooks, and canonical
+  dashboard top-merchant grouping by `merchant_id` when available.
+- Added focused pgTAP and Flutter coverage for rename, duplicate/blank
+  rejection, merge preserve, merge destination, isolation/role denial, result
+  parsing, request capture, and canonical dashboard grouping.
+- Milestones 18-21 remain deferred by user request, and M63 Settings UI work
+  was not started.
+- Verification:
+  - `supabase db reset --local`
+  - `supabase test db --local supabase/tests/merchant_group_management.sql`
+  - `supabase test db --local supabase/tests/merchant_review_corrections.sql`
+  - `supabase test db --local supabase/tests/transaction_metadata_editing.sql`
+  - `supabase test db --local supabase/tests`
+  - `supabase db lint --local --schema app_private,public --fail-on error`
+  - `cd apps/mobile && flutter test test/finance_features_test.dart --name "merchant|dashboard|repository"`
+  - `cd apps/mobile && flutter analyze`
+  - `cd apps/mobile && flutter test`
+  - `git diff --check`
+- Assumptions made:
+  - Destination-strategy merge requires the surviving destination merchant to
+    have both category and subcategory values before applying taxonomy to moved
+    source references.
+  - Direct merchant deletion remains out of scope; the source-merchant delete
+    path is only opened during the merge RPC via a transaction-local RLS guard.
+  - Closed historical review suggestions that reference deleted source
+    merchants may follow existing foreign-key `on delete set null` behavior;
+    M62 explicitly moves open review suggestions.
+  - Hosted Supabase migration push is outside this local milestone.
+- Mocks created:
+  - None.
+- Mocks used:
+  - Existing `_FakeFinanceRepository` data was extended with merchant-group
+    snapshot, rename, merge, alias-count, and canonical dashboard grouping
+    hooks.
 
 ## M63 - Settings Merchant Group Manager UX
 

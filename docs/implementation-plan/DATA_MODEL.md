@@ -452,7 +452,7 @@ Workbook mapping:
 
 - `Merchant Group`, `Category`, `Subcategory`, `Confidence`, `Notes`, and `Source URL`.
 
-Planned merchant group management rules from Milestones 61-64:
+Merchant group management rules from Milestones 61-64:
 
 - `merchants.display_name` is the canonical merchant group name exposed in
   Settings.
@@ -469,6 +469,9 @@ Planned merchant group management rules from Milestones 61-64:
 - Statement-merchant-level reassignment, alias editing, merchant deletion, and
   raw statement merchant editing remain out of scope for the planned Settings
   manager.
+- Milestone 62 added the app-facing data contract:
+  `public.v_merchant_group_usage`, `rename_household_merchant(...)`, and
+  `merge_household_merchants(...)`. Visible Settings UI is planned for M63.
 
 ### `merchant_aliases`
 

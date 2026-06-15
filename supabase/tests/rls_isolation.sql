@@ -58,6 +58,7 @@ select is(
         'v_category_monthly_spend',
         'v_budget_progress',
         'v_label_usage',
+        'v_merchant_group_usage',
         'v_monthly_cap_progress',
         'v_merchant_summary',
         'v_review_queue',

@@ -173,6 +173,123 @@ void main() {
     );
   });
 
+  test(
+    'merchant group repository contract mutates fake rename and merge',
+    () async {
+      final repository = _FakeFinanceRepository();
+
+      final snapshot = await repository.fetchMerchantGroupManagerSnapshot(
+        householdId: 'household-1',
+      );
+      final swiggyUsage = snapshot.usageFor('merchant-swiggy');
+      expect(swiggyUsage?.displayName, 'Swiggy Instamart');
+      expect(swiggyUsage?.transactionCount, 1);
+      expect(swiggyUsage?.activeMappingRuleCount, 1);
+
+      final renamed = await repository.renameMerchantGroup(
+        const MerchantGroupRenameRequest(
+          householdId: 'household-1',
+          merchantId: 'merchant-swiggy',
+          displayName: 'Swiggy Market',
+        ),
+      );
+      expect(renamed.displayName, 'Swiggy Market');
+      expect(
+        repository.merchantGroupRenameRequests.single.merchantId,
+        'merchant-swiggy',
+      );
+
+      final result = await repository.mergeMerchantGroups(
+        const MerchantGroupMergeRequest(
+          householdId: 'household-1',
+          destinationMerchantId: 'merchant-swiggy',
+          destinationDisplayName: 'Swiggy Market',
+          sourceMerchantIds: ['merchant-amazon'],
+          categoryStrategy: MerchantGroupMergeCategoryStrategy.destination,
+        ),
+      );
+
+      expect(result.destinationMerchantId, 'merchant-swiggy');
+      expect(result.movedTransactionCount, 1);
+      expect(result.movedAliasCount, 1);
+      expect(result.deletedSourceMerchantCount, 1);
+      expect(result.categoryUpdatedTransactionCount, 1);
+      expect(
+        repository.merchantGroupMergeRequests.single.categoryStrategy,
+        MerchantGroupMergeCategoryStrategy.destination,
+      );
+
+      final page = await repository.fetchTransactions(
+        const TransactionQuery(householdId: 'household-1'),
+      );
+      final amazonTransaction = page.items
+          .where((transaction) => transaction.id == 'txn-2')
+          .single;
+      expect(amazonTransaction.merchantId, 'merchant-swiggy');
+      expect(amazonTransaction.merchantName, 'Swiggy Market');
+      expect(amazonTransaction.categoryId, 'cat-food');
+      expect(amazonTransaction.subcategoryId, 'sub-food-delivery');
+    },
+  );
+
+  test('merchant group merge result parses count payloads', () {
+    final result = MerchantGroupMergeResult.fromJson({
+      'destination_merchant_id': 'merchant-swiggy',
+      'destination_display_name': 'Swiggy Instamart',
+      'destination_category_id': 'cat-food',
+      'destination_subcategory_id': 'sub-food-delivery',
+      'moved_transaction_count': '2',
+      'moved_alias_count': 3,
+      'moved_mapping_rule_count': 4,
+      'moved_review_suggestion_count': 1,
+      'deleted_source_merchant_count': 2,
+      'category_updated_transaction_count': 2,
+      'category_updated_mapping_rule_count': 1,
+      'category_updated_review_suggestion_count': 1,
+    });
+
+    expect(result.destinationMerchantId, 'merchant-swiggy');
+    expect(result.destinationCategoryId, 'cat-food');
+    expect(result.movedTransactionCount, 2);
+    expect(result.movedAliasCount, 3);
+    expect(result.categoryUpdatedMappingRuleCount, 1);
+  });
+
+  test('dashboard top merchants group by canonical merchant id', () {
+    final merchants = topMerchantsFromTransactionRows(
+      [
+        {
+          'merchant_id': 'merchant-swiggy',
+          'statement_merchant': 'SWIGGY INSTAMART BLR',
+          'normalized_statement_merchant': 'swiggy instamart blr',
+          'net_expense': 1200,
+          'refund_amount': 0,
+        },
+        {
+          'merchant_id': 'merchant-swiggy',
+          'statement_merchant': 'SWIGGY GROCERY',
+          'normalized_statement_merchant': 'swiggy grocery',
+          'net_expense': 300,
+          'refund_amount': 0,
+        },
+        {
+          'merchant_id': null,
+          'statement_merchant': 'LOCAL CAFE',
+          'normalized_statement_merchant': 'local cafe',
+          'net_expense': 500,
+          'refund_amount': 50,
+        },
+      ],
+      merchantNamesById: {'merchant-swiggy': 'Swiggy Instamart'},
+    );
+
+    expect(merchants.first.merchantName, 'Swiggy Instamart');
+    expect(merchants.first.transactionCount, 2);
+    expect(merchants.first.netSpend, 1500);
+    expect(merchants.last.merchantName, 'LOCAL CAFE');
+    expect(merchants.last.refundAmount, 50);
+  });
+
   test('monthly cap progress parses carry-forward values', () {
     final progress = MonthlyCapProgress.fromJson({
       'monthly_cap_id': 'cap-carry',
@@ -3434,6 +3551,8 @@ final class _FakeFinanceRepository implements FinanceRepository {
   final deletedSubcategoryRequests = <TaxonomySubcategoryDeleteRequest>[];
   final deletedCategoryRequests = <TaxonomyCategoryDeleteRequest>[];
   final mergeRequests = <CategoryMergeRequest>[];
+  final merchantGroupRenameRequests = <MerchantGroupRenameRequest>[];
+  final merchantGroupMergeRequests = <MerchantGroupMergeRequest>[];
   final labelCreateRequests = <LabelCreateRequest>[];
   final labelSetRequests = <TransactionLabelsSetRequest>[];
   final labelRenameRequests = <LabelRenameRequest>[];
@@ -3454,6 +3573,7 @@ final class _FakeFinanceRepository implements FinanceRepository {
   int availableMonthsFetchCount = 0;
   int labelFetchCount = 0;
   int labelManagerFetchCount = 0;
+  int merchantGroupManagerFetchCount = 0;
   int reviewQueueFetchCount = 0;
   int piggyBanksFetchCount = 0;
   int piggyEntriesFetchCount = 0;
@@ -3511,14 +3631,46 @@ final class _FakeFinanceRepository implements FinanceRepository {
   ];
 
   final activeMappingRules = <Map<String, dynamic>>[
-    {'category_id': 'cat-food', 'subcategory_id': 'sub-food-delivery'},
-    {'category_id': 'cat-shopping', 'subcategory_id': 'sub-marketplace'},
+    {
+      'merchant_id': 'merchant-swiggy',
+      'category_id': 'cat-food',
+      'subcategory_id': 'sub-food-delivery',
+      'apply_to_future': true,
+    },
+    {
+      'merchant_id': 'merchant-amazon',
+      'category_id': 'cat-shopping',
+      'subcategory_id': 'sub-marketplace',
+      'apply_to_future': true,
+    },
   ];
 
   final labels = <LabelOption>[
     LabelOption(id: 'label-grocery', name: 'Groceries'),
     LabelOption(id: 'label-reimburse', name: 'Reimburse'),
   ];
+
+  final merchants = <MerchantOption>[
+    MerchantOption(
+      id: 'merchant-amazon',
+      displayName: 'Amazon Shopping',
+      categoryId: 'cat-shopping',
+      subcategoryId: 'sub-marketplace',
+    ),
+    MerchantOption(
+      id: 'merchant-swiggy',
+      displayName: 'Swiggy Instamart',
+      categoryId: 'cat-food',
+      subcategoryId: 'sub-food-delivery',
+    ),
+    MerchantOption(id: 'merchant-uber', displayName: 'Uber'),
+  ];
+
+  final merchantAliasCounts = <String, int>{
+    'merchant-amazon': 1,
+    'merchant-swiggy': 1,
+    'merchant-uber': 0,
+  };
 
   List<DateTime> availableMonths = [DateTime(2026, 3), DateTime(2026, 2)];
 
@@ -3874,6 +4026,218 @@ final class _FakeFinanceRepository implements FinanceRepository {
             recentUsedAt: _recentLabelUse(label.id),
           ),
       ]..sort((a, b) => _compareTestLabels(a.label, b.label)),
+    );
+  }
+
+  @override
+  Future<MerchantGroupManagerSnapshot> fetchMerchantGroupManagerSnapshot({
+    required String householdId,
+  }) async {
+    merchantGroupManagerFetchCount += 1;
+    final categoriesById = {
+      for (final category in categories) category.id: category.name,
+    };
+    final subcategoriesById = {
+      for (final subcategory in subcategories) subcategory.id: subcategory.name,
+    };
+
+    return MerchantGroupManagerSnapshot(
+      merchantGroups: [
+        for (final merchant in merchants)
+          MerchantGroupUsageSummary(
+            merchantId: merchant.id,
+            displayName: merchant.displayName,
+            categoryId: merchant.categoryId,
+            categoryName: merchant.categoryId == null
+                ? null
+                : categoriesById[merchant.categoryId],
+            subcategoryId: merchant.subcategoryId,
+            subcategoryName: merchant.subcategoryId == null
+                ? null
+                : subcategoriesById[merchant.subcategoryId],
+            transactionCount: transactions
+                .where((transaction) => transaction.merchantId == merchant.id)
+                .length,
+            netSpend: transactions
+                .where((transaction) => transaction.merchantId == merchant.id)
+                .fold<double>(
+                  0,
+                  (total, transaction) => total + transaction.netExpense,
+                ),
+            aliasCount: merchantAliasCounts[merchant.id] ?? 0,
+            activeMappingRuleCount: activeMappingRules
+                .where(
+                  (rule) =>
+                      rule['merchant_id'] == merchant.id &&
+                      rule['apply_to_future'] != false,
+                )
+                .length,
+            openReviewSuggestionCount: reviewItems
+                .where((item) => item.suggestedMerchantId == merchant.id)
+                .length,
+            lastTransactionDate: _latestTransactionDate(merchant.id),
+          ),
+      ]..sort((a, b) => a.displayName.compareTo(b.displayName)),
+    );
+  }
+
+  @override
+  Future<MerchantOption> renameMerchantGroup(
+    MerchantGroupRenameRequest request,
+  ) async {
+    merchantGroupRenameRequests.add(request);
+    final name = request.displayName.trim();
+    if (name.isEmpty) {
+      throw ArgumentError.value(
+        request.displayName,
+        'displayName',
+        'Merchant group name is required.',
+      );
+    }
+    if (merchants.any(
+      (merchant) =>
+          merchant.id != request.merchantId &&
+          merchant.displayName.toLowerCase() == name.toLowerCase(),
+    )) {
+      throw StateError('Merchant group already exists.');
+    }
+
+    final index = merchants.indexWhere(
+      (merchant) => merchant.id == request.merchantId,
+    );
+    final current = merchants[index];
+    final renamed = MerchantOption(
+      id: current.id,
+      displayName: name,
+      categoryId: current.categoryId,
+      subcategoryId: current.subcategoryId,
+    );
+    merchants[index] = renamed;
+    for (var index = 0; index < transactions.length; index += 1) {
+      final transaction = transactions[index];
+      if (transaction.merchantId != renamed.id) continue;
+
+      transactions[index] = _copyTransaction(
+        transaction,
+        merchantName: renamed.displayName,
+      );
+    }
+
+    return renamed;
+  }
+
+  @override
+  Future<MerchantGroupMergeResult> mergeMerchantGroups(
+    MerchantGroupMergeRequest request,
+  ) async {
+    merchantGroupMergeRequests.add(request);
+    final destinationIndex = merchants.indexWhere(
+      (merchant) => merchant.id == request.destinationMerchantId,
+    );
+    final destination = merchants[destinationIndex];
+    final destinationName = request.destinationDisplayName.trim();
+    final renamedDestination = MerchantOption(
+      id: destination.id,
+      displayName: destinationName,
+      categoryId: destination.categoryId,
+      subcategoryId: destination.subcategoryId,
+    );
+    merchants[destinationIndex] = renamedDestination;
+
+    final sourceIds = request.sourceMerchantIds.toSet();
+    final movedTransactions = transactions
+        .where((transaction) => sourceIds.contains(transaction.merchantId))
+        .toList(growable: false);
+    final movedAliasCount = sourceIds.fold<int>(
+      0,
+      (total, merchantId) => total + (merchantAliasCounts[merchantId] ?? 0),
+    );
+    final movedMappingRuleCount = activeMappingRules
+        .where((rule) => sourceIds.contains(rule['merchant_id']))
+        .length;
+    final categoryUpdatedMappingRuleCount =
+        request.categoryStrategy ==
+            MerchantGroupMergeCategoryStrategy.destination
+        ? movedMappingRuleCount
+        : 0;
+
+    for (var index = 0; index < transactions.length; index += 1) {
+      final transaction = transactions[index];
+      if (!sourceIds.contains(transaction.merchantId)) continue;
+
+      transactions[index] = _copyTransaction(
+        transaction,
+        merchantId: renamedDestination.id,
+        merchantName: renamedDestination.displayName,
+        categoryId:
+            request.categoryStrategy ==
+                MerchantGroupMergeCategoryStrategy.destination
+            ? renamedDestination.categoryId
+            : null,
+        categoryName:
+            request.categoryStrategy ==
+                MerchantGroupMergeCategoryStrategy.destination
+            ? categories
+                  .where(
+                    (category) => category.id == renamedDestination.categoryId,
+                  )
+                  .firstOrNull
+                  ?.name
+            : null,
+        subcategoryId:
+            request.categoryStrategy ==
+                MerchantGroupMergeCategoryStrategy.destination
+            ? renamedDestination.subcategoryId
+            : null,
+        subcategoryName:
+            request.categoryStrategy ==
+                MerchantGroupMergeCategoryStrategy.destination
+            ? subcategories
+                  .where(
+                    (subcategory) =>
+                        subcategory.id == renamedDestination.subcategoryId,
+                  )
+                  .firstOrNull
+                  ?.name
+            : null,
+      );
+    }
+
+    for (final rule in activeMappingRules) {
+      if (!sourceIds.contains(rule['merchant_id'])) continue;
+
+      rule['merchant_id'] = renamedDestination.id;
+      if (request.categoryStrategy ==
+          MerchantGroupMergeCategoryStrategy.destination) {
+        rule['category_id'] = renamedDestination.categoryId;
+        rule['subcategory_id'] = renamedDestination.subcategoryId;
+      }
+    }
+
+    merchantAliasCounts[renamedDestination.id] =
+        (merchantAliasCounts[renamedDestination.id] ?? 0) + movedAliasCount;
+    for (final sourceId in sourceIds) {
+      merchantAliasCounts.remove(sourceId);
+    }
+    merchants.removeWhere((merchant) => sourceIds.contains(merchant.id));
+
+    return MerchantGroupMergeResult(
+      destinationMerchantId: renamedDestination.id,
+      destinationDisplayName: renamedDestination.displayName,
+      destinationCategoryId: renamedDestination.categoryId,
+      destinationSubcategoryId: renamedDestination.subcategoryId,
+      movedTransactionCount: movedTransactions.length,
+      movedAliasCount: movedAliasCount,
+      movedMappingRuleCount: movedMappingRuleCount,
+      movedReviewSuggestionCount: 0,
+      deletedSourceMerchantCount: sourceIds.length,
+      categoryUpdatedTransactionCount:
+          request.categoryStrategy ==
+              MerchantGroupMergeCategoryStrategy.destination
+          ? movedTransactions.length
+          : 0,
+      categoryUpdatedMappingRuleCount: categoryUpdatedMappingRuleCount,
+      categoryUpdatedReviewSuggestionCount: 0,
     );
   }
 
@@ -4240,21 +4604,8 @@ final class _FakeFinanceRepository implements FinanceRepository {
   Future<List<MerchantOption>> fetchMerchants({
     required String householdId,
   }) async {
-    return const [
-      MerchantOption(
-        id: 'merchant-amazon',
-        displayName: 'Amazon Shopping',
-        categoryId: 'cat-shopping',
-        subcategoryId: 'sub-marketplace',
-      ),
-      MerchantOption(
-        id: 'merchant-swiggy',
-        displayName: 'Swiggy Instamart',
-        categoryId: 'cat-food',
-        subcategoryId: 'sub-food-delivery',
-      ),
-      MerchantOption(id: 'merchant-uber', displayName: 'Uber'),
-    ];
+    return [...merchants]
+      ..sort((a, b) => a.displayName.compareTo(b.displayName));
   }
 
   @override
@@ -4434,6 +4785,18 @@ final class _FakeFinanceRepository implements FinanceRepository {
               (transaction) =>
                   transaction.labels.any((label) => label.id == labelId),
             )
+            .map((transaction) => transaction.transactionDate)
+            .toList(growable: false)
+          ..sort();
+    if (dates.isEmpty) return null;
+
+    return dates.last;
+  }
+
+  DateTime? _latestTransactionDate(String merchantId) {
+    final dates =
+        transactions
+            .where((transaction) => transaction.merchantId == merchantId)
             .map((transaction) => transaction.transactionDate)
             .toList(growable: false)
           ..sort();
@@ -4876,6 +5239,8 @@ int _compareTestLabels(LabelOption a, LabelOption b) {
 
 FinanceTransaction _copyTransaction(
   FinanceTransaction transaction, {
+  String? merchantId,
+  String? merchantName,
   String? categoryId,
   String? categoryName,
   String? subcategoryId,
@@ -4888,8 +5253,8 @@ FinanceTransaction _copyTransaction(
     id: transaction.id,
     transactionDate: transaction.transactionDate,
     statementMerchant: transaction.statementMerchant,
-    merchantId: transaction.merchantId,
-    merchantName: transaction.merchantName,
+    merchantId: merchantId ?? transaction.merchantId,
+    merchantName: merchantName ?? transaction.merchantName,
     categoryId: clearCategory ? null : categoryId ?? transaction.categoryId,
     categoryName: clearCategory
         ? null

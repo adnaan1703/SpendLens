@@ -113,6 +113,16 @@ final labelManagerSnapshotProvider =
           .fetchLabelManagerSnapshot(householdId: householdId);
     });
 
+final merchantGroupManagerSnapshotProvider =
+    FutureProvider.family<MerchantGroupManagerSnapshot, String>((
+      ref,
+      householdId,
+    ) {
+      return ref
+          .watch(financeRepositoryProvider)
+          .fetchMerchantGroupManagerSnapshot(householdId: householdId);
+    });
+
 final transactionLabelsProvider =
     FutureProvider.family<List<LabelOption>, String>((ref, householdId) {
       return ref
@@ -942,6 +952,59 @@ final class MerchantSpend {
   final double refundAmount;
 }
 
+List<MerchantSpend> topMerchantsFromTransactionRows(
+  List<Map<String, dynamic>> rows, {
+  required Map<String, String> merchantNamesById,
+  int limit = 5,
+}) {
+  final totals = <String, _MerchantAccumulator>{};
+  for (final row in rows) {
+    final merchantId = (row['merchant_id'] as String?)?.trim();
+    final merchantName = merchantId == null || merchantId.isEmpty
+        ? null
+        : merchantNamesById[merchantId];
+    final statementMerchant = (row['statement_merchant'] as String?)?.trim();
+    final normalizedMerchant = (row['normalized_statement_merchant'] as String?)
+        ?.trim();
+    final fallbackName = statementMerchant == null || statementMerchant.isEmpty
+        ? (normalizedMerchant == null || normalizedMerchant.isEmpty
+              ? 'Unknown'
+              : normalizedMerchant)
+        : statementMerchant;
+    final key = merchantId == null || merchantId.isEmpty
+        ? fallbackName
+        : merchantId;
+    final displayName = merchantName ?? fallbackName;
+    final accumulator = totals.putIfAbsent(
+      key,
+      () => _MerchantAccumulator(displayName),
+    );
+    accumulator.count += 1;
+    accumulator.netSpend += _asDouble(row['net_expense']);
+    accumulator.refundAmount += _asDouble(row['refund_amount']);
+  }
+
+  final merchants =
+      totals.values
+          .map(
+            (total) => MerchantSpend(
+              merchantName: total.name,
+              transactionCount: total.count,
+              netSpend: total.netSpend,
+              refundAmount: total.refundAmount,
+            ),
+          )
+          .toList()
+        ..sort((a, b) {
+          final spendComparison = b.netSpend.compareTo(a.netSpend);
+          if (spendComparison != 0) return spendComparison;
+
+          return a.merchantName.compareTo(b.merchantName);
+        });
+
+  return merchants.take(limit).toList(growable: false);
+}
+
 final class CategoryOption {
   const CategoryOption({required this.id, required this.name});
 
@@ -1403,6 +1466,159 @@ final class CategoryMergeResult {
       createdSubcategoryCount: _asInt(json['created_subcategory_count']),
       deletedCategoryCount: _asInt(json['deleted_category_count']),
       deletedSubcategoryCount: _asInt(json['deleted_subcategory_count']),
+    );
+  }
+}
+
+final class MerchantGroupManagerSnapshot {
+  const MerchantGroupManagerSnapshot({required this.merchantGroups});
+
+  final List<MerchantGroupUsageSummary> merchantGroups;
+
+  bool get isEmpty => merchantGroups.isEmpty;
+
+  MerchantGroupUsageSummary? usageFor(String merchantId) {
+    return merchantGroups
+        .where((merchantGroup) => merchantGroup.merchantId == merchantId)
+        .firstOrNull;
+  }
+}
+
+final class MerchantGroupUsageSummary {
+  const MerchantGroupUsageSummary({
+    required this.merchantId,
+    required this.displayName,
+    this.categoryId,
+    this.categoryName,
+    this.subcategoryId,
+    this.subcategoryName,
+    required this.transactionCount,
+    required this.netSpend,
+    required this.aliasCount,
+    required this.activeMappingRuleCount,
+    required this.openReviewSuggestionCount,
+    this.lastTransactionDate,
+  });
+
+  final String merchantId;
+  final String displayName;
+  final String? categoryId;
+  final String? categoryName;
+  final String? subcategoryId;
+  final String? subcategoryName;
+  final int transactionCount;
+  final double netSpend;
+  final int aliasCount;
+  final int activeMappingRuleCount;
+  final int openReviewSuggestionCount;
+  final DateTime? lastTransactionDate;
+
+  factory MerchantGroupUsageSummary.fromJson(Map<String, dynamic> json) {
+    return MerchantGroupUsageSummary(
+      merchantId: json['merchant_id'] as String,
+      displayName: json['display_name'] as String,
+      categoryId: json['category_id'] as String?,
+      categoryName: json['category_name'] as String?,
+      subcategoryId: json['subcategory_id'] as String?,
+      subcategoryName: json['subcategory_name'] as String?,
+      transactionCount: _asInt(json['transaction_count']),
+      netSpend: _asDouble(json['net_spend']),
+      aliasCount: _asInt(json['alias_count']),
+      activeMappingRuleCount: _asInt(json['active_mapping_rule_count']),
+      openReviewSuggestionCount: _asInt(json['open_review_suggestion_count']),
+      lastTransactionDate: json['last_transaction_date'] == null
+          ? null
+          : _parseDate(json['last_transaction_date'] as String),
+    );
+  }
+}
+
+final class MerchantGroupRenameRequest {
+  const MerchantGroupRenameRequest({
+    required this.householdId,
+    required this.merchantId,
+    required this.displayName,
+  });
+
+  final String householdId;
+  final String merchantId;
+  final String displayName;
+}
+
+enum MerchantGroupMergeCategoryStrategy {
+  preserve('preserve'),
+  destination('destination');
+
+  const MerchantGroupMergeCategoryStrategy(this.value);
+
+  final String value;
+}
+
+final class MerchantGroupMergeRequest {
+  const MerchantGroupMergeRequest({
+    required this.householdId,
+    required this.destinationMerchantId,
+    required this.destinationDisplayName,
+    required this.sourceMerchantIds,
+    required this.categoryStrategy,
+  });
+
+  final String householdId;
+  final String destinationMerchantId;
+  final String destinationDisplayName;
+  final List<String> sourceMerchantIds;
+  final MerchantGroupMergeCategoryStrategy categoryStrategy;
+}
+
+final class MerchantGroupMergeResult {
+  const MerchantGroupMergeResult({
+    required this.destinationMerchantId,
+    required this.destinationDisplayName,
+    this.destinationCategoryId,
+    this.destinationSubcategoryId,
+    required this.movedTransactionCount,
+    required this.movedAliasCount,
+    required this.movedMappingRuleCount,
+    required this.movedReviewSuggestionCount,
+    required this.deletedSourceMerchantCount,
+    required this.categoryUpdatedTransactionCount,
+    required this.categoryUpdatedMappingRuleCount,
+    required this.categoryUpdatedReviewSuggestionCount,
+  });
+
+  final String destinationMerchantId;
+  final String destinationDisplayName;
+  final String? destinationCategoryId;
+  final String? destinationSubcategoryId;
+  final int movedTransactionCount;
+  final int movedAliasCount;
+  final int movedMappingRuleCount;
+  final int movedReviewSuggestionCount;
+  final int deletedSourceMerchantCount;
+  final int categoryUpdatedTransactionCount;
+  final int categoryUpdatedMappingRuleCount;
+  final int categoryUpdatedReviewSuggestionCount;
+
+  factory MerchantGroupMergeResult.fromJson(Map<String, dynamic> json) {
+    return MerchantGroupMergeResult(
+      destinationMerchantId: json['destination_merchant_id'] as String,
+      destinationDisplayName: json['destination_display_name'] as String,
+      destinationCategoryId: json['destination_category_id'] as String?,
+      destinationSubcategoryId: json['destination_subcategory_id'] as String?,
+      movedTransactionCount: _asInt(json['moved_transaction_count']),
+      movedAliasCount: _asInt(json['moved_alias_count']),
+      movedMappingRuleCount: _asInt(json['moved_mapping_rule_count']),
+      movedReviewSuggestionCount: _asInt(json['moved_review_suggestion_count']),
+      deletedSourceMerchantCount: _asInt(json['deleted_source_merchant_count']),
+      categoryUpdatedTransactionCount: _asInt(
+        json['category_updated_transaction_count'],
+      ),
+      categoryUpdatedMappingRuleCount: _asInt(
+        json['category_updated_mapping_rule_count'],
+      ),
+      categoryUpdatedReviewSuggestionCount: _asInt(
+        json['category_updated_review_suggestion_count'],
+      ),
     );
   }
 }
@@ -2363,6 +2579,18 @@ abstract interface class FinanceRepository {
     required String householdId,
   });
 
+  Future<MerchantGroupManagerSnapshot> fetchMerchantGroupManagerSnapshot({
+    required String householdId,
+  });
+
+  Future<MerchantOption> renameMerchantGroup(
+    MerchantGroupRenameRequest request,
+  );
+
+  Future<MerchantGroupMergeResult> mergeMerchantGroups(
+    MerchantGroupMergeRequest request,
+  );
+
   Future<LabelOption> createHouseholdLabel(LabelCreateRequest request);
 
   Future<CategoryUsagePreview> fetchCategoryUsagePreview(
@@ -2632,6 +2860,72 @@ final class SupabaseFinanceRepository implements FinanceRepository {
 
     return LabelManagerSnapshot(
       labels: rows.map(LabelUsageSummary.fromJson).toList(growable: false),
+    );
+  }
+
+  @override
+  Future<MerchantGroupManagerSnapshot> fetchMerchantGroupManagerSnapshot({
+    required String householdId,
+  }) async {
+    final rows = await _client
+        .from('v_merchant_group_usage')
+        .select(
+          'merchant_id, display_name, category_id, category_name, '
+          'subcategory_id, subcategory_name, transaction_count, net_spend, '
+          'alias_count, active_mapping_rule_count, '
+          'open_review_suggestion_count, last_transaction_date',
+        )
+        .eq('household_id', householdId)
+        .order('display_name');
+
+    return MerchantGroupManagerSnapshot(
+      merchantGroups: rows
+          .map(MerchantGroupUsageSummary.fromJson)
+          .toList(growable: false),
+    );
+  }
+
+  @override
+  Future<MerchantOption> renameMerchantGroup(
+    MerchantGroupRenameRequest request,
+  ) async {
+    final rows = await _client.rpc<List<dynamic>>(
+      'rename_household_merchant',
+      params: {
+        'p_household_id': request.householdId,
+        'p_merchant_id': request.merchantId,
+        'p_display_name': request.displayName,
+      },
+    );
+
+    if (rows.isEmpty) {
+      throw StateError('Merchant group rename did not return a result.');
+    }
+
+    return MerchantOption.fromJson(rows.first as Map<String, dynamic>);
+  }
+
+  @override
+  Future<MerchantGroupMergeResult> mergeMerchantGroups(
+    MerchantGroupMergeRequest request,
+  ) async {
+    final rows = await _client.rpc<List<dynamic>>(
+      'merge_household_merchants',
+      params: {
+        'p_household_id': request.householdId,
+        'p_destination_merchant_id': request.destinationMerchantId,
+        'p_destination_display_name': request.destinationDisplayName,
+        'p_source_merchant_ids': request.sourceMerchantIds,
+        'p_category_strategy': request.categoryStrategy.value,
+      },
+    );
+
+    if (rows.isEmpty) {
+      throw StateError('Merchant group merge did not return a result.');
+    }
+
+    return MerchantGroupMergeResult.fromJson(
+      rows.first as Map<String, dynamic>,
     );
   }
 
@@ -3402,47 +3696,28 @@ final class SupabaseFinanceRepository implements FinanceRepository {
   }) async {
     final monthStart = firstDayOfMonth(month);
     final nextMonth = addMonths(monthStart, 1);
-    final rows = await _client
-        .from('transactions')
-        .select(
-          'statement_merchant, normalized_statement_merchant, '
-          'net_expense, refund_amount',
-        )
-        .eq('household_id', householdId)
-        .gte('transaction_date', dateString(monthStart))
-        .lt('transaction_date', dateString(nextMonth));
+    final results = await Future.wait<Object>([
+      _client
+          .from('transactions')
+          .select(
+            'merchant_id, statement_merchant, normalized_statement_merchant, '
+            'net_expense, refund_amount',
+          )
+          .eq('household_id', householdId)
+          .gte('transaction_date', dateString(monthStart))
+          .lt('transaction_date', dateString(nextMonth)),
+      fetchMerchants(householdId: householdId),
+    ]);
+    final rows = (results[0] as List<dynamic>).cast<Map<String, dynamic>>();
+    final merchants = results[1] as List<MerchantOption>;
+    final merchantNamesById = {
+      for (final merchant in merchants) merchant.id: merchant.displayName,
+    };
 
-    final totals = <String, _MerchantAccumulator>{};
-    for (final row in rows) {
-      final merchant = (row['statement_merchant'] as String?)?.trim();
-      final normalized = (row['normalized_statement_merchant'] as String?)
-          ?.trim();
-      final name = (merchant == null || merchant.isEmpty)
-          ? (normalized == null || normalized.isEmpty ? 'Unknown' : normalized)
-          : merchant;
-      final accumulator = totals.putIfAbsent(
-        name,
-        () => _MerchantAccumulator(name),
-      );
-      accumulator.count += 1;
-      accumulator.netSpend += _asDouble(row['net_expense']);
-      accumulator.refundAmount += _asDouble(row['refund_amount']);
-    }
-
-    final merchants =
-        totals.values
-            .map(
-              (total) => MerchantSpend(
-                merchantName: total.name,
-                transactionCount: total.count,
-                netSpend: total.netSpend,
-                refundAmount: total.refundAmount,
-              ),
-            )
-            .toList()
-          ..sort((a, b) => b.netSpend.compareTo(a.netSpend));
-
-    return merchants.take(5).toList(growable: false);
+    return topMerchantsFromTransactionRows(
+      rows,
+      merchantNamesById: merchantNamesById,
+    );
   }
 
   Future<List<Map<String, dynamic>>> _fetchTrendTransactions(
@@ -3665,6 +3940,27 @@ final class DisabledFinanceRepository implements FinanceRepository {
   Future<LabelManagerSnapshot> fetchLabelManagerSnapshot({
     required String householdId,
   }) {
+    throw const SupabaseNotConfiguredException();
+  }
+
+  @override
+  Future<MerchantGroupManagerSnapshot> fetchMerchantGroupManagerSnapshot({
+    required String householdId,
+  }) {
+    throw const SupabaseNotConfiguredException();
+  }
+
+  @override
+  Future<MerchantOption> renameMerchantGroup(
+    MerchantGroupRenameRequest request,
+  ) {
+    throw const SupabaseNotConfiguredException();
+  }
+
+  @override
+  Future<MerchantGroupMergeResult> mergeMerchantGroups(
+    MerchantGroupMergeRequest request,
+  ) {
     throw const SupabaseNotConfiguredException();
   }
 

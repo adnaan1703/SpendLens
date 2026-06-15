@@ -3078,7 +3078,7 @@ new M62-M64 implementation sequence into durable planning docs.
 
 ### Status
 
-Planned. See
+Completed on 2026-06-15. See
 [Merchant Group Management](MERCHANT_GROUP_MANAGEMENT.md#m62---merchant-group-data-and-repository-contract).
 
 ### Objective
@@ -3095,6 +3095,29 @@ group rename and merge before building the Settings UI.
   call merge, parse counts, and group dashboard top merchants canonically.
 - Existing merchant autocomplete and transaction metadata correction behavior
   still works.
+
+### Completion Summary
+
+- Added the RLS-safe merchant group data/repository contract: usage view,
+  rename RPC, merge RPC, pgTAP tests, Flutter repository models/providers, fake
+  repository hooks, and canonical Dashboard top-merchant grouping.
+- Verified merchant rename/merge preserve/destination semantics, role and
+  household isolation, adjacent merchant metadata/review behavior, full pgTAP,
+  schema lint, focused Flutter tests, Flutter analysis, full Flutter tests, and
+  diff cleanliness.
+- Milestones 18-21 remain deferred by user request, and Milestone 63 Settings
+  UI work was not started.
+- Assumptions made:
+  - Destination-strategy merge requires destination category and subcategory
+    values before applying taxonomy to moved source references.
+  - Direct merchant deletion remains out of scope; source merchant rows are
+    deleted only inside the merge RPC after references move.
+  - Hosted Supabase migration push remains separate from this local milestone.
+- Mocks created:
+  - None.
+- Mocks used:
+  - Existing `_FakeFinanceRepository` data, extended for merchant group
+    snapshot, rename, merge, alias counts, and canonical Dashboard grouping.
 
 ## Milestone 63: Settings Merchant Group Manager UX
 
