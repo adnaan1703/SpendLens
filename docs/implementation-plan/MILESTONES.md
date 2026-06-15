@@ -3177,7 +3177,7 @@ groups using the M62 repository contract.
 
 ### Status
 
-Planned. See
+Completed on 2026-06-15. See
 [Merchant Group Management](MERCHANT_GROUP_MANAGEMENT.md#m64---merchant-group-management-regression-docs-and-cleanup).
 
 ### Objective
@@ -3193,6 +3193,48 @@ docs.
   provider refresh expectations, and deferred items.
 - The companion plan is marked completed-only after M64 is complete.
 - M18-M21 remain deferred unless explicitly resumed.
+
+### Completion Summary
+
+- Verified the full merchant group workflow with local Supabase reset, focused
+  merchant-group pgTAP, full pgTAP, schema lint, focused Flutter coverage for
+  merchant, metadata, Activity, Review, Settings, Dashboard, and narrow-layout
+  paths, Flutter analysis, and the full Flutter test suite.
+- Confirmed Settings merchant group rename and merge use
+  `rename_household_merchant(...)` and `merge_household_merchants(...)`; no
+  stale direct client writes bypass the Settings manager RPC contract.
+- Folded final merchant group rename/merge behavior, explicit merge category
+  strategy, provider refresh expectations, deferred scope, and verification
+  results into durable docs. `MERCHANT_GROUP_MANAGEMENT.md` is now a
+  completed-only reference.
+- No app code, Supabase migration, RPC, importer, Edge Function, hosted rollout,
+  iOS, web, or push notification changes were required during M64.
+- Milestones 18-21 remain deferred by user request; no later milestone work was
+  started.
+- Verification:
+  - `supabase db reset --local`
+  - `supabase test db --local supabase/tests/merchant_group_management.sql`
+  - `supabase test db --local supabase/tests`
+  - `supabase db lint --local --schema app_private,public --fail-on error`
+  - `cd apps/mobile && flutter test test/finance_features_test.dart --name "merchant|metadata|Activity|Review|Settings|dashboard|narrow"`
+  - `cd apps/mobile && flutter analyze`
+  - `cd apps/mobile && flutter test`
+  - `rg -n "\\.from\\('merchants'\\)|\\.from\\(\\\"merchants\\\"\\)|rename_household_merchant|merge_household_merchants|rpc\\('rename_household_merchant'\\)|rpc\\('merge_household_merchants'\\)|update\\(|delete\\(" apps/mobile/lib/src apps/mobile/test supabase/functions tools/workbook-import/src`
+  - `git diff --check`
+- Assumptions made:
+  - M62-M63 already implemented the intended merchant group product behavior;
+    M64 did not need additional runtime changes after regression passed.
+  - Direct `merchants` reads for autocomplete and metadata suggestion context
+    remain valid; Settings rename/merge writes stay RPC-backed.
+  - Hosted Supabase migration push, alias editing, statement-merchant
+    reassignment, merchant deletion outside merge, iOS, web, and push
+    notifications remain out of scope.
+- Mocks created:
+  - None.
+- Mocks used:
+  - Existing `_FakeFinanceRepository` merchant group, merchant option,
+    metadata correction, Activity query, Dashboard summary, Review queue, and
+    provider refresh test hooks.
 
 ## Cross-Milestone Consistency Rules
 

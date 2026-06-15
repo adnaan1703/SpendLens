@@ -19,8 +19,8 @@ Read these documents in order at the start of every new implementation thread:
     52-55
 13. [Merchant Autocomplete](MERCHANT_AUTOCOMPLETE.md) as the completed-only
     reference for Milestones 56-60
-14. [Merchant Group Management](MERCHANT_GROUP_MANAGEMENT.md) when executing
-    Milestones 61-64
+14. [Merchant Group Management](MERCHANT_GROUP_MANAGEMENT.md) as the
+    completed-only reference for Milestones 61-64
 15. [Session Handoff](SESSION_HANDOFF.md)
 
 Completed-only companion execution plans are removed after their durable
@@ -107,8 +107,9 @@ This is not a "no backend" architecture. It is a backend without a permanently r
   fields are preserved or replaced by the destination merchant
   category/subcategory. Milestone 63 added the Settings Merchant groups section
   with rename, merge, explicit category strategy selection, impact summaries, and
-  provider refreshes; final regression/docs cleanup remains planned for
-  Milestone 64.
+  provider refreshes. Milestone 64 completed final local regression/docs
+  cleanup, confirmed Settings rename/merge writes remain RPC-backed, and left
+  `MERCHANT_GROUP_MANAGEMENT.md` as a completed-only reference.
 - Multi-target monthly caps: required-name recurring caps can include multiple
   categories, multiple labels, or both. A transaction counts once inside a cap
   when any selected category or label matches; overlapping caps are allowed.
@@ -156,8 +157,8 @@ When starting a new implementation thread:
    Milestones 52-55.
 6. Read [Merchant Autocomplete](MERCHANT_AUTOCOMPLETE.md) when touching
    merchant search/autocomplete or metadata-editor duplicate guarding.
-7. Read [Merchant Group Management](MERCHANT_GROUP_MANAGEMENT.md) when
-   executing Milestones 61-64.
+7. Read [Merchant Group Management](MERCHANT_GROUP_MANAGEMENT.md) when touching
+   merchant group rename/merge behavior.
 8. Check [Session Handoff](SESSION_HANDOFF.md) for current status.
 9. Do only that milestone unless the user explicitly expands scope.
 10. Preserve documented invariants, especially idempotency, RLS isolation, and no raw email retention.

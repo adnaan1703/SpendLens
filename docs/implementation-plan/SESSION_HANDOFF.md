@@ -4,10 +4,11 @@ Use this file to coordinate work across multiple implementation sessions. Update
 
 ## Current Status
 
-- Current milestone: None. Milestone 63 was completed on 2026-06-15 as the
-  Settings merchant group manager UX. Milestones 18-21 remain deferred
-  by user request.
-- Last completed milestone: Milestone 63, Settings Merchant Group Manager UX.
+- Current milestone: None. Milestone 64 was completed on 2026-06-15 as the
+  Merchant Group Management regression, docs, and cleanup closeout. Milestones
+  18-21 remain deferred by user request.
+- Last completed milestone: Milestone 64, Merchant Group Management Regression,
+  Docs, and Cleanup.
 - Current implementation state: Flutter Android app scaffold exists in
   `apps/mobile` with redesigned SpendLens Google sign-in, route protection,
   authenticated shell, RLS-safe profile/default-household bootstrap,
@@ -213,12 +214,15 @@ Use this file to coordinate work across multiple implementation sessions. Update
   top-merchant grouping. Milestone 63 added the visible Settings Merchant groups
   section with rename, merge, explicit category strategy selection, impact
   summaries, provider refreshes, and narrow/long-name widget coverage.
+  Milestone 64 completed the final local merchant group regression pass, folded
+  final behavior into durable docs, confirmed Settings rename/merge writes stay
+  RPC-backed, and marked the companion plan completed-only.
   Milestones 18-21 remain planned and deferred by user request.
 - Remote deployment state: On 2026-06-08, user confirmed Supabase project `bslsitzdvrdosubbdxpd` as the intended dev/staging target. All local migrations through `20260607174515_ai_ready_layer_llm_features.sql` were pushed there, hosted expense Q&A and the now-retired legacy AI lookup function were active with JWT verification, and `GEMINI_API_KEY` was present in hosted Edge Function secrets by name. After the user signed in through the Android emulator, hosted profile/household bootstrap and authenticated Gemini Edge Function smoke passed. On 2026-06-08 for Milestone 13, `gmail-oauth-start` was deployed as version 2 with JWT verification, `gmail-sync` was deployed as version 2 without JWT verification, and new `gmail-backfill-range` was deployed as version 1 without JWT verification. Hosted `gmail-backfill-range` `OPTIONS` smoke returned 200, and an unauthenticated POST returned the expected service-key error. The live May Gmail backfill itself was not run because it requires the user to connect the target Gmail mailbox and invoke the runbook with a Supabase secret key from a local/platform secret store. On 2026-06-09, M16 deleted the hosted legacy AI lookup function from `bslsitzdvrdosubbdxpd` and a follow-up function list verified it absent. The M16 database migration and updated active Suggest function were verified locally but not pushed/deployed to hosted in this implementation session.
-- Next recommended milestone: Milestone 64, Merchant Group Management
-  Regression, Docs, and Cleanup. Milestones 18-21 remain deferred unless the
-  user resumes push notifications. If continuing hosted rollout separately, push
-  the M16, M26, M29, M32, and M33 migrations and deploy
+- Next recommended milestone: None in the active non-deferred roadmap.
+  Milestones 18-21 remain deferred unless the user resumes push notifications.
+  If continuing hosted rollout separately, push the M16, M26, M29, M32, and M33
+  migrations and deploy
   `transaction-metadata-suggest`; iOS and web remain deferred future milestones
   unless explicitly resumed.
 - Documentation state: completed-only companion execution plans for transaction
@@ -233,9 +237,9 @@ Use this file to coordinate work across multiple implementation sessions. Update
   `docs/implementation-plan/MERCHANT_AUTOCOMPLETE.md` is completed-only after
   completed Milestones 56-60 and can be removed in a later cleanup if the
   repository's completed-plan convention calls for it.
-  `docs/implementation-plan/MERCHANT_GROUP_MANAGEMENT.md` is the active
-  companion plan for Milestones 61-64. Milestones 61-63 are complete; final
-  regression and docs cleanup remains planned for Milestone 64.
+  `docs/implementation-plan/MERCHANT_GROUP_MANAGEMENT.md` is completed-only
+  after completed Milestones 61-64 and can be removed in a later cleanup if the
+  repository's completed-plan convention calls for it.
 
 ## Required Reading for New Threads
 
@@ -253,8 +257,8 @@ At the start of a new implementation thread, read:
 10. `docs/implementation-plan/TRANSACTION_DELETION.md` when executing Milestone 52 through 55
 11. `docs/implementation-plan/MERCHANT_AUTOCOMPLETE.md` when touching merchant
     search/autocomplete or metadata-editor duplicate guarding
-12. `docs/implementation-plan/MERCHANT_GROUP_MANAGEMENT.md` when executing
-    Milestone 61 through 64
+12. `docs/implementation-plan/MERCHANT_GROUP_MANAGEMENT.md` when touching
+    merchant group rename/merge behavior
 13. `DESIGN.md` when executing Milestone 37 through 51
 14. `docs/design-references/stitch/themed-dashboard-ui-redesign/README.md` when executing Milestone 37 through 51
 15. This handoff file
@@ -427,7 +431,7 @@ Do not ask the user to perform all setup at once. Ask only when the relevant mil
 - Milestone 62, Merchant Group Data and Repository Contract: completed.
 - Milestone 63, Settings Merchant Group Manager UX: completed.
 - Milestone 64, Merchant Group Management Regression, Docs, and Cleanup:
-  planned.
+  completed.
 
 ## Merchant Group Management M61 Notes
 
@@ -546,6 +550,51 @@ Do not ask the user to perform all setup at once. Ask only when the relevant mil
   - Existing fake finance repository data and M62 merchant-group hooks, extended
     with a merchant-options fetch counter, provider refresh probe, and long-name
     merchant fixture for M63 widget coverage.
+
+## Merchant Group Management M64 Notes
+
+- Completed on 2026-06-15. Milestones 18-21 remained deferred and were not
+  started. No later milestone work was started.
+- Verified the full merchant group workflow across local Supabase reset,
+  focused merchant-group pgTAP, full pgTAP, schema lint, focused Flutter
+  coverage for merchant, metadata, Activity, Review, Settings, Dashboard, and
+  narrow-layout paths, Flutter analysis, and the full Flutter test suite.
+- Confirmed Settings merchant group rename and merge use
+  `rename_household_merchant(...)` and `merge_household_merchants(...)`; no
+  stale direct client writes bypass the Settings manager RPC contract.
+- Folded final merchant group rename/merge behavior, explicit merge category
+  strategy, provider refresh expectations, deferred scope, and verification
+  results into `README.md`, `DATA_MODEL.md`, `MILESTONES.md`,
+  `MERCHANT_GROUP_MANAGEMENT.md`, and this handoff.
+- Marked `MERCHANT_GROUP_MANAGEMENT.md` completed-only after M61-M64. The file
+  was not removed because the M64 plan says not to remove completed-only
+  companion plans without an explicit cleanup request.
+- No app code, Supabase migration, RPC, importer, Edge Function, hosted rollout,
+  iOS, web, or push notification changes were required during M64.
+- Verification:
+  - `supabase db reset --local`
+  - `supabase test db --local supabase/tests/merchant_group_management.sql`
+  - `supabase test db --local supabase/tests`
+  - `supabase db lint --local --schema app_private,public --fail-on error`
+  - `cd apps/mobile && flutter test test/finance_features_test.dart --name "merchant|metadata|Activity|Review|Settings|dashboard|narrow"`
+  - `cd apps/mobile && flutter analyze`
+  - `cd apps/mobile && flutter test`
+  - `rg -n "\\.from\\('merchants'\\)|\\.from\\(\\\"merchants\\\"\\)|rename_household_merchant|merge_household_merchants|rpc\\('rename_household_merchant'\\)|rpc\\('merge_household_merchants'\\)|update\\(|delete\\(" apps/mobile/lib/src apps/mobile/test supabase/functions tools/workbook-import/src`
+  - `git diff --check`
+- Assumptions made:
+  - M62-M63 already implemented the intended merchant group product behavior;
+    M64 did not need additional runtime changes after regression passed.
+  - Direct `merchants` reads for autocomplete and metadata suggestion context
+    remain valid; Settings rename/merge writes stay RPC-backed.
+  - Hosted Supabase migration push, alias editing, statement-merchant
+    reassignment, merchant deletion outside merge, iOS, web, and push
+    notifications remain out of scope.
+- Mocks created:
+  - None.
+- Mocks used:
+  - Existing fake finance repository merchant group, merchant option, metadata
+    correction, Activity query, Dashboard summary, Review queue, and provider
+    refresh test hooks.
 
 ## Transaction Deletion M52 Notes
 

@@ -471,7 +471,12 @@ Merchant group management rules from Milestones 61-64:
 - Milestone 62 added the app-facing data contract:
   `public.v_merchant_group_usage`, `rename_household_merchant(...)`, and
   `merge_household_merchants(...)`. Milestone 63 added the visible Settings
-  rename/merge UI on top of this contract.
+  rename/merge UI on top of this contract. Milestone 64 verified the final
+  local regression path and confirmed Settings rename/merge writes stay
+  RPC-backed.
+- After Settings rename or merge, Flutter invalidates merchant group manager
+  data, merchant options, transactions, trend reports, Dashboard snapshots, and
+  the Review queue.
 
 ### `merchant_aliases`
 
