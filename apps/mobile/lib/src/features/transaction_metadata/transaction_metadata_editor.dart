@@ -5,6 +5,7 @@ import '../../core/theme/app_theme.dart';
 import '../../data/repositories/finance_repository.dart';
 import '../../shared/widgets/app_primitives.dart';
 import '../categories/category_creation_dialog.dart';
+import 'merchant_name_matcher.dart';
 
 final class TransactionMetadataEditorInitialValue {
   const TransactionMetadataEditorInitialValue({
@@ -43,6 +44,7 @@ Future<TransactionMetadataCorrectionResult?> showTransactionMetadataEditor({
   var confidence = _supportedConfidence(initialValue.confidence);
   var dialogCategories = [...categories];
   var dialogSubcategories = [...subcategories];
+  final ignoredCloseMatchNames = <String>{};
   var selectedCategoryId = initialValue.categoryId;
   if (selectedCategoryId != null &&
       !dialogCategories.any((category) => category.id == selectedCategoryId)) {
@@ -69,6 +71,7 @@ Future<TransactionMetadataCorrectionResult?> showTransactionMetadataEditor({
     builder: (dialogContext) {
       var isSaving = false;
       var isSuggesting = false;
+      var isConfirmingMerchant = false;
 
       return Consumer(
         builder: (context, dialogRef, _) {
@@ -79,7 +82,7 @@ Future<TransactionMetadataCorrectionResult?> showTransactionMetadataEditor({
 
           return StatefulBuilder(
             builder: (context, setDialogState) {
-              final isBusy = isSaving || isSuggesting;
+              final isBusy = isSaving || isSuggesting || isConfirmingMerchant;
               final theme = Theme.of(context);
               final availableSubcategories = dialogSubcategories
                   .where(
@@ -432,6 +435,51 @@ Future<TransactionMetadataCorrectionResult?> showTransactionMetadataEditor({
                     : () async {
                         if (!formKey.currentState!.validate()) return;
 
+                        final merchantMatch = findMerchantNameMatch(
+                          input: merchantGroup,
+                          merchants: merchants,
+                        );
+                        final normalizedMerchantGroup =
+                            merchantMatch?.normalizedInput ??
+                            normalizeMerchantName(merchantGroup);
+                        var merchantGroupToSave = merchantGroup.trim();
+
+                        if (merchantMatch?.kind ==
+                            MerchantNameMatchKind.exact) {
+                          merchantGroupToSave =
+                              merchantMatch!.merchant.displayName;
+                        } else if (merchantMatch?.kind ==
+                                MerchantNameMatchKind.close &&
+                            !ignoredCloseMatchNames.contains(
+                              normalizedMerchantGroup,
+                            )) {
+                          setDialogState(() {
+                            isConfirmingMerchant = true;
+                          });
+
+                          final choice = await _showMerchantCloseMatchDialog(
+                            context: dialogContext,
+                            merchantName: merchantMatch!.merchant.displayName,
+                          );
+                          if (!dialogContext.mounted) return;
+
+                          setDialogState(() {
+                            isConfirmingMerchant = false;
+                          });
+
+                          if (choice == null) return;
+
+                          switch (choice) {
+                            case _MerchantCloseMatchChoice.useExisting:
+                              merchantGroupToSave =
+                                  merchantMatch.merchant.displayName;
+                            case _MerchantCloseMatchChoice.keepNew:
+                              ignoredCloseMatchNames.add(
+                                normalizedMerchantGroup,
+                              );
+                          }
+                        }
+
                         setDialogState(() {
                           isSaving = true;
                         });
@@ -444,7 +492,7 @@ Future<TransactionMetadataCorrectionResult?> showTransactionMetadataEditor({
                                   householdId: initialValue.householdId,
                                   transactionId: initialValue.transactionId,
                                   reviewItemId: initialValue.reviewItemId,
-                                  merchantGroup: merchantGroup.trim(),
+                                  merchantGroup: merchantGroupToSave,
                                   categoryId: selectedCategoryId!,
                                   subcategoryId: selectedSubcategoryId!,
                                   confidence: confidence,
@@ -472,6 +520,41 @@ Future<TransactionMetadataCorrectionResult?> showTransactionMetadataEditor({
             },
           );
         },
+      );
+    },
+  );
+}
+
+enum _MerchantCloseMatchChoice { useExisting, keepNew }
+
+Future<_MerchantCloseMatchChoice?> _showMerchantCloseMatchDialog({
+  required BuildContext context,
+  required String merchantName,
+}) {
+  return showDialog<_MerchantCloseMatchChoice>(
+    context: context,
+    builder: (dialogContext) {
+      return AppModalDialog(
+        title: 'Use existing merchant?',
+        maxWidth: 520,
+        actions: [
+          AppActionPill.secondary(
+            label: 'Keep new name',
+            onPressed: () => Navigator.of(
+              dialogContext,
+            ).pop(_MerchantCloseMatchChoice.keepNew),
+          ),
+          AppActionPill.primary(
+            label: 'Use $merchantName',
+            icon: Icons.storefront_outlined,
+            onPressed: () => Navigator.of(
+              dialogContext,
+            ).pop(_MerchantCloseMatchChoice.useExisting),
+          ),
+        ],
+        child: Text(
+          'This merchant name looks similar to $merchantName. Reuse the existing merchant to avoid creating a duplicate.',
+        ),
       );
     },
   );

@@ -4,12 +4,12 @@ Use this file to coordinate work across multiple implementation sessions. Update
 
 ## Current Status
 
-- Current milestone: None. Milestone 58 was completed on 2026-06-15 as the
-  next non-deferred implementation milestone. Milestone 59 is the next planned
+- Current milestone: None. Milestone 59 was completed on 2026-06-15 as the
+  next non-deferred implementation milestone. Milestone 60 is the next planned
   non-deferred implementation milestone. Milestones 18-21 remain deferred by
   user request.
-- Last completed milestone: Milestone 58, Shared Merchant Autocomplete in
-  Metadata Editor.
+- Last completed milestone: Milestone 59, Close-Match Merchant Save
+  Confirmation.
 - Current implementation state: Flutter Android app scaffold exists in
   `apps/mobile` with redesigned SpendLens Google sign-in, route protection,
   authenticated shell, RLS-safe profile/default-household bootstrap,
@@ -199,13 +199,15 @@ Use this file to coordinate work across multiple implementation sessions. Update
   route/search behavior. Milestone 58 added shared transaction metadata editor
   autocomplete for Activity detail edit and Review resolve flows, including
   compatible category/subcategory selection from existing merchant options while
-  preserving freeform merchant names and Suggest behavior. Milestones 59-60
-  remain planned for close-match save confirmation and final regression/docs
-  cleanup.
+  preserving freeform merchant names and Suggest behavior. Milestone 59 added a
+  deterministic client-side close-match guard for metadata editor saves,
+  canonicalizes exact existing names, prompts on clear typo-level matches, and
+  preserves freeform new merchant entry. Milestone 60 remains planned for final
+  merchant autocomplete regression/docs cleanup.
   Milestones 18-21 remain planned and deferred by user request.
 - Remote deployment state: On 2026-06-08, user confirmed Supabase project `bslsitzdvrdosubbdxpd` as the intended dev/staging target. All local migrations through `20260607174515_ai_ready_layer_llm_features.sql` were pushed there, hosted expense Q&A and the now-retired legacy AI lookup function were active with JWT verification, and `GEMINI_API_KEY` was present in hosted Edge Function secrets by name. After the user signed in through the Android emulator, hosted profile/household bootstrap and authenticated Gemini Edge Function smoke passed. On 2026-06-08 for Milestone 13, `gmail-oauth-start` was deployed as version 2 with JWT verification, `gmail-sync` was deployed as version 2 without JWT verification, and new `gmail-backfill-range` was deployed as version 1 without JWT verification. Hosted `gmail-backfill-range` `OPTIONS` smoke returned 200, and an unauthenticated POST returned the expected service-key error. The live May Gmail backfill itself was not run because it requires the user to connect the target Gmail mailbox and invoke the runbook with a Supabase secret key from a local/platform secret store. On 2026-06-09, M16 deleted the hosted legacy AI lookup function from `bslsitzdvrdosubbdxpd` and a follow-up function list verified it absent. The M16 database migration and updated active Suggest function were verified locally but not pushed/deployed to hosted in this implementation session.
-- Next recommended milestone: Milestone 59, Close-Match Merchant Save
-  Confirmation. Milestones 18-21 remain deferred unless the user resumes
+- Next recommended milestone: Milestone 60, Merchant Autocomplete Regression,
+  Docs, and Cleanup. Milestones 18-21 remain deferred unless the user resumes
   push notifications. If continuing hosted rollout separately, push the M16,
   M26, M29, M32, and M33 migrations and deploy `transaction-metadata-suggest`;
   iOS and web remain deferred future milestones unless explicitly resumed.
@@ -392,7 +394,7 @@ Do not ask the user to perform all setup at once. Ask only when the relevant mil
   completed.
 - Milestone 57, Merchant Repository and Activity Filter Foundation: completed.
 - Milestone 58, Shared Merchant Autocomplete in Metadata Editor: completed.
-- Milestone 59, Close-Match Merchant Save Confirmation: planned.
+- Milestone 59, Close-Match Merchant Save Confirmation: completed.
 - Milestone 60, Merchant Autocomplete Regression, Docs, and Cleanup: planned.
 
 ## Transaction Deletion M52 Notes
@@ -718,6 +720,41 @@ Do not ask the user to perform all setup at once. Ask only when the relevant mil
   - None.
 - Mocks used:
   - Existing `_FakeFinanceRepository` merchant options and repository fakes.
+
+## Merchant Autocomplete M59 Notes
+
+- Completed on 2026-06-15.
+- Added `merchant_name_matcher.dart` with deterministic merchant normalization,
+  Levenshtein similarity, token-prefix handling, and the planned
+  `merchantCloseMatchThreshold = 0.82` plus
+  `merchantCloseMatchLeadMargin = 0.05` constants unchanged.
+- Updated the shared transaction metadata editor save flow so exact normalized
+  matches save the existing canonical display name without prompting.
+- Added the close-match confirmation dialog with `Use <merchant name>`, `Keep
+  new name`, and dismiss/cancel behavior while keeping the editor
+  single-submit safe.
+- Remembered kept close-match names by normalized typed value for the current
+  editor session, so a failed save can be retried without prompting again.
+- Added focused helper and widget coverage for `Amazon Shoping` ->
+  `Amazon Shopping`, `Swigy Instamart` -> `Swiggy Instamart`, `Amazon Prime`
+  and `Uber Eats` non-matches, exact case-only canonical saves, Use existing,
+  Keep new name, and cancel behavior.
+- No Supabase migration, importer, Edge Function, hosted rollout, push
+  notification, iOS, web, M60, or other later-milestone work was started.
+- Verification:
+  - `cd apps/mobile && flutter test test/finance_features_test.dart --name "merchant"`
+  - `cd apps/mobile && flutter analyze`
+- Assumptions made:
+  - Existing household merchant option reads are sufficient for M59.
+  - The initial close-match constants satisfy the documented M59 test matrix, so
+    no threshold tuning was needed.
+  - Close-match comparison remains limited to canonical merchant display names.
+  - Milestones 18-21 remain deferred by user request.
+- Mocks created:
+  - None.
+- Mocks used:
+  - Existing `_FakeFinanceRepository`, extended with an `Uber` merchant option
+    and a one-save failure hook for the keep-new retry test.
 
 ## Update Rules
 

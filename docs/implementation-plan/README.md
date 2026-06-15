@@ -89,8 +89,9 @@ This is not a "no backend" architecture. It is a backend without a permanently r
   preserving free-text statement merchant search. Milestone 58 added shared
   metadata-editor merchant autocomplete for Activity and Review edits, including
   compatible category/subcategory selection from existing merchant options.
-  Milestones 59-60 remain planned for close-match save confirmation and final
-  regression/docs cleanup.
+  Milestone 59 added close-match save confirmation and exact existing-name
+  canonicalization in the shared metadata editor. Milestone 60 remains planned
+  for final merchant autocomplete regression/docs cleanup.
 - Multi-target monthly caps: required-name recurring caps can include multiple
   categories, multiple labels, or both. A transaction counts once inside a cap
   when any selected category or label matches; overlapping caps are allowed.

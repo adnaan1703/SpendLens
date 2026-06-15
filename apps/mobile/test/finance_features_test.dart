@@ -14,6 +14,7 @@ import 'package:spendlens/src/features/dashboard/dashboard_screen.dart';
 import 'package:spendlens/src/features/merchant_review/merchant_review_screen.dart';
 import 'package:spendlens/src/features/piggy_banks/piggy_banks_screen.dart';
 import 'package:spendlens/src/features/settings/settings_screen.dart';
+import 'package:spendlens/src/features/transaction_metadata/merchant_name_matcher.dart';
 import 'package:spendlens/src/features/trends/trends_screen.dart';
 import 'package:spendlens/src/shared/widgets/app_primitives.dart';
 
@@ -126,6 +127,50 @@ void main() {
     );
     expect(query.copyWith(clearMerchant: true).merchantId, isNull);
     expect(query.copyWith(clearLabel: true).labelId, isNull);
+  });
+
+  test('merchant name matcher handles close, exact, and non-match cases', () {
+    const merchants = [
+      MerchantOption(id: 'merchant-amazon', displayName: 'Amazon Shopping'),
+      MerchantOption(id: 'merchant-swiggy', displayName: 'Swiggy Instamart'),
+      MerchantOption(id: 'merchant-uber', displayName: 'Uber'),
+    ];
+
+    expect(normalizeMerchantName('Food & Fuel - Mart'), 'food and fuel mart');
+
+    final amazonTypo = findMerchantNameMatch(
+      input: 'Amazon Shoping',
+      merchants: merchants,
+    );
+    expect(amazonTypo?.kind, MerchantNameMatchKind.close);
+    expect(amazonTypo?.merchant.displayName, 'Amazon Shopping');
+    expect(
+      amazonTypo!.score,
+      greaterThanOrEqualTo(merchantCloseMatchThreshold),
+    );
+
+    final swiggyTypo = findMerchantNameMatch(
+      input: 'Swigy Instamart',
+      merchants: merchants,
+    );
+    expect(swiggyTypo?.kind, MerchantNameMatchKind.close);
+    expect(swiggyTypo?.merchant.displayName, 'Swiggy Instamart');
+
+    final exactCase = findMerchantNameMatch(
+      input: 'amazon shopping',
+      merchants: merchants,
+    );
+    expect(exactCase?.kind, MerchantNameMatchKind.exact);
+    expect(exactCase?.merchant.displayName, 'Amazon Shopping');
+
+    expect(
+      findMerchantNameMatch(input: 'Amazon Prime', merchants: merchants),
+      isNull,
+    );
+    expect(
+      findMerchantNameMatch(input: 'Uber Eats', merchants: merchants),
+      isNull,
+    );
   });
 
   test('monthly cap progress parses carry-forward values', () {
@@ -2016,6 +2061,145 @@ void main() {
   });
 
   testWidgets(
+    'transaction metadata editor merchant exact match saves canonical name',
+    (tester) async {
+      final repository = _FakeFinanceRepository();
+
+      await tester.pumpWidget(
+        _financeTestApp(repository: repository, child: const ActivityScreen()),
+      );
+      await tester.pumpAndSettle();
+      await _openTransactionMetadataEditor(tester, 'Swiggy Instamart');
+
+      await tester.enterText(
+        find.byKey(const ValueKey('metadata-merchant-group-field')),
+        'swiggy instamart',
+      );
+      await _tapMetadataSave(tester);
+
+      expect(find.text('Use existing merchant?'), findsNothing);
+      expect(repository.corrections, hasLength(1));
+      expect(repository.corrections.single.merchantGroup, 'Swiggy Instamart');
+    },
+  );
+
+  testWidgets(
+    'transaction metadata editor merchant close match can use existing name',
+    (tester) async {
+      final repository = _FakeFinanceRepository();
+
+      await tester.pumpWidget(
+        _financeTestApp(repository: repository, child: const ActivityScreen()),
+      );
+      await tester.pumpAndSettle();
+      await _openTransactionMetadataEditor(tester, 'Swiggy Instamart');
+
+      await tester.enterText(
+        find.byKey(const ValueKey('metadata-merchant-group-field')),
+        'Swigy Instamart',
+      );
+      await _tapMetadataSave(tester);
+
+      expect(find.text('Use existing merchant?'), findsOneWidget);
+      expect(repository.corrections, isEmpty);
+
+      await tester.tap(
+        find.widgetWithText(FilledButton, 'Use Swiggy Instamart'),
+      );
+      await tester.pumpAndSettle();
+
+      expect(repository.corrections, hasLength(1));
+      expect(repository.corrections.single.merchantGroup, 'Swiggy Instamart');
+    },
+  );
+
+  testWidgets(
+    'transaction metadata editor merchant close match keeps new name once',
+    (tester) async {
+      final repository = _FakeFinanceRepository()
+        ..metadataCorrectionFailuresRemaining = 1;
+
+      await tester.pumpWidget(
+        _financeTestApp(repository: repository, child: const ActivityScreen()),
+      );
+      await tester.pumpAndSettle();
+      await _openTransactionMetadataEditor(tester, 'Swiggy Instamart');
+
+      await tester.enterText(
+        find.byKey(const ValueKey('metadata-merchant-group-field')),
+        'Swigy Instamart',
+      );
+      await _tapMetadataSave(tester);
+      await tester.tap(find.widgetWithText(FilledButton, 'Keep new name'));
+      await tester.pumpAndSettle();
+
+      expect(repository.corrections, isEmpty);
+      expect(find.text('Use existing merchant?'), findsNothing);
+      expect(find.textContaining('save unavailable'), findsOneWidget);
+
+      await _tapMetadataSave(tester);
+
+      expect(find.text('Use existing merchant?'), findsNothing);
+      expect(repository.corrections, hasLength(1));
+      expect(repository.corrections.single.merchantGroup, 'Swigy Instamart');
+    },
+  );
+
+  testWidgets(
+    'transaction metadata editor merchant close match cancel keeps editing',
+    (tester) async {
+      final repository = _FakeFinanceRepository();
+
+      await tester.pumpWidget(
+        _financeTestApp(repository: repository, child: const ActivityScreen()),
+      );
+      await tester.pumpAndSettle();
+      await _openTransactionMetadataEditor(tester, 'Swiggy Instamart');
+
+      await tester.enterText(
+        find.byKey(const ValueKey('metadata-merchant-group-field')),
+        'Amazon Shoping',
+      );
+      await _tapMetadataSave(tester);
+
+      expect(find.text('Use existing merchant?'), findsOneWidget);
+
+      await tester.tapAt(const Offset(4, 4));
+      await tester.pumpAndSettle();
+
+      expect(repository.corrections, isEmpty);
+      expect(find.text('Use existing merchant?'), findsNothing);
+      expect(
+        find.byKey(const ValueKey('metadata-editor-card')),
+        findsOneWidget,
+      );
+    },
+  );
+
+  testWidgets(
+    'transaction metadata editor merchant non-match saves without prompt',
+    (tester) async {
+      final repository = _FakeFinanceRepository();
+
+      await tester.pumpWidget(
+        _financeTestApp(repository: repository, child: const ActivityScreen()),
+      );
+      await tester.pumpAndSettle();
+      await _openTransactionMetadataEditor(tester, 'Swiggy Instamart');
+
+      await tester.enterText(
+        find.byKey(const ValueKey('metadata-merchant-group-field')),
+        'Amazon Prime',
+      );
+      await _tapMetadataSave(tester);
+
+      expect(find.text('Use existing merchant?'), findsNothing);
+      expect(repository.corrections, hasLength(1));
+      expect(repository.corrections.single.merchantGroup, 'Amazon Prime');
+    },
+  );
+
+  testWidgets(
     'transaction metadata editor autocomplete selects merchant taxonomy',
     (tester) async {
       final repository = _FakeFinanceRepository();
@@ -2947,6 +3131,24 @@ Future<void> _openTransactionDetail(
   await tester.pumpAndSettle();
 }
 
+Future<void> _openTransactionMetadataEditor(
+  WidgetTester tester,
+  String merchantName,
+) async {
+  await _openTransactionDetail(tester, merchantName);
+  final editButton = find.widgetWithText(FilledButton, 'Edit');
+  await tester.ensureVisible(editButton);
+  await tester.tap(editButton);
+  await tester.pumpAndSettle();
+}
+
+Future<void> _tapMetadataSave(WidgetTester tester) async {
+  final saveButton = find.byKey(const ValueKey('metadata-save-button'));
+  await tester.ensureVisible(saveButton);
+  await tester.tap(saveButton);
+  await tester.pumpAndSettle();
+}
+
 Future<void> _tapTransactionDeleteAction(WidgetTester tester) async {
   final deleteButton = find.widgetWithText(FilledButton, 'Delete');
   await tester.ensureVisible(deleteButton);
@@ -3244,6 +3446,7 @@ final class _FakeFinanceRepository implements FinanceRepository {
   Object? reviewQueueError;
   Object? gmailParseFailuresError;
   Object? transactionDeleteError;
+  int metadataCorrectionFailuresRemaining = 0;
   TransactionMetadataSuggestionResult? nextMetadataSuggestion;
   Object? metadataSuggestionError;
   Object? expenseQuestionError;
@@ -4050,6 +4253,7 @@ final class _FakeFinanceRepository implements FinanceRepository {
         categoryId: 'cat-food',
         subcategoryId: 'sub-food-delivery',
       ),
+      MerchantOption(id: 'merchant-uber', displayName: 'Uber'),
     ];
   }
 
@@ -4504,6 +4708,11 @@ final class _FakeFinanceRepository implements FinanceRepository {
   applyTransactionMetadataCorrection(
     TransactionMetadataCorrectionRequest request,
   ) async {
+    if (metadataCorrectionFailuresRemaining > 0) {
+      metadataCorrectionFailuresRemaining -= 1;
+      throw StateError('save unavailable');
+    }
+
     corrections.add(request);
     reviewItems.removeWhere((item) => item.id == request.reviewItemId);
 

@@ -2939,7 +2939,7 @@ or Review.
 
 ### Status
 
-Planned. See
+Completed on 2026-06-15. See
 [Merchant Autocomplete](MERCHANT_AUTOCOMPLETE.md#m59---close-match-merchant-save-confirmation).
 
 ### Objective
@@ -2954,6 +2954,31 @@ merchant group.
 - Exact case-insensitive existing names skip the popup and save the canonical
   display name.
 - Non-match examples do not interrupt saves.
+
+### Completion Summary
+
+- Added a deterministic merchant-name matcher with normalization,
+  Levenshtein/token-prefix scoring, and the planned close-match constants.
+- Updated the shared transaction metadata editor save flow to canonicalize exact
+  matches, prompt for clear close matches, support Use existing, Keep new name,
+  and cancel behavior, and avoid re-prompting kept names during the editor
+  session.
+- Added focused helper/widget coverage for the documented typo, non-match,
+  exact, use-existing, keep-new retry, and cancel paths.
+- Verification:
+  - `cd apps/mobile && flutter test test/finance_features_test.dart --name "merchant"`
+  - `cd apps/mobile && flutter analyze`
+- Assumptions made:
+  - Existing household merchant options are sufficient for client-side
+    close-match comparison; no Supabase migration was needed.
+  - The planned `0.82` threshold and `0.05` lead margin passed the documented
+    matrix without tuning changes.
+  - Milestones 18-21 remain deferred, and Milestone 60 was not started.
+- Mocks created:
+  - None.
+- Mocks used:
+  - Existing `_FakeFinanceRepository`, extended with an `Uber` merchant option
+    and a one-save failure hook for the keep-new retry test.
 
 ## Milestone 60: Merchant Autocomplete Regression, Docs, and Cleanup
 

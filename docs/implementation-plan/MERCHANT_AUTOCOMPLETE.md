@@ -277,6 +277,8 @@ Completion summary:
 
 ## M59 - Close-Match Merchant Save Confirmation
 
+Status: Completed on 2026-06-15.
+
 Purpose: Warn before saving a new merchant group that strongly resembles one
 existing merchant group.
 
@@ -341,6 +343,41 @@ Completion summary requirements:
 - Assumptions made
 - Mocks created
 - Mocks used
+
+Completion summary:
+
+- Added a deterministic Dart merchant-name matcher that normalizes names by
+  lowercasing, expanding `&` to `and`, replacing non-alphanumeric separators,
+  and collapsing whitespace.
+- Implemented Levenshtein similarity plus token-prefix scoring with the planned
+  `merchantCloseMatchThreshold = 0.82` and
+  `merchantCloseMatchLeadMargin = 0.05` constants unchanged.
+- Updated the shared transaction metadata editor save flow so exact normalized
+  matches save the existing canonical display name without prompting.
+- Added the close-match confirmation dialog with `Use <merchant name>`, `Keep
+  new name`, and dismiss/cancel behavior while keeping the editor
+  single-submit safe.
+- Remembered `Keep new name` choices by normalized typed value for the current
+  editor session so a failed save can be retried without prompting again.
+- Added focused helper and widget coverage for the documented typo, non-match,
+  exact, use-existing, keep-new, and cancel paths.
+- Verification:
+  - `cd apps/mobile && flutter test test/finance_features_test.dart --name "merchant"`
+  - `cd apps/mobile && flutter analyze`
+- Assumptions made:
+  - Existing household merchant options are sufficient for client-side
+    close-match comparison; no Supabase migration was needed.
+  - The initial threshold and lead-margin constants satisfy the documented test
+    matrix, so no tuning change was made.
+  - Close-match comparison remains limited to canonical merchant display names;
+    aliases, raw statement merchants, categories, labels, caps, and notes were
+    not compared.
+  - Milestones 18-21 remain deferred, and Milestone 60 was not started.
+- Mocks created:
+  - None.
+- Mocks used:
+  - Existing `_FakeFinanceRepository`, extended with an `Uber` merchant option
+    and a one-save failure hook for the keep-new retry test.
 
 ## M60 - Merchant Autocomplete Regression, Docs, and Cleanup
 
