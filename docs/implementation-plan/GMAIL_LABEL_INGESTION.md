@@ -146,7 +146,7 @@ Completion summary:
 
 ## M66 - Gmail Label Watch and Backfill Contract
 
-Status: Planned.
+Status: Completed on 2026-06-16.
 
 Purpose: Replace Inbox/sender-based Gmail candidate discovery with readonly
 watch, history, and backfill selection for the `Banking/HDFC Transactions`
@@ -169,7 +169,7 @@ Instructions:
   name, and fail clearly when it is missing. Do not silently fall back to
   `INBOX`.
 - Update Gmail watch setup and watch renewal to pass the resolved label id in
-  `labelIds` with `labelFilterBehavior: "INCLUDE"`.
+  `labelIds` with `labelFilterBehavior: "include"`.
 - Update history listing to request the watched label id and collect both
   `messagesAdded` and `labelsAdded` candidates. Preserve job idempotency by
   message id and existing Gmail history id semantics.
@@ -219,6 +219,56 @@ Completion summary requirements:
 - Assumptions made
 - Mocks created
 - Mocks used
+
+Completion summary:
+
+- Added `20260616120838_gmail_label_ingestion_contract.sql` with watched Gmail
+  label id/name/resolution fields on `linked_mailboxes`, status-view exposure,
+  and the updated service-role `upsert_gmail_mailbox(...)` contract.
+- Added shared Gmail label helpers to list labels, resolve the exact
+  `Banking/HDFC Transactions` label, configure Gmail watch with that label id,
+  request history for watched-label message and label-added changes, and list
+  backfill candidates by label id plus date bounds.
+- Updated OAuth callback, watch renewal, and sync processing so active Gmail sync
+  no longer falls back to `INBOX` or sender-only candidate discovery. Existing
+  connected mailboxes can resolve and store the watched label during sync, while
+  renewal configures future watches with the watched label.
+- Updated message/thread processing to skip messages that do not still carry the
+  watched label, preventing unrelated messages in an expanded thread from being
+  parsed.
+- Added focused Edge Function and pgTAP coverage for label resolution,
+  label-filtered watch/history/backfill requests, mailbox label persistence, and
+  connector-status exposure.
+- Deferred scope was not started: body-first parser registry, Netbanking IMPS,
+  watched-label parse-failure Review ignore, hosted rollout, iOS, web, push
+  notifications, M67, M68, and M69.
+- Verification:
+  - `supabase db reset --local`
+  - `supabase test db --local supabase/tests/gmail_ingestion.sql`
+  - `supabase test db --local supabase/tests/production_readiness.sql`
+  - `supabase db lint --local --schema app_private,public --fail-on error`
+  - `supabase test db --local supabase/tests`
+  - `deno test --allow-env --allow-net supabase/functions/tests/google.test.ts`
+  - `deno test --allow-env --allow-net supabase/functions/tests/gmail_sync.test.ts`
+  - `supabase db advisors --local --fail-on none`
+  - `git diff --check`
+- Known gaps:
+  - `supabase db advisors --local --fail-on none` reports pre-existing merchant
+    RLS performance warnings for `public.merchants` delete policies; no M66 Gmail
+    label migration warnings were reported.
+- Assumptions made:
+  - Gmail API returns the nested label name exactly as
+    `Banking/HDFC Transactions`.
+  - Existing connected mailboxes can keep their readonly Gmail scope; sync can
+    resolve the label id for label-based processing, and renewal configures the
+    future watch with the same label id.
+  - Missing watched label should surface as a connector/operator error instead of
+    falling back to Inbox/sender discovery.
+- Mocks created:
+  - None.
+- Mocks used:
+  - Stubbed Gmail API responses in Edge Function unit tests for labels, watch,
+    history, and message-list requests.
 
 ## M67 - Body-First Parser Registry and Netbanking IMPS Parser
 

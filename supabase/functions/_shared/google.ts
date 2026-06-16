@@ -4,6 +4,8 @@ import { assertIsoDate } from "./gmail_range.ts";
 export const gmailReadonlyScope =
   "https://www.googleapis.com/auth/gmail.readonly";
 
+export const watchedGmailLabelName = "Banking/HDFC Transactions";
+
 type GoogleTokenResponse = {
   access_token: string;
   expires_in?: number;
@@ -17,11 +19,17 @@ export type GmailMessageSummary = {
   threadId?: string;
 };
 
+export type GmailLabel = {
+  id: string;
+  name: string;
+};
+
 export type GmailMessageListOptions = {
   query?: string;
   searchStartDate?: string | null;
   searchEndDateExclusive?: string | null;
   maxResults?: number;
+  labelIds?: string[];
 };
 
 export class GoogleApiError extends Error {
@@ -122,11 +130,55 @@ export async function fetchGmailProfile(accessToken: string): Promise<{
   return checkedGoogleJson(response, "Gmail profile fetch");
 }
 
-export async function watchGmailMailbox(accessToken: string): Promise<{
+export async function listGmailLabels(
+  accessToken: string,
+): Promise<GmailLabel[]> {
+  const response = await fetch(
+    "https://gmail.googleapis.com/gmail/v1/users/me/labels",
+    {
+      headers: { Authorization: `Bearer ${accessToken}` },
+    },
+  );
+
+  const body = await checkedGoogleJson<{ labels?: GmailLabel[] }>(
+    response,
+    "Gmail labels list",
+  );
+  return body.labels ?? [];
+}
+
+export async function resolveWatchedGmailLabel(
+  accessToken: string,
+): Promise<GmailLabel> {
+  const labels = await listGmailLabels(accessToken);
+  const label = labels.find((candidate) =>
+    candidate.name === watchedGmailLabelName
+  );
+
+  if (!label?.id) {
+    throw new Error(
+      `Gmail label ${watchedGmailLabelName} was not found. Create the nested Gmail label before connecting or renewing Gmail ingestion.`,
+    );
+  }
+
+  return label;
+}
+
+export async function watchGmailMailbox(
+  accessToken: string,
+  labelId: string,
+): Promise<{
   historyId: string;
   expiration?: string;
   expirationDate?: string;
 }> {
+  const watchedLabelId = labelId.trim();
+  if (!watchedLabelId) {
+    throw new Error(
+      "Watched Gmail label id is required for Gmail watch setup.",
+    );
+  }
+
   const response = await fetch(
     "https://gmail.googleapis.com/gmail/v1/users/me/watch",
     {
@@ -137,8 +189,8 @@ export async function watchGmailMailbox(accessToken: string): Promise<{
       },
       body: JSON.stringify({
         topicName: requiredEnv("GOOGLE_PUBSUB_TOPIC"),
-        labelIds: ["INBOX"],
-        labelFilterBehavior: "INCLUDE",
+        labelIds: [watchedLabelId],
+        labelFilterBehavior: "include",
       }),
     },
   );
@@ -179,16 +231,27 @@ export async function listGmailHistory(
   accessToken: string,
   startHistoryId: string,
   pageToken?: string,
+  labelId?: string,
 ): Promise<{
   history?: Array<
-    { messagesAdded?: Array<{ message?: GmailMessageSummary }> }
+    {
+      messagesAdded?: Array<{ message?: GmailMessageSummary }>;
+      labelsAdded?: Array<{
+        message?: GmailMessageSummary;
+        labelIds?: string[];
+      }>;
+    }
   >;
   nextPageToken?: string;
   historyId?: string;
 }> {
   const url = new URL("https://gmail.googleapis.com/gmail/v1/users/me/history");
   url.searchParams.set("startHistoryId", startHistoryId);
-  url.searchParams.set("historyTypes", "messageAdded");
+  url.searchParams.append("historyTypes", "messageAdded");
+  url.searchParams.append("historyTypes", "labelAdded");
+  if (labelId?.trim()) {
+    url.searchParams.set("labelId", labelId.trim());
+  }
   if (pageToken) {
     url.searchParams.set("pageToken", pageToken);
   }
@@ -228,7 +291,7 @@ export function buildGmailTransactionSearchQuery(
     dateParts.push("newer_than:30d");
   }
 
-  return [...dateParts, "from:alerts@hdfcbank.bank.in"].join(" ");
+  return dateParts.join(" ");
 }
 
 export async function listRecentGmailMessages(
@@ -248,6 +311,12 @@ export async function listRecentGmailMessages(
   );
   url.searchParams.set("maxResults", String(maxResults));
   url.searchParams.set("q", buildGmailTransactionSearchQuery(options));
+  for (const labelId of options.labelIds ?? []) {
+    const normalizedLabelId = labelId.trim();
+    if (normalizedLabelId) {
+      url.searchParams.append("labelIds", normalizedLabelId);
+    }
+  }
   if (pageToken) {
     url.searchParams.set("pageToken", pageToken);
   }

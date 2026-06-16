@@ -1,4 +1,8 @@
-import { refreshAccessToken, watchGmailMailbox } from "../_shared/google.ts";
+import {
+  refreshAccessToken,
+  resolveWatchedGmailLabel,
+  watchGmailMailbox,
+} from "../_shared/google.ts";
 import {
   errorResponse,
   handleOptions,
@@ -25,7 +29,7 @@ Deno.serve(async (req: Request) => {
 
     const { data: mailboxes, error: mailboxError } = await serviceClient
       .from("linked_mailboxes")
-      .select("id, watch_expires_at")
+      .select("id, watch_expires_at, watched_gmail_label_id")
       .eq("provider", "gmail")
       .eq("is_active", true)
       .or(`watch_expires_at.is.null,watch_expires_at.lt.${threshold}`)
@@ -50,11 +54,19 @@ Deno.serve(async (req: Request) => {
         }
 
         const token = await refreshAccessToken(String(refreshToken));
-        const watch = await watchGmailMailbox(token.access_token);
+        const watchedLabel = await resolveWatchedGmailLabel(token.access_token);
+        const watchedLabelResolvedAt = new Date().toISOString();
+        const watch = await watchGmailMailbox(
+          token.access_token,
+          watchedLabel.id,
+        );
         await serviceClient
           .from("linked_mailboxes")
           .update({
             gmail_history_id: watch.historyId,
+            watched_gmail_label_id: watchedLabel.id,
+            watched_gmail_label_name: watchedLabel.name,
+            watched_gmail_label_resolved_at: watchedLabelResolvedAt,
             watch_expires_at: watch.expirationDate ?? null,
             last_watch_renewed_at: new Date().toISOString(),
             last_error: null,
@@ -62,6 +74,8 @@ Deno.serve(async (req: Request) => {
           .eq("id", mailbox.id);
         renewed.push({
           mailboxId: mailbox.id,
+          watchedGmailLabelId: watchedLabel.id,
+          watchedGmailLabelName: watchedLabel.name,
           watchExpiresAt: watch.expirationDate,
         });
       } catch (error) {

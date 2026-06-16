@@ -3,7 +3,7 @@ begin;
 create extension if not exists pgtap with schema extensions;
 set search_path = public, extensions;
 
-select plan(29);
+select plan(33);
 
 select isnt(
   (select installed_version from pg_available_extensions where name = 'supabase_vault'),
@@ -109,7 +109,10 @@ from public.upsert_gmail_mailbox(
   'https://www.googleapis.com/auth/gmail.readonly',
   '9001',
   '2026-06-14 00:00:00+00',
-  '2026-06-07 14:00:00+00'
+  '2026-06-07 14:00:00+00',
+  'Label_123',
+  'Banking/HDFC Transactions',
+  '2026-06-16 12:00:00+00'
 );
 
 reset role;
@@ -140,6 +143,36 @@ select is(
   'initial connector setup queues a bounded Gmail backfill'
 );
 
+select is(
+  (
+    select watched_gmail_label_id
+    from public.linked_mailboxes
+    where provider = 'gmail'
+  ),
+  'Label_123',
+  'Gmail mailbox stores the resolved watched label id'
+);
+
+select is(
+  (
+    select watched_gmail_label_name
+    from public.linked_mailboxes
+    where provider = 'gmail'
+  ),
+  'Banking/HDFC Transactions',
+  'Gmail mailbox stores the exact watched label name'
+);
+
+select is(
+  (
+    select payload ->> 'watchedGmailLabelId'
+    from public.ingestion_jobs
+    where job_type = 'gmail_backfill'
+  ),
+  'Label_123',
+  'initial connector setup records the watched label id in backfill metadata'
+);
+
 set local role authenticated;
 set local request.jwt.claim.sub = '11000000-0000-0000-0000-000000000001';
 set local request.jwt.claim.role = 'authenticated';
@@ -148,6 +181,15 @@ select is(
   (select count(*)::integer from public.v_linked_mailbox_status),
   1,
   'mailbox status view shows the connected mailbox to the owning household'
+);
+
+select is(
+  (
+    select watched_gmail_label_name
+    from public.v_linked_mailbox_status
+  ),
+  'Banking/HDFC Transactions',
+  'mailbox status view exposes the watched Gmail label name'
 );
 
 set local request.jwt.claim.sub = '11000000-0000-0000-0000-000000000002';

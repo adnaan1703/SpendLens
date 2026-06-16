@@ -105,9 +105,10 @@ For production scheduling, monitoring, and hosted smoke checks, use
 
 Milestone 13 adds an explicit hosted dev/staging runbook for importing supported
 May 2026 Gmail transaction emails from the already connected mailbox.
-This section documents the completed pre-M66 runbook. Milestones 66-69 plan to
-replace candidate discovery with the readonly `Banking/HDFC Transactions` label
-and body-first parser routing.
+This section documents the completed pre-M66 runbook. Milestone 66 replaced
+candidate discovery for active Gmail sync/backfill with the readonly
+`Banking/HDFC Transactions` label. Body-first parser routing remains planned for
+Milestone 67.
 
 Scope:
 
@@ -165,11 +166,12 @@ curl -sS \
   --data '{"limit": 10}'
 ```
 
-Range jobs in the completed pre-M66 flow fetch HDFC alert-sender emails from a
-slightly buffered Gmail search window. `gmail-sync` classifies messages by
-sender and subject, records every UPI or credit-card parse attempt, and only
-ingests parsed transactions in the strict transaction-date window
-`2026-05-01 <= transaction_date < 2026-06-01`.
+Range jobs in the completed pre-M66 flow fetched HDFC alert-sender emails from a
+slightly buffered Gmail search window. After Milestone 66, new range jobs use the
+stored watched Gmail label id plus date bounds, include archived/non-Inbox mail
+with that label, and skip thread messages that do not still carry the watched
+label. Until Milestone 67, `gmail-sync` still classifies supported parser
+templates by the current parser registry.
 Re-running the same range does not duplicate transactions because jobs use
 deterministic idempotency keys, parse attempts upsert by message/parser, and
 ingestion still upserts by `(household_id, source_fingerprint)`.
@@ -252,9 +254,10 @@ Parser support and planned expansion:
 - Planned Milestone 67 support for HDFC `Netbanking :: IMPS` debit alerts,
   matched from body text with candidate/source type `netbanking_imps`.
 
-Milestones 66-69 move candidate discovery to the readonly Gmail label
+Milestone 66 moved candidate discovery to the readonly Gmail label
 `Banking/HDFC Transactions`. Archived/non-Inbox mail with that label is in
-scope. Sender and subject remain stored diagnostics but no longer choose the
+scope. Sender and subject remain stored diagnostics; Milestone 67 completes the
+body-first parser-routing change so sender and subject no longer choose the
 parser.
 
 Gmail sync expands each candidate message to its Gmail thread before parsing, so

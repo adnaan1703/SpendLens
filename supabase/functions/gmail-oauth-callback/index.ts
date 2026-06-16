@@ -2,6 +2,7 @@ import { sha256Hex } from "../_shared/crypto.ts";
 import {
   exchangeCodeForTokens,
   fetchGmailProfile,
+  resolveWatchedGmailLabel,
   tokenExpiryTimestamp,
   watchGmailMailbox,
 } from "../_shared/google.ts";
@@ -95,7 +96,12 @@ Deno.serve(async (req: Request) => {
 
     const tokens = await exchangeCodeForTokens(code);
     const profile = await fetchGmailProfile(tokens.access_token);
-    const watch = await watchGmailMailbox(tokens.access_token);
+    const watchedLabel = await resolveWatchedGmailLabel(tokens.access_token);
+    const watchedLabelResolvedAt = new Date().toISOString();
+    const watch = await watchGmailMailbox(
+      tokens.access_token,
+      watchedLabel.id,
+    );
 
     const { data: mailboxData, error: mailboxError } = await serviceClient.rpc(
       "upsert_gmail_mailbox",
@@ -109,6 +115,9 @@ Deno.serve(async (req: Request) => {
         p_gmail_history_id: watch.historyId,
         p_watch_expires_at: watch.expirationDate ?? null,
         p_token_expires_at: tokenExpiryTimestamp(tokens.expires_in),
+        p_watched_gmail_label_id: watchedLabel.id,
+        p_watched_gmail_label_name: watchedLabel.name,
+        p_watched_gmail_label_resolved_at: watchedLabelResolvedAt,
       },
     );
 
@@ -120,6 +129,8 @@ Deno.serve(async (req: Request) => {
     logOperationalEvent("gmail_oauth_callback_completed", {
       mailboxId: mailbox?.id,
       householdId: stateRow.household_id,
+      watchedGmailLabelId: watchedLabel.id,
+      watchedGmailLabelName: watchedLabel.name,
       watchExpiresAt: watch.expirationDate ?? null,
       scope: tokens.scope ?? null,
     });

@@ -217,17 +217,20 @@ Use this file to coordinate work across multiple implementation sessions. Update
   Milestone 64 completed the final local merchant group regression pass, folded
   final behavior into durable docs, confirmed Settings rename/merge writes stay
   RPC-backed, and marked the companion plan completed-only. Milestone 65 added
-  the Gmail label ingestion companion plan and queued Milestones 66-69 for
-  readonly `Banking/HDFC Transactions` label watch/backfill, body-first Gmail
-  parser routing, Netbanking IMPS parsing, watched-label parse failures in
-  Review, household-wide ignore, regression, and docs cleanup.
+  the Gmail label ingestion companion plan. Milestone 66 completed readonly
+  `Banking/HDFC Transactions` label watch/backfill discovery, watched-label
+  mailbox storage, and label-filtered history/backfill/thread processing.
+  Milestones 67-69 remain planned for body-first Gmail parser routing,
+  Netbanking IMPS parsing, watched-label parse failures in Review,
+  household-wide ignore, regression, and docs cleanup.
   Milestones 18-21 remain planned and deferred by user request.
 - Remote deployment state: On 2026-06-08, user confirmed Supabase project `bslsitzdvrdosubbdxpd` as the intended dev/staging target. All local migrations through `20260607174515_ai_ready_layer_llm_features.sql` were pushed there, hosted expense Q&A and the now-retired legacy AI lookup function were active with JWT verification, and `GEMINI_API_KEY` was present in hosted Edge Function secrets by name. After the user signed in through the Android emulator, hosted profile/household bootstrap and authenticated Gemini Edge Function smoke passed. On 2026-06-08 for Milestone 13, `gmail-oauth-start` was deployed as version 2 with JWT verification, `gmail-sync` was deployed as version 2 without JWT verification, and new `gmail-backfill-range` was deployed as version 1 without JWT verification. Hosted `gmail-backfill-range` `OPTIONS` smoke returned 200, and an unauthenticated POST returned the expected service-key error. The live May Gmail backfill itself was not run because it requires the user to connect the target Gmail mailbox and invoke the runbook with a Supabase secret key from a local/platform secret store. On 2026-06-09, M16 deleted the hosted legacy AI lookup function from `bslsitzdvrdosubbdxpd` and a follow-up function list verified it absent. The M16 database migration and updated active Suggest function were verified locally but not pushed/deployed to hosted in this implementation session.
-- Next recommended milestone: Milestone 66, Gmail Label Watch and Backfill
-  Contract. Milestones 18-21 remain deferred unless the user resumes push
-  notifications. If continuing hosted rollout separately, push the M16, M26,
-  M29, M32, and M33 migrations and deploy `transaction-metadata-suggest`; iOS
-  and web remain deferred future milestones unless explicitly resumed.
+- Next recommended milestone: Milestone 67, Body-First Parser Registry and
+  Netbanking IMPS Parser. Milestones 18-21 remain deferred unless the user
+  resumes push notifications. If continuing hosted rollout separately, push the
+  M16, M26, M29, M32, and M33 migrations and deploy
+  `transaction-metadata-suggest`; iOS and web remain deferred future milestones
+  unless explicitly resumed.
 - Documentation state: completed-only companion execution plans for transaction
   metadata editing and category management were retired from `docs/` on
   2026-06-12. `docs/implementation-plan/MONTHLY_CAPS.md` remains active as the
@@ -244,7 +247,7 @@ Use this file to coordinate work across multiple implementation sessions. Update
   after completed Milestones 61-64 and can be removed in a later cleanup if the
   repository's completed-plan convention calls for it.
   `docs/implementation-plan/GMAIL_LABEL_INGESTION.md` is the active companion
-  plan for planned Milestones 66-69.
+  plan for completed Milestone 66 and planned Milestones 67-69.
 
 ## Required Reading for New Threads
 
@@ -282,12 +285,13 @@ At the start of a new implementation thread, read:
   `https://www.googleapis.com/auth/gmail.readonly` scope. The watched Gmail
   label is `Banking/HDFC Transactions`, shown in the Gmail UI as `HDFC
   Transactions` under `Banking`; archived/non-Inbox mail with that label is in
-  scope.
-- Gmail parser routing for Milestones 66-69 is body-first. Sender and subject
-  are diagnostics, not parser selectors. Unmatched watched-label mail should
-  surface as sanitized Review parse failures with sender, subject, and received
-  time, and `Ignore for now` hides one failure household-wide while preserving
-  service-only diagnostics.
+  scope. Milestone 66 stores the resolved label id/name on `linked_mailboxes` and
+  active sync/backfill uses that label id rather than `INBOX`.
+- Gmail parser routing for Milestones 67-69 is body-first. Sender and subject are
+  diagnostics, not parser selectors. Unmatched watched-label mail should surface
+  as sanitized Review parse failures with sender, subject, and received time, and
+  `Ignore for now` hides one failure household-wide while preserving service-only
+  diagnostics.
 - `Netbanking :: IMPS` is a Gmail/source candidate type planned as
   `netbanking_imps`; it is not category taxonomy and does not replace ledger
   `transaction_type` values such as `debit_spend`.
@@ -455,10 +459,58 @@ Do not ask the user to perform all setup at once. Ask only when the relevant mil
   completed.
 - Milestone 65, Gmail Label Ingestion Planning and Reference Readiness:
   completed.
-- Milestone 66, Gmail Label Watch and Backfill Contract: planned.
+- Milestone 66, Gmail Label Watch and Backfill Contract: completed.
 - Milestone 67, Body-First Parser Registry and Netbanking IMPS Parser: planned.
 - Milestone 68, Watched-Label Parse Failures and Review Ignore: planned.
 - Milestone 69, Gmail Label Ingestion Regression, Docs, and Cleanup: planned.
+
+## Gmail Label Ingestion M66 Notes
+
+- Completed on 2026-06-16. Milestones 18-21 remained deferred and were not
+  started. Milestones 67-69 were not started.
+- Added `20260616120838_gmail_label_ingestion_contract.sql` with watched Gmail
+  label id/name/resolution fields on `linked_mailboxes`, connector status view
+  exposure, and a service-role `upsert_gmail_mailbox(...)` contract that requires
+  the resolved `Banking/HDFC Transactions` label.
+- Updated Gmail Edge Function helpers to list Gmail labels, resolve the exact
+  watched label, configure Gmail watch with that label id, request watched-label
+  history for both message and label-added changes, and list backfill candidates
+  by watched label plus date bounds.
+- Updated OAuth callback and watch renewal to store the watched label metadata.
+  Existing connected mailboxes can resolve/store the watched label during sync
+  without a new Gmail scope, while renewal configures future watches with that
+  label id.
+- Updated sync thread expansion so only messages that still carry the watched
+  label are parsed; unrelated messages in a Gmail thread are skipped.
+- Deferred by scope: body-first parser registry, Netbanking IMPS,
+  watched-label parse-failure Review ignore, hosted rollout, iOS, web, push
+  notifications, and M67-M69.
+- Verification:
+  - `supabase db reset --local`
+  - `supabase test db --local supabase/tests/gmail_ingestion.sql`
+  - `supabase test db --local supabase/tests/production_readiness.sql`
+  - `supabase db lint --local --schema app_private,public --fail-on error`
+  - `supabase test db --local supabase/tests`
+  - `deno test --allow-env --allow-net supabase/functions/tests/google.test.ts`
+  - `deno test --allow-env --allow-net supabase/functions/tests/gmail_sync.test.ts`
+  - `supabase db advisors --local --fail-on none`
+  - `git diff --check`
+- Known gaps:
+  - `supabase db advisors --local --fail-on none` reports pre-existing merchant
+    RLS performance warnings for `public.merchants` delete policies; no M66 Gmail
+    label migration warnings were reported.
+- Assumptions made:
+  - Gmail API reports the nested label name exactly as
+    `Banking/HDFC Transactions`.
+  - Missing watched label should surface as a connector/operator error rather than
+    silently falling back to Inbox/sender discovery.
+  - Gmail OAuth remains readonly; no new Gmail scope is required for existing or
+    newly connected mailboxes.
+- Mocks created:
+  - None.
+- Mocks used:
+  - Stubbed Gmail API responses in Edge Function tests for labels, watch, history,
+    and message-list requests.
 
 ## Gmail Label Ingestion M65 Notes
 

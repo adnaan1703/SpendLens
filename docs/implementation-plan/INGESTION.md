@@ -114,7 +114,7 @@ Milestones 66-69 keep Gmail OAuth at
 After OAuth:
 
 1. Resolve the exact Gmail label `Banking/HDFC Transactions`.
-2. Call Gmail `watch` with that label id and `labelFilterBehavior: "INCLUDE"`.
+2. Call Gmail `watch` with that label id and `labelFilterBehavior: "include"`.
 3. Store the resolved label id/name, returned `history_id`, and watch
    expiration.
 4. Schedule daily renewal.
@@ -155,6 +155,11 @@ Sync job responsibilities:
 10. Apply merchant rules.
 11. Create review items for low-confidence or unknown mappings.
 12. Advance stored Gmail history ID after successful processing.
+
+Milestone 66 completed the readonly label watch/backfill portion of this flow:
+label resolution, watched-label storage, label-filtered watch/history/backfill
+requests, and thread-message filtering. Body-first parser routing and unmatched
+watched-label parse failures remain planned for Milestones 67-68.
 
 ### Backfill
 

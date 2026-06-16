@@ -8,6 +8,7 @@ import {
   listGmailHistory,
   listRecentGmailMessages,
   refreshAccessToken,
+  resolveWatchedGmailLabel,
 } from "../_shared/google.ts";
 import {
   compareIsoDates,
@@ -48,6 +49,9 @@ type MailboxRow = {
   household_id: string;
   email: string;
   gmail_history_id?: string | null;
+  watched_gmail_label_id?: string | null;
+  watched_gmail_label_name?: string | null;
+  watched_gmail_label_resolved_at?: string | null;
 };
 
 type ProcessCounts = {
@@ -122,9 +126,54 @@ function addCandidate(
   });
 }
 
-async function collectHistoryMessageCandidates(
+export function messageHasGmailLabel(
+  message: Record<string, unknown>,
+  labelId: string,
+): boolean {
+  const labelIds = message.labelIds;
+  if (!Array.isArray(labelIds)) {
+    return false;
+  }
+
+  return labelIds.some((candidate) => candidate === labelId);
+}
+
+async function ensureWatchedGmailLabel(
+  serviceClient: ReturnType<typeof createServiceClient>,
+  mailbox: MailboxRow,
+  accessToken: string,
+): Promise<string> {
+  const existingLabelId = mailbox.watched_gmail_label_id?.trim();
+  if (existingLabelId) {
+    return existingLabelId;
+  }
+
+  const watchedLabel = await resolveWatchedGmailLabel(accessToken);
+  const resolvedAt = new Date().toISOString();
+  const { error } = await serviceClient
+    .from("linked_mailboxes")
+    .update({
+      watched_gmail_label_id: watchedLabel.id,
+      watched_gmail_label_name: watchedLabel.name,
+      watched_gmail_label_resolved_at: resolvedAt,
+      last_error: null,
+    })
+    .eq("id", mailbox.id);
+
+  if (error) {
+    throw error;
+  }
+
+  mailbox.watched_gmail_label_id = watchedLabel.id;
+  mailbox.watched_gmail_label_name = watchedLabel.name;
+  mailbox.watched_gmail_label_resolved_at = resolvedAt;
+  return watchedLabel.id;
+}
+
+export async function collectHistoryMessageCandidates(
   accessToken: string,
   startHistoryId: string,
+  watchedLabelId: string,
 ): Promise<{
   candidates: GmailMessageCandidate[];
   latestHistoryId?: string;
@@ -134,11 +183,21 @@ async function collectHistoryMessageCandidates(
   let latestHistoryId: string | undefined;
 
   do {
-    const page = await listGmailHistory(accessToken, startHistoryId, pageToken);
+    const page = await listGmailHistory(
+      accessToken,
+      startHistoryId,
+      pageToken,
+      watchedLabelId,
+    );
     latestHistoryId = page.historyId ?? latestHistoryId;
     for (const history of page.history ?? []) {
       for (const added of history.messagesAdded ?? []) {
         addCandidate(candidates, added.message);
+      }
+      for (const added of history.labelsAdded ?? []) {
+        if ((added.labelIds ?? []).includes(watchedLabelId)) {
+          addCandidate(candidates, added.message);
+        }
       }
     }
     pageToken = page.nextPageToken;
@@ -147,9 +206,10 @@ async function collectHistoryMessageCandidates(
   return { candidates: [...candidates.values()].slice(0, 50), latestHistoryId };
 }
 
-async function collectBackfillMessageCandidates(
+export async function collectBackfillMessageCandidates(
   accessToken: string,
   options: BackfillOptions,
+  watchedLabelId: string,
 ): Promise<GmailMessageCandidate[]> {
   const candidates = new Map<string, GmailMessageCandidate>();
   let pageToken: string | undefined;
@@ -161,6 +221,7 @@ async function collectBackfillMessageCandidates(
       searchStartDate: options.searchStartDate,
       searchEndDateExclusive: options.searchEndDateExclusive,
       maxResults: Math.min(100, maxCandidates - candidates.size),
+      labelIds: [watchedLabelId],
     });
     for (const message of page.messages ?? []) {
       addCandidate(candidates, message);
@@ -327,11 +388,16 @@ async function processMessage(
   mailbox: MailboxRow,
   message: Record<string, unknown>,
   messageId: string,
+  watchedLabelId: string,
   dateFilter: Pick<
     BackfillOptions,
     "transactionStartDate" | "transactionEndDateExclusive"
   >,
 ): Promise<Partial<ProcessCounts>> {
+  if (!messageHasGmailLabel(message, watchedLabelId)) {
+    return {};
+  }
+
   const metadata = messageMetadata(message);
   const bodyText = extractPlainText(message);
   const parsed = parseGmailTransaction(metadata, bodyText);
@@ -428,6 +494,7 @@ async function processMessageById(
   accessToken: string,
   messageId: string,
   processedMessageIds: Set<string>,
+  watchedLabelId: string,
   dateFilter: Pick<
     BackfillOptions,
     "transactionStartDate" | "transactionEndDateExclusive"
@@ -462,6 +529,7 @@ async function processMessageById(
     mailbox,
     message,
     fetchedMessageId,
+    watchedLabelId,
     dateFilter,
   );
 }
@@ -472,6 +540,7 @@ async function processThread(
   accessToken: string,
   threadId: string,
   processedMessageIds: Set<string>,
+  watchedLabelId: string,
   dateFilter: Pick<
     BackfillOptions,
     "transactionStartDate" | "transactionEndDateExclusive"
@@ -485,6 +554,10 @@ async function processThread(
     if (!messageId || processedMessageIds.has(messageId)) {
       continue;
     }
+    if (!messageHasGmailLabel(message, watchedLabelId)) {
+      processedMessageIds.add(messageId);
+      continue;
+    }
 
     processedMessageIds.add(messageId);
     mergeCounts(
@@ -494,6 +567,7 @@ async function processThread(
         mailbox,
         message,
         messageId,
+        watchedLabelId,
         dateFilter,
       ),
     );
@@ -566,7 +640,9 @@ async function processJob(
 > {
   const { data: mailbox, error: mailboxError } = await serviceClient
     .from("linked_mailboxes")
-    .select("id, household_id, email, gmail_history_id")
+    .select(
+      "id, household_id, email, gmail_history_id, watched_gmail_label_id, watched_gmail_label_name, watched_gmail_label_resolved_at",
+    )
     .eq("id", job.linked_mailbox_id)
     .eq("is_active", true)
     .maybeSingle();
@@ -584,6 +660,11 @@ async function processJob(
   }
 
   const token = await refreshAccessToken(String(refreshToken));
+  const watchedLabelId = await ensureWatchedGmailLabel(
+    serviceClient,
+    mailbox,
+    token.access_token,
+  );
   const counts = emptyCounts();
   const startHistoryId = String(
     job.payload?.startHistoryId ?? mailbox.gmail_history_id ?? "",
@@ -613,6 +694,7 @@ async function processJob(
       const history = await collectHistoryMessageCandidates(
         token.access_token,
         startHistoryId,
+        watchedLabelId,
       );
       candidates = history.candidates;
       latestHistoryId = notificationHistoryId || history.latestHistoryId;
@@ -620,6 +702,7 @@ async function processJob(
       candidates = await collectBackfillMessageCandidates(
         token.access_token,
         backfillOptions,
+        watchedLabelId,
       );
     }
   } catch (error) {
@@ -628,6 +711,7 @@ async function processJob(
       candidates = await collectBackfillMessageCandidates(
         token.access_token,
         backfillOptions,
+        watchedLabelId,
       );
     } else {
       throw error;
@@ -648,6 +732,7 @@ async function processJob(
             token.access_token,
             candidate.threadId,
             processedMessageIds,
+            watchedLabelId,
             dateFilter,
           ),
         );
@@ -671,6 +756,7 @@ async function processJob(
             token.access_token,
             candidate.messageId,
             processedMessageIds,
+            watchedLabelId,
             dateFilter,
           ),
         );
@@ -686,6 +772,7 @@ async function processJob(
         token.access_token,
         candidate.messageId,
         processedMessageIds,
+        watchedLabelId,
         dateFilter,
       ),
     );

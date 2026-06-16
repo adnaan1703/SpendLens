@@ -1,4 +1,9 @@
-import { buildGmailIngestOutcome } from "../gmail-sync/index.ts";
+import {
+  buildGmailIngestOutcome,
+  collectBackfillMessageCandidates,
+  collectHistoryMessageCandidates,
+  messageHasGmailLabel,
+} from "../gmail-sync/index.ts";
 
 function assert(condition: boolean, message: string): void {
   if (!condition) {
@@ -106,5 +111,140 @@ Deno.test("Gmail sync keeps normal ingest count semantics", () => {
   assert(
     outcome.counts.reviewItems === 1,
     "Inserted result should keep review item count.",
+  );
+});
+
+Deno.test("Gmail history candidates include watched-label message and label additions", async () => {
+  const originalFetch = globalThis.fetch;
+  const requestedUrls: URL[] = [];
+
+  globalThis.fetch = ((input: string | URL | Request) => {
+    requestedUrls.push(new URL(input.toString()));
+    return Promise.resolve(
+      new Response(
+        JSON.stringify({
+          historyId: "latest-history",
+          history: [
+            {
+              messagesAdded: [{ message: { id: "m1", threadId: "t1" } }],
+              labelsAdded: [
+                {
+                  message: { id: "m2", threadId: "t2" },
+                  labelIds: ["Label_123"],
+                },
+                {
+                  message: { id: "m3", threadId: "t3" },
+                  labelIds: ["Other_Label"],
+                },
+              ],
+            },
+          ],
+        }),
+        { status: 200, headers: { "Content-Type": "application/json" } },
+      ),
+    );
+  }) as typeof fetch;
+
+  try {
+    const result = await collectHistoryMessageCandidates(
+      "access-token",
+      "start-history",
+      "Label_123",
+    );
+
+    assert(
+      result.latestHistoryId === "latest-history",
+      "Latest history id should be returned.",
+    );
+    assert(
+      result.candidates.length === 2,
+      `Expected watched-label candidates only: ${JSON.stringify(result)}`,
+    );
+    assert(
+      result.candidates.some((candidate) => candidate.messageId === "m1"),
+      "messagesAdded candidate was missing.",
+    );
+    assert(
+      result.candidates.some((candidate) => candidate.messageId === "m2"),
+      "labelsAdded candidate was missing.",
+    );
+    const observedUrl = requestedUrls[0];
+    if (!observedUrl) {
+      throw new Error("Gmail history URL was not requested.");
+    }
+    assert(
+      observedUrl.searchParams.get("labelId") === "Label_123",
+      `History should be filtered by watched label: ${observedUrl.toString()}`,
+    );
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+Deno.test("Gmail backfill candidates request the watched label and date bounds", async () => {
+  const originalFetch = globalThis.fetch;
+  const requestedUrls: URL[] = [];
+
+  globalThis.fetch = ((input: string | URL | Request) => {
+    requestedUrls.push(new URL(input.toString()));
+    return Promise.resolve(
+      new Response(
+        JSON.stringify({
+          messages: [{ id: "m1", threadId: "t1" }],
+        }),
+        { status: 200, headers: { "Content-Type": "application/json" } },
+      ),
+    );
+  }) as typeof fetch;
+
+  try {
+    const candidates = await collectBackfillMessageCandidates(
+      "access-token",
+      {
+        searchStartDate: "2026-06-15",
+        searchEndDateExclusive: "2026-06-17",
+        maxCandidates: 25,
+        transactionStartDate: "2026-06-16",
+        transactionEndDateExclusive: "2026-06-17",
+      },
+      "Label_123",
+    );
+
+    assert(candidates.length === 1, "Expected one backfill candidate.");
+    const observedUrl = requestedUrls[0];
+    if (!observedUrl) {
+      throw new Error("Gmail message list URL was not requested.");
+    }
+    assert(
+      observedUrl.searchParams.get("labelIds") === "Label_123",
+      `Backfill should be filtered by watched label: ${observedUrl.toString()}`,
+    );
+    const query = observedUrl.searchParams.get("q") ?? "";
+    assert(
+      query.includes("after:2026/06/15") &&
+        query.includes("before:2026/06/17"),
+      `Backfill should keep date bounds: ${query}`,
+    );
+    assert(
+      !query.includes("from:alerts@hdfcbank.bank.in"),
+      `Backfill should not use sender fallback: ${query}`,
+    );
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+Deno.test("Gmail sync skips thread messages without the watched label", () => {
+  assert(
+    messageHasGmailLabel({ labelIds: ["Label_123", "INBOX"] }, "Label_123"),
+    "Message with watched label should be accepted.",
+  );
+  assert(
+    !messageHasGmailLabel({ labelIds: ["INBOX"] }, "Label_123"),
+    "Thread message without watched label should be skipped.",
+  );
+  assert(
+    !messageHasGmailLabel({}, "Label_123"),
+    "Message without label metadata should be skipped.",
   );
 });

@@ -117,9 +117,9 @@ Important fields:
 - `created_at timestamptz`
 - `updated_at timestamptz`
 
-Milestone 66 is planned to add the watched-label fields for the nested Gmail
-label `Banking/HDFC Transactions`, shown in Gmail UI as `HDFC Transactions`
-under `Banking`. Store the resolved Gmail label id/name on the mailbox so watch
+Milestone 66 added the watched-label fields for the nested Gmail label
+`Banking/HDFC Transactions`, shown in Gmail UI as `HDFC Transactions` under
+`Banking`. Store the resolved Gmail label id/name on the mailbox so watch
 renewal, history sync, and backfill use the same label without increasing Gmail
 permissions. Do not expose decrypted OAuth tokens to the client.
 

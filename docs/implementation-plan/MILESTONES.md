@@ -3293,7 +3293,7 @@ M66-M69 implementation sequence into durable planning docs.
 
 ### Status
 
-Planned. See
+Completed on 2026-06-16. See
 [Gmail Label Ingestion](GMAIL_LABEL_INGESTION.md#m66---gmail-label-watch-and-backfill-contract).
 
 ### Objective
@@ -3310,6 +3310,44 @@ history, and backfill selection for the `Banking/HDFC Transactions` label.
   and label-added history.
 - Missing label produces an operator-visible connector error.
 - Existing Inbox-only behavior is no longer the default for active Gmail sync.
+
+### Completion Summary
+
+- Added watched Gmail label id/name/resolution storage on `linked_mailboxes`,
+  connector-status exposure, and the updated service-role
+  `upsert_gmail_mailbox(...)` contract for OAuth setup.
+- Updated shared Gmail helpers, OAuth callback, watch renewal, and sync/backfill
+  processing to resolve and use the exact `Banking/HDFC Transactions` Gmail label
+  for watch, history, backfill, and thread-message filtering.
+- Existing connected mailboxes can resolve and store the watched label during sync
+  without a new Gmail scope; renewal configures future watches with the same
+  label id.
+- Added focused pgTAP and Edge Function unit coverage for label persistence,
+  label-filtered watch/history/backfill, and skipping thread messages that lack
+  the watched label.
+- Verification:
+  - `supabase db reset --local`
+  - `supabase test db --local supabase/tests/gmail_ingestion.sql`
+  - `supabase test db --local supabase/tests/production_readiness.sql`
+  - `supabase db lint --local --schema app_private,public --fail-on error`
+  - `supabase test db --local supabase/tests`
+  - `deno test --allow-env --allow-net supabase/functions/tests/google.test.ts`
+  - `deno test --allow-env --allow-net supabase/functions/tests/gmail_sync.test.ts`
+  - `supabase db advisors --local --fail-on none`
+  - `git diff --check`
+- Known gaps:
+  - Supabase advisors still report pre-existing merchant RLS performance warnings
+    unrelated to M66.
+- Assumptions made:
+  - Gmail API returns the nested label name exactly as
+    `Banking/HDFC Transactions`.
+  - Missing watched label is a connector/operator error, not a reason to fall
+    back to Inbox/sender discovery.
+  - Milestones 18-21 remain deferred, and Milestones 67-69 were not started.
+- Mocks created:
+  - None.
+- Mocks used:
+  - Stubbed Gmail API responses in Edge Function unit tests.
 
 ## Milestone 67: Body-First Parser Registry and Netbanking IMPS Parser
 
