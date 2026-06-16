@@ -272,7 +272,7 @@ Completion summary:
 
 ## M67 - Body-First Parser Registry and Netbanking IMPS Parser
 
-Status: Planned.
+Status: Completed on 2026-06-16.
 
 Purpose: Route watched-label Gmail candidates by deterministic body regexes and
 add the HDFC `Netbanking :: IMPS` debit template.
@@ -352,6 +352,54 @@ Completion summary requirements:
 - Assumptions made
 - Mocks created
 - Mocks used
+
+Completion summary:
+
+- Added `20260616123612_gmail_netbanking_imps_candidate_type.sql` with the
+  `netbanking_imps` source-account enum value, `gmail_parse_attempts`
+  validation for `credit_card`, `upi`, `netbanking_imps`, and `other`, and the
+  updated service-role `record_gmail_parse_attempt(...)` guard.
+- Refactored the Gmail parser registry so watched-label messages are routed by
+  deterministic body parser success instead of sender/subject metadata.
+- Added `hdfc_netbanking_imps_debit` parser coverage for the IMPS sample:
+  amount `33500.00`, transaction date `2026-06-16`, ledger type
+  `debit_spend`, statement merchant `IMPS to ending 4428`, source reference
+  `616734130236`, source account `HDFC Netbanking IMPS account ending 0932`,
+  and destination-account diagnostics.
+- Preserved existing HDFC credit-card and UPI body parser fixtures while adding
+  body-only routing coverage for both existing templates.
+- Updated Gmail sync so `netbanking_imps` fingerprints prefer source reference
+  plus source account identity, and unsupported watched-label messages return
+  candidate type `other` for sanitized parse-attempt recording.
+- Added SQL, Edge Function, and Flutter coverage for IMPS ingestion,
+  `netbanking_imps`/`other` parse-attempt health, parse-failure labels, and
+  source-type labels.
+- Deferred scope was not started: Review ignore UI/RPC, new Gmail label watch
+  behavior beyond M66, hosted rollout, iOS, web, push notifications, M68, and
+  M69.
+- Verification:
+  - `supabase db reset --local`
+  - `supabase test db --local supabase/tests/gmail_ingestion.sql`
+  - `supabase test db --local supabase/tests/gmail_parse_failures.sql`
+  - `supabase test db --local supabase/tests/production_readiness.sql`
+  - `supabase db lint --local --schema app_private,public --fail-on error`
+  - `node --test supabase/functions/tests/gmail_parsers.test.mjs`
+  - `deno test --allow-env --allow-net supabase/functions/tests/gmail_sync.test.ts`
+  - `cd apps/mobile && flutter test test/finance_features_test.dart --name "Gmail parse failures"`
+  - `cd apps/mobile && flutter analyze`
+  - `git diff --check`
+- Assumptions made:
+  - The supplied IMPS requirements describe a debit-spend transaction and the
+    source account ending `0932`.
+  - For IMPS idempotency, the source reference plus mailbox and source account
+    identity are the stable duplicate key inputs.
+  - Unsupported watched-label mail can be recorded as candidate type `other`
+    without adding Review ignore behavior until M68.
+- Mocks created:
+  - None.
+- Mocks used:
+  - Existing fake Flutter finance repository hooks for Gmail parse-failure label
+    coverage.
 
 ## M68 - Watched-Label Parse Failures and Review Ignore
 

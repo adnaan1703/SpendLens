@@ -831,6 +831,10 @@ class _TransactionFilters extends StatelessWidget {
                     child: Text('Credit card'),
                   ),
                   DropdownMenuItem(value: 'upi', child: Text('UPI')),
+                  DropdownMenuItem(
+                    value: 'netbanking_imps',
+                    child: Text('Netbanking :: IMPS'),
+                  ),
                 ],
                 onChanged: onSourceAccountTypeChanged,
               ),

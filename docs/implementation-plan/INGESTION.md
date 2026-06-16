@@ -158,8 +158,10 @@ Sync job responsibilities:
 
 Milestone 66 completed the readonly label watch/backfill portion of this flow:
 label resolution, watched-label storage, label-filtered watch/history/backfill
-requests, and thread-message filtering. Body-first parser routing and unmatched
-watched-label parse failures remain planned for Milestones 67-68.
+requests, and thread-message filtering. Milestone 67 completed body-first
+parser routing, HDFC Netbanking IMPS parsing, IMPS source-reference
+fingerprinting, and sanitized `other` parse-attempt rows for unmatched
+watched-label mail. Review ignore remains planned for Milestone 68.
 
 ### Backfill
 
@@ -213,14 +215,14 @@ Parser rules:
   successful parse.
 - Treat unmatched watched-label mail as a sanitized parse failure with
   `candidate_type` `other`.
-- Supported Gmail source/candidate types are `credit_card`, `upi`, and planned
-  `netbanking_imps`.
+- Supported Gmail source/candidate types are `credit_card`, `upi`, and
+  `netbanking_imps`; unmatched watched-label mail uses candidate type `other`.
 
 HDFC body templates and planned expansion:
 
 - Credit-card debit from existing HDFC credit-card body fixtures.
 - UPI debit from existing HDFC Bank UPI body fixtures.
-- Netbanking IMPS debit is planned for Milestone 67 from the sample
+- Netbanking IMPS debit was implemented in Milestone 67 from the sample
   `Netbanking :: IMPS` body format.
 
 ## Supported Parser Order
@@ -230,7 +232,7 @@ Implement parsers in this order:
 1. HDFC credit-card transaction email parser. Implemented for debit alerts.
 2. HDFC credit-card refund/reversal parser. Pending matching fixtures.
 3. UPI debit parser from user-provided anonymized samples. Implemented for HDFC Bank UPI debit alerts.
-4. HDFC Netbanking IMPS debit parser. Planned for Milestone 67.
+4. HDFC Netbanking IMPS debit parser. Implemented in Milestone 67.
 5. UPI credit/refund parser from user-provided anonymized samples. Pending matching fixtures.
 6. Other banks/cards only after fixtures are provided.
 

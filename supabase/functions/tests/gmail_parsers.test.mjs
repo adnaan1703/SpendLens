@@ -5,6 +5,7 @@ import {
   classifyGmailTransaction,
   extractGmailSenderEmail,
   hdfcCreditCardDebitParser,
+  hdfcNetbankingImpsDebitParser,
   hdfcUpiDebitParser,
   parseGmailTransaction,
 } from "../_shared/parsers/gmail_parsers.mjs";
@@ -106,6 +107,17 @@ const upiDebitSampleV2 =
 For more details on Service charges and Fees, click here.
 (c) HDFC Bank`;
 
+const impsDebitSample = `Dear Customer,
+
+INR 33,500.00 has been debited from your HDFC Bank account ending 0932 on 16-06-26 and credited to beneficiary account ending 4428 via IMPS.
+
+IMPS Reference No 616734130236.
+
+If you did not authorize this transaction, please contact HDFC Bank immediately.
+
+Warm Regards,
+HDFC Bank`;
+
 const threadedUpiSamples = [
   {
     id: "msg-thread-upi-1",
@@ -151,31 +163,31 @@ test("HDFC alert sender is extracted from display-name headers", () => {
   );
 });
 
-test("parser registry classifies HDFC credit-card alerts by sender and subject", () => {
+test("parser registry classifies credit-card alerts by body template", () => {
   const classified = classifyGmailTransaction({
     id: "msg-cc-candidate",
-    from: "HDFC Bank InstaAlerts <alerts@hdfcbank.bank.in>",
-    subject: "A payment was made using your Credit Card",
-  });
+    from: "alerts@example.test",
+    subject: "Generic watched-label message",
+  }, sampleOne);
 
   assert.equal(classified.ok, true);
   assert.equal(classified.candidate_type, "credit_card");
   assert.equal(classified.parser_name, "hdfc_credit_card_debit");
 });
 
-test("parser registry classifies HDFC UPI alerts by sender and normalized subject", () => {
+test("parser registry classifies UPI alerts by body template", () => {
   const classified = classifyGmailTransaction({
     id: "msg-upi-candidate",
-    from: "HDFC Bank InstaAlerts <alerts@hdfcbank.bank.in>",
-    subject: "\u2757 You have done a UPI txn. Check details!",
-  });
+    from: "alerts@example.test",
+    subject: "\u2757 Generic watched-label message",
+  }, upiDebitSample);
 
   assert.equal(classified.ok, true);
   assert.equal(classified.candidate_type, "upi");
   assert.equal(classified.parser_name, "hdfc_upi_debit");
 });
 
-test("parser registry rejects body-only matches without approved metadata", () => {
+test("parser registry parses body-only matches without sender or subject gating", () => {
   const parsed = parseGmailTransaction(
     {
       id: "msg-body-only",
@@ -185,9 +197,10 @@ test("parser registry rejects body-only matches without approved metadata", () =
     sampleOne,
   );
 
-  assert.equal(parsed.ok, false);
-  assert.equal(parsed.parser_name, "unsupported");
-  assert.equal(parsed.diagnostics.reason, "unsupported_gmail_message");
+  assert.equal(parsed.ok, true);
+  assert.equal(parsed.parser_name, "hdfc_credit_card_debit");
+  assert.equal(parsed.amount, 966.99);
+  assert.equal(parsed.statement_merchant, "RAZ*Plazza");
 });
 
 test("HDFC debit parser extracts amount merchant card and timestamp", () => {
@@ -329,6 +342,52 @@ HDFC Bank`,
   assert.equal(parsed.source_reference, "652216925085");
 });
 
+test("HDFC Netbanking IMPS debit parser extracts account reference and destination", () => {
+  const parsed = hdfcNetbankingImpsDebitParser.parse(
+    { id: "msg-imps-1" },
+    impsDebitSample,
+  );
+
+  assert.equal(parsed.ok, true);
+  assert.equal(parsed.parser_name, "hdfc_netbanking_imps_debit");
+  assert.equal(parsed.parser_version, "1.0.0");
+  assert.equal(parsed.candidate_type, "netbanking_imps");
+  assert.equal(parsed.amount, 33500.00);
+  assert.equal(parsed.transaction_date, "2026-06-16");
+  assert.equal(parsed.transaction_type, "debit_spend");
+  assert.equal(parsed.statement_merchant, "IMPS to ending 4428");
+  assert.equal(parsed.source_reference, "616734130236");
+  assert.equal(parsed.source_account_hint.type, "netbanking_imps");
+  assert.equal(
+    parsed.source_account_hint.display_name,
+    "HDFC Netbanking IMPS account ending 0932",
+  );
+  assert.equal(parsed.source_account_hint.institution_name, "HDFC Bank");
+  assert.equal(parsed.source_account_hint.masked_identifier, "0932");
+  assert.deepEqual(parsed.diagnostics, {
+    template: "hdfc_netbanking_imps_debit_v1",
+    destination_account_ending: "4428",
+  });
+});
+
+test("parser registry routes Netbanking IMPS by body template", () => {
+  const parsed = parseGmailTransaction(
+    {
+      id: "msg-imps-2",
+      from: "bank@example.test",
+      subject: "Watched label import",
+    },
+    impsDebitSample,
+  );
+
+  assert.equal(parsed.ok, true);
+  assert.equal(parsed.parser_name, "hdfc_netbanking_imps_debit");
+  assert.equal(parsed.amount, 33500.00);
+  assert.equal(parsed.transaction_date, "2026-06-16");
+  assert.equal(parsed.statement_merchant, "IMPS to ending 4428");
+  assert.equal(parsed.source_reference, "616734130236");
+});
+
 test("thread-expanded HDFC UPI debit messages parse independently", () => {
   for (const fixture of threadedUpiSamples) {
     const parsed = parseGmailTransaction(
@@ -354,6 +413,7 @@ test("unsupported messages do not produce transactions", () => {
   const parsed = parseGmailTransaction({ id: "msg-3" }, "Generic newsletter");
 
   assert.equal(parsed.ok, false);
-  assert.equal(parsed.parser_name, "unsupported");
-  assert.equal(parsed.diagnostics.reason, "unsupported_gmail_message");
+  assert.equal(parsed.candidate_type, "other");
+  assert.equal(parsed.parser_name, "unsupported_labeled_gmail_message");
+  assert.equal(parsed.diagnostics.reason, "no_supported_body_template_matched");
 });

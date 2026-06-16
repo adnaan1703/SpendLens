@@ -3,6 +3,7 @@ import {
   collectBackfillMessageCandidates,
   collectHistoryMessageCandidates,
   messageHasGmailLabel,
+  sourceFingerprint,
 } from "../gmail-sync/index.ts";
 
 function assert(condition: boolean, message: string): void {
@@ -111,6 +112,54 @@ Deno.test("Gmail sync keeps normal ingest count semantics", () => {
   assert(
     outcome.counts.reviewItems === 1,
     "Inserted result should keep review item count.",
+  );
+});
+
+Deno.test("Gmail sync fingerprints IMPS by source account and reference", async () => {
+  const first = await sourceFingerprint(
+    "household-1",
+    "mailbox-1",
+    "gmail-message-1",
+    {
+      source_reference: "616734130236",
+      source_account_hint: {
+        type: "netbanking_imps",
+        masked_identifier: "0932",
+      },
+    },
+  );
+  const duplicateMessage = await sourceFingerprint(
+    "household-1",
+    "mailbox-1",
+    "gmail-message-2",
+    {
+      source_reference: "616734130236",
+      source_account_hint: {
+        type: "netbanking_imps",
+        masked_identifier: "0932",
+      },
+    },
+  );
+  const otherAccount = await sourceFingerprint(
+    "household-1",
+    "mailbox-1",
+    "gmail-message-3",
+    {
+      source_reference: "616734130236",
+      source_account_hint: {
+        type: "netbanking_imps",
+        masked_identifier: "9999",
+      },
+    },
+  );
+
+  assert(
+    first === duplicateMessage,
+    "IMPS duplicate messages should fingerprint by reference and source account.",
+  );
+  assert(
+    first !== otherAccount,
+    "IMPS source account identity should remain part of the fingerprint.",
   );
 });
 

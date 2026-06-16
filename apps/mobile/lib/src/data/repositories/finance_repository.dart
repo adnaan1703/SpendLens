@@ -2417,9 +2417,11 @@ final class GmailParseFailure {
     return switch (candidateType) {
       'credit_card' => 'Credit card',
       'upi' => 'UPI',
+      'netbanking_imps' => 'Netbanking :: IMPS',
       'bank_account' => 'Bank account',
       'wallet' => 'Wallet',
       'cash' => 'Cash',
+      'other' => 'Other',
       _ => _labelFromCode(candidateType),
     };
   }
@@ -2430,6 +2432,12 @@ final class GmailParseFailure {
     return switch (reasonCode) {
       null || '' => 'No parser reason recorded',
       'hdfc_debit_pattern_not_matched' => 'HDFC debit pattern not matched',
+      'hdfc_upi_debit_pattern_not_matched' =>
+        'HDFC UPI debit pattern not matched',
+      'hdfc_imps_debit_pattern_not_matched' =>
+        'HDFC IMPS debit pattern not matched',
+      'no_supported_body_template_matched' =>
+        'No supported body template matched',
       _ => _labelFromCode(reasonCode!),
     };
   }
@@ -4472,7 +4480,9 @@ String _labelFromCode(String code) {
   return words
       .map((word) {
         final lower = word.toLowerCase();
-        if (lower == 'upi' || lower == 'hdfc') return lower.toUpperCase();
+        if (lower == 'upi' || lower == 'hdfc' || lower == 'imps') {
+          return lower.toUpperCase();
+        }
 
         return '${lower[0].toUpperCase()}${lower.substring(1)}';
       })

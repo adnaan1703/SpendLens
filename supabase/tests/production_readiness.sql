@@ -340,6 +340,42 @@ values
     null,
     null,
     '{"reason":"hdfc_debit_pattern_not_matched"}'::jsonb
+  ),
+  (
+    '92000000-0000-0000-0000-000000000003',
+    '32000000-0000-0000-0000-000000000001',
+    '52000000-0000-0000-0000-000000000001',
+    null,
+    'netbanking_imps',
+    'gmail-production-imps-failed-smoke',
+    'gmail-production-imps-failed-thread',
+    '2026-06-08 10:15:00+05:30',
+    'alerts@hdfcbank.bank.in',
+    'Netbanking :: IMPS',
+    'hdfc_netbanking_imps_debit',
+    '1.0.0',
+    'parse_failed',
+    null,
+    null,
+    '{"reason":"hdfc_imps_debit_pattern_not_matched"}'::jsonb
+  ),
+  (
+    '92000000-0000-0000-0000-000000000004',
+    '32000000-0000-0000-0000-000000000001',
+    '52000000-0000-0000-0000-000000000001',
+    null,
+    'other',
+    'gmail-production-unsupported-smoke',
+    'gmail-production-unsupported-thread',
+    '2026-06-08 10:30:00+05:30',
+    'alerts@hdfcbank.bank.in',
+    'Watched label unsupported template',
+    'unsupported_labeled_gmail_message',
+    '1.0.0',
+    'parse_failed',
+    null,
+    null,
+    '{"reason":"no_supported_body_template_matched"}'::jsonb
   );
 
 select results_eq(
@@ -403,6 +439,8 @@ select results_eq(
   $$
     values
       ('credit_card', 'hdfc_credit_card_debit', 'parse_failed', 1),
+      ('netbanking_imps', 'hdfc_netbanking_imps_debit', 'parse_failed', 1),
+      ('other', 'unsupported_labeled_gmail_message', 'parse_failed', 1),
       ('upi', 'hdfc_upi_debit', 'parsed', 1)
   $$,
   'Gmail parse attempt health view summarizes candidate parse statuses'

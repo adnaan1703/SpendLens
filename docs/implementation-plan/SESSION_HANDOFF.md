@@ -4,11 +4,11 @@ Use this file to coordinate work across multiple implementation sessions. Update
 
 ## Current Status
 
-- Current milestone: None. Milestone 65 was completed on 2026-06-16 as the
-  Gmail Label Ingestion planning and reference readiness closeout. Milestones
+- Current milestone: None. Milestone 67 was completed on 2026-06-16 as the
+  Body-First Parser Registry and Netbanking IMPS Parser closeout. Milestones
   18-21 remain deferred by user request.
-- Last completed milestone: Milestone 65, Gmail Label Ingestion Planning and
-  Reference Readiness.
+- Last completed milestone: Milestone 67, Body-First Parser Registry and
+  Netbanking IMPS Parser.
 - Current implementation state: Flutter Android app scaffold exists in
   `apps/mobile` with redesigned SpendLens Google sign-in, route protection,
   authenticated shell, RLS-safe profile/default-household bootstrap,
@@ -220,13 +220,15 @@ Use this file to coordinate work across multiple implementation sessions. Update
   the Gmail label ingestion companion plan. Milestone 66 completed readonly
   `Banking/HDFC Transactions` label watch/backfill discovery, watched-label
   mailbox storage, and label-filtered history/backfill/thread processing.
-  Milestones 67-69 remain planned for body-first Gmail parser routing,
-  Netbanking IMPS parsing, watched-label parse failures in Review,
-  household-wide ignore, regression, and docs cleanup.
+  Milestone 67 added body-first Gmail parser routing, HDFC Netbanking IMPS
+  parsing, `netbanking_imps` source/candidate support, sanitized `other`
+  watched-label parse failures, and IMPS source-reference fingerprinting.
+  Milestones 68-69 remain planned for Review ignore, regression, and docs
+  cleanup.
   Milestones 18-21 remain planned and deferred by user request.
 - Remote deployment state: On 2026-06-08, user confirmed Supabase project `bslsitzdvrdosubbdxpd` as the intended dev/staging target. All local migrations through `20260607174515_ai_ready_layer_llm_features.sql` were pushed there, hosted expense Q&A and the now-retired legacy AI lookup function were active with JWT verification, and `GEMINI_API_KEY` was present in hosted Edge Function secrets by name. After the user signed in through the Android emulator, hosted profile/household bootstrap and authenticated Gemini Edge Function smoke passed. On 2026-06-08 for Milestone 13, `gmail-oauth-start` was deployed as version 2 with JWT verification, `gmail-sync` was deployed as version 2 without JWT verification, and new `gmail-backfill-range` was deployed as version 1 without JWT verification. Hosted `gmail-backfill-range` `OPTIONS` smoke returned 200, and an unauthenticated POST returned the expected service-key error. The live May Gmail backfill itself was not run because it requires the user to connect the target Gmail mailbox and invoke the runbook with a Supabase secret key from a local/platform secret store. On 2026-06-09, M16 deleted the hosted legacy AI lookup function from `bslsitzdvrdosubbdxpd` and a follow-up function list verified it absent. The M16 database migration and updated active Suggest function were verified locally but not pushed/deployed to hosted in this implementation session.
-- Next recommended milestone: Milestone 67, Body-First Parser Registry and
-  Netbanking IMPS Parser. Milestones 18-21 remain deferred unless the user
+- Next recommended milestone: Milestone 68, Watched-Label Parse Failures and
+  Review Ignore. Milestones 18-21 remain deferred unless the user
   resumes push notifications. If continuing hosted rollout separately, push the
   M16, M26, M29, M32, and M33 migrations and deploy
   `transaction-metadata-suggest`; iOS and web remain deferred future milestones
@@ -247,7 +249,7 @@ Use this file to coordinate work across multiple implementation sessions. Update
   after completed Milestones 61-64 and can be removed in a later cleanup if the
   repository's completed-plan convention calls for it.
   `docs/implementation-plan/GMAIL_LABEL_INGESTION.md` is the active companion
-  plan for completed Milestone 66 and planned Milestones 67-69.
+  plan for completed Milestones 66-67 and planned Milestones 68-69.
 
 ## Required Reading for New Threads
 
@@ -287,12 +289,11 @@ At the start of a new implementation thread, read:
   Transactions` under `Banking`; archived/non-Inbox mail with that label is in
   scope. Milestone 66 stores the resolved label id/name on `linked_mailboxes` and
   active sync/backfill uses that label id rather than `INBOX`.
-- Gmail parser routing for Milestones 67-69 is body-first. Sender and subject are
-  diagnostics, not parser selectors. Unmatched watched-label mail should surface
-  as sanitized Review parse failures with sender, subject, and received time, and
-  `Ignore for now` hides one failure household-wide while preserving service-only
-  diagnostics.
-- `Netbanking :: IMPS` is a Gmail/source candidate type planned as
+- Gmail parser routing is body-first as of Milestone 67. Sender and subject are
+  diagnostics, not parser selectors. Unmatched watched-label mail is recorded as
+  sanitized candidate type `other`; Milestone 68 still owns the household-wide
+  `Ignore for now` behavior while preserving service-only diagnostics.
+- `Netbanking :: IMPS` is implemented as Gmail/source candidate type
   `netbanking_imps`; it is not category taxonomy and does not replace ledger
   `transaction_type` values such as `debit_spend`.
 - Monthly caps use required named cap rows with category and/or label targets.
@@ -460,7 +461,8 @@ Do not ask the user to perform all setup at once. Ask only when the relevant mil
 - Milestone 65, Gmail Label Ingestion Planning and Reference Readiness:
   completed.
 - Milestone 66, Gmail Label Watch and Backfill Contract: completed.
-- Milestone 67, Body-First Parser Registry and Netbanking IMPS Parser: planned.
+- Milestone 67, Body-First Parser Registry and Netbanking IMPS Parser:
+  completed.
 - Milestone 68, Watched-Label Parse Failures and Review Ignore: planned.
 - Milestone 69, Gmail Label Ingestion Regression, Docs, and Cleanup: planned.
 
@@ -482,9 +484,8 @@ Do not ask the user to perform all setup at once. Ask only when the relevant mil
   label id.
 - Updated sync thread expansion so only messages that still carry the watched
   label are parsed; unrelated messages in a Gmail thread are skipped.
-- Deferred by scope: body-first parser registry, Netbanking IMPS,
-  watched-label parse-failure Review ignore, hosted rollout, iOS, web, push
-  notifications, and M67-M69.
+- Deferred by scope: watched-label parse-failure Review ignore, hosted rollout,
+  iOS, web, push notifications, and M68-M69.
 - Verification:
   - `supabase db reset --local`
   - `supabase test db --local supabase/tests/gmail_ingestion.sql`
@@ -511,6 +512,47 @@ Do not ask the user to perform all setup at once. Ask only when the relevant mil
 - Mocks used:
   - Stubbed Gmail API responses in Edge Function tests for labels, watch, history,
     and message-list requests.
+
+## Gmail Label Ingestion M67 Notes
+
+- Completed on 2026-06-16. Milestones 18-21 remained deferred and were not
+  started. Milestones 68-69 were not started.
+- Added `20260616123612_gmail_netbanking_imps_candidate_type.sql` with
+  `netbanking_imps` in `public.source_account_type`, updated Gmail parse-attempt
+  validation for `credit_card`, `upi`, `netbanking_imps`, and `other`, and kept
+  `record_gmail_parse_attempt(...)` service-role only.
+- Refactored `parseGmailTransaction(metadata, bodyText)` to try deterministic
+  body parsers in order and return the first successful parse; sender and subject
+  remain diagnostics only.
+- Added `hdfc_netbanking_imps_debit` with candidate type `netbanking_imps`,
+  parser version `1.0.0`, IMPS reference `616734130236`, source account ending
+  `0932`, destination account ending `4428`, and statement merchant
+  `IMPS to ending 4428`.
+- Updated Gmail sync fingerprinting so IMPS reprocessing keys on mailbox, source
+  account identity, and source reference; unmatched watched-label messages now
+  return candidate type `other` for sanitized parse-attempt recording.
+- Updated Flutter labels and source-type dropdowns to show `Netbanking :: IMPS`.
+- Verification:
+  - `supabase db reset --local`
+  - `supabase test db --local supabase/tests/gmail_ingestion.sql`
+  - `supabase test db --local supabase/tests/gmail_parse_failures.sql`
+  - `supabase test db --local supabase/tests/production_readiness.sql`
+  - `supabase db lint --local --schema app_private,public --fail-on error`
+  - `node --test supabase/functions/tests/gmail_parsers.test.mjs`
+  - `deno test --allow-env --allow-net supabase/functions/tests/gmail_sync.test.ts`
+  - `cd apps/mobile && flutter test test/finance_features_test.dart --name "Gmail parse failures"`
+  - `cd apps/mobile && flutter analyze`
+  - `git diff --check`
+- Assumptions made:
+  - The IMPS sample is a debit-spend template for HDFC account ending `0932`.
+  - IMPS duplicate suppression should key on source reference plus source account
+    identity.
+  - Candidate type `other` remains for sanitized watched-label parse failures.
+- Mocks created:
+  - None.
+- Mocks used:
+  - Existing fake Flutter finance repository hooks for parse-failure label
+    coverage.
 
 ## Gmail Label Ingestion M65 Notes
 

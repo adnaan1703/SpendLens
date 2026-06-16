@@ -117,10 +117,11 @@ This is not a "no backend" architecture. It is a backend without a permanently r
   readonly Gmail label `Banking/HDFC Transactions`. Milestone 66 added watched
   label storage, exact label resolution, label-filtered Gmail watch renewal,
   history/backfill discovery, and thread-message filtering while keeping Gmail
-  OAuth readonly. Milestones 67-69 remain planned for body-first parser routing,
-  the `Netbanking :: IMPS` source/candidate type, sanitized watched-label parse
-  failures in Review, household-wide `Ignore for now`, and final
-  regression/docs cleanup.
+  OAuth readonly. Milestone 67 added body-first parser routing, the
+  `Netbanking :: IMPS` source/candidate type, sanitized `other` watched-label
+  parse failures, and IMPS source-reference fingerprinting. Milestones 68-69
+  remain planned for household-wide `Ignore for now` and final regression/docs
+  cleanup.
 - Multi-target monthly caps: required-name recurring caps can include multiple
   categories, multiple labels, or both. A transaction counts once inside a cap
   when any selected category or label matches; overlapping caps are allowed.

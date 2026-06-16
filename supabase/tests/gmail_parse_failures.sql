@@ -3,7 +3,7 @@ begin;
 create extension if not exists pgtap with schema extensions;
 set search_path = public, extensions;
 
-select plan(11);
+select plan(12);
 
 select has_function(
   'public',
@@ -142,6 +142,40 @@ values
     '{"reason":"hdfc_debit_pattern_not_matched"}'::jsonb
   ),
   (
+    '93000000-0000-0000-0000-000000000006',
+    '33000000-0000-0000-0000-000000000001',
+    '53000000-0000-0000-0000-000000000001',
+    'netbanking_imps',
+    'gmail-imps-failure-message-1',
+    'gmail-imps-failure-thread-1',
+    '2026-06-08 10:15:00+05:30',
+    'alerts@hdfcbank.bank.in',
+    'Netbanking :: IMPS',
+    'hdfc_netbanking_imps_debit',
+    '1.0.0',
+    'parse_failed',
+    null,
+    null,
+    '{"reason":"hdfc_imps_debit_pattern_not_matched"}'::jsonb
+  ),
+  (
+    '93000000-0000-0000-0000-000000000007',
+    '33000000-0000-0000-0000-000000000001',
+    '53000000-0000-0000-0000-000000000001',
+    'other',
+    'gmail-unsupported-failure-message-1',
+    'gmail-unsupported-failure-thread-1',
+    '2026-06-08 10:30:00+05:30',
+    'alerts@hdfcbank.bank.in',
+    'Watched label unsupported template',
+    'unsupported_labeled_gmail_message',
+    '1.0.0',
+    'parse_failed',
+    null,
+    null,
+    '{"reason":"no_supported_body_template_matched"}'::jsonb
+  ),
+  (
     '93000000-0000-0000-0000-000000000002',
     '33000000-0000-0000-0000-000000000001',
     '53000000-0000-0000-0000-000000000001',
@@ -221,7 +255,7 @@ select is(
       '33000000-0000-0000-0000-000000000001'
     )
   ),
-  1,
+  3,
   'active household member can read only active-mailbox parse failures'
 );
 
@@ -239,6 +273,20 @@ select results_eq(
   $$,
   $$
     values (
+      '93000000-0000-0000-0000-000000000007'::uuid,
+      'other',
+      'no_supported_body_template_matched',
+      'gmail-unsupported-failure-message-1',
+      'gmail-unsupported-failure-thread-1'
+    ),
+    (
+      '93000000-0000-0000-0000-000000000006'::uuid,
+      'netbanking_imps',
+      'hdfc_imps_debit_pattern_not_matched',
+      'gmail-imps-failure-message-1',
+      'gmail-imps-failure-thread-1'
+    ),
+    (
       '93000000-0000-0000-0000-000000000001'::uuid,
       'credit_card',
       'hdfc_debit_pattern_not_matched',
@@ -247,6 +295,33 @@ select results_eq(
     )
   $$,
   'parse-failure RPC returns sanitized diagnostic fields'
+);
+
+select results_eq(
+  $$
+    select
+      candidate_type::text,
+      reason_code
+    from public.list_gmail_parse_failures(
+      '33000000-0000-0000-0000-000000000001'
+    )
+    order by candidate_type::text
+  $$,
+  $$
+    values (
+      'credit_card',
+      'hdfc_debit_pattern_not_matched'
+    ),
+    (
+      'netbanking_imps',
+      'hdfc_imps_debit_pattern_not_matched'
+    ),
+    (
+      'other',
+      'no_supported_body_template_matched'
+    )
+  $$,
+  'parse-failure RPC supports IMPS and unsupported watched-label candidates'
 );
 
 set local request.jwt.claim.sub = '13000000-0000-0000-0000-000000000002';

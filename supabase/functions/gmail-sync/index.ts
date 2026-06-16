@@ -232,7 +232,7 @@ export async function collectBackfillMessageCandidates(
   return [...candidates.values()].slice(0, maxCandidates);
 }
 
-function sourceFingerprint(
+export function sourceFingerprint(
   householdId: string,
   mailboxId: string,
   messageId: string,
@@ -242,13 +242,17 @@ function sourceFingerprint(
     | Record<string, unknown>
     | undefined;
   const sourceReference = String(parsed.source_reference ?? "").trim();
+  const sourceHintType = optionalString(sourceHint?.type);
 
-  if (sourceHint?.type === "upi" && sourceReference) {
+  if (
+    (sourceHintType === "upi" || sourceHintType === "netbanking_imps") &&
+    sourceReference
+  ) {
     return sha256Hex([
       householdId,
       mailboxId,
-      "upi",
-      String(sourceHint.masked_identifier ?? ""),
+      sourceHintType,
+      String(sourceHint?.masked_identifier ?? ""),
       sourceReference,
     ].join("|"));
   }
@@ -276,9 +280,14 @@ function optionalString(value: unknown): string | null {
 
 function parseCandidateType(
   parsed: Record<string, unknown>,
-): "credit_card" | "upi" | null {
+): "credit_card" | "upi" | "netbanking_imps" | "other" | null {
   const candidateType = optionalString(parsed.candidate_type);
-  if (candidateType === "credit_card" || candidateType === "upi") {
+  if (
+    candidateType === "credit_card" ||
+    candidateType === "upi" ||
+    candidateType === "netbanking_imps" ||
+    candidateType === "other"
+  ) {
     return candidateType;
   }
 
@@ -286,7 +295,10 @@ function parseCandidateType(
     | Record<string, unknown>
     | undefined;
   const sourceHintType = optionalString(sourceHint?.type);
-  return sourceHintType === "credit_card" || sourceHintType === "upi"
+  return sourceHintType === "credit_card" ||
+      sourceHintType === "upi" ||
+      sourceHintType === "netbanking_imps" ||
+      sourceHintType === "other"
     ? sourceHintType
     : null;
 }

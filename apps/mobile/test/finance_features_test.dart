@@ -2071,6 +2071,35 @@ void main() {
     expect(find.text('Thread gmail-failure-thread-1'), findsOneWidget);
   });
 
+  test('Gmail parse failures label IMPS and unsupported candidates', () {
+    final impsFailure = _gmailParseFailure(
+      failureId: 'gmail-imps-failure-1',
+      candidateType: 'netbanking_imps',
+      subject: 'Netbanking :: IMPS',
+      parserName: 'hdfc_netbanking_imps_debit',
+      reasonCode: 'hdfc_imps_debit_pattern_not_matched',
+      sourceMessageId: 'gmail-imps-failure-message-1',
+      sourceThreadId: 'gmail-imps-failure-thread-1',
+    );
+    final unsupportedFailure = _gmailParseFailure(
+      failureId: 'gmail-unsupported-failure-1',
+      candidateType: 'other',
+      subject: 'Watched label unsupported template',
+      parserName: 'unsupported_labeled_gmail_message',
+      reasonCode: 'no_supported_body_template_matched',
+      sourceMessageId: 'gmail-unsupported-message-1',
+      sourceThreadId: 'gmail-unsupported-thread-1',
+    );
+
+    expect(impsFailure.candidateTypeLabel, 'Netbanking :: IMPS');
+    expect(impsFailure.reasonLabel, 'HDFC IMPS debit pattern not matched');
+    expect(unsupportedFailure.candidateTypeLabel, 'Other');
+    expect(
+      unsupportedFailure.reasonLabel,
+      'No supported body template matched',
+    );
+  });
+
   testWidgets('merchant review creates and selects a category inline', (
     tester,
   ) async {
@@ -5660,18 +5689,27 @@ MonthlyCapProgress _copyMonthlyCapProgress(
   );
 }
 
-GmailParseFailure _gmailParseFailure() {
+GmailParseFailure _gmailParseFailure({
+  String failureId = 'gmail-failure-1',
+  String candidateType = 'credit_card',
+  DateTime? sourceReceivedAt,
+  String subject = 'A payment was made using your Credit Card',
+  String parserName = 'hdfc_credit_card_debit',
+  String reasonCode = 'hdfc_debit_pattern_not_matched',
+  String sourceMessageId = 'gmail-failure-message-1',
+  String? sourceThreadId = 'gmail-failure-thread-1',
+}) {
   return GmailParseFailure(
-    failureId: 'gmail-failure-1',
-    candidateType: 'credit_card',
-    sourceReceivedAt: DateTime(2026, 6, 8, 10, 30),
+    failureId: failureId,
+    candidateType: candidateType,
+    sourceReceivedAt: sourceReceivedAt ?? DateTime(2026, 6, 8, 10, 30),
     senderEmail: 'alerts@hdfcbank.bank.in',
-    subject: 'A payment was made using your Credit Card',
-    parserName: 'hdfc_credit_card_debit',
+    subject: subject,
+    parserName: parserName,
     parserVersion: '1.0.0',
-    reasonCode: 'hdfc_debit_pattern_not_matched',
-    sourceMessageId: 'gmail-failure-message-1',
-    sourceThreadId: 'gmail-failure-thread-1',
+    reasonCode: reasonCode,
+    sourceMessageId: sourceMessageId,
+    sourceThreadId: sourceThreadId,
   );
 }
 

@@ -107,8 +107,8 @@ Milestone 13 adds an explicit hosted dev/staging runbook for importing supported
 May 2026 Gmail transaction emails from the already connected mailbox.
 This section documents the completed pre-M66 runbook. Milestone 66 replaced
 candidate discovery for active Gmail sync/backfill with the readonly
-`Banking/HDFC Transactions` label. Body-first parser routing remains planned for
-Milestone 67.
+`Banking/HDFC Transactions` label. Milestone 67 completed body-first parser
+routing for credit-card, UPI, and HDFC Netbanking IMPS body templates.
 
 Scope:
 
@@ -170,8 +170,8 @@ Range jobs in the completed pre-M66 flow fetched HDFC alert-sender emails from a
 slightly buffered Gmail search window. After Milestone 66, new range jobs use the
 stored watched Gmail label id plus date bounds, include archived/non-Inbox mail
 with that label, and skip thread messages that do not still carry the watched
-label. Until Milestone 67, `gmail-sync` still classifies supported parser
-templates by the current parser registry.
+label. After Milestone 67, `gmail-sync` selects supported parser templates from
+message body text instead of sender or subject metadata.
 Re-running the same range does not duplicate transactions because jobs use
 deterministic idempotency keys, parse attempts upsert by message/parser, and
 ingestion still upserts by `(household_id, source_fingerprint)`.
@@ -227,8 +227,10 @@ Hosted verification should check:
   completed.
 - May 2026 Gmail transaction counts increased.
 - `gmail_parse_attempts` shows expected `parsed`, `parse_failed`, and
-  `outside_date_range` counts for UPI and credit-card candidates.
-- Source account types include expected `credit_card` and/or `upi` rows.
+  `outside_date_range` counts for UPI, credit-card, Netbanking IMPS, and
+  unsupported watched-label candidates.
+- Source account types include expected `credit_card`, `upi`, and/or
+  `netbanking_imps` rows.
 - No duplicate `(household_id, source_fingerprint)` rows exist.
 - Tombstoned source fingerprints are suppressed rather than recreated.
 - App reads May 2026 Dashboard, Transactions, Trends, and source-type filters
@@ -251,13 +253,13 @@ Parser support and planned expansion:
 
 - HDFC credit-card debit alerts matched by existing body templates.
 - HDFC Bank UPI debit alerts matched by existing body templates.
-- Planned Milestone 67 support for HDFC `Netbanking :: IMPS` debit alerts,
-  matched from body text with candidate/source type `netbanking_imps`.
+- HDFC `Netbanking :: IMPS` debit alerts matched from body text with
+  candidate/source type `netbanking_imps`.
 
 Milestone 66 moved candidate discovery to the readonly Gmail label
 `Banking/HDFC Transactions`. Archived/non-Inbox mail with that label is in
-scope. Sender and subject remain stored diagnostics; Milestone 67 completes the
-body-first parser-routing change so sender and subject no longer choose the
+scope. Sender and subject remain stored diagnostics; Milestone 67 completed the
+body-first parser-routing change, so sender and subject no longer choose the
 parser.
 
 Gmail sync expands each candidate message to its Gmail thread before parsing, so

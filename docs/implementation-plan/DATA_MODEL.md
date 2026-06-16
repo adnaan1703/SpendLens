@@ -23,8 +23,8 @@ Use Postgres enums or checked text values for these concepts:
 - `piggy_entry_type`: `deposit`, `withdrawal`, `adjustment`
 - `job_status`: `queued`, `processing`, `completed`, `failed`, `cancelled`
 
-Milestone 67 is planned to add `netbanking_imps` to
-`source_account_type`. Treat it as planned-only until that migration runs.
+Milestone 67 added `netbanking_imps` to `source_account_type` for HDFC
+Netbanking IMPS Gmail candidates.
 
 ## Identity and Household
 

@@ -3,7 +3,7 @@ begin;
 create extension if not exists pgtap with schema extensions;
 set search_path = public, extensions;
 
-select plan(33);
+select plan(35);
 
 select isnt(
   (select installed_version from pg_available_extensions where name = 'supabase_vault'),
@@ -475,6 +475,75 @@ select is(
   'unknown UPI payee creates an open review item'
 );
 
+set local role service_role;
+
+select *
+from public.ingest_gmail_transaction(
+  (select id from test_mailbox),
+  jsonb_build_object(
+    'id', 'gmail-imps-message-1',
+    'threadId', 'gmail-imps-thread-1',
+    'receivedAt', '2026-06-16 12:00:00+05:30'
+  ),
+  jsonb_build_object(
+    'parser_name', 'hdfc_netbanking_imps_debit',
+    'parser_version', '1.0.0',
+    'transaction_date', '2026-06-16',
+    'transaction_time', null,
+    'amount', 33500.00,
+    'currency_code', 'INR',
+    'statement_merchant', 'IMPS to ending 4428',
+    'transaction_type', 'debit_spend',
+    'source_reference', '616734130236',
+    'confidence', 'high',
+    'source_account_hint', jsonb_build_object(
+      'type', 'netbanking_imps',
+      'display_name', 'HDFC Netbanking IMPS account ending 0932',
+      'institution_name', 'HDFC Bank',
+      'masked_identifier', '0932'
+    ),
+    'diagnostics', jsonb_build_object(
+      'template', 'hdfc_netbanking_imps_debit_v1',
+      'destination_account_ending', '4428'
+    )
+  ),
+  'gmail-imps-fingerprint-1'
+);
+
+reset role;
+
+select is(
+  (
+    select count(*)::integer
+    from public.source_accounts
+    where household_id = '31000000-0000-0000-0000-000000000001'
+      and type = 'netbanking_imps'
+      and institution_name = 'HDFC Bank'
+      and masked_identifier = '0932'
+  ),
+  1,
+  'Netbanking IMPS Gmail import creates one HDFC IMPS source account'
+);
+
+select is(
+  (
+    select count(distinct t.id)::integer
+    from public.transactions t
+    join public.source_accounts sa
+      on sa.id = t.source_account_id
+    join public.transaction_sources ts
+      on ts.transaction_id = t.id
+     and ts.source_reference = '616734130236'
+    where t.household_id = '31000000-0000-0000-0000-000000000001'
+      and t.source_fingerprint = 'gmail-imps-fingerprint-1'
+      and t.statement_merchant = 'IMPS to ending 4428'
+      and t.net_expense = 33500.00
+      and sa.type = 'netbanking_imps'
+  ),
+  1,
+  'Netbanking IMPS Gmail import creates one transaction through the existing path'
+);
+
 set local role authenticated;
 set local request.jwt.claim.sub = '11000000-0000-0000-0000-000000000001';
 set local request.jwt.claim.role = 'authenticated';
@@ -570,7 +639,7 @@ select is(
 
 select is(
   (select count(*)::integer from public.review_items where status = 'open'),
-  2,
+  3,
   'tombstoned Gmail fingerprint does not create review work'
 );
 
@@ -646,11 +715,52 @@ select public.record_gmail_parse_attempt(
   jsonb_build_object('reason', 'hdfc_debit_pattern_not_matched')
 );
 
+select public.record_gmail_parse_attempt(
+  (select id from test_mailbox),
+  (
+    select id
+    from public.transactions
+    where source_fingerprint = 'gmail-imps-fingerprint-1'
+  ),
+  'gmail-imps-message-1',
+  'gmail-imps-thread-1',
+  '2026-05-31 23:30:00+05:30',
+  'alerts@hdfcbank.bank.in',
+  'Netbanking :: IMPS',
+  'netbanking_imps',
+  'hdfc_netbanking_imps_debit',
+  '1.0.0',
+  'parsed',
+  '2026-06-16',
+  '616734130236',
+  jsonb_build_object(
+    'template', 'hdfc_netbanking_imps_debit_v1',
+    'destination_account_ending', '4428'
+  )
+);
+
+select public.record_gmail_parse_attempt(
+  (select id from test_mailbox),
+  null,
+  'gmail-unsupported-message-1',
+  'gmail-unsupported-thread-1',
+  '2026-05-31 23:45:00+05:30',
+  'alerts@hdfcbank.bank.in',
+  'Watched label unsupported template',
+  'other',
+  'unsupported_labeled_gmail_message',
+  '1.0.0',
+  'parse_failed',
+  null,
+  null,
+  jsonb_build_object('reason', 'no_supported_body_template_matched')
+);
+
 reset role;
 
 select is(
   (select count(*)::integer from public.gmail_parse_attempts),
-  2,
+  4,
   'Gmail parse attempt recording is idempotent by message candidate and parser'
 );
 
@@ -666,6 +776,8 @@ select results_eq(
   $$
     values
       ('credit_card', 'parse_failed', 1),
+      ('netbanking_imps', 'parsed', 1),
+      ('other', 'parse_failed', 1),
       ('upi', 'parsed', 1)
   $$,
   'Gmail parse attempts can be reconciled by received month and candidate type'

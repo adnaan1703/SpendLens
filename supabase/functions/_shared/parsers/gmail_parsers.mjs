@@ -231,29 +231,97 @@ export const hdfcUpiDebitParser = {
   },
 };
 
-export const gmailParsers = [hdfcCreditCardDebitParser, hdfcUpiDebitParser];
+export const hdfcNetbankingImpsDebitParser = {
+  parserName: "hdfc_netbanking_imps_debit",
+  parserVersion: "1.0.0",
+  candidateType: "netbanking_imps",
 
-function parserForMetadata(messageMetadata) {
+  parse(messageMetadata, bodyText) {
+    const match = bodyText.match(
+      /INR\s*([0-9,]+(?:\.[0-9]{1,2})?)[\s\S]+?debited\s+from[\s\S]+?(?:account|a\/c)[^\d]*(\d{4})[\s\S]+?(\d{2})-(\d{2})-(\d{2})[\s\S]+?credited\s+to[\s\S]+?(?:account|a\/c)[^\d]*(\d{4})[\s\S]+?via\s+IMPS[\s\S]+?IMPS\s+Reference\s+No\.?\s*:?\s*([A-Za-z0-9-]+)\b/i,
+    );
+
+    if (!match) {
+      return {
+        ok: false,
+        candidate_type: this.candidateType,
+        parser_name: this.parserName,
+        parser_version: this.parserVersion,
+        diagnostics: {
+          reason: "hdfc_imps_debit_pattern_not_matched",
+          messageId: messageMetadata?.id ?? null,
+        },
+      };
+    }
+
+    const [
+      ,
+      amountText,
+      sourceAccountEnding,
+      dayText,
+      monthText,
+      yearText,
+      destinationAccountEnding,
+      reference,
+    ] = match;
+
+    return {
+      ok: true,
+      candidate_type: this.candidateType,
+      parser_name: this.parserName,
+      parser_version: this.parserVersion,
+      transaction_date: parseTwoDigitDate(dayText, monthText, yearText),
+      transaction_time: null,
+      amount: Number(amountText.replaceAll(",", "")),
+      currency_code: "INR",
+      statement_merchant: `IMPS to ending ${destinationAccountEnding}`,
+      transaction_type: "debit_spend",
+      source_reference: reference.trim(),
+      confidence: "high",
+      source_account_hint: {
+        type: "netbanking_imps",
+        display_name:
+          `HDFC Netbanking IMPS account ending ${sourceAccountEnding}`,
+        institution_name: "HDFC Bank",
+        masked_identifier: sourceAccountEnding,
+      },
+      diagnostics: {
+        template: "hdfc_netbanking_imps_debit_v1",
+        destination_account_ending: destinationAccountEnding,
+      },
+    };
+  },
+};
+
+export const gmailParsers = [
+  hdfcCreditCardDebitParser,
+  hdfcUpiDebitParser,
+  hdfcNetbankingImpsDebitParser,
+];
+
+function firstSuccessfulParse(messageMetadata, bodyText) {
   for (const parser of gmailParsers) {
-    if (!parser.matches(messageMetadata)) {
+    const parsed = parser.parse(messageMetadata, bodyText);
+    if (!parsed.ok) {
       continue;
     }
 
-    return parser;
+    return parsed;
   }
 
   return null;
 }
 
-export function classifyGmailTransaction(messageMetadata) {
-  const parser = parserForMetadata(messageMetadata);
-  if (!parser) {
+export function classifyGmailTransaction(messageMetadata, bodyText = "") {
+  const parsed = firstSuccessfulParse(messageMetadata, bodyText);
+  if (!parsed) {
     return {
       ok: false,
+      candidate_type: "other",
       parser_name: "unsupported",
       parser_version: "1.0.0",
       diagnostics: {
-        reason: "unsupported_gmail_message",
+        reason: "no_supported_body_template_matched",
         messageId: messageMetadata?.id ?? null,
       },
     };
@@ -261,24 +329,25 @@ export function classifyGmailTransaction(messageMetadata) {
 
   return {
     ok: true,
-    candidate_type: parser.candidateType,
-    parser_name: parser.parserName,
-    parser_version: parser.parserVersion,
+    candidate_type: parsed.candidate_type,
+    parser_name: parsed.parser_name,
+    parser_version: parsed.parser_version,
   };
 }
 
-export function parseGmailTransaction(messageMetadata, bodyText) {
-  const parser = parserForMetadata(messageMetadata);
-  if (parser) {
-    return parser.parse(messageMetadata, bodyText);
+export function parseGmailTransaction(messageMetadata, bodyText = "") {
+  const parsed = firstSuccessfulParse(messageMetadata, bodyText);
+  if (parsed) {
+    return parsed;
   }
 
   return {
     ok: false,
-    parser_name: "unsupported",
+    candidate_type: "other",
+    parser_name: "unsupported_labeled_gmail_message",
     parser_version: "1.0.0",
     diagnostics: {
-      reason: "unsupported_gmail_message",
+      reason: "no_supported_body_template_matched",
       messageId: messageMetadata?.id ?? null,
     },
   };

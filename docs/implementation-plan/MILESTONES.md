@@ -3353,7 +3353,7 @@ history, and backfill selection for the `Banking/HDFC Transactions` label.
 
 ### Status
 
-Planned. See
+Completed on 2026-06-16. See
 [Gmail Label Ingestion](GMAIL_LABEL_INGESTION.md#m67---body-first-parser-registry-and-netbanking-imps-parser).
 
 ### Objective
@@ -3372,6 +3372,42 @@ add the HDFC `Netbanking :: IMPS` debit template.
   `IMPS to ending 4428`, and source reference `616734130236`.
 - Unmatched watched-label messages create sanitized parse failures instead of
   silent drops.
+
+### Completion Summary
+
+- Added `netbanking_imps` as a source/candidate type and allowed
+  `netbanking_imps` plus `other` Gmail parse-attempt diagnostics.
+- Moved Gmail parser routing to first successful body parser match, preserving
+  existing credit-card and UPI fixtures without sender/subject gating.
+- Added the HDFC Netbanking IMPS debit parser and fixture for amount
+  `33500.00`, date `2026-06-16`, merchant `IMPS to ending 4428`, reference
+  `616734130236`, and account ending `0932`.
+- Updated Gmail sync fingerprinting, SQL ingestion tests, parse-failure health
+  tests, Flutter labels, and source-type dropdown labels for
+  `Netbanking :: IMPS`.
+- Verification:
+  - `supabase db reset --local`
+  - `supabase test db --local supabase/tests/gmail_ingestion.sql`
+  - `supabase test db --local supabase/tests/gmail_parse_failures.sql`
+  - `supabase test db --local supabase/tests/production_readiness.sql`
+  - `supabase db lint --local --schema app_private,public --fail-on error`
+  - `node --test supabase/functions/tests/gmail_parsers.test.mjs`
+  - `deno test --allow-env --allow-net supabase/functions/tests/gmail_sync.test.ts`
+  - `cd apps/mobile && flutter test test/finance_features_test.dart --name "Gmail parse failures"`
+  - `cd apps/mobile && flutter analyze`
+  - `git diff --check`
+- Deferred scope was not started: Review ignore UI/RPC, hosted rollout, iOS,
+  web, push notifications, M68, or M69.
+- Assumptions made:
+  - The IMPS sample is a debit-spend template for HDFC account ending `0932`.
+  - IMPS duplicate suppression should key on source reference plus source
+    account identity.
+  - Candidate type `other` is only for sanitized watched-label parse failures.
+- Mocks created:
+  - None.
+- Mocks used:
+  - Existing fake Flutter finance repository hooks for parse-failure label
+    coverage.
 
 ## Milestone 68: Watched-Label Parse Failures and Review Ignore
 
