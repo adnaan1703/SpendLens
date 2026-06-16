@@ -3589,7 +3589,7 @@ on-demand email body viewing, then wire M71-M73 into durable planning docs.
 
 ### Status
 
-Planned. See
+Completed on 2026-06-16. See
 [Gmail Parse Failure Review](GMAIL_PARSE_FAILURE_REVIEW.md#m71---parse-failure-pagination-and-body-fetch-contract).
 
 ### Objective

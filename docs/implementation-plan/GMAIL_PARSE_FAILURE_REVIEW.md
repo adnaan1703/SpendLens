@@ -146,7 +146,7 @@ Completion summary:
 
 ## M71 - Parse Failure Pagination and Body Fetch Contract
 
-Status: Planned.
+Status: Completed on 2026-06-16.
 
 Purpose: Add the backend and repository contract needed to page all visible
 parse failures and fetch one failure's plain-text Gmail body on demand.
@@ -224,6 +224,47 @@ Completion summary requirements:
 - Assumptions made
 - Mocks created
 - Mocks used
+
+Completion summary:
+
+- Added `20260616145328_gmail_parse_failure_review_contract.sql` with
+  deterministic `list_gmail_parse_failures(p_household_id, p_limit, p_offset)`
+  pagination and `authorize_gmail_parse_failure_body(p_failure_id)` for
+  row-scoped, household-scoped body-fetch authorization.
+- Added authenticated `gmail-parse-failure-body`, configured with
+  `verify_jwt = true`, to authorize a visible parse-failure row, fetch the
+  current Gmail message body through service-side mailbox credentials, and
+  return only safe metadata plus `plain_text_body`.
+- Kept `gmail-message-body` service-key/admin-only and did not expose body-part
+  diagnostics, raw MIME, snippets, HTML, attachments, images, OAuth token data,
+  or service-only diagnostics to Flutter.
+- Added Flutter repository page/body models and methods while preserving the
+  existing Review list provider; visible Review pagination controls and the body
+  dialog remain planned for M72 and were not started.
+- Milestones 18-21 remained deferred and were not started.
+- Verification:
+  - `supabase db reset --local`
+  - `supabase test db --local supabase/tests/gmail_parse_failures.sql`
+  - `supabase test db --local supabase/tests/rls_isolation.sql`
+  - `supabase db lint --local --schema app_private,public --fail-on error`
+  - `deno test --allow-env --allow-net supabase/functions/tests/gmail_parse_failure_body.test.ts`
+  - `cd apps/mobile && flutter test test/finance_features_test.dart --name "Gmail parse failures|Review"`
+  - `cd apps/mobile && flutter analyze`
+  - `git diff --check`
+- Assumptions made:
+  - Offset pagination is sufficient for the Review backlog because rows are
+    ordered by `source_received_at desc`, `created_at desc`, and `id desc`.
+  - Returning mailbox id/email, source ids, parser metadata, and Gmail message
+    headers is safe metadata for the body dialog, while the email body remains
+    transient and response-only.
+  - The current Review screen should continue using the first page until M72
+    adds visible pagination and body dialog state.
+- Mocks created:
+  - Edge Function unit-test stubs for row authorization, refresh-token lookup,
+    Gmail token refresh, and Gmail message fetch.
+- Mocks used:
+  - Existing fake Flutter finance repository, extended with paginated parse
+    failure reads and transient body-fetch fixtures.
 
 ## M72 - Review UI Pagination and Email Body Dialog
 

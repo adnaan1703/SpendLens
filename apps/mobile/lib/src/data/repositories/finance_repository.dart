@@ -73,6 +73,16 @@ final gmailParseFailuresProvider =
           .fetchGmailParseFailures(householdId: householdId);
     });
 
+final gmailParseFailurePageProvider =
+    FutureProvider.family<GmailParseFailurePage, GmailParseFailurePageRequest>((
+      ref,
+      request,
+    ) {
+      return ref
+          .watch(financeRepositoryProvider)
+          .fetchGmailParseFailurePage(request);
+    });
+
 final gmailConnectorStatusProvider =
     FutureProvider.family<List<GmailConnectorStatus>, String>((
       ref,
@@ -2388,6 +2398,45 @@ final class GmailConnectorStatus {
   }
 }
 
+final class GmailParseFailurePageRequest {
+  const GmailParseFailurePageRequest({
+    required this.householdId,
+    this.limit = defaultLimit,
+    this.offset = 0,
+  });
+
+  static const defaultLimit = 20;
+  static const maxLimit = 100;
+
+  final String householdId;
+  final int limit;
+  final int offset;
+
+  int get normalizedLimit {
+    if (limit < 1) return 1;
+    if (limit > maxLimit) return maxLimit;
+    return limit;
+  }
+
+  int get normalizedOffset => offset < 0 ? 0 : offset;
+}
+
+final class GmailParseFailurePage {
+  const GmailParseFailurePage({
+    required this.items,
+    required this.limit,
+    required this.offset,
+  });
+
+  final List<GmailParseFailure> items;
+  final int limit;
+  final int offset;
+
+  int get nextOffset => offset + items.length;
+
+  bool get hasMore => items.length >= limit;
+}
+
 final class GmailParseFailure {
   const GmailParseFailure({
     required this.failureId,
@@ -2454,6 +2503,85 @@ final class GmailParseFailure {
       reasonCode: json['reason_code'] as String?,
       sourceMessageId: json['source_message_id'] as String,
       sourceThreadId: json['source_thread_id'] as String?,
+    );
+  }
+}
+
+final class GmailParseFailureBody {
+  const GmailParseFailureBody({
+    required this.failureId,
+    required this.householdId,
+    required this.mailboxId,
+    required this.mailboxEmail,
+    required this.candidateType,
+    required this.sourceMessageId,
+    required this.sourceReceivedAt,
+    required this.senderEmail,
+    required this.subject,
+    required this.parserName,
+    required this.parserVersion,
+    required this.plainTextBody,
+    this.sourceThreadId,
+    this.reasonCode,
+    this.messageId,
+    this.messageThreadId,
+    this.messageReceivedAt,
+    this.messageFrom,
+    this.messageSubject,
+    this.messageDate,
+  });
+
+  final String failureId;
+  final String householdId;
+  final String mailboxId;
+  final String mailboxEmail;
+  final String candidateType;
+  final String sourceMessageId;
+  final String? sourceThreadId;
+  final DateTime sourceReceivedAt;
+  final String senderEmail;
+  final String subject;
+  final String parserName;
+  final String parserVersion;
+  final String? reasonCode;
+  final String plainTextBody;
+  final String? messageId;
+  final String? messageThreadId;
+  final DateTime? messageReceivedAt;
+  final String? messageFrom;
+  final String? messageSubject;
+  final String? messageDate;
+
+  factory GmailParseFailureBody.fromJson(Map<String, dynamic> json) {
+    final failure =
+        json['failure'] as Map<String, dynamic>? ?? const <String, dynamic>{};
+    final mailbox =
+        failure['mailbox'] as Map<String, dynamic>? ??
+        const <String, dynamic>{};
+    final message =
+        json['message'] as Map<String, dynamic>? ?? const <String, dynamic>{};
+
+    return GmailParseFailureBody(
+      failureId: failure['failure_id'] as String,
+      householdId: failure['household_id'] as String,
+      mailboxId: mailbox['id'] as String,
+      mailboxEmail: mailbox['email'] as String,
+      candidateType: failure['candidate_type'] as String,
+      sourceMessageId: failure['source_message_id'] as String,
+      sourceThreadId: failure['source_thread_id'] as String?,
+      sourceReceivedAt: DateTime.parse(failure['source_received_at'] as String),
+      senderEmail: failure['sender_email'] as String,
+      subject: failure['subject'] as String,
+      parserName: failure['parser_name'] as String,
+      parserVersion: failure['parser_version'] as String,
+      reasonCode: failure['reason_code'] as String?,
+      plainTextBody: json['plain_text_body'] as String? ?? '',
+      messageId: message['id'] as String?,
+      messageThreadId: message['thread_id'] as String?,
+      messageReceivedAt: parseOptionalDateTime(message['received_at']),
+      messageFrom: message['from'] as String?,
+      messageSubject: message['subject'] as String?,
+      messageDate: message['date'] as String?,
     );
   }
 }
@@ -2631,6 +2759,14 @@ abstract interface class FinanceRepository {
 
   Future<List<GmailParseFailure>> fetchGmailParseFailures({
     required String householdId,
+  });
+
+  Future<GmailParseFailurePage> fetchGmailParseFailurePage(
+    GmailParseFailurePageRequest request,
+  );
+
+  Future<GmailParseFailureBody> fetchGmailParseFailureBody({
+    required String failureId,
   });
 
   Future<void> ignoreGmailParseFailure({required String failureId});
@@ -3123,15 +3259,46 @@ final class SupabaseFinanceRepository implements FinanceRepository {
   Future<List<GmailParseFailure>> fetchGmailParseFailures({
     required String householdId,
   }) async {
+    final page = await fetchGmailParseFailurePage(
+      GmailParseFailurePageRequest(householdId: householdId),
+    );
+    return page.items;
+  }
+
+  @override
+  Future<GmailParseFailurePage> fetchGmailParseFailurePage(
+    GmailParseFailurePageRequest request,
+  ) async {
+    final limit = request.normalizedLimit;
+    final offset = request.normalizedOffset;
     final rows = await _client.rpc<List<dynamic>>(
       'list_gmail_parse_failures',
-      params: {'p_household_id': householdId},
+      params: {
+        'p_household_id': request.householdId,
+        'p_limit': limit,
+        'p_offset': offset,
+      },
     );
 
-    return rows
+    final items = rows
         .cast<Map<String, dynamic>>()
         .map(GmailParseFailure.fromJson)
         .toList(growable: false);
+
+    return GmailParseFailurePage(items: items, limit: limit, offset: offset);
+  }
+
+  @override
+  Future<GmailParseFailureBody> fetchGmailParseFailureBody({
+    required String failureId,
+  }) async {
+    final response = await _client.functions.invoke(
+      'gmail-parse-failure-body',
+      body: {'failure_id': failureId},
+    );
+    return GmailParseFailureBody.fromJson(
+      response.data as Map<String, dynamic>,
+    );
   }
 
   @override
@@ -4042,6 +4209,20 @@ final class DisabledFinanceRepository implements FinanceRepository {
   @override
   Future<List<GmailParseFailure>> fetchGmailParseFailures({
     required String householdId,
+  }) {
+    throw const SupabaseNotConfiguredException();
+  }
+
+  @override
+  Future<GmailParseFailurePage> fetchGmailParseFailurePage(
+    GmailParseFailurePageRequest request,
+  ) {
+    throw const SupabaseNotConfiguredException();
+  }
+
+  @override
+  Future<GmailParseFailureBody> fetchGmailParseFailureBody({
+    required String failureId,
   }) {
     throw const SupabaseNotConfiguredException();
   }

@@ -128,10 +128,11 @@ This is not a "no backend" architecture. It is a backend without a permanently r
   completed-only reference.
 - Gmail parse failure review: Milestone 70 created the companion plan for
   paginated Review access to all unignored Gmail parse failures and on-demand
-  plain-text email body viewing from a parse-failure row. Milestones 71-73 are
-  planned and keep raw body storage out of Postgres/logs while adding an
-  authenticated row-scoped body fetch contract, Review pagination, the body
-  dialog, and final regression/docs cleanup.
+  plain-text email body viewing from a parse-failure row. Milestone 71 added
+  the authenticated row-scoped body fetch contract plus repository pagination
+  plumbing while keeping raw body storage out of Postgres/logs. Milestones
+  72-73 remain planned for visible Review pagination, the body dialog, and
+  final regression/docs cleanup.
 - Multi-target monthly caps: required-name recurring caps can include multiple
   categories, multiple labels, or both. A transaction counts once inside a cap
   when any selected category or label matches; overlapping caps are allowed.

@@ -25,7 +25,7 @@ Vault-backed refresh-token storage, and database ingestion jobs.
   jobs for one active Gmail mailbox.
 - `gmail-message-body`: service-key call; fetches the Gmail message body for a
   specific `source_message_id`.
-- `gmail-parse-failure-body`: planned Milestone 71 authenticated app call;
+- `gmail-parse-failure-body`: Milestone 71 authenticated app call;
   authorizes one visible household-scoped parse failure, fetches the current
   plain-text Gmail body server-side, and returns it without storing it.
 
@@ -227,11 +227,11 @@ The helper returns the Gmail metadata plus the extracted plain-text body that
 the parser sees. Use the `source_message_id` from `gmail_parse_attempts` to look
 up the exact message behind a failed parse.
 
-Milestones 70-73 plan a separate app-facing body viewer for Review. The Flutter
-app must use the planned authenticated `gmail-parse-failure-body` function,
+Milestone 71 added the separate app-facing body-fetch contract for Review. The
+Flutter app must use the authenticated `gmail-parse-failure-body` function,
 which first authorizes the visible parse-failure row for the signed-in
-household. Do not expose `gmail-message-body` or service-key credentials to the
-mobile app.
+household. M72 remains responsible for the visible Review dialog. Do not expose
+`gmail-message-body` or service-key credentials to the mobile app.
 
 Hosted verification should check:
 
@@ -287,9 +287,9 @@ card. Supported candidates with failed body parses also create service-only
 classifications create review items instead of silently assigning bad
 categories.
 
-Milestones 70-73 plan Review pagination so all unignored parse failures can be
-loaded, plus a row-scoped plain-text body dialog for inspecting a failed email
-without storing the body in database tables or logs.
+Milestone 71 added backend/repository pagination and row-scoped plain-text body
+fetching without storing the body in database tables or logs. M72 remains
+responsible for visible Review pagination and the body dialog.
 
 UPI credit/refund parser support is still sample-gated. Add anonymized
 credit/refund fixtures before implementing that template.

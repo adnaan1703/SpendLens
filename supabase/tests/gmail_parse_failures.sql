@@ -3,13 +3,20 @@ begin;
 create extension if not exists pgtap with schema extensions;
 set search_path = public, extensions;
 
-select plan(21);
+select plan(30);
 
 select has_function(
   'public',
   'list_gmail_parse_failures',
-  array['uuid', 'integer'],
-  'Gmail parse-failure listing RPC exists'
+  array['uuid', 'integer', 'integer'],
+  'Gmail parse-failure listing RPC supports explicit pagination'
+);
+
+select has_function(
+  'public',
+  'authorize_gmail_parse_failure_body',
+  array['uuid'],
+  'Gmail parse-failure body authorization RPC exists'
 );
 
 select has_function(
@@ -22,11 +29,21 @@ select has_function(
 select is(
   has_function_privilege(
     'authenticated',
-    'public.list_gmail_parse_failures(uuid, integer)',
+    'public.list_gmail_parse_failures(uuid, integer, integer)',
     'execute'
   ),
   true,
   'authenticated users can execute Gmail parse-failure listing RPC'
+);
+
+select is(
+  has_function_privilege(
+    'authenticated',
+    'public.authorize_gmail_parse_failure_body(uuid)',
+    'execute'
+  ),
+  true,
+  'authenticated users can execute Gmail parse-failure body authorization RPC'
 );
 
 select is(
@@ -42,11 +59,21 @@ select is(
 select is(
   has_function_privilege(
     'anon',
-    'public.list_gmail_parse_failures(uuid, integer)',
+    'public.list_gmail_parse_failures(uuid, integer, integer)',
     'execute'
   ),
   false,
   'anonymous users cannot execute Gmail parse-failure listing RPC'
+);
+
+select is(
+  has_function_privilege(
+    'anon',
+    'public.authorize_gmail_parse_failure_body(uuid)',
+    'execute'
+  ),
+  false,
+  'anonymous users cannot execute Gmail parse-failure body authorization RPC'
 );
 
 select is(
@@ -357,6 +384,67 @@ select results_eq(
   'parse-failure RPC supports IMPS and unsupported watched-label candidates'
 );
 
+select results_eq(
+  $$
+    select
+      failure_id,
+      source_message_id
+    from public.list_gmail_parse_failures(
+      '33000000-0000-0000-0000-000000000001',
+      1,
+      1
+    )
+  $$,
+  $$
+    values (
+      '93000000-0000-0000-0000-000000000006'::uuid,
+      'gmail-imps-failure-message-1'
+    )
+  $$,
+  'parse-failure RPC supports deterministic offset pagination'
+);
+
+select results_eq(
+  $$
+    select
+      failure_id,
+      household_id,
+      linked_mailbox_id,
+      mailbox_email,
+      candidate_type::text,
+      source_message_id,
+      source_thread_id,
+      reason_code
+    from public.authorize_gmail_parse_failure_body(
+      '93000000-0000-0000-0000-000000000001'::uuid
+    )
+  $$,
+  $$
+    values (
+      '93000000-0000-0000-0000-000000000001'::uuid,
+      '33000000-0000-0000-0000-000000000001'::uuid,
+      '53000000-0000-0000-0000-000000000001'::uuid,
+      'parse-a@example.test'::text,
+      'credit_card'::text,
+      'gmail-failure-message-1'::text,
+      'gmail-failure-thread-1'::text,
+      'hdfc_debit_pattern_not_matched'::text
+    )
+  $$,
+  'body authorization RPC returns safe metadata for one visible parse failure'
+);
+
+select is(
+  (
+    select count(*)::integer
+    from public.authorize_gmail_parse_failure_body(
+      '93000000-0000-0000-0000-000000000002'::uuid
+    )
+  ),
+  0,
+  'body authorization RPC rejects parsed Gmail attempts'
+);
+
 select lives_ok(
   $$
     select public.ignore_gmail_parse_failure(
@@ -375,6 +463,17 @@ select is(
   ),
   2,
   'ignored parse failures are hidden from the visible Review list'
+);
+
+select is(
+  (
+    select count(*)::integer
+    from public.authorize_gmail_parse_failure_body(
+      '93000000-0000-0000-0000-000000000007'::uuid
+    )
+  ),
+  0,
+  'body authorization RPC rejects ignored parse failures'
 );
 
 reset role;
@@ -405,6 +504,17 @@ select is(
   'another household cannot read parse failures'
 );
 
+select is(
+  (
+    select count(*)::integer
+    from public.authorize_gmail_parse_failure_body(
+      '93000000-0000-0000-0000-000000000001'::uuid
+    )
+  ),
+  0,
+  'another household cannot authorize a parse-failure body fetch'
+);
+
 select throws_ok(
   $$
     select public.ignore_gmail_parse_failure(
@@ -427,6 +537,17 @@ select is(
   ),
   0,
   'inactive household member cannot read parse failures'
+);
+
+select is(
+  (
+    select count(*)::integer
+    from public.authorize_gmail_parse_failure_body(
+      '93000000-0000-0000-0000-000000000001'::uuid
+    )
+  ),
+  0,
+  'inactive household member cannot authorize a parse-failure body fetch'
 );
 
 select throws_ok(

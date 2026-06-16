@@ -2176,6 +2176,87 @@ void main() {
     );
   });
 
+  test('Gmail parse failures page request clamps unsafe pagination values', () {
+    const request = GmailParseFailurePageRequest(
+      householdId: 'household-1',
+      limit: 250,
+      offset: -10,
+    );
+
+    expect(request.normalizedLimit, 100);
+    expect(request.normalizedOffset, 0);
+  });
+
+  test(
+    'Gmail parse failures page exposes next offset and body fetch result',
+    () async {
+      final repository = _FakeFinanceRepository()
+        ..gmailParseFailures.addAll([
+          _gmailParseFailure(failureId: 'gmail-failure-1'),
+          _gmailParseFailure(failureId: 'gmail-failure-2'),
+          _gmailParseFailure(failureId: 'gmail-failure-3'),
+        ])
+        ..gmailParseFailureBodies['gmail-failure-2'] = _gmailParseFailureBody(
+          failureId: 'gmail-failure-2',
+          plainTextBody: 'Second alert body.',
+        );
+
+      final page = await repository.fetchGmailParseFailurePage(
+        const GmailParseFailurePageRequest(
+          householdId: 'household-1',
+          limit: 1,
+          offset: 1,
+        ),
+      );
+      final body = await repository.fetchGmailParseFailureBody(
+        failureId: 'gmail-failure-2',
+      );
+
+      expect(page.items.map((failure) => failure.failureId), [
+        'gmail-failure-2',
+      ]);
+      expect(page.nextOffset, 2);
+      expect(page.hasMore, isTrue);
+      expect(repository.gmailParseFailurePageRequests.single.offset, 1);
+      expect(repository.gmailParseFailureBodyRequests, ['gmail-failure-2']);
+      expect(body.plainTextBody, 'Second alert body.');
+    },
+  );
+
+  test('Gmail parse failures body parses Edge Function response shape', () {
+    final body = GmailParseFailureBody.fromJson({
+      'failure': {
+        'failure_id': 'gmail-failure-1',
+        'household_id': 'household-1',
+        'mailbox': {'id': 'mailbox-1', 'email': 'spendlens.hdfc@example.test'},
+        'candidate_type': 'credit_card',
+        'source_message_id': 'gmail-failure-message-1',
+        'source_thread_id': 'gmail-failure-thread-1',
+        'source_received_at': '2026-06-08T05:00:00.000Z',
+        'sender_email': 'alerts@hdfcbank.bank.in',
+        'subject': 'A payment was made using your Credit Card',
+        'parser_name': 'hdfc_credit_card_debit',
+        'parser_version': '1.0.0',
+        'reason_code': 'hdfc_debit_pattern_not_matched',
+      },
+      'message': {
+        'id': 'gmail-failure-message-1',
+        'thread_id': 'gmail-failure-thread-1',
+        'received_at': '2026-06-08T05:00:00.000Z',
+        'from': 'HDFC Bank <alerts@hdfcbank.bank.in>',
+        'subject': 'A payment was made using your Credit Card',
+        'date': 'Mon, 08 Jun 2026 10:30:00 +0530',
+      },
+      'plain_text_body': 'Full plain-text transaction alert body.',
+    });
+
+    expect(body.failureId, 'gmail-failure-1');
+    expect(body.mailboxId, 'mailbox-1');
+    expect(body.candidateType, 'credit_card');
+    expect(body.messageReceivedAt, DateTime.parse('2026-06-08T05:00:00.000Z'));
+    expect(body.plainTextBody, 'Full plain-text transaction alert body.');
+  });
+
   testWidgets('merchant review creates and selects a category inline', (
     tester,
   ) async {
@@ -3986,6 +4067,8 @@ final class _FakeFinanceRepository implements FinanceRepository {
   final merchantGroupRenameRequests = <MerchantGroupRenameRequest>[];
   final merchantGroupMergeRequests = <MerchantGroupMergeRequest>[];
   final gmailParseFailureIgnoreRequests = <String>[];
+  final gmailParseFailurePageRequests = <GmailParseFailurePageRequest>[];
+  final gmailParseFailureBodyRequests = <String>[];
   final labelCreateRequests = <LabelCreateRequest>[];
   final labelSetRequests = <TransactionLabelsSetRequest>[];
   final labelRenameRequests = <LabelRenameRequest>[];
@@ -3997,6 +4080,7 @@ final class _FakeFinanceRepository implements FinanceRepository {
   final piggyEntries = <PiggyBankEntry>[];
   Object? reviewQueueError;
   Object? gmailParseFailuresError;
+  Object? gmailParseFailureBodyError;
   Object? transactionDeleteError;
   int metadataCorrectionFailuresRemaining = 0;
   TransactionMetadataSuggestionResult? nextMetadataSuggestion;
@@ -4040,6 +4124,7 @@ final class _FakeFinanceRepository implements FinanceRepository {
     ),
   ];
   final gmailParseFailures = <GmailParseFailure>[];
+  final gmailParseFailureBodies = <String, GmailParseFailureBody>{};
   var startedGmailConnector = false;
   String? disconnectedMailboxId;
   TransactionQuery? lastQuery;
@@ -5058,10 +5143,53 @@ final class _FakeFinanceRepository implements FinanceRepository {
   Future<List<GmailParseFailure>> fetchGmailParseFailures({
     required String householdId,
   }) async {
+    final page = await fetchGmailParseFailurePage(
+      GmailParseFailurePageRequest(householdId: householdId),
+    );
+    return page.items;
+  }
+
+  @override
+  Future<GmailParseFailurePage> fetchGmailParseFailurePage(
+    GmailParseFailurePageRequest request,
+  ) async {
+    gmailParseFailurePageRequests.add(request);
     final error = gmailParseFailuresError;
     if (error != null) throw error;
 
-    return gmailParseFailures;
+    final start = request.normalizedOffset;
+    if (start >= gmailParseFailures.length) {
+      return GmailParseFailurePage(
+        items: const [],
+        limit: request.normalizedLimit,
+        offset: request.normalizedOffset,
+      );
+    }
+    final requestedEnd = start + request.normalizedLimit;
+    final end = requestedEnd > gmailParseFailures.length
+        ? gmailParseFailures.length
+        : requestedEnd;
+
+    return GmailParseFailurePage(
+      items: gmailParseFailures.sublist(start, end),
+      limit: request.normalizedLimit,
+      offset: request.normalizedOffset,
+    );
+  }
+
+  @override
+  Future<GmailParseFailureBody> fetchGmailParseFailureBody({
+    required String failureId,
+  }) async {
+    gmailParseFailureBodyRequests.add(failureId);
+    final error = gmailParseFailureBodyError;
+    if (error != null) throw error;
+
+    final body = gmailParseFailureBodies[failureId];
+    if (body == null) {
+      throw StateError('Gmail parse failure body not found.');
+    }
+    return body;
   }
 
   @override
@@ -5793,6 +5921,35 @@ GmailParseFailure _gmailParseFailure({
     reasonCode: reasonCode,
     sourceMessageId: sourceMessageId,
     sourceThreadId: sourceThreadId,
+  );
+}
+
+GmailParseFailureBody _gmailParseFailureBody({
+  String failureId = 'gmail-failure-1',
+  String candidateType = 'credit_card',
+  String plainTextBody = 'Full plain-text transaction alert body.',
+}) {
+  return GmailParseFailureBody(
+    failureId: failureId,
+    householdId: 'household-1',
+    mailboxId: 'mailbox-1',
+    mailboxEmail: 'spendlens.hdfc@example.test',
+    candidateType: candidateType,
+    sourceMessageId: 'gmail-failure-message-1',
+    sourceThreadId: 'gmail-failure-thread-1',
+    sourceReceivedAt: DateTime(2026, 6, 8, 10, 30),
+    senderEmail: 'alerts@hdfcbank.bank.in',
+    subject: 'A payment was made using your Credit Card',
+    parserName: 'hdfc_credit_card_debit',
+    parserVersion: '1.0.0',
+    reasonCode: 'hdfc_debit_pattern_not_matched',
+    plainTextBody: plainTextBody,
+    messageId: 'gmail-failure-message-1',
+    messageThreadId: 'gmail-failure-thread-1',
+    messageReceivedAt: DateTime(2026, 6, 8, 10, 30),
+    messageFrom: 'HDFC Bank <alerts@hdfcbank.bank.in>',
+    messageSubject: 'A payment was made using your Credit Card',
+    messageDate: 'Mon, 08 Jun 2026 10:30:00 +0530',
   );
 }
 

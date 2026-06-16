@@ -397,6 +397,9 @@ verify_jwt = true
 [functions.gmail-disconnect]
 verify_jwt = true
 
+[functions.gmail-parse-failure-body]
+verify_jwt = true
+
 [functions.gmail-oauth-callback]
 verify_jwt = false
 

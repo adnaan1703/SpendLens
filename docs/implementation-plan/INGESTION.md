@@ -163,9 +163,10 @@ parser routing, HDFC Netbanking IMPS parsing, IMPS source-reference
 fingerprinting, and sanitized `other` parse-attempt rows for unmatched
 watched-label mail. Milestone 68 added household-wide Review `Ignore for now`
 for visible sanitized parse failures while preserving service-only diagnostics.
-Milestones 70-73 plan Review pagination for all unignored parse failures and
-on-demand plain-text body viewing for a single visible failure row, fetched from
-Gmail without storing the body.
+Milestone 71 added backend/repository pagination for unignored parse failures
+and an authenticated row-scoped plain-text body fetch for one visible failure
+row, fetched from Gmail without storing the body. M72 remains responsible for
+visible Review pagination and the body dialog.
 
 ### Backfill
 
@@ -302,9 +303,9 @@ When the user corrects a mapping:
 - Store service-only `gmail_parse_attempts` rows for supported Gmail candidates
   even when body parsing fails. Milestones 66-69 extend this to unsupported
   watched-label mail as sanitized parse failures.
-- Planned M71-M73 body viewing must fetch the current plain-text Gmail body on
-  demand for one authorized visible parse failure only. Do not include body text
-  in list responses, diagnostics, logs, or persisted tables.
+- M71-M73 body viewing must fetch the current plain-text Gmail body on demand
+  for one authorized visible parse failure only. Do not include body text in
+  list responses, diagnostics, logs, or persisted tables.
 - Log parser failures without sensitive full message content.
 - Do not expose mailbox tokens to clients.
 - Delete or rotate OAuth credentials when a mailbox is disconnected.
