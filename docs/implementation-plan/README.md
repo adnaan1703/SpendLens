@@ -10,18 +10,20 @@ Read these documents in order at the start of every new implementation thread:
 4. [Milestones](MILESTONES.md)
 5. [External Setup Checklist](EXTERNAL_SETUP.md)
 6. [Gmail Connector](GMAIL_CONNECTOR.md)
-7. [Production Readiness](PRODUCTION_READINESS.md)
-8. [Push Notifications](PUSH_NOTIFICATIONS.md) when executing Milestones 18-21
-9. [Transaction Labels](TRANSACTION_LABELS.md) when executing Milestones 26-28
-10. [Monthly Caps](MONTHLY_CAPS.md) when executing Milestones 29-35
-11. [UI Redesign](UI_REDESIGN.md) when executing Milestones 37-51
-12. [Transaction Deletion](TRANSACTION_DELETION.md) when executing Milestones
+7. [Gmail Label Ingestion](GMAIL_LABEL_INGESTION.md) when executing
+   Milestones 65-69
+8. [Production Readiness](PRODUCTION_READINESS.md)
+9. [Push Notifications](PUSH_NOTIFICATIONS.md) when executing Milestones 18-21
+10. [Transaction Labels](TRANSACTION_LABELS.md) when executing Milestones 26-28
+11. [Monthly Caps](MONTHLY_CAPS.md) when executing Milestones 29-35
+12. [UI Redesign](UI_REDESIGN.md) when executing Milestones 37-51
+13. [Transaction Deletion](TRANSACTION_DELETION.md) when executing Milestones
     52-55
-13. [Merchant Autocomplete](MERCHANT_AUTOCOMPLETE.md) as the completed-only
+14. [Merchant Autocomplete](MERCHANT_AUTOCOMPLETE.md) as the completed-only
     reference for Milestones 56-60
-14. [Merchant Group Management](MERCHANT_GROUP_MANAGEMENT.md) as the
+15. [Merchant Group Management](MERCHANT_GROUP_MANAGEMENT.md) as the
     completed-only reference for Milestones 61-64
-15. [Session Handoff](SESSION_HANDOFF.md)
+16. [Session Handoff](SESSION_HANDOFF.md)
 
 Completed-only companion execution plans are removed after their durable
 behavior has been folded into this README, [Data Model](DATA_MODEL.md),
@@ -110,6 +112,13 @@ This is not a "no backend" architecture. It is a backend without a permanently r
   provider refreshes. Milestone 64 completed final local regression/docs
   cleanup, confirmed Settings rename/merge writes remain RPC-backed, and left
   `MERCHANT_GROUP_MANAGEMENT.md` as a completed-only reference.
+- Gmail label ingestion: Milestone 65 created the companion plan for moving
+  HDFC Gmail ingestion from Inbox/sender/subject candidate discovery to the
+  readonly Gmail label `Banking/HDFC Transactions`. Milestones 66-69 are
+  planned to add label-based watch/backfill discovery, body-first parser
+  routing, the `Netbanking :: IMPS` source/candidate type, sanitized
+  watched-label parse failures in Review, household-wide `Ignore for now`, and
+  final regression/docs cleanup. Gmail OAuth must remain readonly.
 - Multi-target monthly caps: required-name recurring caps can include multiple
   categories, multiple labels, or both. A transaction counts once inside a cap
   when any selected category or label matches; overlapping caps are allowed.
@@ -159,10 +168,12 @@ When starting a new implementation thread:
    merchant search/autocomplete or metadata-editor duplicate guarding.
 7. Read [Merchant Group Management](MERCHANT_GROUP_MANAGEMENT.md) when touching
    merchant group rename/merge behavior.
-8. Check [Session Handoff](SESSION_HANDOFF.md) for current status.
-9. Do only that milestone unless the user explicitly expands scope.
-10. Preserve documented invariants, especially idempotency, RLS isolation, and no raw email retention.
-11. Update milestone notes when an implementation decision changes the plan.
+8. Read [Gmail Label Ingestion](GMAIL_LABEL_INGESTION.md) when executing
+   Milestones 65-69.
+9. Check [Session Handoff](SESSION_HANDOFF.md) for current status.
+10. Do only that milestone unless the user explicitly expands scope.
+11. Preserve documented invariants, especially idempotency, RLS isolation, and no raw email retention.
+12. Update milestone notes when an implementation decision changes the plan.
 
 ## Clarification Rule
 

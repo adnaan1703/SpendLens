@@ -105,6 +105,9 @@ For production scheduling, monitoring, and hosted smoke checks, use
 
 Milestone 13 adds an explicit hosted dev/staging runbook for importing supported
 May 2026 Gmail transaction emails from the already connected mailbox.
+This section documents the completed pre-M66 runbook. Milestones 66-69 plan to
+replace candidate discovery with the readonly `Banking/HDFC Transactions` label
+and body-first parser routing.
 
 Scope:
 
@@ -114,7 +117,8 @@ Scope:
 - Supported templates only:
   - HDFC credit-card debit alerts.
   - HDFC Bank UPI debit alerts.
-- Supported candidates are selected by sender and subject first, then parsed:
+- In the completed pre-M66 flow, supported candidates are selected by sender
+  and subject first, then parsed:
   - Sender: `alerts@hdfcbank.bank.in`
   - UPI subject: `You have done a UPI txn. Check details!`, allowing a leading
     alert symbol.
@@ -161,10 +165,11 @@ curl -sS \
   --data '{"limit": 10}'
 ```
 
-Range jobs fetch HDFC alert-sender emails from a slightly buffered Gmail search
-window. `gmail-sync` classifies messages by sender and subject, records every
-UPI or credit-card parse attempt, and only ingests parsed transactions in the
-strict transaction-date window `2026-05-01 <= transaction_date < 2026-06-01`.
+Range jobs in the completed pre-M66 flow fetch HDFC alert-sender emails from a
+slightly buffered Gmail search window. `gmail-sync` classifies messages by
+sender and subject, records every UPI or credit-card parse attempt, and only
+ingests parsed transactions in the strict transaction-date window
+`2026-05-01 <= transaction_date < 2026-06-01`.
 Re-running the same range does not duplicate transactions because jobs use
 deterministic idempotency keys, parse attempts upsert by message/parser, and
 ingestion still upserts by `(household_id, source_fingerprint)`.
@@ -240,23 +245,28 @@ These views are not granted to `anon` or `authenticated`.
 
 ## Parser Coverage
 
-Current parser support:
+Parser support and planned expansion:
 
-- HDFC credit-card debit alerts from `alerts@hdfcbank.bank.in` with subject
-  `A payment was made using your Credit Card`.
-- HDFC Bank UPI debit alerts from `alerts@hdfcbank.bank.in` with subject
-  `You
-  have done a UPI txn. Check details!`, with or without the leading alert
-  symbol.
+- HDFC credit-card debit alerts matched by existing body templates.
+- HDFC Bank UPI debit alerts matched by existing body templates.
+- Planned Milestone 67 support for HDFC `Netbanking :: IMPS` debit alerts,
+  matched from body text with candidate/source type `netbanking_imps`.
+
+Milestones 66-69 move candidate discovery to the readonly Gmail label
+`Banking/HDFC Transactions`. Archived/non-Inbox mail with that label is in
+scope. Sender and subject remain stored diagnostics but no longer choose the
+parser.
 
 Gmail sync expands each candidate message to its Gmail thread before parsing, so
-multiple HDFC credit-card or UPI alerts grouped into the same Gmail conversation
-are processed as independent messages.
+multiple HDFC credit-card, UPI, or Netbanking IMPS alerts grouped into the same
+Gmail conversation are processed as independent watched-label messages.
 
-Unsupported Gmail messages are ignored by the sync function and do not create
-transactions or parse-attempt rows. Supported candidates with failed body parses
-create service-only `gmail_parse_attempts` rows. Unknown or non-high-confidence
-merchant classifications create review items instead of silently assigning bad
+Unsupported Gmail messages outside the watched label remain ignored.
+Unsupported messages inside the watched label create sanitized service-only
+`gmail_parse_attempts` rows with enough metadata for the Review parse-failure
+card. Supported candidates with failed body parses also create service-only
+`gmail_parse_attempts` rows. Unknown or non-high-confidence merchant
+classifications create review items instead of silently assigning bad
 categories.
 
 UPI credit/refund parser support is still sample-gated. Add anonymized

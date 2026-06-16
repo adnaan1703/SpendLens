@@ -3236,6 +3236,151 @@ docs.
     metadata correction, Activity query, Dashboard summary, Review queue, and
     provider refresh test hooks.
 
+## Milestone 65: Gmail Label Ingestion Planning and Reference Readiness
+
+### Status
+
+Completed on 2026-06-16.
+
+### Objective
+
+Create the companion plan for label-based HDFC Gmail ingestion and wire the new
+M66-M69 implementation sequence into durable planning docs.
+
+### Tasks
+
+- Create [Gmail Label Ingestion](GMAIL_LABEL_INGESTION.md) with target
+  behavior, existing foundation, global rules, implementation milestones,
+  acceptance criteria, and verification expectations.
+- Update this milestone tracker, [README](README.md), [Data Model](DATA_MODEL.md),
+  [Ingestion Design](INGESTION.md), [Gmail Connector](GMAIL_CONNECTOR.md), and
+  [Session Handoff](SESSION_HANDOFF.md) so a fresh session can start M66 from
+  docs alone.
+- Preserve M18-M21 push-notification deferral and leave implementation planned
+  only.
+
+### Acceptance Criteria
+
+- `GMAIL_LABEL_INGESTION.md` describes M65-M69 as serial, standalone
+  milestones.
+- M66 is the next recommended implementation milestone.
+- No Flutter, Supabase, importer, Edge Function, hosted rollout, iOS, or web
+  implementation work is started.
+
+### Completion Summary
+
+- Created the Gmail label ingestion companion plan and routed future
+  implementation through M66-M69.
+- Confirmed the target mailbox selection is the Gmail label
+  `Banking/HDFC Transactions`, including archived/non-Inbox messages carrying
+  that label.
+- Confirmed Gmail OAuth remains readonly, parser routing moves to body regex
+  templates, unmatched watched-label mail should surface as sanitized Review
+  parse failures, and `Netbanking :: IMPS` is a source/candidate type rather
+  than category taxonomy.
+- M66 was not started.
+- Assumptions made:
+  - Gmail API reports the nested label name as `Banking/HDFC Transactions`.
+  - Existing connected mailboxes can be migrated to label-based watch renewal
+    without reconnecting because the Gmail scope stays readonly.
+  - The provided IMPS sample represents a debit-spend transaction.
+- Mocks created:
+  - None.
+- Mocks used:
+  - None.
+
+## Milestone 66: Gmail Label Watch and Backfill Contract
+
+### Status
+
+Planned. See
+[Gmail Label Ingestion](GMAIL_LABEL_INGESTION.md#m66---gmail-label-watch-and-backfill-contract).
+
+### Objective
+
+Replace Inbox/sender-based Gmail candidate discovery with readonly watch,
+history, and backfill selection for the `Banking/HDFC Transactions` label.
+
+### Acceptance Criteria
+
+- OAuth callback and watch renewal store the watched label id/name and configure
+  Gmail watch for `Banking/HDFC Transactions`.
+- Archived/non-Inbox messages carrying that label can be found by backfill.
+- History sync can enqueue and process candidates from watched-label message
+  and label-added history.
+- Missing label produces an operator-visible connector error.
+- Existing Inbox-only behavior is no longer the default for active Gmail sync.
+
+## Milestone 67: Body-First Parser Registry and Netbanking IMPS Parser
+
+### Status
+
+Planned. See
+[Gmail Label Ingestion](GMAIL_LABEL_INGESTION.md#m67---body-first-parser-registry-and-netbanking-imps-parser).
+
+### Objective
+
+Route watched-label Gmail candidates by deterministic body regex templates and
+add the HDFC `Netbanking :: IMPS` debit template.
+
+### Acceptance Criteria
+
+- `netbanking_imps` is available as a Gmail/source candidate type without
+  changing ledger `transaction_type` semantics.
+- Credit-card, UPI, and Netbanking IMPS parsing are selected by body templates,
+  not sender/subject routing.
+- The provided IMPS sample parses to amount `33500.00`, transaction date
+  `2026-06-16`, ledger `debit_spend`, statement merchant
+  `IMPS to ending 4428`, and source reference `616734130236`.
+- Unmatched watched-label messages create sanitized parse failures instead of
+  silent drops.
+
+## Milestone 68: Watched-Label Parse Failures and Review Ignore
+
+### Status
+
+Planned. See
+[Gmail Label Ingestion](GMAIL_LABEL_INGESTION.md#m68---watched-label-parse-failures-and-review-ignore).
+
+### Objective
+
+Surface watched-label parse failures in Review with enough safe metadata for
+the household to understand what failed, plus a persistent `Ignore for now`
+action.
+
+### Acceptance Criteria
+
+- Review shows sender, subject, received time, reason, parser/status context,
+  message id, and thread id for visible parse failures without exposing raw body
+  content.
+- `Ignore for now` hides one failure household-wide while preserving
+  service-only diagnostics.
+- Parsed rows, outside-date rows, ignored rows, and other households' rows are
+  excluded from the visible Review failure list.
+- Existing transaction review behavior remains unchanged.
+
+## Milestone 69: Gmail Label Ingestion Regression, Docs, and Cleanup
+
+### Status
+
+Planned. See
+[Gmail Label Ingestion](GMAIL_LABEL_INGESTION.md#m69---gmail-label-ingestion-regression-docs-and-cleanup).
+
+### Objective
+
+Run the final local regression pass for the label-based Gmail ingestion flow
+and fold completed behavior back into durable docs.
+
+### Acceptance Criteria
+
+- Supabase, Edge Function, and Flutter verification for the label-based Gmail
+  ingestion sequence passes locally or documents an environment limitation.
+- Durable docs describe final label watch/backfill behavior, body-first parser
+  routing, Netbanking IMPS parsing, sanitized parse failures, Review ignore
+  behavior, privacy boundaries, and operational runbook changes.
+- `GMAIL_LABEL_INGESTION.md` is marked completed-only after M69 completes.
+- M18-M21 remain deferred unless explicitly resumed.
+
 ## Cross-Milestone Consistency Rules
 
 - Ask the user before proceeding on any undocumented decision. Codex may recommend a default, but must wait for confirmation.

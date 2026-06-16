@@ -4,11 +4,11 @@ Use this file to coordinate work across multiple implementation sessions. Update
 
 ## Current Status
 
-- Current milestone: None. Milestone 64 was completed on 2026-06-15 as the
-  Merchant Group Management regression, docs, and cleanup closeout. Milestones
+- Current milestone: None. Milestone 65 was completed on 2026-06-16 as the
+  Gmail Label Ingestion planning and reference readiness closeout. Milestones
   18-21 remain deferred by user request.
-- Last completed milestone: Milestone 64, Merchant Group Management Regression,
-  Docs, and Cleanup.
+- Last completed milestone: Milestone 65, Gmail Label Ingestion Planning and
+  Reference Readiness.
 - Current implementation state: Flutter Android app scaffold exists in
   `apps/mobile` with redesigned SpendLens Google sign-in, route protection,
   authenticated shell, RLS-safe profile/default-household bootstrap,
@@ -216,15 +216,18 @@ Use this file to coordinate work across multiple implementation sessions. Update
   summaries, provider refreshes, and narrow/long-name widget coverage.
   Milestone 64 completed the final local merchant group regression pass, folded
   final behavior into durable docs, confirmed Settings rename/merge writes stay
-  RPC-backed, and marked the companion plan completed-only.
+  RPC-backed, and marked the companion plan completed-only. Milestone 65 added
+  the Gmail label ingestion companion plan and queued Milestones 66-69 for
+  readonly `Banking/HDFC Transactions` label watch/backfill, body-first Gmail
+  parser routing, Netbanking IMPS parsing, watched-label parse failures in
+  Review, household-wide ignore, regression, and docs cleanup.
   Milestones 18-21 remain planned and deferred by user request.
 - Remote deployment state: On 2026-06-08, user confirmed Supabase project `bslsitzdvrdosubbdxpd` as the intended dev/staging target. All local migrations through `20260607174515_ai_ready_layer_llm_features.sql` were pushed there, hosted expense Q&A and the now-retired legacy AI lookup function were active with JWT verification, and `GEMINI_API_KEY` was present in hosted Edge Function secrets by name. After the user signed in through the Android emulator, hosted profile/household bootstrap and authenticated Gemini Edge Function smoke passed. On 2026-06-08 for Milestone 13, `gmail-oauth-start` was deployed as version 2 with JWT verification, `gmail-sync` was deployed as version 2 without JWT verification, and new `gmail-backfill-range` was deployed as version 1 without JWT verification. Hosted `gmail-backfill-range` `OPTIONS` smoke returned 200, and an unauthenticated POST returned the expected service-key error. The live May Gmail backfill itself was not run because it requires the user to connect the target Gmail mailbox and invoke the runbook with a Supabase secret key from a local/platform secret store. On 2026-06-09, M16 deleted the hosted legacy AI lookup function from `bslsitzdvrdosubbdxpd` and a follow-up function list verified it absent. The M16 database migration and updated active Suggest function were verified locally but not pushed/deployed to hosted in this implementation session.
-- Next recommended milestone: None in the active non-deferred roadmap.
-  Milestones 18-21 remain deferred unless the user resumes push notifications.
-  If continuing hosted rollout separately, push the M16, M26, M29, M32, and M33
-  migrations and deploy
-  `transaction-metadata-suggest`; iOS and web remain deferred future milestones
-  unless explicitly resumed.
+- Next recommended milestone: Milestone 66, Gmail Label Watch and Backfill
+  Contract. Milestones 18-21 remain deferred unless the user resumes push
+  notifications. If continuing hosted rollout separately, push the M16, M26,
+  M29, M32, and M33 migrations and deploy `transaction-metadata-suggest`; iOS
+  and web remain deferred future milestones unless explicitly resumed.
 - Documentation state: completed-only companion execution plans for transaction
   metadata editing and category management were retired from `docs/` on
   2026-06-12. `docs/implementation-plan/MONTHLY_CAPS.md` remains active as the
@@ -240,6 +243,8 @@ Use this file to coordinate work across multiple implementation sessions. Update
   `docs/implementation-plan/MERCHANT_GROUP_MANAGEMENT.md` is completed-only
   after completed Milestones 61-64 and can be removed in a later cleanup if the
   repository's completed-plan convention calls for it.
+  `docs/implementation-plan/GMAIL_LABEL_INGESTION.md` is the active companion
+  plan for planned Milestones 66-69.
 
 ## Required Reading for New Threads
 
@@ -250,18 +255,20 @@ At the start of a new implementation thread, read:
 3. `docs/implementation-plan/DATA_MODEL.md`
 4. `docs/implementation-plan/INGESTION.md`
 5. The target milestone section in `docs/implementation-plan/MILESTONES.md`
-6. `docs/implementation-plan/PUSH_NOTIFICATIONS.md` when executing Milestone 18, 19, 20, or 21
-7. `docs/implementation-plan/TRANSACTION_LABELS.md` when executing Milestone 26, 27, or 28
-8. `docs/implementation-plan/MONTHLY_CAPS.md` when executing Milestone 29, 30, 31, 32, 33, 34, or 35
-9. `docs/implementation-plan/UI_REDESIGN.md` when executing Milestone 37 through 51
-10. `docs/implementation-plan/TRANSACTION_DELETION.md` when executing Milestone 52 through 55
-11. `docs/implementation-plan/MERCHANT_AUTOCOMPLETE.md` when touching merchant
+6. `docs/implementation-plan/GMAIL_LABEL_INGESTION.md` when executing
+   Milestone 65, 66, 67, 68, or 69
+7. `docs/implementation-plan/PUSH_NOTIFICATIONS.md` when executing Milestone 18, 19, 20, or 21
+8. `docs/implementation-plan/TRANSACTION_LABELS.md` when executing Milestone 26, 27, or 28
+9. `docs/implementation-plan/MONTHLY_CAPS.md` when executing Milestone 29, 30, 31, 32, 33, 34, or 35
+10. `docs/implementation-plan/UI_REDESIGN.md` when executing Milestone 37 through 51
+11. `docs/implementation-plan/TRANSACTION_DELETION.md` when executing Milestone 52 through 55
+12. `docs/implementation-plan/MERCHANT_AUTOCOMPLETE.md` when touching merchant
     search/autocomplete or metadata-editor duplicate guarding
-12. `docs/implementation-plan/MERCHANT_GROUP_MANAGEMENT.md` when touching
+13. `docs/implementation-plan/MERCHANT_GROUP_MANAGEMENT.md` when touching
     merchant group rename/merge behavior
-13. `DESIGN.md` when executing Milestone 37 through 51
-14. `docs/design-references/stitch/themed-dashboard-ui-redesign/README.md` when executing Milestone 37 through 51
-15. This handoff file
+14. `DESIGN.md` when executing Milestone 37 through 51
+15. `docs/design-references/stitch/themed-dashboard-ui-redesign/README.md` when executing Milestone 37 through 51
+16. This handoff file
 
 ## Current Assumptions
 
@@ -271,6 +278,19 @@ At the start of a new implementation thread, read:
 - Supabase is the v1 backend platform.
 - Architecture is serverless-first, not backend-less.
 - Gmail ingestion starts with Gmail API watch plus Pub/Sub.
+- Gmail label ingestion for Milestones 66-69 must keep the
+  `https://www.googleapis.com/auth/gmail.readonly` scope. The watched Gmail
+  label is `Banking/HDFC Transactions`, shown in the Gmail UI as `HDFC
+  Transactions` under `Banking`; archived/non-Inbox mail with that label is in
+  scope.
+- Gmail parser routing for Milestones 66-69 is body-first. Sender and subject
+  are diagnostics, not parser selectors. Unmatched watched-label mail should
+  surface as sanitized Review parse failures with sender, subject, and received
+  time, and `Ignore for now` hides one failure household-wide while preserving
+  service-only diagnostics.
+- `Netbanking :: IMPS` is a Gmail/source candidate type planned as
+  `netbanking_imps`; it is not category taxonomy and does not replace ledger
+  `transaction_type` values such as `debit_spend`.
 - Monthly caps use required named cap rows with category and/or label targets.
   A transaction matches a cap when any selected category or label target matches,
   counts once within that cap, and may count toward other overlapping caps.
@@ -287,15 +307,14 @@ At the start of a new implementation thread, read:
   `merchant_id`; free typing should preserve existing statement merchant text
   search. Save-time close-match confirmation should compare merchant group
   display names only, not aliases or raw statement merchant strings.
-- Settings merchant group management is planned for Milestones 62-64 and uses
-  existing `public.merchants` rows as canonical merchant groups. Rename preserves
-  merchant ids. Merge moves aliases, mapping rules, transactions, and open
-  review suggested merchant references to one destination merchant. Merge
+- Settings merchant group management is implemented through Milestone 64 and
+  uses existing `public.merchants` rows as canonical merchant groups. Rename
+  preserves merchant ids. Merge moves aliases, mapping rules, transactions, and
+  open review suggested merchant references to one destination merchant. Merge
   category handling is explicit: preserve current category fields or apply the
   destination merchant category/subcategory. Statement-merchant-level
   reassignment, alias editing, merchant deletion, hosted rollout, iOS, web, and
-  push notifications are out of scope for this sequence unless the user expands
-  scope.
+  push notifications are out of scope unless the user expands scope.
 - Raw email bodies are not retained by default.
 - LLM features are backend-mediated through Supabase Edge Functions.
 - In-app category creation creates a category plus its first subcategory
@@ -357,6 +376,8 @@ Do not ask the user to perform all setup at once. Ask only when the relevant mil
   Firebase config may be committed.
 - Milestone 20: FCM service account JSON stored only in Supabase Edge Function
   secrets or an ignored local env file as `FCM_SERVICE_ACCOUNT_JSON`.
+- Milestone 66: The connected Gmail mailbox must have the nested Gmail label
+  `Banking/HDFC Transactions` before label watch/backfill setup can succeed.
 
 ## Milestone Status
 
@@ -432,6 +453,38 @@ Do not ask the user to perform all setup at once. Ask only when the relevant mil
 - Milestone 63, Settings Merchant Group Manager UX: completed.
 - Milestone 64, Merchant Group Management Regression, Docs, and Cleanup:
   completed.
+- Milestone 65, Gmail Label Ingestion Planning and Reference Readiness:
+  completed.
+- Milestone 66, Gmail Label Watch and Backfill Contract: planned.
+- Milestone 67, Body-First Parser Registry and Netbanking IMPS Parser: planned.
+- Milestone 68, Watched-Label Parse Failures and Review Ignore: planned.
+- Milestone 69, Gmail Label Ingestion Regression, Docs, and Cleanup: planned.
+
+## Gmail Label Ingestion M65 Notes
+
+- Completed on 2026-06-16.
+- Added `docs/implementation-plan/GMAIL_LABEL_INGESTION.md` as the active
+  companion plan for Milestones 65-69.
+- Split implementation into M66 label watch/backfill contract, M67 body-first
+  parser registry plus Netbanking IMPS parser, M68 watched-label parse failures
+  plus Review ignore, and M69 final regression/docs cleanup.
+- Updated `README.md`, `DATA_MODEL.md`, `INGESTION.md`,
+  `GMAIL_CONNECTOR.md`, `MILESTONES.md`, and this handoff so a fresh session
+  can start at M66 from repository docs alone.
+- No Flutter, Supabase migration, SQL test, importer, Edge Function, hosted
+  rollout, iOS, web, or push notification implementation was started.
+- Verification:
+  - `rg -n "GMAIL_LABEL_INGESTION|Milestone 6[5-9]|Gmail Label Ingestion|Netbanking :: IMPS" docs/implementation-plan`
+  - `git diff --check`
+- Assumptions made:
+  - Gmail API reports the nested label name as `Banking/HDFC Transactions`.
+  - Existing connected mailboxes can be migrated to label-based watch renewal
+    without reconnecting because the Gmail scope stays readonly.
+  - The provided IMPS sample represents a debit-spend transaction.
+- Mocks created:
+  - None.
+- Mocks used:
+  - None.
 
 ## Merchant Group Management M61 Notes
 

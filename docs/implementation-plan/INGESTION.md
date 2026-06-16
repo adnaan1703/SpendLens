@@ -102,20 +102,26 @@ Required behavior:
 - User grants Gmail read access.
 - OAuth callback exchanges code for tokens.
 - Refresh token is stored securely.
-- `linked_mailboxes` row stores Gmail email, history ID, watch expiry, and status.
+- `linked_mailboxes` row stores Gmail email, history ID, watch expiry, watched
+  Gmail label id/name, and status.
 
 Prefer the narrowest Gmail scope that supports reading transaction emails.
+Milestones 66-69 keep Gmail OAuth at
+`https://www.googleapis.com/auth/gmail.readonly`.
 
 ### Watch Setup
 
 After OAuth:
 
-1. Call Gmail `watch`.
-2. Store returned `history_id`.
-3. Store watch expiration.
+1. Resolve the exact Gmail label `Banking/HDFC Transactions`.
+2. Call Gmail `watch` with that label id and `labelFilterBehavior: "INCLUDE"`.
+3. Store the resolved label id/name, returned `history_id`, and watch
+   expiration.
 4. Schedule daily renewal.
 
 Gmail watches must be renewed at least every 7 days. Use a daily scheduled function to renew active watches.
+
+Do not silently fall back to `INBOX` when the watched label is missing.
 
 ### Pub/Sub Webhook
 
@@ -136,10 +142,11 @@ The webhook should not do full email parsing inline.
 Sync job responsibilities:
 
 1. Load mailbox connector and stored Gmail history ID.
-2. Call Gmail `history.list`.
-3. Fetch candidate message metadata and expand each candidate Gmail thread.
-4. Classify supported transaction candidates by sender and subject metadata.
-5. Parse the message body only for recognized candidates.
+2. Call Gmail `history.list` for the stored watched label id.
+3. Fetch candidate message metadata from `messagesAdded` and `labelsAdded`, and
+   expand each candidate Gmail thread.
+4. Keep only messages that still carry the watched label.
+5. Run body-first parser templates for supported transaction candidates.
 6. Store a `gmail_parse_attempts` row for parsed, parse-failed, and
    outside-date-range candidates.
 7. Generate a transaction fingerprint for parsed in-range transactions.
@@ -159,6 +166,8 @@ Backfill behavior:
 - If no sync has happened recently, enqueue a sync/backfill job.
 - Initial connector setup may run a bounded backfill over recent emails.
 - Large historical backfill should be explicit and progress-tracked.
+- Label-based backfill must search the watched Gmail label id plus date bounds,
+  including archived/non-Inbox mail, instead of sender-only candidate queries.
 
 ## Parser Contract
 
@@ -167,12 +176,11 @@ Each parser should expose:
 - `parser_name`
 - `parser_version`
 - `candidate_type`
-- `matches(messageMetadata)`
 - `parse(messageMetadata, bodyText)`
 
-`matches` must only use safe metadata such as sender and subject. Body parsing
-must happen in `parse` after a message is already classified as a supported
-candidate.
+For Milestones 66-69, the watched Gmail label identifies candidate mail and
+body regex templates choose the parser. Sender and subject remain diagnostics;
+they must not be required for parser routing.
 
 Parser output:
 
@@ -196,13 +204,19 @@ Parser rules:
   functions.
 - Avoid retaining body text.
 - Add fixture tests for every supported email template.
+- Try supported body parsers in deterministic order and accept the first
+  successful parse.
+- Treat unmatched watched-label mail as a sanitized parse failure with
+  `candidate_type` `other`.
+- Supported Gmail source/candidate types are `credit_card`, `upi`, and planned
+  `netbanking_imps`.
 
-Current HDFC candidate filters:
+HDFC body templates and planned expansion:
 
-- UPI debit: sender `alerts@hdfcbank.bank.in`, subject `You have done a UPI
-  txn. Check details!`, allowing a leading alert symbol.
-- Credit-card debit: sender `alerts@hdfcbank.bank.in`, subject `A payment was
-  made using your Credit Card`.
+- Credit-card debit from existing HDFC credit-card body fixtures.
+- UPI debit from existing HDFC Bank UPI body fixtures.
+- Netbanking IMPS debit is planned for Milestone 67 from the sample
+  `Netbanking :: IMPS` body format.
 
 ## Supported Parser Order
 
@@ -211,8 +225,9 @@ Implement parsers in this order:
 1. HDFC credit-card transaction email parser. Implemented for debit alerts.
 2. HDFC credit-card refund/reversal parser. Pending matching fixtures.
 3. UPI debit parser from user-provided anonymized samples. Implemented for HDFC Bank UPI debit alerts.
-4. UPI credit/refund parser from user-provided anonymized samples. Pending matching fixtures.
-5. Other banks/cards only after fixtures are provided.
+4. HDFC Netbanking IMPS debit parser. Planned for Milestone 67.
+5. UPI credit/refund parser from user-provided anonymized samples. Pending matching fixtures.
+6. Other banks/cards only after fixtures are provided.
 
 ## Deduplication
 
@@ -271,7 +286,8 @@ When the user corrects a mapping:
 - Do not store raw email bodies by default.
 - Store Gmail message ID, thread ID, received timestamp, parser name/version, parse status, and short diagnostics.
 - Store service-only `gmail_parse_attempts` rows for supported Gmail candidates
-  even when body parsing fails.
+  even when body parsing fails. Milestones 66-69 extend this to unsupported
+  watched-label mail as sanitized parse failures.
 - Log parser failures without sensitive full message content.
 - Do not expose mailbox tokens to clients.
 - Delete or rotate OAuth credentials when a mailbox is disconnected.

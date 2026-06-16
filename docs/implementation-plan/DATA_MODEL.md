@@ -18,10 +18,13 @@ Use Postgres enums or checked text values for these concepts:
 - `transaction_type`: `debit_spend`, `refund_reversal`, `bill_payment_credit`, `adjustment`, `unknown`
 - `confidence`: `high`, `medium`, `low`, `manual`
 - `source_type`: `workbook`, `gmail`, `manual`, `api`
-- `source_account_type`: `credit_card`, `upi`, `bank_account`, `wallet`, `cash`, `other`
+- `source_account_type`: `credit_card`, `upi`, `netbanking_imps`, `bank_account`, `wallet`, `cash`, `other`
 - `review_status`: `open`, `resolved`, `dismissed`
 - `piggy_entry_type`: `deposit`, `withdrawal`, `adjustment`
 - `job_status`: `queued`, `processing`, `completed`, `failed`, `cancelled`
+
+Milestone 67 is planned to add `netbanking_imps` to
+`source_account_type`. Treat it as planned-only until that migration runs.
 
 ## Identity and Household
 
@@ -104,6 +107,9 @@ Important fields:
 - `provider text not null default 'gmail'`
 - `oauth_secret_ref text`
 - `gmail_history_id text`
+- `watched_gmail_label_id text`
+- `watched_gmail_label_name text`
+- `watched_gmail_label_resolved_at timestamptz`
 - `watch_expires_at timestamptz`
 - `last_sync_at timestamptz`
 - `last_error text`
@@ -111,7 +117,11 @@ Important fields:
 - `created_at timestamptz`
 - `updated_at timestamptz`
 
-Do not expose decrypted OAuth tokens to the client.
+Milestone 66 is planned to add the watched-label fields for the nested Gmail
+label `Banking/HDFC Transactions`, shown in Gmail UI as `HDFC Transactions`
+under `Banking`. Store the resolved Gmail label id/name on the mailbox so watch
+renewal, history sync, and backfill use the same label without increasing Gmail
+permissions. Do not expose decrypted OAuth tokens to the client.
 
 ### `import_batches`
 
@@ -747,7 +757,8 @@ Important fields:
 - `linked_mailbox_id uuid references linked_mailboxes(id)`
 - `transaction_id uuid references transactions(id)` when parsing and ingestion
   succeed
-- `candidate_type source_account_type` for `upi` or `credit_card`
+- `candidate_type source_account_type` for `credit_card`, `upi`,
+  `netbanking_imps`, or `other`
 - `source_message_id text`
 - `source_thread_id text`
 - `source_received_at timestamptz`
@@ -759,12 +770,17 @@ Important fields:
 - `transaction_date date` when body parsing extracts one
 - `source_reference text`
 - `diagnostics jsonb`
+- `ignored_at timestamptz`
+- `ignored_by uuid references profiles(id)`
 
 Rules:
 
 - Month reconciliation uses `source_received_at`.
 - Raw email bodies and body snippets are not stored.
-- Rows are service-role only and are not exposed to the Flutter app.
+- Rows are service-role only. The Flutter app sees only sanitized,
+  household-scoped parse failures through app-facing RPCs.
+- Ignored parse-failure rows stay in `gmail_parse_attempts` for diagnostics but
+  are hidden from app-facing Review failure lists.
 
 ## Review Queue
 
