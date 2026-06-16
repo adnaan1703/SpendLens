@@ -3413,7 +3413,7 @@ add the HDFC `Netbanking :: IMPS` debit template.
 
 ### Status
 
-Planned. See
+Completed on 2026-06-16. See
 [Gmail Label Ingestion](GMAIL_LABEL_INGESTION.md#m68---watched-label-parse-failures-and-review-ignore).
 
 ### Objective
@@ -3432,6 +3432,40 @@ action.
 - Parsed rows, outside-date rows, ignored rows, and other households' rows are
   excluded from the visible Review failure list.
 - Existing transaction review behavior remains unchanged.
+
+### Completion Summary
+
+- Added persistent Gmail parse-failure ignore state on `gmail_parse_attempts`
+  with `ignored_at`, `ignored_by`, sanitized list filtering, and the
+  authenticated household-scoped `ignore_gmail_parse_failure(...)` RPC.
+- Confirmed unmatched watched-label messages already record sanitized
+  `other`/`unsupported_labeled_gmail_message` failures through the M67 sync path;
+  M68 did not need Edge Function changes.
+- Added Flutter repository support and a row-level Review `Ignore for now`
+  action that hides one visible failure and removes the card when all visible
+  failures are ignored.
+- Added pgTAP and widget coverage for RPC privileges, household isolation,
+  ignored-row filtering, and single/all-row ignore behavior.
+- Milestones 18-21 remain deferred by user request, and Milestone 69 was not
+  started.
+- Verification:
+  - `supabase db reset --local`
+  - `supabase test db --local supabase/tests/gmail_parse_failures.sql`
+  - `supabase test db --local supabase/tests/rls_isolation.sql`
+  - `supabase db lint --local --schema app_private,public --fail-on error`
+  - `cd apps/mobile && flutter analyze`
+  - `cd apps/mobile && flutter test test/finance_features_test.dart --name "Gmail parse failures|Ignore for now|Netbanking"`
+  - `git diff --check`
+- Assumptions made:
+  - Active household membership is sufficient for hiding a visible parse failure.
+  - Re-recording the same parser failure should preserve that row's ignore state.
+  - Existing M67 unsupported watched-label parse-attempt recording satisfies the
+    M68 parse-failure creation contract.
+- Mocks created:
+  - None.
+- Mocks used:
+  - Existing fake Flutter finance repository hooks, extended with Gmail
+    parse-failure ignore tracking and in-memory row removal.
 
 ## Milestone 69: Gmail Label Ingestion Regression, Docs, and Cleanup
 

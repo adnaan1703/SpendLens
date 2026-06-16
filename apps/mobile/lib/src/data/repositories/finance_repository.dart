@@ -2633,6 +2633,8 @@ abstract interface class FinanceRepository {
     required String householdId,
   });
 
+  Future<void> ignoreGmailParseFailure({required String failureId});
+
   Future<List<GmailConnectorStatus>> fetchGmailConnectorStatus({
     required String householdId,
   });
@@ -3130,6 +3132,14 @@ final class SupabaseFinanceRepository implements FinanceRepository {
         .cast<Map<String, dynamic>>()
         .map(GmailParseFailure.fromJson)
         .toList(growable: false);
+  }
+
+  @override
+  Future<void> ignoreGmailParseFailure({required String failureId}) async {
+    await _client.rpc<void>(
+      'ignore_gmail_parse_failure',
+      params: {'p_failure_id': failureId},
+    );
   }
 
   @override
@@ -4033,6 +4043,11 @@ final class DisabledFinanceRepository implements FinanceRepository {
   Future<List<GmailParseFailure>> fetchGmailParseFailures({
     required String householdId,
   }) {
+    throw const SupabaseNotConfiguredException();
+  }
+
+  @override
+  Future<void> ignoreGmailParseFailure({required String failureId}) {
     throw const SupabaseNotConfiguredException();
   }
 

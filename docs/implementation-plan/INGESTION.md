@@ -161,7 +161,8 @@ label resolution, watched-label storage, label-filtered watch/history/backfill
 requests, and thread-message filtering. Milestone 67 completed body-first
 parser routing, HDFC Netbanking IMPS parsing, IMPS source-reference
 fingerprinting, and sanitized `other` parse-attempt rows for unmatched
-watched-label mail. Review ignore remains planned for Milestone 68.
+watched-label mail. Milestone 68 added household-wide Review `Ignore for now`
+for visible sanitized parse failures while preserving service-only diagnostics.
 
 ### Backfill
 

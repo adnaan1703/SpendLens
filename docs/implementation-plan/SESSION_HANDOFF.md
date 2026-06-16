@@ -223,12 +223,13 @@ Use this file to coordinate work across multiple implementation sessions. Update
   Milestone 67 added body-first Gmail parser routing, HDFC Netbanking IMPS
   parsing, `netbanking_imps` source/candidate support, sanitized `other`
   watched-label parse failures, and IMPS source-reference fingerprinting.
-  Milestones 68-69 remain planned for Review ignore, regression, and docs
-  cleanup.
+  Milestone 68 added persistent household-wide `Ignore for now` handling for
+  visible sanitized Review parse failures while preserving service-only
+  diagnostics. Milestone 69 remains planned for regression and docs cleanup.
   Milestones 18-21 remain planned and deferred by user request.
 - Remote deployment state: On 2026-06-08, user confirmed Supabase project `bslsitzdvrdosubbdxpd` as the intended dev/staging target. All local migrations through `20260607174515_ai_ready_layer_llm_features.sql` were pushed there, hosted expense Q&A and the now-retired legacy AI lookup function were active with JWT verification, and `GEMINI_API_KEY` was present in hosted Edge Function secrets by name. After the user signed in through the Android emulator, hosted profile/household bootstrap and authenticated Gemini Edge Function smoke passed. On 2026-06-08 for Milestone 13, `gmail-oauth-start` was deployed as version 2 with JWT verification, `gmail-sync` was deployed as version 2 without JWT verification, and new `gmail-backfill-range` was deployed as version 1 without JWT verification. Hosted `gmail-backfill-range` `OPTIONS` smoke returned 200, and an unauthenticated POST returned the expected service-key error. The live May Gmail backfill itself was not run because it requires the user to connect the target Gmail mailbox and invoke the runbook with a Supabase secret key from a local/platform secret store. On 2026-06-09, M16 deleted the hosted legacy AI lookup function from `bslsitzdvrdosubbdxpd` and a follow-up function list verified it absent. The M16 database migration and updated active Suggest function were verified locally but not pushed/deployed to hosted in this implementation session.
-- Next recommended milestone: Milestone 68, Watched-Label Parse Failures and
-  Review Ignore. Milestones 18-21 remain deferred unless the user
+- Next recommended milestone: Milestone 69, Gmail Label Ingestion Regression,
+  Docs, and Cleanup. Milestones 18-21 remain deferred unless the user
   resumes push notifications. If continuing hosted rollout separately, push the
   M16, M26, M29, M32, and M33 migrations and deploy
   `transaction-metadata-suggest`; iOS and web remain deferred future milestones
@@ -291,7 +292,7 @@ At the start of a new implementation thread, read:
   active sync/backfill uses that label id rather than `INBOX`.
 - Gmail parser routing is body-first as of Milestone 67. Sender and subject are
   diagnostics, not parser selectors. Unmatched watched-label mail is recorded as
-  sanitized candidate type `other`; Milestone 68 still owns the household-wide
+  sanitized candidate type `other`; Milestone 68 added household-wide
   `Ignore for now` behavior while preserving service-only diagnostics.
 - `Netbanking :: IMPS` is implemented as Gmail/source candidate type
   `netbanking_imps`; it is not category taxonomy and does not replace ledger
@@ -463,7 +464,7 @@ Do not ask the user to perform all setup at once. Ask only when the relevant mil
 - Milestone 66, Gmail Label Watch and Backfill Contract: completed.
 - Milestone 67, Body-First Parser Registry and Netbanking IMPS Parser:
   completed.
-- Milestone 68, Watched-Label Parse Failures and Review Ignore: planned.
+- Milestone 68, Watched-Label Parse Failures and Review Ignore: completed.
 - Milestone 69, Gmail Label Ingestion Regression, Docs, and Cleanup: planned.
 
 ## Gmail Label Ingestion M66 Notes
@@ -553,6 +554,47 @@ Do not ask the user to perform all setup at once. Ask only when the relevant mil
 - Mocks used:
   - Existing fake Flutter finance repository hooks for parse-failure label
     coverage.
+
+## Gmail Label Ingestion M68 Notes
+
+- Completed on 2026-06-16. Milestones 18-21 remained deferred and were not
+  started. Milestone 69 was not started.
+- Added `20260616130706_gmail_parse_failure_ignore.sql` with `ignored_at` and
+  `ignored_by` on `gmail_parse_attempts`, an unignored parse-failure index, and
+  sanitized `list_gmail_parse_failures(...)` filtering so ignored rows no longer
+  appear in Review.
+- Added `ignore_gmail_parse_failure(p_failure_id uuid)` as an authenticated,
+  household-scoped RPC that validates active household membership and marks one
+  visible parse failure ignored while keeping `gmail_parse_attempts`
+  service-only.
+- Confirmed M67 already records unmatched watched-label mail as
+  `candidate_type` `other`, parser `unsupported_labeled_gmail_message` version
+  `1.0.0`, and reason `no_supported_body_template_matched`; no Edge Function
+  changes were needed during M68.
+- Added Flutter repository support and a row-level Review `Ignore for now`
+  action. Successful ignore invalidates the Gmail parse-failure provider, hides
+  one row without hiding other failures, and removes the Gmail parse failures
+  card when no visible failures remain.
+- Verification:
+  - `supabase db reset --local`
+  - `supabase test db --local supabase/tests/gmail_parse_failures.sql`
+  - `supabase test db --local supabase/tests/rls_isolation.sql`
+  - `supabase db lint --local --schema app_private,public --fail-on error`
+  - `cd apps/mobile && flutter analyze`
+  - `cd apps/mobile && flutter test test/finance_features_test.dart --name "Gmail parse failures|Ignore for now|Netbanking"`
+  - `git diff --check`
+- Assumptions made:
+  - Active household membership is sufficient for hiding a visible parse
+    failure; the action is not writer-only.
+  - Re-recording the same parser failure should preserve that row's ignore
+    state.
+  - Existing M67 unsupported watched-label parse-attempt recording satisfies the
+    M68 parse-failure creation contract.
+- Mocks created:
+  - None.
+- Mocks used:
+  - Existing fake Flutter finance repository hooks, extended with Gmail
+    parse-failure ignore tracking and in-memory row removal.
 
 ## Gmail Label Ingestion M65 Notes
 

@@ -3,13 +3,20 @@ begin;
 create extension if not exists pgtap with schema extensions;
 set search_path = public, extensions;
 
-select plan(12);
+select plan(21);
 
 select has_function(
   'public',
   'list_gmail_parse_failures',
   array['uuid', 'integer'],
   'Gmail parse-failure listing RPC exists'
+);
+
+select has_function(
+  'public',
+  'ignore_gmail_parse_failure',
+  array['uuid'],
+  'Gmail parse-failure ignore RPC exists'
 );
 
 select is(
@@ -24,6 +31,16 @@ select is(
 
 select is(
   has_function_privilege(
+    'authenticated',
+    'public.ignore_gmail_parse_failure(uuid)',
+    'execute'
+  ),
+  true,
+  'authenticated users can execute Gmail parse-failure ignore RPC'
+);
+
+select is(
+  has_function_privilege(
     'anon',
     'public.list_gmail_parse_failures(uuid, integer)',
     'execute'
@@ -33,9 +50,25 @@ select is(
 );
 
 select is(
+  has_function_privilege(
+    'anon',
+    'public.ignore_gmail_parse_failure(uuid)',
+    'execute'
+  ),
+  false,
+  'anonymous users cannot execute Gmail parse-failure ignore RPC'
+);
+
+select is(
   has_table_privilege('authenticated', 'public.gmail_parse_attempts', 'select'),
   false,
   'authenticated users cannot directly read Gmail parse attempts'
+);
+
+select is(
+  has_table_privilege('authenticated', 'public.gmail_parse_attempts', 'update'),
+  false,
+  'authenticated users cannot directly update Gmail parse attempts'
 );
 
 select is(
@@ -324,7 +357,42 @@ select results_eq(
   'parse-failure RPC supports IMPS and unsupported watched-label candidates'
 );
 
+select lives_ok(
+  $$
+    select public.ignore_gmail_parse_failure(
+      '93000000-0000-0000-0000-000000000007'::uuid
+    )
+  $$,
+  'active household member can ignore one visible parse failure'
+);
+
+select is(
+  (
+    select count(*)::integer
+    from public.list_gmail_parse_failures(
+      '33000000-0000-0000-0000-000000000001'
+    )
+  ),
+  2,
+  'ignored parse failures are hidden from the visible Review list'
+);
+
+reset role;
+
+select is(
+  (
+    select ignored_by
+    from public.gmail_parse_attempts
+    where id = '93000000-0000-0000-0000-000000000007'
+      and ignored_at is not null
+  ),
+  '23000000-0000-0000-0000-000000000001'::uuid,
+  'ignore RPC records the household member profile while keeping diagnostics'
+);
+
+set local role authenticated;
 set local request.jwt.claim.sub = '13000000-0000-0000-0000-000000000002';
+set local request.jwt.claim.role = 'authenticated';
 
 select is(
   (
@@ -335,6 +403,17 @@ select is(
   ),
   0,
   'another household cannot read parse failures'
+);
+
+select throws_ok(
+  $$
+    select public.ignore_gmail_parse_failure(
+      '93000000-0000-0000-0000-000000000001'::uuid
+    )
+  $$,
+  'P0001',
+  'Visible Gmail parse failure not found.',
+  'another household cannot ignore a parse failure'
 );
 
 set local request.jwt.claim.sub = '13000000-0000-0000-0000-000000000003';
@@ -348,6 +427,17 @@ select is(
   ),
   0,
   'inactive household member cannot read parse failures'
+);
+
+select throws_ok(
+  $$
+    select public.ignore_gmail_parse_failure(
+      '93000000-0000-0000-0000-000000000001'::uuid
+    )
+  $$,
+  'P0001',
+  'Visible Gmail parse failure not found.',
+  'inactive household member cannot ignore a parse failure'
 );
 
 select * from finish();

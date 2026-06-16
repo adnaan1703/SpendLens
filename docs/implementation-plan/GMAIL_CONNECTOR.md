@@ -200,6 +200,7 @@ select
   source_message_id,
   source_thread_id,
   parser_name,
+  ignored_at,
   diagnostics
 from public.gmail_parse_attempts
 where parse_status = 'parse_failed'
@@ -207,6 +208,9 @@ where parse_status = 'parse_failed'
   and source_received_at < '2026-06-01'
 order by source_received_at;
 ```
+
+Rows hidden from Review by `Ignore for now` keep their service-only diagnostics
+with `ignored_at`/`ignored_by`; app-facing parse-failure RPCs omit those rows.
 
 To fetch the exact Gmail body for one message, call the admin helper with the
 mailbox id and `source_message_id`:

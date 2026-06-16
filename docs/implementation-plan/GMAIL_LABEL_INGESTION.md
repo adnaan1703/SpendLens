@@ -403,7 +403,7 @@ Completion summary:
 
 ## M68 - Watched-Label Parse Failures and Review Ignore
 
-Status: Planned.
+Status: Completed on 2026-06-16.
 
 Purpose: Make every unsupported watched-label email visible as a sanitized
 Review parse failure and let the household ignore individual failure rows.
@@ -471,6 +471,51 @@ Completion summary requirements:
 - Assumptions made
 - Mocks created
 - Mocks used
+
+Completion summary:
+
+- Added `20260616130706_gmail_parse_failure_ignore.sql` with persistent
+  `ignored_at` and `ignored_by` fields on `gmail_parse_attempts`, an unignored
+  parse-failure index, and a refreshed `list_gmail_parse_failures(...)` RPC that
+  excludes ignored rows while keeping raw bodies/snippets out of the response.
+- Added `ignore_gmail_parse_failure(p_failure_id uuid)` as an authenticated,
+  household-scoped RPC. It validates active household membership, marks one
+  visible parse failure ignored household-wide, and keeps `gmail_parse_attempts`
+  service-only.
+- Confirmed the existing M67 Gmail sync/parser path already records unmatched
+  watched-label mail as `candidate_type` `other`,
+  `unsupported_labeled_gmail_message` parser version `1.0.0`, and reason
+  `no_supported_body_template_matched`, so no Edge Function change was needed
+  during M68.
+- Added Flutter repository support and a row-level Review `Ignore for now`
+  action. Successful ignore invalidates the Gmail parse-failure provider; one
+  ignored row disappears without hiding other rows, and the card disappears when
+  no visible failures remain.
+- Added pgTAP and Flutter coverage for RPC privileges, table-access isolation,
+  active-household validation, ignored-row filtering, single-row ignore, and
+  all-visible-rows ignored behavior.
+- Deferred scope was not started: Gmail mutation, bulk ignore, hosted rollout,
+  iOS, web, push notifications, or M69.
+- Verification:
+  - `supabase db reset --local`
+  - `supabase test db --local supabase/tests/gmail_parse_failures.sql`
+  - `supabase test db --local supabase/tests/rls_isolation.sql`
+  - `supabase db lint --local --schema app_private,public --fail-on error`
+  - `cd apps/mobile && flutter analyze`
+  - `cd apps/mobile && flutter test test/finance_features_test.dart --name "Gmail parse failures|Ignore for now|Netbanking"`
+  - `git diff --check`
+- Assumptions made:
+  - Active household membership is sufficient for hiding a visible parse failure;
+    the action is not writer-only.
+  - Re-recording the same parser failure should preserve the ignore state for
+    that diagnostic row.
+  - The M67 unsupported watched-label sync behavior already satisfies M68 parse
+    failure creation requirements.
+- Mocks created:
+  - None.
+- Mocks used:
+  - Existing fake Flutter finance repository hooks, extended with Gmail
+    parse-failure ignore tracking and in-memory row removal.
 
 ## M69 - Gmail Label Ingestion Regression, Docs, and Cleanup
 

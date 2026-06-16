@@ -54,6 +54,16 @@ class MerchantReviewScreen extends ConsumerWidget {
                 subcategories: subcategories.value ?? const [],
               );
             },
+      onIgnoreParseFailure: householdContext == null
+          ? null
+          : (failure) {
+              _ignoreParseFailure(
+                context: context,
+                ref: ref,
+                householdId: householdContext.household.id,
+                failure: failure,
+              );
+            },
     );
   }
 
@@ -103,6 +113,34 @@ class MerchantReviewScreen extends ConsumerWidget {
       );
     }
   }
+
+  Future<void> _ignoreParseFailure({
+    required BuildContext context,
+    required WidgetRef ref,
+    required String householdId,
+    required GmailParseFailure failure,
+  }) async {
+    try {
+      await ref
+          .read(financeRepositoryProvider)
+          .ignoreGmailParseFailure(failureId: failure.failureId);
+      ref.invalidate(gmailParseFailuresProvider(householdId));
+
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Ignored Gmail parse failure')),
+        );
+      }
+    } catch (error) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Could not ignore Gmail parse failure: $error'),
+          ),
+        );
+      }
+    }
+  }
 }
 
 class _MerchantReviewPage extends StatelessWidget {
@@ -113,6 +151,7 @@ class _MerchantReviewPage extends StatelessWidget {
     required this.subcategories,
     required this.onRefresh,
     required this.onCorrect,
+    required this.onIgnoreParseFailure,
   });
 
   final AsyncValue<List<MerchantReviewItem>> reviewItems;
@@ -121,6 +160,7 @@ class _MerchantReviewPage extends StatelessWidget {
   final AsyncValue<List<SubcategoryOption>> subcategories;
   final VoidCallback? onRefresh;
   final ValueChanged<MerchantReviewItem>? onCorrect;
+  final ValueChanged<GmailParseFailure>? onIgnoreParseFailure;
 
   @override
   Widget build(BuildContext context) {
@@ -206,7 +246,10 @@ class _MerchantReviewPage extends StatelessWidget {
         _sliverBox(
           metrics: metrics,
           bottom: metrics.sectionGap,
-          child: _GmailParseFailuresCard(failures: failures),
+          child: _GmailParseFailuresCard(
+            failures: failures,
+            onIgnore: onIgnoreParseFailure,
+          ),
         ),
       );
     }
@@ -287,10 +330,7 @@ class _ReviewHeader extends StatelessWidget {
           children: [
             Expanded(child: heading),
             const SizedBox(width: 24),
-            Align(
-              alignment: Alignment.topRight,
-              child: settingsAction,
-            ),
+            Align(alignment: Alignment.topRight, child: settingsAction),
           ],
         ),
         const SizedBox(height: 16),
@@ -351,9 +391,13 @@ class _ReviewMetrics extends StatelessWidget {
 }
 
 class _GmailParseFailuresCard extends StatelessWidget {
-  const _GmailParseFailuresCard({required this.failures});
+  const _GmailParseFailuresCard({
+    required this.failures,
+    required this.onIgnore,
+  });
 
   final List<GmailParseFailure> failures;
+  final ValueChanged<GmailParseFailure>? onIgnore;
 
   @override
   Widget build(BuildContext context) {
@@ -411,7 +455,7 @@ class _GmailParseFailuresCard extends StatelessWidget {
                 ),
                 const SizedBox(height: 18),
                 for (final failure in failures) ...[
-                  _GmailParseFailureRow(failure: failure),
+                  _GmailParseFailureRow(failure: failure, onIgnore: onIgnore),
                   if (failure != failures.last) const Divider(height: 28),
                 ],
               ],
@@ -424,9 +468,10 @@ class _GmailParseFailuresCard extends StatelessWidget {
 }
 
 class _GmailParseFailureRow extends StatelessWidget {
-  const _GmailParseFailureRow({required this.failure});
+  const _GmailParseFailureRow({required this.failure, required this.onIgnore});
 
   final GmailParseFailure failure;
+  final ValueChanged<GmailParseFailure>? onIgnore;
 
   @override
   Widget build(BuildContext context) {
@@ -474,6 +519,16 @@ class _GmailParseFailureRow extends StatelessWidget {
             icon: Icons.forum_outlined,
             label: 'Thread ${failure.sourceThreadId}',
           ),
+        const SizedBox(height: 14),
+        Align(
+          alignment: Alignment.centerRight,
+          child: AppActionPill.secondary(
+            label: 'Ignore for now',
+            icon: Icons.visibility_off_outlined,
+            tooltip: 'Hide this parse failure',
+            onPressed: onIgnore == null ? null : () => onIgnore!(failure),
+          ),
+        ),
       ],
     );
   }

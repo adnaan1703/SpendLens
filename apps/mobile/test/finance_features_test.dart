@@ -2069,6 +2069,82 @@ void main() {
     expect(find.text('Received 2026-06-08 10:30'), findsOneWidget);
     expect(find.text('Message gmail-failure-message-1'), findsOneWidget);
     expect(find.text('Thread gmail-failure-thread-1'), findsOneWidget);
+    expect(find.text('Ignore for now'), findsOneWidget);
+  });
+
+  testWidgets(
+    'merchant review Ignore for now hides one Gmail parse failure row',
+    (tester) async {
+      final repository = _FakeFinanceRepository()
+        ..reviewItems.clear()
+        ..gmailParseFailures.addAll([
+          _gmailParseFailure(),
+          _gmailParseFailure(
+            failureId: 'gmail-failure-2',
+            subject: 'Watched label unsupported template',
+            candidateType: 'other',
+            parserName: 'unsupported_labeled_gmail_message',
+            reasonCode: 'no_supported_body_template_matched',
+            sourceMessageId: 'gmail-failure-message-2',
+            sourceThreadId: 'gmail-failure-thread-2',
+          ),
+        ]);
+
+      await tester.pumpWidget(
+        _financeTestApp(
+          repository: repository,
+          child: const MerchantReviewScreen(),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('2 recent failures'), findsOneWidget);
+      expect(
+        find.text('A payment was made using your Credit Card'),
+        findsOneWidget,
+      );
+      expect(find.text('Watched label unsupported template'), findsOneWidget);
+
+      await tester.ensureVisible(find.text('Ignore for now').first);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Ignore for now').first);
+      await tester.pumpAndSettle();
+
+      expect(repository.gmailParseFailureIgnoreRequests, ['gmail-failure-1']);
+      expect(
+        find.text('A payment was made using your Credit Card'),
+        findsNothing,
+      );
+      expect(find.text('Watched label unsupported template'), findsOneWidget);
+      expect(find.text('1 recent failure'), findsOneWidget);
+    },
+  );
+
+  testWidgets('merchant review Ignore for now hides Gmail parse failure card', (
+    tester,
+  ) async {
+    final repository = _FakeFinanceRepository()
+      ..reviewItems.clear()
+      ..gmailParseFailures.add(_gmailParseFailure());
+
+    await tester.pumpWidget(
+      _financeTestApp(
+        repository: repository,
+        child: const MerchantReviewScreen(),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Gmail parse failures'), findsOneWidget);
+
+    await tester.ensureVisible(find.text('Ignore for now'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Ignore for now'));
+    await tester.pumpAndSettle();
+
+    expect(repository.gmailParseFailureIgnoreRequests, ['gmail-failure-1']);
+    expect(find.text('Gmail parse failures'), findsNothing);
+    expect(find.text("You're all caught up for now."), findsOneWidget);
   });
 
   test('Gmail parse failures label IMPS and unsupported candidates', () {
@@ -3909,6 +3985,7 @@ final class _FakeFinanceRepository implements FinanceRepository {
   final mergeRequests = <CategoryMergeRequest>[];
   final merchantGroupRenameRequests = <MerchantGroupRenameRequest>[];
   final merchantGroupMergeRequests = <MerchantGroupMergeRequest>[];
+  final gmailParseFailureIgnoreRequests = <String>[];
   final labelCreateRequests = <LabelCreateRequest>[];
   final labelSetRequests = <TransactionLabelsSetRequest>[];
   final labelRenameRequests = <LabelRenameRequest>[];
@@ -4985,6 +5062,12 @@ final class _FakeFinanceRepository implements FinanceRepository {
     if (error != null) throw error;
 
     return gmailParseFailures;
+  }
+
+  @override
+  Future<void> ignoreGmailParseFailure({required String failureId}) async {
+    gmailParseFailureIgnoreRequests.add(failureId);
+    gmailParseFailures.removeWhere((failure) => failure.failureId == failureId);
   }
 
   @override
