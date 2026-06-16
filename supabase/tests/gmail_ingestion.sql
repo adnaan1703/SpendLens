@@ -173,6 +173,59 @@ select is(
   'initial connector setup records the watched label id in backfill metadata'
 );
 
+set local role service_role;
+
+update public.linked_mailboxes
+set
+  oauth_secret_ref = null,
+  has_oauth_secret = false
+where provider = 'gmail';
+
+create temporary table test_mailbox_reconnect as
+select *
+from public.upsert_gmail_mailbox(
+  '31000000-0000-0000-0000-000000000001',
+  '21000000-0000-0000-0000-000000000001',
+  'SpendLens.HDFC@example.test',
+  'refresh-token-reconnected',
+  'gmail-profile-1',
+  'https://www.googleapis.com/auth/gmail.readonly',
+  '9001',
+  '2026-06-14 00:00:00+00',
+  '2026-06-07 14:00:00+00',
+  'Label_123',
+  'Banking/HDFC Transactions',
+  '2026-06-16 12:30:00+00'
+);
+
+reset role;
+
+select is(
+  (
+    select count(*)::integer
+    from vault.secrets s
+    join public.linked_mailboxes lm
+      on s.name = 'gmail_refresh_token:' || lm.id::text
+    where lm.provider = 'gmail'
+  ),
+  1,
+  'Gmail reconnect reuses an existing named Vault secret when the mailbox ref is missing'
+);
+
+select is(
+  (
+    select decrypted_secret
+    from vault.decrypted_secrets
+    where id = (
+      select oauth_secret_ref::uuid
+      from public.linked_mailboxes
+      where provider = 'gmail'
+    )
+  ),
+  'refresh-token-reconnected',
+  'Gmail reconnect updates the reused Vault refresh token'
+);
+
 set local role authenticated;
 set local request.jwt.claim.sub = '11000000-0000-0000-0000-000000000001';
 set local request.jwt.claim.role = 'authenticated';
