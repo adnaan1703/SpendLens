@@ -10,8 +10,8 @@ Read these documents in order at the start of every new implementation thread:
 4. [Milestones](MILESTONES.md)
 5. [External Setup Checklist](EXTERNAL_SETUP.md)
 6. [Gmail Connector](GMAIL_CONNECTOR.md)
-7. [Gmail Label Ingestion](GMAIL_LABEL_INGESTION.md) when executing
-   Milestones 65-69
+7. [Gmail Label Ingestion](GMAIL_LABEL_INGESTION.md) as the completed-only
+   reference for Milestones 65-69
 8. [Production Readiness](PRODUCTION_READINESS.md)
 9. [Push Notifications](PUSH_NOTIFICATIONS.md) when executing Milestones 18-21
 10. [Transaction Labels](TRANSACTION_LABELS.md) when executing Milestones 26-28
@@ -121,8 +121,9 @@ This is not a "no backend" architecture. It is a backend without a permanently r
   `Netbanking :: IMPS` source/candidate type, sanitized `other` watched-label
   parse failures, and IMPS source-reference fingerprinting. Milestone 68 added
   persistent household-wide `Ignore for now` handling for visible sanitized
-  parse failures in Review. Milestone 69 remains planned for final
-  regression/docs cleanup.
+  parse failures in Review. Milestone 69 completed the final local
+  regression/docs cleanup and left `GMAIL_LABEL_INGESTION.md` as a
+  completed-only reference.
 - Multi-target monthly caps: required-name recurring caps can include multiple
   categories, multiple labels, or both. A transaction counts once inside a cap
   when any selected category or label matches; overlapping caps are allowed.
@@ -172,8 +173,8 @@ When starting a new implementation thread:
    merchant search/autocomplete or metadata-editor duplicate guarding.
 7. Read [Merchant Group Management](MERCHANT_GROUP_MANAGEMENT.md) when touching
    merchant group rename/merge behavior.
-8. Read [Gmail Label Ingestion](GMAIL_LABEL_INGESTION.md) when executing
-   Milestones 65-69.
+8. Read [Gmail Label Ingestion](GMAIL_LABEL_INGESTION.md) as completed
+   reference material when touching label-based Gmail ingestion behavior.
 9. Check [Session Handoff](SESSION_HANDOFF.md) for current status.
 10. Do only that milestone unless the user explicitly expands scope.
 11. Preserve documented invariants, especially idempotency, RLS isolation, and no raw email retention.

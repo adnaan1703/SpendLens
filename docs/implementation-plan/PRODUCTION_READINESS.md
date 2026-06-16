@@ -108,6 +108,9 @@ Use production Google Cloud OAuth and Pub/Sub values, not the dev project values
 - Create a production Pub/Sub topic and push subscription.
 - Grant `gmail-api-push@system.gserviceaccount.com` publisher access to the
   topic.
+- Confirm the connected mailbox has the nested Gmail label
+  `Banking/HDFC Transactions`; Gmail watch, history sync, and backfill use the
+  resolved label id and do not fall back to Inbox/sender discovery.
 - Configure the push endpoint after `gmail-pubsub-webhook` is deployed:
   `https://<production-project-ref>.supabase.co/functions/v1/gmail-pubsub-webhook?token=<PUBSUB_VERIFICATION_SECRET>`.
 - Configure a Google Cloud budget alert before live ingestion.
@@ -176,6 +179,8 @@ Operational response rules:
 - `stale_sync_mailbox_count > 0`: run or inspect `gmail-backfill-check`.
 - `retrying_job_count > 0`: inspect Edge logs for transient Gmail/API failures.
 - `permanently_failed_job_count > 0`: inspect `latest_job_error` before retrying.
+- Parse-failure spikes: inspect `v_gmail_parse_attempt_health` and sanitized
+  `gmail_parse_attempts` metadata; keep raw email bodies out of logs/docs.
 - Push delivery failures: inspect `notification_outbox`,
   `notification_deliveries`, and Edge Function logs before retrying. Permanent
   token failures should deactivate only the affected device.
@@ -214,12 +219,16 @@ After deploying production:
 - Install the internal-test Android build.
 - Sign in with Google.
 - Confirm the app creates or loads the profile and household.
-- Connect Gmail from Settings.
+- Confirm the target mailbox has the `Banking/HDFC Transactions` label, then
+  connect Gmail from Settings.
 - Confirm `v_ingestion_operational_health` reports an active mailbox with no
-  current mailbox error.
-- Send or receive one supported HDFC credit-card or UPI debit email.
+  current mailbox error and the resolved watched label metadata.
+- Send or receive one supported HDFC credit-card, UPI debit, or
+  `Netbanking :: IMPS` debit email carrying the watched label.
 - Confirm the transaction appears once, source filters work, and unknown
   merchants create review items.
+- Confirm unsupported watched-label messages appear only as sanitized Review
+  parse failures and can be hidden with `Ignore for now`.
 - If push notifications are enabled, confirm the Android device is registered,
   run or wait for `send-push-notifications`, receive one transaction
   notification, tap it, and verify the app opens Transactions.

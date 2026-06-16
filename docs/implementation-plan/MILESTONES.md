@@ -3471,7 +3471,7 @@ action.
 
 ### Status
 
-Planned. See
+Completed on 2026-06-16. See
 [Gmail Label Ingestion](GMAIL_LABEL_INGESTION.md#m69---gmail-label-ingestion-regression-docs-and-cleanup).
 
 ### Objective
@@ -3488,6 +3488,48 @@ and fold completed behavior back into durable docs.
   behavior, privacy boundaries, and operational runbook changes.
 - `GMAIL_LABEL_INGESTION.md` is marked completed-only after M69 completes.
 - M18-M21 remain deferred unless explicitly resumed.
+
+### Completion Summary
+
+- Verified the complete label-based Gmail ingestion flow locally across
+  migrations, focused Gmail pgTAP, full pgTAP, schema lint, parser tests, Gmail
+  Edge Function tests, Flutter analysis, focused Review/Settings/Activity
+  coverage, and the full Flutter test suite.
+- Confirmed durable docs describe readonly `Banking/HDFC Transactions` label
+  watch/backfill, body-first parser routing, `Netbanking :: IMPS`, sanitized
+  watched-label parse failures, Review `Ignore for now`, privacy boundaries,
+  and production runbook expectations.
+- Marked `GMAIL_LABEL_INGESTION.md` completed-only. No runtime code, Supabase
+  migration, SQL test, importer, Edge Function, hosted rollout, iOS, web, or
+  push notification changes were required during M69.
+- Milestones 18-21 remain deferred by user request; no later milestone work was
+  started.
+- Verification:
+  - `supabase db reset --local`
+  - `supabase test db --local supabase/tests/gmail_ingestion.sql`
+  - `supabase test db --local supabase/tests/gmail_parse_failures.sql`
+  - `supabase test db --local supabase/tests/production_readiness.sql`
+  - `supabase test db --local supabase/tests`
+  - `supabase db lint --local --schema app_private,public --fail-on error`
+  - `node --test supabase/functions/tests/gmail_parsers.test.mjs`
+  - `deno test --allow-env --allow-net supabase/functions/tests/google.test.ts`
+  - `deno test --allow-env --allow-net supabase/functions/tests/gmail_sync.test.ts`
+  - `cd apps/mobile && flutter analyze`
+  - `cd apps/mobile && flutter test test/finance_features_test.dart --name "Gmail parse failures|Review|Settings|Activity"`
+  - `cd apps/mobile && flutter test`
+  - `git diff --check`
+- Assumptions made:
+  - M66-M68 already implemented the intended runtime behavior; M69 only needed
+    verification and documentation closeout after regression passed.
+  - Hosted Supabase migration push, Edge Function deployment, iOS, web, and
+    push notifications remain out of scope.
+  - The watched Gmail label remains exactly `Banking/HDFC Transactions` and
+    Gmail OAuth remains readonly.
+- Mocks created:
+  - None.
+- Mocks used:
+  - Existing Gmail API stubs in Edge Function tests and existing fake Flutter
+    finance repository hooks for Review parse-failure coverage.
 
 ## Cross-Milestone Consistency Rules
 

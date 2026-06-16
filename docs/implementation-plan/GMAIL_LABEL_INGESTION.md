@@ -1,5 +1,7 @@
 # Gmail Label Ingestion Plan
 
+Completed-only reference after Milestone 69.
+
 Last updated: 2026-06-16
 
 This document is the implementation plan for label-based HDFC Gmail ingestion.
@@ -519,7 +521,7 @@ Completion summary:
 
 ## M69 - Gmail Label Ingestion Regression, Docs, and Cleanup
 
-Status: Planned.
+Status: Completed on 2026-06-16.
 
 Purpose: Verify the complete label-based Gmail ingestion workflow and fold final
 behavior into durable docs.
@@ -578,3 +580,42 @@ Completion summary requirements:
 - Assumptions made
 - Mocks created
 - Mocks used
+
+Completion summary:
+
+- Ran the full local Gmail label ingestion regression path and found no runtime
+  regressions requiring code changes.
+- Verified readonly watched-label discovery and storage, label-filtered
+  watch/history/backfill behavior, thread-message label filtering, body-first
+  parser routing, `Netbanking :: IMPS` parsing/fingerprinting, sanitized
+  watched-label parse-failure diagnostics, Review `Ignore for now`, and
+  dependent Activity/Settings/Review Flutter surfaces.
+- Folded final behavior into durable docs and marked this companion plan
+  completed-only.
+- Milestones 18-21 remain deferred by user request; hosted Supabase migration
+  push, Edge Function deployment, iOS, web, and push notifications were not
+  started.
+- Verification:
+  - `supabase db reset --local`
+  - `supabase test db --local supabase/tests/gmail_ingestion.sql`
+  - `supabase test db --local supabase/tests/gmail_parse_failures.sql`
+  - `supabase test db --local supabase/tests/production_readiness.sql`
+  - `supabase test db --local supabase/tests`
+  - `supabase db lint --local --schema app_private,public --fail-on error`
+  - `node --test supabase/functions/tests/gmail_parsers.test.mjs`
+  - `deno test --allow-env --allow-net supabase/functions/tests/google.test.ts`
+  - `deno test --allow-env --allow-net supabase/functions/tests/gmail_sync.test.ts`
+  - `cd apps/mobile && flutter analyze`
+  - `cd apps/mobile && flutter test test/finance_features_test.dart --name "Gmail parse failures|Review|Settings|Activity"`
+  - `cd apps/mobile && flutter test`
+  - `git diff --check`
+- Assumptions made:
+  - M66-M68 already implemented the intended Gmail label ingestion behavior.
+  - The watched Gmail label remains exactly `Banking/HDFC Transactions`, and
+    Gmail OAuth remains readonly.
+  - Hosted rollout remains a separate explicit operation.
+- Mocks created:
+  - None.
+- Mocks used:
+  - Existing Gmail API stubs in Edge Function tests and existing fake Flutter
+    finance repository hooks for Review parse-failure coverage.
