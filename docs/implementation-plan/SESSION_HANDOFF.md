@@ -4,11 +4,11 @@ Use this file to coordinate work across multiple implementation sessions. Update
 
 ## Current Status
 
-- Current milestone: None. Milestone 72 was completed on 2026-06-16 as the
-  Review UI Pagination and Email Body Dialog closeout.
+- Current milestone: None. Milestone 73 was completed on 2026-06-16 as the
+  Parse Failure Review Regression, Docs, and Cleanup closeout.
   Milestones 18-21 remain deferred by user request.
-- Last completed milestone: Milestone 72, Review UI Pagination and Email Body
-  Dialog.
+- Last completed milestone: Milestone 73, Parse Failure Review Regression,
+  Docs, and Cleanup.
 - Current implementation state: Flutter Android app scaffold exists in
   `apps/mobile` with redesigned SpendLens Google sign-in, route protection,
   authenticated shell, RLS-safe profile/default-household bootstrap,
@@ -240,15 +240,18 @@ Use this file to coordinate work across multiple implementation sessions. Update
   failures, `Load more` and retry states, `View email` row actions, a transient
   selectable plain-text body dialog with safe metadata and retry/close flows, and
   focused widget coverage while preserving `Ignore for now` and transaction
-  correction behavior.
+  correction behavior. Milestone 73 completed the final local regression/docs
+  cleanup, confirmed unmatched watched-label mail still appears as sanitized
+  `other` parse failures, verified paginated Review/body/ignore behavior
+  together, documented historical backfill/resync expectations, and marked
+  `GMAIL_PARSE_FAILURE_REVIEW.md` completed-only.
   Milestones 18-21 remain planned and deferred by user request.
-- Remote deployment state: On 2026-06-08, user confirmed Supabase project `bslsitzdvrdosubbdxpd` as the intended dev/staging target. All local migrations through `20260607174515_ai_ready_layer_llm_features.sql` were pushed there, hosted expense Q&A and the now-retired legacy AI lookup function were active with JWT verification, and `GEMINI_API_KEY` was present in hosted Edge Function secrets by name. After the user signed in through the Android emulator, hosted profile/household bootstrap and authenticated Gemini Edge Function smoke passed. On 2026-06-08 for Milestone 13, `gmail-oauth-start` was deployed as version 2 with JWT verification, `gmail-sync` was deployed as version 2 without JWT verification, and new `gmail-backfill-range` was deployed as version 1 without JWT verification. Hosted `gmail-backfill-range` `OPTIONS` smoke returned 200, and an unauthenticated POST returned the expected service-key error. The live May Gmail backfill itself was not run because it requires the user to connect the target Gmail mailbox and invoke the runbook with a Supabase secret key from a local/platform secret store. On 2026-06-09, M16 deleted the hosted legacy AI lookup function from `bslsitzdvrdosubbdxpd` and a follow-up function list verified it absent. The M16 database migration and updated active Suggest function were verified locally but not pushed/deployed to hosted in this implementation session. On 2026-06-16, M71 was verified locally only; no hosted Supabase migration push or Edge Function deployment was run. M72 was Flutter-only; no hosted Supabase migration push or Edge Function deployment was run.
-- Next recommended milestone: Milestone 73, Parse Failure Review Regression,
-  Docs, and Cleanup. Milestones 18-21 remain deferred unless the user resumes
-  push notifications; iOS and web remain deferred future milestones unless
-  explicitly resumed. If continuing hosted rollout separately, push currently
-  local-only migrations and deploy the relevant updated Edge Functions in a
-  separate hosted rollout.
+- Remote deployment state: On 2026-06-08, user confirmed Supabase project `bslsitzdvrdosubbdxpd` as the intended dev/staging target. All local migrations through `20260607174515_ai_ready_layer_llm_features.sql` were pushed there, hosted expense Q&A and the now-retired legacy AI lookup function were active with JWT verification, and `GEMINI_API_KEY` was present in hosted Edge Function secrets by name. After the user signed in through the Android emulator, hosted profile/household bootstrap and authenticated Gemini Edge Function smoke passed. On 2026-06-08 for Milestone 13, `gmail-oauth-start` was deployed as version 2 with JWT verification, `gmail-sync` was deployed as version 2 without JWT verification, and new `gmail-backfill-range` was deployed as version 1 without JWT verification. Hosted `gmail-backfill-range` `OPTIONS` smoke returned 200, and an unauthenticated POST returned the expected service-key error. The live May Gmail backfill itself was not run because it requires the user to connect the target Gmail mailbox and invoke the runbook with a Supabase secret key from a local/platform secret store. On 2026-06-09, M16 deleted the hosted legacy AI lookup function from `bslsitzdvrdosubbdxpd` and a follow-up function list verified it absent. The M16 database migration and updated active Suggest function were verified locally but not pushed/deployed to hosted in this implementation session. On 2026-06-16, M71 was verified locally only; no hosted Supabase migration push or Edge Function deployment was run. M72 was Flutter-only; no hosted Supabase migration push or Edge Function deployment was run. M73 was verified locally only as a regression/docs closeout; no hosted Supabase migration push or Edge Function deployment was run.
+- Next recommended milestone: None queued in the active non-deferred plan.
+  Milestones 18-21 remain deferred unless the user resumes push notifications;
+  iOS and web remain deferred future milestones unless explicitly resumed. If
+  continuing hosted rollout separately, push currently local-only migrations and
+  deploy the relevant updated Edge Functions in a separate hosted rollout.
 - Documentation state: completed-only companion execution plans for transaction
   metadata editing and category management were retired from `docs/` on
   2026-06-12. `docs/implementation-plan/MONTHLY_CAPS.md` remains active as the
@@ -267,8 +270,9 @@ Use this file to coordinate work across multiple implementation sessions. Update
   `docs/implementation-plan/GMAIL_LABEL_INGESTION.md` is completed-only after
   completed Milestones 65-69 and can be removed in a later cleanup if the
   repository's completed-plan convention calls for it.
-  `docs/implementation-plan/GMAIL_PARSE_FAILURE_REVIEW.md` is the active
-  companion plan for planned Milestone 73 after completed Milestones 70-72.
+  `docs/implementation-plan/GMAIL_PARSE_FAILURE_REVIEW.md` is completed-only
+  after completed Milestones 70-73 and can be removed in a later cleanup if the
+  repository's completed-plan convention calls for it.
 
 ## Required Reading for New Threads
 
@@ -281,8 +285,8 @@ At the start of a new implementation thread, read:
 5. The target milestone section in `docs/implementation-plan/MILESTONES.md`
 6. `docs/implementation-plan/GMAIL_LABEL_INGESTION.md` as completed reference
    material when touching label-based Gmail ingestion behavior
-7. `docs/implementation-plan/GMAIL_PARSE_FAILURE_REVIEW.md` when executing
-   Milestones 70 through 73 or touching Review parse-failure body viewing
+7. `docs/implementation-plan/GMAIL_PARSE_FAILURE_REVIEW.md` as completed
+   reference material when touching Review parse-failure body viewing
 8. `docs/implementation-plan/PUSH_NOTIFICATIONS.md` when executing Milestone 18, 19, 20, or 21
 9. `docs/implementation-plan/TRANSACTION_LABELS.md` when executing Milestone 26, 27, or 28
 10. `docs/implementation-plan/MONTHLY_CAPS.md` when executing Milestone 29, 30, 31, 32, 33, 34, or 35
@@ -319,9 +323,9 @@ At the start of a new implementation thread, read:
   failure's plain-text Gmail body on demand through an authenticated row-scoped
   Edge Function, and never store raw body text in Postgres or logs. Milestone 72
   completed visible Review pagination, `View email`, transient body dialog, and
-  ignore-safe pagination behavior. Milestone 73 remains planned for final
-  regression/docs cleanup. Historical skipped mail requires explicit
-  backfill/resync before it can appear in Review.
+  ignore-safe pagination behavior. Milestone 73 completed final regression/docs
+  cleanup and marked the companion plan completed-only. Historical skipped mail
+  requires explicit backfill/resync before it can appear in Review.
 - `Netbanking :: IMPS` is implemented as Gmail/source candidate type
   `netbanking_imps`; it is not category taxonomy and does not replace ledger
   `transaction_type` values such as `debit_spend`.
@@ -499,7 +503,49 @@ Do not ask the user to perform all setup at once. Ask only when the relevant mil
   completed.
 - Milestone 71, Parse Failure Pagination and Body Fetch Contract: completed.
 - Milestone 72, Review UI Pagination and Email Body Dialog: completed.
-- Milestone 73, Parse Failure Review Regression, Docs, and Cleanup: planned.
+- Milestone 73, Parse Failure Review Regression, Docs, and Cleanup: completed.
+
+## Gmail Parse Failure Review M73 Notes
+
+- Completed on 2026-06-16. Milestones 18-21 remained deferred and were not
+  started. No later milestone work was started.
+- Ran the full local M73 regression path. No runtime code, Supabase migration,
+  SQL test, importer, Edge Function, parser, hosted rollout, iOS, web, or push
+  notification changes were required.
+- Confirmed final behavior is durable in docs: unmatched watched-label mail
+  remains visible as sanitized candidate type `other`, Review can page through
+  unignored parse failures, `View email` fetches one row's plain-text body
+  through the authenticated row-scoped contract, body text stays transient and
+  unpersisted, and `Ignore for now` keeps hiding only one row without breaking
+  pagination.
+- Documented that historical skipped Gmail messages need an explicit
+  sync/backfill over the relevant window before they can appear in Review.
+- Marked `docs/implementation-plan/GMAIL_PARSE_FAILURE_REVIEW.md`
+  completed-only after completed Milestones 70-73.
+- Verification:
+  - `supabase db reset --local`
+  - `supabase test db --local supabase/tests/gmail_parse_failures.sql`
+  - `supabase test db --local supabase/tests/gmail_ingestion.sql`
+  - `supabase test db --local supabase/tests/production_readiness.sql`
+  - `supabase test db --local supabase/tests`
+  - `supabase db lint --local --schema app_private,public --fail-on error`
+  - `deno test --allow-env --allow-net supabase/functions/tests/gmail_parse_failure_body.test.ts`
+  - `deno test --allow-env --allow-net supabase/functions/tests/gmail_sync.test.ts`
+  - `cd apps/mobile && flutter analyze`
+  - `cd apps/mobile && flutter test test/finance_features_test.dart --name "Gmail parse failures|Review|Ignore for now"`
+  - `cd apps/mobile && flutter test`
+- Assumptions made:
+  - M71-M72 already implemented the intended runtime behavior; M73 only needed
+    regression verification and documentation closeout after the checks passed.
+  - Historical skipped Gmail messages need explicit sync/backfill before they
+    can appear in Review.
+  - Hosted rollout remains a separate explicit operation.
+- Mocks created:
+  - None.
+- Mocks used:
+  - Existing Gmail API stubs in Edge Function tests and existing fake Flutter
+    finance repository hooks for Review parse-failure pagination, body-fetch,
+    and ignore coverage.
 
 ## Gmail Parse Failure Review M72 Notes
 

@@ -165,8 +165,10 @@ watched-label mail. Milestone 68 added household-wide Review `Ignore for now`
 for visible sanitized parse failures while preserving service-only diagnostics.
 Milestone 71 added backend/repository pagination for unignored parse failures
 and an authenticated row-scoped plain-text body fetch for one visible failure
-row, fetched from Gmail without storing the body. M72 remains responsible for
-visible Review pagination and the body dialog.
+row, fetched from Gmail without storing the body. Milestone 72 added visible
+Review pagination, `Load more`/retry states, `View email`, and the transient
+plain-text body dialog. Milestone 73 verified the completed workflow and folded
+the final privacy/backfill behavior into durable docs.
 
 ### Backfill
 

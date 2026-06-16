@@ -182,7 +182,7 @@ Operational response rules:
 - Parse-failure spikes: inspect `v_gmail_parse_attempt_health` and sanitized
   `gmail_parse_attempts` metadata; keep raw email bodies out of logs/docs.
 - Parse-failure body inspection: use the M71 app-facing row-scoped body fetch
-  contract for visible Review failures once surfaced by M72, or the service-key
+  contract through the completed Review `View email` dialog, or the service-key
   admin helper for operator diagnostics. Do not paste raw email bodies into
   logs, tickets, or docs.
 - Push delivery failures: inspect `notification_outbox`,
@@ -233,8 +233,7 @@ After deploying production:
   merchants create review items.
 - Confirm unsupported watched-label messages appear only as sanitized Review
   parse failures, can be paged through when there are more than one page, can
-  open a plain-text body dialog after Milestone 72, and can be hidden with
-  `Ignore for now`.
+  open a plain-text body dialog, and can be hidden with `Ignore for now`.
 - If push notifications are enabled, confirm the Android device is registered,
   run or wait for `send-push-notifications`, receive one transaction
   notification, tap it, and verify the app opens Transactions.

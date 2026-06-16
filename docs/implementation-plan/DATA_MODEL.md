@@ -783,10 +783,12 @@ Rules:
   are hidden from app-facing Review failure lists.
 - Milestone 71 added paginated app-facing access to unignored parse failures
   and authenticated on-demand plain-text body fetch from one visible failure
-  row. M72 remains responsible for the visible Review dialog. The body fetch
-  must remain transient: authorize through the visible household-scoped failure
-  row, fetch from Gmail server-side, return the text to the open dialog, and do
-  not persist the body or body snippets in Postgres.
+  row. Milestone 72 added the visible Review pagination and body dialog. The
+  body fetch remains transient: authorize through the visible household-scoped
+  failure row, fetch from Gmail server-side, return the text to the open
+  dialog, and do not persist the body or body snippets in Postgres. Milestone 73
+  verified the completed Review workflow and folded the final behavior into
+  durable docs.
 
 ## Review Queue
 

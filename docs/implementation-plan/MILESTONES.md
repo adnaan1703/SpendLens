@@ -3656,7 +3656,7 @@ failure's plain-text email body in a dialog.
 
 ### Status
 
-Planned. See
+Completed on 2026-06-16. See
 [Gmail Parse Failure Review](GMAIL_PARSE_FAILURE_REVIEW.md#m73---parse-failure-review-regression-docs-and-cleanup).
 
 ### Objective
@@ -3672,6 +3672,49 @@ into durable docs.
   body viewing, privacy boundaries, and operational backfill expectations.
 - `GMAIL_PARSE_FAILURE_REVIEW.md` is marked completed-only.
 - No unrelated deferred work is started.
+
+### Completion Summary
+
+- Ran the complete local regression path for parse-failure Review across
+  Supabase pgTAP, schema lint, Gmail Edge Function tests, focused Flutter Review
+  tests, and the full Flutter suite. No runtime regressions were found, so no
+  migration, Dart, Edge Function, parser, importer, or SQL test changes were
+  required.
+- Confirmed unmatched watched-label mail remains a sanitized visible parse
+  failure with candidate type `other` and parser
+  `unsupported_labeled_gmail_message`.
+- Confirmed paginated Review access, transient plain-text body viewing,
+  row-scoped body authorization, no raw-body persistence/logging, and
+  `Ignore for now` pagination behavior all work together.
+- Folded final behavior and historical backfill/resync expectations into
+  durable docs, and marked `GMAIL_PARSE_FAILURE_REVIEW.md` completed-only.
+- Milestones 18-21 remain deferred by user request. Hosted Supabase migration
+  push, Edge Function deployment, parser expansion, Gmail mutation, importer
+  work, iOS, web, and push-notification work were not started.
+- Verification:
+  - `supabase db reset --local`
+  - `supabase test db --local supabase/tests/gmail_parse_failures.sql`
+  - `supabase test db --local supabase/tests/gmail_ingestion.sql`
+  - `supabase test db --local supabase/tests/production_readiness.sql`
+  - `supabase test db --local supabase/tests`
+  - `supabase db lint --local --schema app_private,public --fail-on error`
+  - `deno test --allow-env --allow-net supabase/functions/tests/gmail_parse_failure_body.test.ts`
+  - `deno test --allow-env --allow-net supabase/functions/tests/gmail_sync.test.ts`
+  - `cd apps/mobile && flutter analyze`
+  - `cd apps/mobile && flutter test test/finance_features_test.dart --name "Gmail parse failures|Review|Ignore for now"`
+  - `cd apps/mobile && flutter test`
+- Assumptions made:
+  - M71-M72 already implemented the intended runtime behavior; M73 only needed
+    regression verification and documentation closeout.
+  - Historical skipped Gmail messages need an explicit sync/backfill over the
+    relevant window before they can appear in Review.
+  - Hosted rollout remains a separate explicit operation.
+- Mocks created:
+  - None.
+- Mocks used:
+  - Existing Gmail API stubs in Edge Function tests and existing fake Flutter
+    finance repository hooks for Review parse-failure pagination, body-fetch,
+    and ignore coverage.
 
 ## Cross-Milestone Consistency Rules
 

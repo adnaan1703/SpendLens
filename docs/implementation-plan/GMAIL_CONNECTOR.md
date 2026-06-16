@@ -230,7 +230,8 @@ up the exact message behind a failed parse.
 Milestone 71 added the separate app-facing body-fetch contract for Review. The
 Flutter app must use the authenticated `gmail-parse-failure-body` function,
 which first authorizes the visible parse-failure row for the signed-in
-household. M72 remains responsible for the visible Review dialog. Do not expose
+household. Milestone 72 added the visible Review `View email` dialog that keeps
+plain-text body text in transient UI state only. Do not expose
 `gmail-message-body` or service-key credentials to the mobile app.
 
 Hosted verification should check:
@@ -288,8 +289,11 @@ classifications create review items instead of silently assigning bad
 categories.
 
 Milestone 71 added backend/repository pagination and row-scoped plain-text body
-fetching without storing the body in database tables or logs. M72 remains
-responsible for visible Review pagination and the body dialog.
+fetching without storing the body in database tables or logs. Milestone 72 added
+visible Review pagination, `View email`, and the transient plain-text body
+dialog; Milestone 73 verified the full workflow and documented that historical
+skipped messages require an explicit backfill/resync before Review can show
+them.
 
 UPI credit/refund parser support is still sample-gated. Add anonymized
 credit/refund fixtures before implementing that template.

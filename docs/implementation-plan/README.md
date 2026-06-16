@@ -12,8 +12,8 @@ Read these documents in order at the start of every new implementation thread:
 6. [Gmail Connector](GMAIL_CONNECTOR.md)
 7. [Gmail Label Ingestion](GMAIL_LABEL_INGESTION.md) as the completed-only
    reference for Milestones 65-69
-8. [Gmail Parse Failure Review](GMAIL_PARSE_FAILURE_REVIEW.md) when executing
-   Milestones 70-73
+8. [Gmail Parse Failure Review](GMAIL_PARSE_FAILURE_REVIEW.md) as the
+   completed-only reference for Milestones 70-73
 9. [Production Readiness](PRODUCTION_READINESS.md)
 10. [Push Notifications](PUSH_NOTIFICATIONS.md) when executing Milestones 18-21
 11. [Transaction Labels](TRANSACTION_LABELS.md) when executing Milestones 26-28
@@ -130,9 +130,13 @@ This is not a "no backend" architecture. It is a backend without a permanently r
   paginated Review access to all unignored Gmail parse failures and on-demand
   plain-text email body viewing from a parse-failure row. Milestone 71 added
   the authenticated row-scoped body fetch contract plus repository pagination
-  plumbing while keeping raw body storage out of Postgres/logs. Milestones
-  72-73 remain planned for visible Review pagination, the body dialog, and
-  final regression/docs cleanup.
+  plumbing while keeping raw body storage out of Postgres/logs. Milestone 72
+  added visible Review pagination, `Load more` and retry states, `View email`
+  row actions, a transient selectable plain-text body dialog, and
+  ignore-safe pagination behavior. Milestone 73 completed final local
+  regression/docs cleanup, documented that historical skipped messages require
+  explicit backfill/resync before Review can show them, and left
+  `GMAIL_PARSE_FAILURE_REVIEW.md` as a completed-only reference.
 - Multi-target monthly caps: required-name recurring caps can include multiple
   categories, multiple labels, or both. A transaction counts once inside a cap
   when any selected category or label matches; overlapping caps are allowed.
@@ -184,8 +188,8 @@ When starting a new implementation thread:
    merchant group rename/merge behavior.
 8. Read [Gmail Label Ingestion](GMAIL_LABEL_INGESTION.md) as completed
    reference material when touching label-based Gmail ingestion behavior.
-9. Read [Gmail Parse Failure Review](GMAIL_PARSE_FAILURE_REVIEW.md) when
-   executing Milestones 70-73 or touching Review parse-failure body viewing.
+9. Read [Gmail Parse Failure Review](GMAIL_PARSE_FAILURE_REVIEW.md) as
+   completed reference material when touching Review parse-failure body viewing.
 10. Check [Session Handoff](SESSION_HANDOFF.md) for current status.
 11. Do only that milestone unless the user explicitly expands scope.
 12. Preserve documented invariants, especially idempotency, RLS isolation, and no raw email retention.
