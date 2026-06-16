@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -2147,6 +2149,268 @@ void main() {
     expect(find.text("You're all caught up for now."), findsOneWidget);
   });
 
+  testWidgets('merchant review retries Gmail parse failures initial load', (
+    tester,
+  ) async {
+    final repository = _FakeFinanceRepository()
+      ..reviewItems.clear()
+      ..gmailParseFailuresError = StateError('parse failure RPC unavailable');
+
+    await tester.pumpWidget(
+      _financeTestApp(
+        repository: repository,
+        child: const MerchantReviewScreen(),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Gmail parse failures unavailable'), findsOneWidget);
+    expect(
+      find.text('Bad state: parse failure RPC unavailable'),
+      findsOneWidget,
+    );
+
+    repository
+      ..gmailParseFailuresError = null
+      ..gmailParseFailures.add(_gmailParseFailure());
+
+    await tester.tap(find.text('Retry'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Gmail parse failures'), findsOneWidget);
+    expect(find.text('1 recent failure'), findsOneWidget);
+    expect(repository.gmailParseFailurePageRequests, hasLength(2));
+  });
+
+  testWidgets('merchant review paginates Gmail parse failures after ignore', (
+    tester,
+  ) async {
+    final repository = _FakeFinanceRepository()..reviewItems.clear();
+    for (var index = 1; index <= 21; index += 1) {
+      repository.gmailParseFailures.add(
+        _gmailParseFailure(
+          failureId: 'gmail-failure-$index',
+          subject: 'Failure $index',
+          sourceMessageId: 'gmail-message-$index',
+          sourceThreadId: 'gmail-thread-$index',
+          sourceReceivedAt: DateTime(
+            2026,
+            6,
+            8,
+            10,
+            30,
+          ).subtract(Duration(minutes: index)),
+        ),
+      );
+    }
+
+    await tester.pumpWidget(
+      _financeTestApp(
+        repository: repository,
+        child: const MerchantReviewScreen(),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('20 recent failures'), findsOneWidget);
+    expect(find.text('Failure 1'), findsOneWidget);
+    expect(find.text('Failure 21'), findsNothing);
+    expect(find.text('Load more'), findsOneWidget);
+
+    await tester.drag(find.byType(CustomScrollView), const Offset(0, -260));
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(FilledButton, 'Ignore for now').first);
+    await tester.pumpAndSettle();
+
+    expect(repository.gmailParseFailureIgnoreRequests, ['gmail-failure-1']);
+    expect(find.text('Failure 1'), findsNothing);
+    expect(find.text('19 recent failures'), findsOneWidget);
+
+    await tester.drag(find.byType(CustomScrollView), const Offset(0, -6000));
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(FilledButton, 'Load more'));
+    await tester.pumpAndSettle();
+
+    expect(
+      repository.gmailParseFailurePageRequests.map((request) => request.offset),
+      [0, 19],
+    );
+    expect(find.text('Failure 21'), findsOneWidget);
+    expect(find.text('Load more'), findsNothing);
+  });
+
+  testWidgets('merchant review shows loading while loading more failures', (
+    tester,
+  ) async {
+    final repository = _FakeFinanceRepository()..reviewItems.clear();
+    for (var index = 1; index <= 21; index += 1) {
+      repository.gmailParseFailures.add(
+        _gmailParseFailure(
+          failureId: 'gmail-failure-$index',
+          subject: 'Failure $index',
+          sourceMessageId: 'gmail-message-$index',
+          sourceThreadId: 'gmail-thread-$index',
+        ),
+      );
+    }
+
+    await tester.pumpWidget(
+      _financeTestApp(
+        repository: repository,
+        child: const MerchantReviewScreen(),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final completer = Completer<GmailParseFailurePage>();
+    repository.gmailParseFailurePageCompleters.add(completer);
+
+    await tester.drag(find.byType(CustomScrollView), const Offset(0, -6000));
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(FilledButton, 'Load more'));
+    await tester.pump();
+
+    expect(find.text('Loading more'), findsOneWidget);
+
+    completer.complete(
+      GmailParseFailurePage(
+        items: [_gmailParseFailure(failureId: 'gmail-failure-21')],
+        limit: GmailParseFailurePageRequest.defaultLimit,
+        offset: GmailParseFailurePageRequest.defaultLimit,
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Loading more'), findsNothing);
+    expect(repository.gmailParseFailurePageRequests.last.offset, 20);
+  });
+
+  testWidgets('merchant review retries failed Gmail parse failures load more', (
+    tester,
+  ) async {
+    final repository = _FakeFinanceRepository()..reviewItems.clear();
+    for (var index = 1; index <= 21; index += 1) {
+      repository.gmailParseFailures.add(
+        _gmailParseFailure(
+          failureId: 'gmail-failure-$index',
+          subject: 'Failure $index',
+          sourceMessageId: 'gmail-message-$index',
+          sourceThreadId: 'gmail-thread-$index',
+        ),
+      );
+    }
+
+    await tester.pumpWidget(
+      _financeTestApp(
+        repository: repository,
+        child: const MerchantReviewScreen(),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final completer = Completer<GmailParseFailurePage>();
+    repository.gmailParseFailurePageCompleters.add(completer);
+
+    await tester.drag(find.byType(CustomScrollView), const Offset(0, -6000));
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(FilledButton, 'Load more'));
+    await tester.pump();
+    completer.completeError(StateError('page fetch failed'));
+    await tester.pumpAndSettle();
+
+    expect(
+      find.text('Could not load more Gmail parse failures.'),
+      findsOneWidget,
+    );
+    expect(find.text('Bad state: page fetch failed'), findsOneWidget);
+
+    await tester.tap(find.text('Retry'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Failure 21'), findsOneWidget);
+    expect(repository.gmailParseFailurePageRequests.last.offset, 20);
+  });
+
+  testWidgets('merchant review opens Gmail parse failures body dialog', (
+    tester,
+  ) async {
+    final repository = _FakeFinanceRepository()
+      ..reviewItems.clear()
+      ..gmailParseFailures.add(_gmailParseFailure());
+    final bodyCompleter = Completer<GmailParseFailureBody>();
+    repository.gmailParseFailureBodyCompleters.add(bodyCompleter);
+
+    await tester.pumpWidget(
+      _financeTestApp(
+        repository: repository,
+        child: const MerchantReviewScreen(),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.drag(find.byType(CustomScrollView), const Offset(0, -260));
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(FilledButton, 'View email'));
+    await tester.pump();
+
+    expect(find.text('Email body'), findsOneWidget);
+    expect(find.text('Fetching email body'), findsOneWidget);
+
+    bodyCompleter.complete(
+      _gmailParseFailureBody(
+        plainTextBody: 'Line one of the transaction alert.\nLine two.',
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(repository.gmailParseFailureBodyRequests, ['gmail-failure-1']);
+    expect(find.text('Mailbox spendlens.hdfc@example.test'), findsOneWidget);
+    expect(
+      find.text('Line one of the transaction alert.\nLine two.'),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('merchant review retries Gmail parse failures body dialog error', (
+    tester,
+  ) async {
+    final repository = _FakeFinanceRepository()
+      ..reviewItems.clear()
+      ..gmailParseFailures.add(_gmailParseFailure())
+      ..gmailParseFailureBodyError = StateError('body fetch failed');
+
+    await tester.pumpWidget(
+      _financeTestApp(
+        repository: repository,
+        child: const MerchantReviewScreen(),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.drag(find.byType(CustomScrollView), const Offset(0, -260));
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(FilledButton, 'View email'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Email body unavailable'), findsOneWidget);
+    expect(find.text('Bad state: body fetch failed'), findsOneWidget);
+
+    repository
+      ..gmailParseFailureBodyError = null
+      ..gmailParseFailureBodies['gmail-failure-1'] = _gmailParseFailureBody(
+        plainTextBody: 'Recovered body text.',
+      );
+
+    await tester.tap(find.text('Retry'));
+    await tester.pumpAndSettle();
+
+    expect(repository.gmailParseFailureBodyRequests, [
+      'gmail-failure-1',
+      'gmail-failure-1',
+    ]);
+    expect(find.text('Recovered body text.'), findsOneWidget);
+  });
+
   test('Gmail parse failures label IMPS and unsupported candidates', () {
     final impsFailure = _gmailParseFailure(
       failureId: 'gmail-imps-failure-1',
@@ -4069,6 +4333,8 @@ final class _FakeFinanceRepository implements FinanceRepository {
   final gmailParseFailureIgnoreRequests = <String>[];
   final gmailParseFailurePageRequests = <GmailParseFailurePageRequest>[];
   final gmailParseFailureBodyRequests = <String>[];
+  final gmailParseFailurePageCompleters = <Completer<GmailParseFailurePage>>[];
+  final gmailParseFailureBodyCompleters = <Completer<GmailParseFailureBody>>[];
   final labelCreateRequests = <LabelCreateRequest>[];
   final labelSetRequests = <TransactionLabelsSetRequest>[];
   final labelRenameRequests = <LabelRenameRequest>[];
@@ -5154,6 +5420,9 @@ final class _FakeFinanceRepository implements FinanceRepository {
     GmailParseFailurePageRequest request,
   ) async {
     gmailParseFailurePageRequests.add(request);
+    if (gmailParseFailurePageCompleters.isNotEmpty) {
+      return gmailParseFailurePageCompleters.removeAt(0).future;
+    }
     final error = gmailParseFailuresError;
     if (error != null) throw error;
 
@@ -5182,6 +5451,9 @@ final class _FakeFinanceRepository implements FinanceRepository {
     required String failureId,
   }) async {
     gmailParseFailureBodyRequests.add(failureId);
+    if (gmailParseFailureBodyCompleters.isNotEmpty) {
+      return gmailParseFailureBodyCompleters.removeAt(0).future;
+    }
     final error = gmailParseFailureBodyError;
     if (error != null) throw error;
 

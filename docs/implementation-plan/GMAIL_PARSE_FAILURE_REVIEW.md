@@ -268,7 +268,7 @@ Completion summary:
 
 ## M72 - Review UI Pagination and Email Body Dialog
 
-Status: Planned.
+Status: Completed on 2026-06-16.
 
 Purpose: Make the Review screen expose all visible Gmail parse failures and show
 one failure's plain-text email body in a dialog.
@@ -324,6 +324,47 @@ Completion summary requirements:
 - Assumptions made
 - Mocks created
 - Mocks used
+
+Completion summary:
+
+- Reworked the Review Gmail parse-failure surface to load the first page through
+  the M71 repository pagination contract, retry initial failures, refresh from
+  the header action, load later pages with `Load more`, show loading-more state,
+  and expose a load-more error/retry state.
+- Added an explicit `View email` row action that opens a scrollable app modal,
+  fetches the plain-text body through `fetchGmailParseFailureBody(...)`, shows
+  safe metadata plus selectable plain text, and supports loading, error, retry,
+  and close flows.
+- Kept existing parse-failure row details and `Ignore for now` behavior. Ignored
+  rows are removed from the loaded list, and the next offset is adjusted so a
+  later `Load more` request does not skip the row that shifted into view.
+- Kept body text transient to the open dialog state; no provider, database,
+  parser, Gmail mutation, hosted rollout, iOS, web, or push-notification work was
+  added in M72.
+- Added focused widget coverage for initial load retry, pagination after ignore,
+  loading-more state, load-more retry, body dialog loading/success, and body
+  dialog error/retry.
+- Milestones 18-21 remained deferred by user request, and Milestone 73 was not
+  started.
+- Verification:
+  - `cd apps/mobile && flutter test test/finance_features_test.dart --name "Gmail parse failures|Review|Ignore for now"`
+  - `cd apps/mobile && flutter analyze`
+  - `cd apps/mobile && flutter test`
+- Assumptions made:
+  - The Review UI can use the repository default page size of 20 parse failures
+    per page.
+  - Removing an ignored loaded row and decrementing the next offset is the least
+    disruptive way to avoid skipping later rows after the backend hides that
+    failure.
+  - The email body may be held only in the active dialog's transient widget state
+    while the dialog is open.
+- Mocks created:
+  - Fake repository completer hooks for delayed parse-failure page and body-fetch
+    responses in widget tests.
+- Mocks used:
+  - Existing fake Flutter finance repository, extended to model paginated
+    parse-failure loads, ignore side effects, and transient body-fetch
+    success/error flows.
 
 ## M73 - Parse Failure Review Regression, Docs, and Cleanup
 

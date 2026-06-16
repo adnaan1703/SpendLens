@@ -3612,7 +3612,7 @@ failures and fetch one failure's plain-text Gmail body on demand.
 
 ### Status
 
-Planned. See
+Completed on 2026-06-16. See
 [Gmail Parse Failure Review](GMAIL_PARSE_FAILURE_REVIEW.md#m72---review-ui-pagination-and-email-body-dialog).
 
 ### Objective
@@ -3628,6 +3628,29 @@ failure's plain-text email body in a dialog.
   tested.
 - Ignoring a row still hides only that row and does not break pagination.
 - Existing merchant review and transaction correction flows remain unchanged.
+
+### Completion Summary
+
+- Review now pages Gmail parse failures through the M71 repository contract,
+  including initial retry, header refresh, `Load more`, loading-more, and
+  load-more error/retry states.
+- Parse-failure rows include `View email`, which opens a transient body dialog
+  with safe metadata, selectable plain text, loading, error, retry, and close
+  flows.
+- `Ignore for now` still hides only the selected row and keeps later pagination
+  from skipping shifted rows.
+- Milestones 18-21 remain deferred by user request, and Milestone 73 was not
+  started.
+- Assumptions made:
+  - Review can use the existing repository default page size for visible
+    parse-failure pagination.
+  - Body text should live only in the open dialog's transient widget state.
+- Mocks created:
+  - Fake repository completer hooks for delayed page/body responses in widget
+    tests.
+- Mocks used:
+  - Existing fake Flutter finance repository, extended for M72 pagination,
+    ignore, and body-fetch widget coverage.
 
 ## Milestone 73: Parse Failure Review Regression, Docs, and Cleanup
 

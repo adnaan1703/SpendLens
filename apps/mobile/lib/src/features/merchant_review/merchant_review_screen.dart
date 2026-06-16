@@ -9,21 +9,37 @@ import '../../shared/widgets/app_primitives.dart';
 import '../transaction_metadata/transaction_metadata_editor.dart';
 import '../settings/settings_screen.dart';
 
-class MerchantReviewScreen extends ConsumerWidget {
+class MerchantReviewScreen extends ConsumerStatefulWidget {
   const MerchantReviewScreen({super.key});
 
   static const routePath = '/merchant-review';
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<MerchantReviewScreen> createState() =>
+      _MerchantReviewScreenState();
+}
+
+class _MerchantReviewScreenState extends ConsumerState<MerchantReviewScreen> {
+  static const _parseFailurePageLimit =
+      GmailParseFailurePageRequest.defaultLimit;
+
+  String? _parseFailureHouseholdId;
+  var _parseFailures = <GmailParseFailure>[];
+  var _nextParseFailureOffset = 0;
+  var _hasMoreParseFailures = false;
+  var _isLoadingInitialParseFailures = false;
+  var _isLoadingMoreParseFailures = false;
+  Object? _parseFailureError;
+  Object? _loadMoreParseFailureError;
+
+  @override
+  Widget build(BuildContext context) {
     final householdContext = ref.watch(householdContextProvider).value;
     final householdId = householdContext?.household.id;
     final reviewItems = householdId == null
         ? const AsyncValue<List<MerchantReviewItem>>.loading()
         : ref.watch(merchantReviewQueueProvider(householdId));
-    final parseFailures = householdId == null
-        ? const AsyncValue<List<GmailParseFailure>>.loading()
-        : ref.watch(gmailParseFailuresProvider(householdId));
+    _ensureParseFailuresLoadedFor(householdId);
     final categories = householdId == null
         ? const AsyncValue<List<CategoryOption>>.loading()
         : ref.watch(transactionCategoriesProvider(householdId));
@@ -33,14 +49,32 @@ class MerchantReviewScreen extends ConsumerWidget {
 
     return _MerchantReviewPage(
       reviewItems: reviewItems,
-      parseFailures: parseFailures,
+      parseFailures: _GmailParseFailuresViewState(
+        items: _parseFailures,
+        isInitialLoading: _isLoadingInitialParseFailures,
+        initialError: _parseFailureError,
+        hasMore: _hasMoreParseFailures,
+        isLoadingMore: _isLoadingMoreParseFailures,
+        loadMoreError: _loadMoreParseFailureError,
+      ),
       categories: categories,
       subcategories: subcategories,
       onRefresh: householdId == null
           ? null
           : () {
               ref.invalidate(merchantReviewQueueProvider(householdId));
-              ref.invalidate(gmailParseFailuresProvider(householdId));
+              _loadFirstParseFailurePage(householdId);
+            },
+      onRetryParseFailures: householdId == null
+          ? null
+          : () => _loadFirstParseFailurePage(householdId),
+      onLoadMoreParseFailures: householdId == null
+          ? null
+          : () => _loadMoreParseFailures(householdId),
+      onViewParseFailureBody: householdContext == null
+          ? null
+          : (failure) {
+              _showParseFailureBodyDialog(context: context, failure: failure);
             },
       onCorrect: householdContext == null
           ? null
@@ -65,6 +99,110 @@ class MerchantReviewScreen extends ConsumerWidget {
               );
             },
     );
+  }
+
+  void _ensureParseFailuresLoadedFor(String? householdId) {
+    if (householdId == null) {
+      if (_parseFailureHouseholdId != null) {
+        _parseFailureHouseholdId = null;
+        _parseFailures = [];
+        _nextParseFailureOffset = 0;
+        _hasMoreParseFailures = false;
+        _isLoadingInitialParseFailures = false;
+        _isLoadingMoreParseFailures = false;
+        _parseFailureError = null;
+        _loadMoreParseFailureError = null;
+      }
+      return;
+    }
+
+    if (_parseFailureHouseholdId == householdId) return;
+
+    _parseFailureHouseholdId = householdId;
+    _parseFailures = [];
+    _nextParseFailureOffset = 0;
+    _hasMoreParseFailures = false;
+    _isLoadingInitialParseFailures = true;
+    _isLoadingMoreParseFailures = false;
+    _parseFailureError = null;
+    _loadMoreParseFailureError = null;
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || _parseFailureHouseholdId != householdId) return;
+      _loadFirstParseFailurePage(householdId);
+    });
+  }
+
+  Future<void> _loadFirstParseFailurePage(String householdId) async {
+    setState(() {
+      _parseFailureHouseholdId = householdId;
+      _isLoadingInitialParseFailures = true;
+      _isLoadingMoreParseFailures = false;
+      _parseFailureError = null;
+      _loadMoreParseFailureError = null;
+    });
+
+    try {
+      final page = await ref
+          .read(financeRepositoryProvider)
+          .fetchGmailParseFailurePage(
+            GmailParseFailurePageRequest(
+              householdId: householdId,
+              limit: _parseFailurePageLimit,
+            ),
+          );
+      if (!mounted || _parseFailureHouseholdId != householdId) return;
+
+      setState(() {
+        _parseFailures = page.items;
+        _nextParseFailureOffset = page.nextOffset;
+        _hasMoreParseFailures = page.hasMore;
+        _isLoadingInitialParseFailures = false;
+      });
+    } catch (error) {
+      if (!mounted || _parseFailureHouseholdId != householdId) return;
+
+      setState(() {
+        _parseFailureError = error;
+        _isLoadingInitialParseFailures = false;
+      });
+    }
+  }
+
+  Future<void> _loadMoreParseFailures(String householdId) async {
+    if (_isLoadingMoreParseFailures || !_hasMoreParseFailures) return;
+
+    setState(() {
+      _isLoadingMoreParseFailures = true;
+      _loadMoreParseFailureError = null;
+    });
+
+    try {
+      final page = await ref
+          .read(financeRepositoryProvider)
+          .fetchGmailParseFailurePage(
+            GmailParseFailurePageRequest(
+              householdId: householdId,
+              limit: _parseFailurePageLimit,
+              offset: _nextParseFailureOffset,
+            ),
+          );
+      if (!mounted || _parseFailureHouseholdId != householdId) return;
+
+      setState(() {
+        _parseFailures = [..._parseFailures, ...page.items];
+        _nextParseFailureOffset = page.nextOffset;
+        _hasMoreParseFailures = page.hasMore;
+        _isLoadingMoreParseFailures = false;
+      });
+    } catch (error) {
+      if (!mounted || _parseFailureHouseholdId != householdId) return;
+
+      setState(() {
+        _loadMoreParseFailureError = error;
+        _isLoadingMoreParseFailures = false;
+      });
+    }
   }
 
   Future<void> _showCorrectionDialog({
@@ -114,6 +252,21 @@ class MerchantReviewScreen extends ConsumerWidget {
     }
   }
 
+  Future<void> _showParseFailureBodyDialog({
+    required BuildContext context,
+    required GmailParseFailure failure,
+  }) {
+    return showDialog<void>(
+      context: context,
+      builder: (_) {
+        return _GmailParseFailureBodyDialog(
+          failure: failure,
+          repository: ref.read(financeRepositoryProvider),
+        );
+      },
+    );
+  }
+
   Future<void> _ignoreParseFailure({
     required BuildContext context,
     required WidgetRef ref,
@@ -124,7 +277,18 @@ class MerchantReviewScreen extends ConsumerWidget {
       await ref
           .read(financeRepositoryProvider)
           .ignoreGmailParseFailure(failureId: failure.failureId);
-      ref.invalidate(gmailParseFailuresProvider(householdId));
+      if (mounted && _parseFailureHouseholdId == householdId) {
+        setState(() {
+          final beforeCount = _parseFailures.length;
+          _parseFailures = _parseFailures
+              .where((item) => item.failureId != failure.failureId)
+              .toList(growable: false);
+          if (_parseFailures.length < beforeCount &&
+              _nextParseFailureOffset > 0) {
+            _nextParseFailureOffset -= 1;
+          }
+        });
+      }
 
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -143,6 +307,28 @@ class MerchantReviewScreen extends ConsumerWidget {
   }
 }
 
+class _GmailParseFailuresViewState {
+  const _GmailParseFailuresViewState({
+    required this.items,
+    required this.isInitialLoading,
+    required this.initialError,
+    required this.hasMore,
+    required this.isLoadingMore,
+    required this.loadMoreError,
+  });
+
+  final List<GmailParseFailure> items;
+  final bool isInitialLoading;
+  final Object? initialError;
+  final bool hasMore;
+  final bool isLoadingMore;
+  final Object? loadMoreError;
+
+  bool get hasInitialError => initialError != null && items.isEmpty;
+  bool get isWaitingForInitialPage =>
+      isInitialLoading && items.isEmpty && initialError == null;
+}
+
 class _MerchantReviewPage extends StatelessWidget {
   const _MerchantReviewPage({
     required this.reviewItems,
@@ -150,15 +336,21 @@ class _MerchantReviewPage extends StatelessWidget {
     required this.categories,
     required this.subcategories,
     required this.onRefresh,
+    required this.onRetryParseFailures,
+    required this.onLoadMoreParseFailures,
+    required this.onViewParseFailureBody,
     required this.onCorrect,
     required this.onIgnoreParseFailure,
   });
 
   final AsyncValue<List<MerchantReviewItem>> reviewItems;
-  final AsyncValue<List<GmailParseFailure>> parseFailures;
+  final _GmailParseFailuresViewState parseFailures;
   final AsyncValue<List<CategoryOption>> categories;
   final AsyncValue<List<SubcategoryOption>> subcategories;
   final VoidCallback? onRefresh;
+  final VoidCallback? onRetryParseFailures;
+  final VoidCallback? onLoadMoreParseFailures;
+  final ValueChanged<GmailParseFailure>? onViewParseFailureBody;
   final ValueChanged<MerchantReviewItem>? onCorrect;
   final ValueChanged<GmailParseFailure>? onIgnoreParseFailure;
 
@@ -201,21 +393,25 @@ class _MerchantReviewPage extends StatelessWidget {
       ];
     }
 
-    if (parseFailures.hasError) {
+    if (parseFailures.hasInitialError) {
       return [
         _sliverBox(
           metrics: metrics,
           child: AppErrorState(
             title: 'Gmail parse failures unavailable',
-            message: parseFailures.error.toString(),
+            message: parseFailures.initialError.toString(),
+            action: AppActionPill.secondary(
+              label: 'Retry',
+              icon: Icons.refresh,
+              onPressed: onRetryParseFailures,
+            ),
           ),
         ),
       ];
     }
 
     final items = reviewItems.value;
-    final failures = parseFailures.value;
-    if (items == null || failures == null) {
+    if (items == null || parseFailures.isWaitingForInitialPage) {
       return [
         _sliverBox(
           metrics: metrics,
@@ -229,6 +425,7 @@ class _MerchantReviewPage extends StatelessWidget {
 
     final optionsReady = categories.hasValue && subcategories.hasValue;
     final loadedCategories = categories.value ?? const <CategoryOption>[];
+    final failures = parseFailures.items;
     final slivers = <Widget>[
       _sliverBox(
         metrics: metrics,
@@ -248,6 +445,12 @@ class _MerchantReviewPage extends StatelessWidget {
           bottom: metrics.sectionGap,
           child: _GmailParseFailuresCard(
             failures: failures,
+            hasMore: parseFailures.hasMore,
+            isLoadingMore: parseFailures.isLoadingMore,
+            loadMoreError: parseFailures.loadMoreError,
+            onLoadMore: onLoadMoreParseFailures,
+            onRetryLoadMore: onLoadMoreParseFailures,
+            onViewBody: onViewParseFailureBody,
             onIgnore: onIgnoreParseFailure,
           ),
         ),
@@ -393,10 +596,22 @@ class _ReviewMetrics extends StatelessWidget {
 class _GmailParseFailuresCard extends StatelessWidget {
   const _GmailParseFailuresCard({
     required this.failures,
+    required this.hasMore,
+    required this.isLoadingMore,
+    required this.loadMoreError,
+    required this.onLoadMore,
+    required this.onRetryLoadMore,
+    required this.onViewBody,
     required this.onIgnore,
   });
 
   final List<GmailParseFailure> failures;
+  final bool hasMore;
+  final bool isLoadingMore;
+  final Object? loadMoreError;
+  final VoidCallback? onLoadMore;
+  final VoidCallback? onRetryLoadMore;
+  final ValueChanged<GmailParseFailure>? onViewBody;
   final ValueChanged<GmailParseFailure>? onIgnore;
 
   @override
@@ -455,8 +670,34 @@ class _GmailParseFailuresCard extends StatelessWidget {
                 ),
                 const SizedBox(height: 18),
                 for (final failure in failures) ...[
-                  _GmailParseFailureRow(failure: failure, onIgnore: onIgnore),
+                  _GmailParseFailureRow(
+                    failure: failure,
+                    onViewBody: onViewBody,
+                    onIgnore: onIgnore,
+                  ),
                   if (failure != failures.last) const Divider(height: 28),
+                ],
+                if (loadMoreError != null) ...[
+                  const SizedBox(height: 18),
+                  _ParseFailureLoadMoreError(
+                    error: loadMoreError!,
+                    onRetry: onRetryLoadMore,
+                  ),
+                ],
+                if (loadMoreError == null && (hasMore || isLoadingMore)) ...[
+                  const SizedBox(height: 18),
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: AppActionPill.secondary(
+                      label: isLoadingMore ? 'Loading more' : 'Load more',
+                      icon: Icons.expand_more,
+                      tooltip: isLoadingMore
+                          ? 'Loading more Gmail parse failures'
+                          : 'Load more Gmail parse failures',
+                      isLoading: isLoadingMore,
+                      onPressed: isLoadingMore ? null : onLoadMore,
+                    ),
+                  ),
                 ],
               ],
             ),
@@ -468,9 +709,14 @@ class _GmailParseFailuresCard extends StatelessWidget {
 }
 
 class _GmailParseFailureRow extends StatelessWidget {
-  const _GmailParseFailureRow({required this.failure, required this.onIgnore});
+  const _GmailParseFailureRow({
+    required this.failure,
+    required this.onViewBody,
+    required this.onIgnore,
+  });
 
   final GmailParseFailure failure;
+  final ValueChanged<GmailParseFailure>? onViewBody;
   final ValueChanged<GmailParseFailure>? onIgnore;
 
   @override
@@ -522,11 +768,26 @@ class _GmailParseFailureRow extends StatelessWidget {
         const SizedBox(height: 14),
         Align(
           alignment: Alignment.centerRight,
-          child: AppActionPill.secondary(
-            label: 'Ignore for now',
-            icon: Icons.visibility_off_outlined,
-            tooltip: 'Hide this parse failure',
-            onPressed: onIgnore == null ? null : () => onIgnore!(failure),
+          child: Wrap(
+            spacing: 12,
+            runSpacing: 12,
+            alignment: WrapAlignment.end,
+            children: [
+              AppActionPill.primary(
+                label: 'View email',
+                icon: Icons.article_outlined,
+                tooltip: 'View plain-text email body',
+                onPressed: onViewBody == null
+                    ? null
+                    : () => onViewBody!(failure),
+              ),
+              AppActionPill.secondary(
+                label: 'Ignore for now',
+                icon: Icons.visibility_off_outlined,
+                tooltip: 'Hide this parse failure',
+                onPressed: onIgnore == null ? null : () => onIgnore!(failure),
+              ),
+            ],
           ),
         ),
       ],
@@ -554,6 +815,268 @@ class _FailureDetailLine extends StatelessWidget {
           Expanded(child: Text(label, style: theme.textTheme.bodySmall)),
         ],
       ),
+    );
+  }
+}
+
+class _ParseFailureLoadMoreError extends StatelessWidget {
+  const _ParseFailureLoadMoreError({
+    required this.error,
+    required this.onRetry,
+  });
+
+  final Object error;
+  final VoidCallback? onRetry;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: theme.colorScheme.errorContainer.withValues(alpha: 0.36),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(14),
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final retry = AppActionPill.secondary(
+              label: 'Retry',
+              icon: Icons.refresh,
+              onPressed: onRetry,
+            );
+            final text = Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Could not load more Gmail parse failures.',
+                  style: theme.textTheme.titleSmall,
+                ),
+                const SizedBox(height: 4),
+                Text(error.toString(), style: theme.textTheme.bodySmall),
+              ],
+            );
+
+            if (constraints.hasBoundedWidth && constraints.maxWidth < 520) {
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [text, const SizedBox(height: 12), retry],
+              );
+            }
+
+            return Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(child: text),
+                const SizedBox(width: 16),
+                retry,
+              ],
+            );
+          },
+        ),
+      ),
+    );
+  }
+}
+
+class _GmailParseFailureBodyDialog extends StatefulWidget {
+  const _GmailParseFailureBodyDialog({
+    required this.failure,
+    required this.repository,
+  });
+
+  final GmailParseFailure failure;
+  final FinanceRepository repository;
+
+  @override
+  State<_GmailParseFailureBodyDialog> createState() =>
+      _GmailParseFailureBodyDialogState();
+}
+
+class _GmailParseFailureBodyDialogState
+    extends State<_GmailParseFailureBodyDialog> {
+  GmailParseFailureBody? _body;
+  Object? _error;
+  var _isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchBody();
+  }
+
+  Future<void> _fetchBody() async {
+    setState(() {
+      _isLoading = true;
+      _error = null;
+    });
+
+    try {
+      final body = await widget.repository.fetchGmailParseFailureBody(
+        failureId: widget.failure.failureId,
+      );
+      if (!mounted) return;
+
+      setState(() {
+        _body = body;
+        _isLoading = false;
+      });
+    } catch (error) {
+      if (!mounted) return;
+
+      setState(() {
+        _error = error;
+        _isLoading = false;
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final body = _body;
+    final error = _error;
+
+    return AppModalDialog(
+      title: 'Email body',
+      subtitle: widget.failure.subject,
+      maxWidth: 720,
+      expandToAvailableHeight: true,
+      actions: [
+        if (error != null)
+          AppActionPill.primary(
+            label: 'Retry',
+            icon: Icons.refresh,
+            isLoading: _isLoading,
+            onPressed: _isLoading ? null : _fetchBody,
+          ),
+        AppActionPill.secondary(
+          label: 'Close',
+          icon: Icons.close,
+          onPressed: () => Navigator.of(context).pop(),
+        ),
+      ],
+      child: _GmailParseFailureBodyContent(
+        failure: widget.failure,
+        body: body,
+        error: error,
+        isLoading: _isLoading,
+      ),
+    );
+  }
+}
+
+class _GmailParseFailureBodyContent extends StatelessWidget {
+  const _GmailParseFailureBodyContent({
+    required this.failure,
+    required this.body,
+    required this.error,
+    required this.isLoading,
+  });
+
+  final GmailParseFailure failure;
+  final GmailParseFailureBody? body;
+  final Object? error;
+  final bool isLoading;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    if (isLoading && body == null) {
+      return const Center(
+        child: Padding(
+          padding: EdgeInsets.symmetric(vertical: 32),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              SizedBox.square(
+                dimension: 28,
+                child: CircularProgressIndicator(strokeWidth: 3),
+              ),
+              SizedBox(height: 16),
+              Text('Fetching email body'),
+            ],
+          ),
+        ),
+      );
+    }
+
+    if (error != null && body == null) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('Email body unavailable', style: theme.textTheme.titleMedium),
+          const SizedBox(height: 6),
+          Text(error.toString(), style: theme.textTheme.bodyMedium),
+        ],
+      );
+    }
+
+    final loadedBody = body;
+    if (loadedBody == null) return const SizedBox.shrink();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: [
+            StatusChip(
+              icon: Icons.account_balance_wallet_outlined,
+              label: failure.candidateTypeLabel,
+            ),
+            StatusChip(
+              icon: Icons.report_problem_outlined,
+              label: failure.reasonLabel,
+              tone: AppStatusTone.negative,
+            ),
+            StatusChip(
+              icon: Icons.integration_instructions_outlined,
+              label: failure.parserLabel,
+            ),
+          ],
+        ),
+        const SizedBox(height: 16),
+        _FailureDetailLine(
+          icon: Icons.mail_outline,
+          label: 'Mailbox ${loadedBody.mailboxEmail}',
+        ),
+        _FailureDetailLine(
+          icon: Icons.alternate_email_outlined,
+          label: loadedBody.messageFrom ?? loadedBody.senderEmail,
+        ),
+        _FailureDetailLine(
+          icon: Icons.schedule_outlined,
+          label: 'Received ${_formatReceivedAt(loadedBody.sourceReceivedAt)}',
+        ),
+        _FailureDetailLine(
+          icon: Icons.email_outlined,
+          label:
+              'Message ${loadedBody.messageId ?? loadedBody.sourceMessageId}',
+        ),
+        const SizedBox(height: 18),
+        DecoratedBox(
+          decoration: BoxDecoration(
+            color: theme.colorScheme.surfaceContainerHighest,
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: theme.colorScheme.outlineVariant),
+          ),
+          child: SizedBox(
+            width: double.infinity,
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: SelectableText(
+                loadedBody.plainTextBody.isEmpty
+                    ? 'No plain-text body was returned.'
+                    : loadedBody.plainTextBody,
+                style: theme.textTheme.bodyMedium,
+              ),
+            ),
+          ),
+        ),
+      ],
     );
   }
 }
