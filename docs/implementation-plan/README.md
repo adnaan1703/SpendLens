@@ -12,18 +12,20 @@ Read these documents in order at the start of every new implementation thread:
 6. [Gmail Connector](GMAIL_CONNECTOR.md)
 7. [Gmail Label Ingestion](GMAIL_LABEL_INGESTION.md) as the completed-only
    reference for Milestones 65-69
-8. [Production Readiness](PRODUCTION_READINESS.md)
-9. [Push Notifications](PUSH_NOTIFICATIONS.md) when executing Milestones 18-21
-10. [Transaction Labels](TRANSACTION_LABELS.md) when executing Milestones 26-28
-11. [Monthly Caps](MONTHLY_CAPS.md) when executing Milestones 29-35
-12. [UI Redesign](UI_REDESIGN.md) when executing Milestones 37-51
-13. [Transaction Deletion](TRANSACTION_DELETION.md) when executing Milestones
+8. [Gmail Parse Failure Review](GMAIL_PARSE_FAILURE_REVIEW.md) when executing
+   Milestones 70-73
+9. [Production Readiness](PRODUCTION_READINESS.md)
+10. [Push Notifications](PUSH_NOTIFICATIONS.md) when executing Milestones 18-21
+11. [Transaction Labels](TRANSACTION_LABELS.md) when executing Milestones 26-28
+12. [Monthly Caps](MONTHLY_CAPS.md) when executing Milestones 29-35
+13. [UI Redesign](UI_REDESIGN.md) when executing Milestones 37-51
+14. [Transaction Deletion](TRANSACTION_DELETION.md) when executing Milestones
     52-55
-14. [Merchant Autocomplete](MERCHANT_AUTOCOMPLETE.md) as the completed-only
+15. [Merchant Autocomplete](MERCHANT_AUTOCOMPLETE.md) as the completed-only
     reference for Milestones 56-60
-15. [Merchant Group Management](MERCHANT_GROUP_MANAGEMENT.md) as the
+16. [Merchant Group Management](MERCHANT_GROUP_MANAGEMENT.md) as the
     completed-only reference for Milestones 61-64
-16. [Session Handoff](SESSION_HANDOFF.md)
+17. [Session Handoff](SESSION_HANDOFF.md)
 
 Completed-only companion execution plans are removed after their durable
 behavior has been folded into this README, [Data Model](DATA_MODEL.md),
@@ -124,6 +126,12 @@ This is not a "no backend" architecture. It is a backend without a permanently r
   parse failures in Review. Milestone 69 completed the final local
   regression/docs cleanup and left `GMAIL_LABEL_INGESTION.md` as a
   completed-only reference.
+- Gmail parse failure review: Milestone 70 created the companion plan for
+  paginated Review access to all unignored Gmail parse failures and on-demand
+  plain-text email body viewing from a parse-failure row. Milestones 71-73 are
+  planned and keep raw body storage out of Postgres/logs while adding an
+  authenticated row-scoped body fetch contract, Review pagination, the body
+  dialog, and final regression/docs cleanup.
 - Multi-target monthly caps: required-name recurring caps can include multiple
   categories, multiple labels, or both. A transaction counts once inside a cap
   when any selected category or label matches; overlapping caps are allowed.
@@ -175,10 +183,12 @@ When starting a new implementation thread:
    merchant group rename/merge behavior.
 8. Read [Gmail Label Ingestion](GMAIL_LABEL_INGESTION.md) as completed
    reference material when touching label-based Gmail ingestion behavior.
-9. Check [Session Handoff](SESSION_HANDOFF.md) for current status.
-10. Do only that milestone unless the user explicitly expands scope.
-11. Preserve documented invariants, especially idempotency, RLS isolation, and no raw email retention.
-12. Update milestone notes when an implementation decision changes the plan.
+9. Read [Gmail Parse Failure Review](GMAIL_PARSE_FAILURE_REVIEW.md) when
+   executing Milestones 70-73 or touching Review parse-failure body viewing.
+10. Check [Session Handoff](SESSION_HANDOFF.md) for current status.
+11. Do only that milestone unless the user explicitly expands scope.
+12. Preserve documented invariants, especially idempotency, RLS isolation, and no raw email retention.
+13. Update milestone notes when an implementation decision changes the plan.
 
 ## Clarification Rule
 

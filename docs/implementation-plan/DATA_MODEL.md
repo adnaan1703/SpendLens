@@ -781,6 +781,11 @@ Rules:
   household-scoped parse failures through app-facing RPCs.
 - Ignored parse-failure rows stay in `gmail_parse_attempts` for diagnostics but
   are hidden from app-facing Review failure lists.
+- Milestones 70-73 plan paginated app-facing access to all unignored parse
+  failures and on-demand plain-text body viewing from one visible failure row.
+  The body fetch must remain transient: authorize through the visible
+  household-scoped failure row, fetch from Gmail server-side, return the text to
+  the open dialog, and do not persist the body or body snippets in Postgres.
 
 ## Review Queue
 

@@ -3531,6 +3531,125 @@ and fold completed behavior back into durable docs.
   - Existing Gmail API stubs in Edge Function tests and existing fake Flutter
     finance repository hooks for Review parse-failure coverage.
 
+## Milestone 70: Gmail Parse Failure Review Planning and Reference Readiness
+
+### Status
+
+Completed on 2026-06-16.
+
+### Objective
+
+Create the companion plan for paginated Gmail parse-failure review and
+on-demand email body viewing, then wire M71-M73 into durable planning docs.
+
+### Tasks
+
+- Create [Gmail Parse Failure Review](GMAIL_PARSE_FAILURE_REVIEW.md) with
+  target behavior, existing foundation, global rules, implementation
+  milestones, acceptance criteria, and verification expectations.
+- Update this milestone tracker, [README](README.md), [Data Model](DATA_MODEL.md),
+  [Ingestion Design](INGESTION.md), [Gmail Connector](GMAIL_CONNECTOR.md),
+  [Production Readiness](PRODUCTION_READINESS.md), and
+  [Session Handoff](SESSION_HANDOFF.md) so a fresh session can start M71 from
+  docs alone.
+- Preserve M18-M21 push-notification deferral and leave implementation planned
+  only.
+
+### Acceptance Criteria
+
+- `GMAIL_PARSE_FAILURE_REVIEW.md` describes M70-M73 as serial, standalone
+  milestones.
+- M71 is the next recommended implementation milestone.
+- No Flutter, Supabase, importer, Edge Function, hosted rollout, iOS, or web
+  implementation work is started.
+
+### Completion Summary
+
+- Created the Gmail parse failure review companion plan and routed future
+  implementation through M71-M73.
+- Confirmed the plan covers paginated access to all unignored Gmail parse
+  failures, row-scoped plain-text body viewing from Review, and unchanged
+  `Ignore for now` behavior.
+- Confirmed the Flutter app must not call service-key helpers; the planned body
+  fetch uses a new authenticated Edge Function after household-scoped row
+  authorization.
+- M71 was not started.
+- Assumptions made:
+  - Review should page through all unignored Gmail parse failures instead of
+    relying on the current default list limit.
+  - Plain-text email bodies should be fetched on demand and not stored.
+  - Unsupported watched-label emails should continue to appear as `other`
+    parse-failure rows.
+- Mocks created:
+  - None.
+- Mocks used:
+  - None.
+
+## Milestone 71: Parse Failure Pagination and Body Fetch Contract
+
+### Status
+
+Planned. See
+[Gmail Parse Failure Review](GMAIL_PARSE_FAILURE_REVIEW.md#m71---parse-failure-pagination-and-body-fetch-contract).
+
+### Objective
+
+Add the backend and repository contract needed to page all visible parse
+failures and fetch one failure's plain-text Gmail body on demand.
+
+### Acceptance Criteria
+
+- Review data access can request all unignored parse failures page by page.
+- A signed-in household member can fetch the plain-text body for one visible,
+  unignored parse failure row.
+- Users cannot fetch another household's body, an ignored row's body, a parsed
+  row's body, or an arbitrary Gmail message id.
+- Raw body text is returned only in the body-fetch response and is not stored or
+  logged.
+- Existing ignore behavior remains unchanged.
+
+## Milestone 72: Review UI Pagination and Email Body Dialog
+
+### Status
+
+Planned. See
+[Gmail Parse Failure Review](GMAIL_PARSE_FAILURE_REVIEW.md#m72---review-ui-pagination-and-email-body-dialog).
+
+### Objective
+
+Make the Review screen expose all visible Gmail parse failures and show one
+failure's plain-text email body in a dialog.
+
+### Acceptance Criteria
+
+- Review can load the first page and later pages of Gmail parse failures.
+- A user can open a visible failure row and read the plain-text email body.
+- Body loading, body fetch failure, retry, and close flows are visible and
+  tested.
+- Ignoring a row still hides only that row and does not break pagination.
+- Existing merchant review and transaction correction flows remain unchanged.
+
+## Milestone 73: Parse Failure Review Regression, Docs, and Cleanup
+
+### Status
+
+Planned. See
+[Gmail Parse Failure Review](GMAIL_PARSE_FAILURE_REVIEW.md#m73---parse-failure-review-regression-docs-and-cleanup).
+
+### Objective
+
+Verify the complete parse-failure review workflow and fold final behavior back
+into durable docs.
+
+### Acceptance Criteria
+
+- Full focused Supabase, Edge Function, and Flutter verification passes locally
+  or documents an environment limitation with compensating evidence.
+- Durable docs describe paginated parse-failure Review, on-demand plain-text
+  body viewing, privacy boundaries, and operational backfill expectations.
+- `GMAIL_PARSE_FAILURE_REVIEW.md` is marked completed-only.
+- No unrelated deferred work is started.
+
 ## Cross-Milestone Consistency Rules
 
 - Ask the user before proceeding on any undocumented decision. Codex may recommend a default, but must wait for confirmation.

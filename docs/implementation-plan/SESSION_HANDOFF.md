@@ -4,11 +4,11 @@ Use this file to coordinate work across multiple implementation sessions. Update
 
 ## Current Status
 
-- Current milestone: None. Milestone 69 was completed on 2026-06-16 as the
-  Gmail Label Ingestion Regression, Docs, and Cleanup closeout. Milestones
-  18-21 remain deferred by user request.
-- Last completed milestone: Milestone 69, Gmail Label Ingestion Regression,
-  Docs, and Cleanup.
+- Current milestone: None. Milestone 70 was completed on 2026-06-16 as the
+  Gmail Parse Failure Review Planning and Reference Readiness closeout.
+  Milestones 18-21 remain deferred by user request.
+- Last completed milestone: Milestone 70, Gmail Parse Failure Review Planning
+  and Reference Readiness.
 - Current implementation state: Flutter Android app scaffold exists in
   `apps/mobile` with redesigned SpendLens Google sign-in, route protection,
   authenticated shell, RLS-safe profile/default-household bootstrap,
@@ -227,14 +227,17 @@ Use this file to coordinate work across multiple implementation sessions. Update
   visible sanitized Review parse failures while preserving service-only
   diagnostics. Milestone 69 verified the complete local Gmail label ingestion
   regression path, folded final runbook/privacy behavior into durable docs, and
-  marked the companion plan completed-only.
+  marked the companion plan completed-only. Milestone 70 added the Gmail parse
+  failure review companion plan and queued M71-M73 for paginated Review access,
+  row-scoped plain-text body viewing, and final regression/docs cleanup.
   Milestones 18-21 remain planned and deferred by user request.
 - Remote deployment state: On 2026-06-08, user confirmed Supabase project `bslsitzdvrdosubbdxpd` as the intended dev/staging target. All local migrations through `20260607174515_ai_ready_layer_llm_features.sql` were pushed there, hosted expense Q&A and the now-retired legacy AI lookup function were active with JWT verification, and `GEMINI_API_KEY` was present in hosted Edge Function secrets by name. After the user signed in through the Android emulator, hosted profile/household bootstrap and authenticated Gemini Edge Function smoke passed. On 2026-06-08 for Milestone 13, `gmail-oauth-start` was deployed as version 2 with JWT verification, `gmail-sync` was deployed as version 2 without JWT verification, and new `gmail-backfill-range` was deployed as version 1 without JWT verification. Hosted `gmail-backfill-range` `OPTIONS` smoke returned 200, and an unauthenticated POST returned the expected service-key error. The live May Gmail backfill itself was not run because it requires the user to connect the target Gmail mailbox and invoke the runbook with a Supabase secret key from a local/platform secret store. On 2026-06-09, M16 deleted the hosted legacy AI lookup function from `bslsitzdvrdosubbdxpd` and a follow-up function list verified it absent. The M16 database migration and updated active Suggest function were verified locally but not pushed/deployed to hosted in this implementation session.
-- Next recommended milestone: None in the active non-deferred plan. Milestones
-  18-21 remain deferred unless the user resumes push notifications; iOS and web
-  remain deferred future milestones unless explicitly resumed. If continuing
-  hosted rollout separately, push currently local-only migrations and deploy the
-  relevant updated Edge Functions in a separate hosted rollout.
+- Next recommended milestone: Milestone 71, Parse Failure Pagination and Body
+  Fetch Contract. Milestones 18-21 remain deferred unless the user resumes push
+  notifications; iOS and web remain deferred future milestones unless
+  explicitly resumed. If continuing hosted rollout separately, push currently
+  local-only migrations and deploy the relevant updated Edge Functions in a
+  separate hosted rollout.
 - Documentation state: completed-only companion execution plans for transaction
   metadata editing and category management were retired from `docs/` on
   2026-06-12. `docs/implementation-plan/MONTHLY_CAPS.md` remains active as the
@@ -253,6 +256,8 @@ Use this file to coordinate work across multiple implementation sessions. Update
   `docs/implementation-plan/GMAIL_LABEL_INGESTION.md` is completed-only after
   completed Milestones 65-69 and can be removed in a later cleanup if the
   repository's completed-plan convention calls for it.
+  `docs/implementation-plan/GMAIL_PARSE_FAILURE_REVIEW.md` is the active
+  companion plan for planned Milestones 71-73 after completed Milestone 70.
 
 ## Required Reading for New Threads
 
@@ -265,18 +270,20 @@ At the start of a new implementation thread, read:
 5. The target milestone section in `docs/implementation-plan/MILESTONES.md`
 6. `docs/implementation-plan/GMAIL_LABEL_INGESTION.md` as completed reference
    material when touching label-based Gmail ingestion behavior
-7. `docs/implementation-plan/PUSH_NOTIFICATIONS.md` when executing Milestone 18, 19, 20, or 21
-8. `docs/implementation-plan/TRANSACTION_LABELS.md` when executing Milestone 26, 27, or 28
-9. `docs/implementation-plan/MONTHLY_CAPS.md` when executing Milestone 29, 30, 31, 32, 33, 34, or 35
-10. `docs/implementation-plan/UI_REDESIGN.md` when executing Milestone 37 through 51
-11. `docs/implementation-plan/TRANSACTION_DELETION.md` when executing Milestone 52 through 55
-12. `docs/implementation-plan/MERCHANT_AUTOCOMPLETE.md` when touching merchant
+7. `docs/implementation-plan/GMAIL_PARSE_FAILURE_REVIEW.md` when executing
+   Milestones 70 through 73 or touching Review parse-failure body viewing
+8. `docs/implementation-plan/PUSH_NOTIFICATIONS.md` when executing Milestone 18, 19, 20, or 21
+9. `docs/implementation-plan/TRANSACTION_LABELS.md` when executing Milestone 26, 27, or 28
+10. `docs/implementation-plan/MONTHLY_CAPS.md` when executing Milestone 29, 30, 31, 32, 33, 34, or 35
+11. `docs/implementation-plan/UI_REDESIGN.md` when executing Milestone 37 through 51
+12. `docs/implementation-plan/TRANSACTION_DELETION.md` when executing Milestone 52 through 55
+13. `docs/implementation-plan/MERCHANT_AUTOCOMPLETE.md` when touching merchant
     search/autocomplete or metadata-editor duplicate guarding
-13. `docs/implementation-plan/MERCHANT_GROUP_MANAGEMENT.md` when touching
+14. `docs/implementation-plan/MERCHANT_GROUP_MANAGEMENT.md` when touching
     merchant group rename/merge behavior
-14. `DESIGN.md` when executing Milestone 37 through 51
-15. `docs/design-references/stitch/themed-dashboard-ui-redesign/README.md` when executing Milestone 37 through 51
-16. This handoff file
+15. `DESIGN.md` when executing Milestone 37 through 51
+16. `docs/design-references/stitch/themed-dashboard-ui-redesign/README.md` when executing Milestone 37 through 51
+17. This handoff file
 
 ## Current Assumptions
 
@@ -296,6 +303,12 @@ At the start of a new implementation thread, read:
   diagnostics, not parser selectors. Unmatched watched-label mail is recorded as
   sanitized candidate type `other`; Milestone 68 added household-wide
   `Ignore for now` behavior while preserving service-only diagnostics.
+- Gmail parse-failure Review improvements are planned through Milestones 71-73:
+  list all unignored failures with pagination, fetch a single visible failure's
+  plain-text Gmail body on demand through an authenticated row-scoped Edge
+  Function, show that body in Review, and never store raw body text in Postgres
+  or logs. Historical skipped mail requires explicit backfill/resync before it
+  can appear in Review.
 - `Netbanking :: IMPS` is implemented as Gmail/source candidate type
   `netbanking_imps`; it is not category taxonomy and does not replace ledger
   `transaction_type` values such as `debit_spend`.
@@ -469,6 +482,37 @@ Do not ask the user to perform all setup at once. Ask only when the relevant mil
 - Milestone 68, Watched-Label Parse Failures and Review Ignore: completed.
 - Milestone 69, Gmail Label Ingestion Regression, Docs, and Cleanup:
   completed.
+- Milestone 70, Gmail Parse Failure Review Planning and Reference Readiness:
+  completed.
+- Milestone 71, Parse Failure Pagination and Body Fetch Contract: planned.
+- Milestone 72, Review UI Pagination and Email Body Dialog: planned.
+- Milestone 73, Parse Failure Review Regression, Docs, and Cleanup: planned.
+
+## Gmail Parse Failure Review M70 Notes
+
+- Completed on 2026-06-16.
+- Added `docs/implementation-plan/GMAIL_PARSE_FAILURE_REVIEW.md` as the active
+  companion plan for Milestones 70-73.
+- Split implementation into M71 parse-failure pagination plus authenticated
+  body-fetch contract, M72 Review pagination plus plain-text body dialog, and
+  M73 final regression/docs cleanup.
+- Updated `README.md`, `DATA_MODEL.md`, `INGESTION.md`,
+  `GMAIL_CONNECTOR.md`, `PRODUCTION_READINESS.md`, `MILESTONES.md`, and this
+  handoff so a fresh session can start at M71 from repository docs alone.
+- No Flutter, Supabase migration, SQL test, importer, Edge Function, hosted
+  rollout, iOS, web, or push notification implementation was started.
+- Verification:
+  - `rg -n "GMAIL_PARSE_FAILURE_REVIEW|Milestone 7[0-3]|gmail-parse-failure-body|Load more|plain_text_body" docs/implementation-plan`
+  - `git diff --check`
+- Assumptions made:
+  - Review should page through all unignored Gmail parse failures.
+  - Email body text should be fetched on demand through a row-scoped
+    authenticated contract and not stored.
+  - Unsupported watched-label email remains visible as candidate type `other`.
+- Mocks created:
+  - None.
+- Mocks used:
+  - None.
 
 ## Gmail Label Ingestion M69 Notes
 
