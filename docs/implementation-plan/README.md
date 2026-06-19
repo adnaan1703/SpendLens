@@ -14,8 +14,9 @@ Read these documents in order at the start of every new implementation thread:
    reference for Milestones 65-69
 8. [Gmail Parse Failure Review](GMAIL_PARSE_FAILURE_REVIEW.md) as the
    completed-only reference for Milestones 70-73
-9. [Regex Backend Migration](REGEX_BACKEND_MIGRATION.md) when executing
-   Milestones 74-77
+9. [Regex Backend Migration](REGEX_BACKEND_MIGRATION.md) as the completed-only
+   reference for Milestones 74-77 and when touching merchant mapping
+   regex/rule matching
 10. [Production Readiness](PRODUCTION_READINESS.md)
 11. [Push Notifications](PUSH_NOTIFICATIONS.md) when executing Milestones 18-21
 12. [Transaction Labels](TRANSACTION_LABELS.md) when executing Milestones 26-28
@@ -37,7 +38,7 @@ behavior has been folded into this README, [Data Model](DATA_MODEL.md),
 
 SpendLens is a personal and household expense intelligence app. The current implementation plan is Android-first: build the Flutter Android app first and defer iOS and web until later.
 
-The app imports historical credit-card analysis from `docs/Credit Card Spend Analysis - FY 2025-26.xlsx`, then moves to ongoing ingestion from Gmail transaction emails for credit cards and UPI. It presents spend by category, named monthly caps with category and label targets, recurring cap carry-forward semantics, transaction details, merchant review workflows, Activity list and chart views, manual piggy-bank ledgers surfaced as Vaults, backend-mediated Gemini expense Q&A, household category management, transaction labels, owner-only transaction deletion with source tombstones and workbook/Gmail resurrection suppression, merchant autocomplete with close-match duplicate guarding, Settings merchant group management, planned backend-owned regex merchant mapping, and planned Android push notifications for newly processed transactions. Milestones 37-51 completed the UI redesign that consolidated Transactions and Trends into Activity, presented Piggy Banks as Vaults, removed Settings from primary navigation, and added local light/dark/system theme support.
+The app imports historical credit-card analysis from `docs/Credit Card Spend Analysis - FY 2025-26.xlsx`, then moves to ongoing ingestion from Gmail transaction emails for credit cards and UPI. It presents spend by category, named monthly caps with category and label targets, recurring cap carry-forward semantics, transaction details, merchant review workflows, Activity list and chart views, manual piggy-bank ledgers surfaced as Vaults, backend-mediated Gemini expense Q&A, household category management, transaction labels, owner-only transaction deletion with source tombstones and workbook/Gmail resurrection suppression, merchant autocomplete with close-match duplicate guarding, Settings merchant group management, backend-owned regex merchant mapping, and planned Android push notifications for newly processed transactions. Milestones 37-51 completed the UI redesign that consolidated Transactions and Trends into Activity, presented Piggy Banks as Vaults, removed Settings from primary navigation, and added local light/dark/system theme support.
 
 ## Architecture Decision
 
@@ -147,7 +148,10 @@ This is not a "no backend" architecture. It is a backend without a permanently r
   `classify_statement_merchant(...)` detail helper for future import clients.
   Milestone 76 moved workbook importer classification onto that backend helper
   and removed JavaScript-side rule sorting/regex matching from live imports.
-  Milestone 77 remains planned for final regression/docs cleanup.
+  Milestone 77 verified the focused local Supabase and workbook importer
+  regression path, confirmed backend-owned exact/contains/prefix/suffix/regex
+  rule behavior across Gmail and workbook ingestion, and left
+  `REGEX_BACKEND_MIGRATION.md` as a completed-only reference.
 - Multi-target monthly caps: required-name recurring caps can include multiple
   categories, multiple labels, or both. A transaction counts once inside a cap
   when any selected category or label matches; overlapping caps are allowed.
@@ -201,8 +205,8 @@ When starting a new implementation thread:
    reference material when touching label-based Gmail ingestion behavior.
 9. Read [Gmail Parse Failure Review](GMAIL_PARSE_FAILURE_REVIEW.md) as
    completed reference material when touching Review parse-failure body viewing.
-10. Read [Regex Backend Migration](REGEX_BACKEND_MIGRATION.md) when executing
-   Milestones 74-77 or touching merchant mapping regex/rule matching.
+10. Read [Regex Backend Migration](REGEX_BACKEND_MIGRATION.md) as the
+   completed-only reference when touching merchant mapping regex/rule matching.
 11. Check [Session Handoff](SESSION_HANDOFF.md) for current status.
 12. Do only that milestone unless the user explicitly expands scope.
 13. Preserve documented invariants, especially idempotency, RLS isolation, and no raw email retention.

@@ -2,19 +2,20 @@
 
 Last updated: 2026-06-19
 
-This document is the implementation plan for moving merchant mapping rule
-matching, including regex rules, to the backend as the source of truth. Each
-milestone below is a standalone milestone intended to be executed in a separate
-Codex thread. Stop after completing and documenting the current milestone; do
-not automatically continue to the next milestone.
+Status: Completed-only reference. Milestones 74-77 completed on 2026-06-19.
+
+This document is the completed implementation record for moving merchant
+mapping rule matching, including regex rules, to the backend as the source of
+truth. Each milestone below was executed as a standalone milestone in a
+separate Codex thread.
 
 ## Target Behavior
 
-Merchant mapping rules should be evaluated consistently for every ingestion
-path. Postgres owns the matching semantics for exact, contains, prefix, suffix,
-and regex rules. Gmail ingestion, app metadata corrections, merchant review
-corrections, and workbook import should all receive the same winning rule for a
-given household and statement merchant.
+Merchant mapping rules are evaluated consistently for every ingestion path.
+Postgres owns the matching semantics for exact, contains, prefix, suffix, and
+regex rules. Gmail ingestion, app metadata corrections, merchant review
+corrections, and workbook import all receive the same winning rule for a given
+household and statement merchant.
 
 - Invalid regex rules must not abort ingestion or metadata workflows; they
   should fail to match and remain inspectable as data.
@@ -24,12 +25,12 @@ given household and statement merchant.
   statement merchant text without normalizing away regex syntax.
 - Rule ranking stays deterministic: exact, prefix, suffix, contains, regex,
   then priority, then newest rule.
-- The workbook importer should stop implementing its own rule-matching engine
-  in JavaScript and should call the backend classification contract instead.
+- The workbook importer no longer implements its own rule-matching engine in
+  JavaScript and calls the backend classification contract instead.
 - No user-facing rule editor, regex authoring UI, Gmail parser expansion, AI
   suggestion change, or hosted rollout is included in this sequence.
 
-## Existing Foundation
+## Completed Foundation
 
 - `public.merchant_mapping_rules` already supports `match_type` values
   `exact`, `contains`, `prefix`, `suffix`, and `regex`.
@@ -41,9 +42,10 @@ given household and statement merchant.
   for the selected normalized statement merchant.
 - Gmail transaction insertion paths already call
   `public.match_merchant_mapping_rule(...)` before creating review items.
-- `tools/workbook-import/src/workbook-importer.mjs` currently fetches active
-  `merchant_mapping_rules`, sorts them, evaluates exact/contains/prefix/suffix
-  and regex matching in Node, and annotates transactions before upsert.
+- `tools/workbook-import/src/workbook-importer.mjs` now calls
+  `public.classify_statement_merchant(...)` during live imports instead of
+  fetching active rules or evaluating exact/contains/prefix/suffix/regex rules
+  in Node.
 - Existing pgTAP coverage for merchant review corrections, transaction metadata
   editing, taxonomy lifecycle, merchant group management, Gmail ingestion, and
   workbook import protects the surrounding rule lifecycle.
@@ -345,8 +347,8 @@ Completion summary:
 - Verified a live local workbook import against Postgres: the first smoke
   inserted 475 transactions, and the final idempotent rerun updated the same
   475 transactions with 0 suppressed rows and 29 open review items.
-- M77 remains planned; final regex migration regression/docs cleanup was not
-  started.
+- At M76 closeout, final regex migration regression/docs cleanup had not been
+  started; it was completed later in M77.
 - Flutter UI, Gmail parser templates, hosted Supabase, iOS, web, push
   notifications, and user-facing rule management were not changed.
 - Milestones 18-21 remain deferred and were not started.
@@ -365,6 +367,8 @@ Completion summary:
   - The Node test client mock was used only in importer unit tests.
 
 ## M77 - Regex Backend Migration Regression, Docs, and Cleanup
+
+Status: Completed on 2026-06-19.
 
 Purpose: Verify the complete backend-owned regex matching workflow and fold the
 final behavior into durable docs.
@@ -425,3 +429,37 @@ Completion summary requirements:
 - Assumptions made
 - Mocks created
 - Mocks used
+
+Completion summary:
+
+- Ran the focused local M77 regression path plus the direct
+  `regex_backend_matcher_guardrails.sql` pgTAP test.
+- Confirmed Postgres owns exact, prefix, suffix, contains, and regex rule
+  semantics through `merchant_rule_matches(...)`,
+  `match_merchant_mapping_rule(...)`, and
+  `classify_statement_merchant(...)`.
+- Confirmed invalid regex patterns fail closed without aborting Gmail
+  ingestion, transaction metadata correction, or workbook importer validation.
+- Confirmed manual exact Review and transaction metadata correction rules still
+  fit the deterministic ranking where exact rules outrank broader regex rules.
+- Verified the workbook importer no longer contains a production JavaScript
+  merchant rule engine, calls the backend helper in tests, passes dry-run
+  validation, and can complete a live local import smoke.
+- Updated durable docs and marked this plan completed-only.
+- No runtime code changes were required for M77.
+- Hosted Supabase migration push, Edge Function deployment, remote workbook
+  import, iOS, web, push notifications, and user-facing regex rule editor work
+  were not started.
+- Milestones 18-21 remain deferred and were not started.
+- Assumptions made:
+  - The focused local M77 command set plus the direct regex pgTAP file is the
+    right regression boundary for this completed migration.
+  - The live local workbook import smoke is sufficient integrated evidence that
+    the importer can call `classify_statement_merchant(...)` against a reset
+    local database.
+  - Hosted rollout should remain a separate explicit operation.
+- Mocks created:
+  - None.
+- Mocks used:
+  - Existing workbook importer unit-test mocks for
+    `public.classify_statement_merchant(...)` responses.

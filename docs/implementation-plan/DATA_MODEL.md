@@ -549,6 +549,10 @@ Rules:
 - `classify_statement_merchant(...)` is a read-only `security invoker` helper
   that returns the winning rule IDs, display names, confidence, notes, and
   creator for callers that need classification details.
+- Milestone 77 verified the final local regression path for backend-owned rule
+  semantics across the focused pgTAP suite, Supabase lint, workbook importer
+  tests, dry-run validation, and a local import smoke. Hosted migration push
+  remains a separate explicit rollout operation.
 
 ### Transaction Metadata Correction RPC
 

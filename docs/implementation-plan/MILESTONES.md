@@ -3897,8 +3897,8 @@ make workbook imports use the backend classification contract.
 - Verified a live local workbook import against Postgres: the first smoke
   inserted 475 transactions, and the final idempotent rerun updated the same
   475 transactions with 0 suppressed rows and 29 open review items.
-- M77 remains planned; final regex migration regression/docs cleanup was not
-  started.
+- At M76 closeout, final regex migration regression/docs cleanup had not been
+  started; it was completed later in M77.
 - Milestones 18-21 remain deferred and were not started.
 - Assumptions made:
   - Direct local/admin Postgres import can call the stable backend helper after
@@ -3915,6 +3915,10 @@ make workbook imports use the backend classification contract.
   - The Node test client mock was used only in importer unit tests.
 
 ## Milestone 77: Regex Backend Migration Regression, Docs, and Cleanup
+
+### Status
+
+Completed on 2026-06-19.
 
 ### Objective
 
@@ -3946,6 +3950,42 @@ behavior back into durable docs.
   semantics for future ingestion work.
 - `REGEX_BACKEND_MIGRATION.md` is marked completed-only.
 - No unrelated deferred work is started.
+
+### Completion Summary
+
+- Ran the focused local M77 regression path and the direct
+  `regex_backend_matcher_guardrails.sql` pgTAP test.
+- Confirmed Postgres owns exact, prefix, suffix, contains, and regex rule
+  semantics through `merchant_rule_matches(...)`,
+  `match_merchant_mapping_rule(...)`, and
+  `classify_statement_merchant(...)`.
+- Confirmed invalid regex patterns fail closed without aborting Gmail
+  ingestion, transaction metadata correction, or workbook importer validation.
+- Confirmed manual exact rules from Review and transaction metadata edits
+  remain compatible with deterministic ranking where exact rules outrank
+  broader regex rules.
+- Verified the workbook importer no longer contains a production JavaScript
+  merchant rule engine, calls the backend helper in tests, passes dry-run
+  validation, and can complete a live local import smoke.
+- Updated durable docs and marked
+  [Regex Backend Migration](REGEX_BACKEND_MIGRATION.md) completed-only.
+- No runtime code changes were required for M77.
+- Hosted Supabase migration push, Edge Function deployment, remote workbook
+  import, iOS, web, push notifications, and user-facing regex rule editor work
+  were not started.
+- Milestones 18-21 remain deferred and were not started.
+- Assumptions made:
+  - The focused local M77 command set plus the direct regex pgTAP file is the
+    right regression boundary for this completed migration.
+  - The live local workbook import smoke is sufficient integrated evidence that
+    the importer can call `classify_statement_merchant(...)` against a reset
+    local database.
+  - Hosted rollout should remain a separate explicit operation.
+- Mocks created:
+  - None.
+- Mocks used:
+  - Existing workbook importer unit-test mocks for
+    `public.classify_statement_merchant(...)` responses.
 
 ## Cross-Milestone Consistency Rules
 

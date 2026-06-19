@@ -50,6 +50,9 @@ of fetching active `merchant_mapping_rules` or evaluating exact, contains,
 prefix, suffix, or regex rules in Node. The importer remains responsible for
 workbook parsing, deterministic IDs, tombstone-aware suppression, upsert
 orchestration, and validation; Postgres owns merchant rule matching semantics.
+Milestone 77 verified the completed path with importer unit tests, workbook
+dry-run validation, and a live local import smoke that inserted the expected
+475 transactions with 29 open review items.
 
 ## Expected Fixture Totals
 

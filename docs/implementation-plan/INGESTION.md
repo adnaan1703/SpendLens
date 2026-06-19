@@ -305,11 +305,14 @@ When the user corrects a mapping:
 - Reclassify matching historical transactions.
 - Resolve related review items.
 
-Milestones 74-77 make backend rule matching authoritative for both Gmail and
-workbook import. Gmail already calls `match_merchant_mapping_rule(...)` during
-transaction insertion. Milestone 76 made the workbook importer call the backend
-detail helper so regex behavior, invalid-pattern handling, and rule precedence
-stay consistent across ingestion paths.
+Milestones 74-77 made backend rule matching authoritative for both Gmail and
+workbook import. Gmail calls `match_merchant_mapping_rule(...)` during
+transaction insertion, while workbook import calls
+`classify_statement_merchant(...)` after deterministic seed data exists. Exact,
+prefix, suffix, contains, and regex precedence, normalized non-regex matching,
+stored-pattern regex evaluation, and invalid-regex fail-closed behavior now live
+in Postgres for both ingestion paths. Milestone 77 verified the focused local
+regression path; hosted rollout remains a separate explicit operation.
 
 ## Privacy Rules
 
