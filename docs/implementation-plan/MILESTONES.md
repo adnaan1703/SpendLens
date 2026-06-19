@@ -3716,6 +3716,168 @@ into durable docs.
     finance repository hooks for Review parse-failure pagination, body-fetch,
     and ignore coverage.
 
+## Milestone 74: Regex Backend Migration Planning and Reference Readiness
+
+### Status
+
+Completed on 2026-06-19.
+
+### Objective
+
+Create the companion plan for moving merchant mapping rule matching, including
+regex rules, to the backend as the source of truth, then wire M75-M77 into
+durable planning docs.
+
+### Tasks
+
+- Create [Regex Backend Migration](REGEX_BACKEND_MIGRATION.md) with target
+  behavior, existing foundation, global rules, implementation milestones,
+  acceptance criteria, and verification expectations.
+- Update this milestone tracker, [README](README.md), [Data Model](DATA_MODEL.md),
+  [Ingestion Design](INGESTION.md), [Workbook Import](WORKBOOK_IMPORT.md), and
+  [Session Handoff](SESSION_HANDOFF.md) so a fresh session can start M75 from
+  docs alone.
+- Preserve M18-M21 push-notification deferral and leave implementation planned
+  only.
+
+### Acceptance Criteria
+
+- `REGEX_BACKEND_MIGRATION.md` describes M74-M77 as serial, standalone
+  milestones.
+- M75 is the next recommended implementation milestone.
+- No Flutter, Supabase, importer, Edge Function, hosted rollout, iOS, or web
+  implementation work is started.
+
+### Completion Summary
+
+- Created the Regex Backend Migration companion plan and routed future
+  implementation through M75-M77.
+- Confirmed the current migration boundary: Gmail ingestion already calls the
+  backend matcher, while workbook import still performs JavaScript-side
+  merchant rule matching.
+- Confirmed the plan covers backend invalid-regex guardrails, normalized
+  non-regex matching, a backend detail classification helper, workbook importer
+  migration, and final regression/docs cleanup.
+- M75 was not started.
+- Assumptions made:
+  - "Regex Backend Migration" means migrating merchant mapping rule evaluation,
+    especially regex matching, out of workbook-import JavaScript and into
+    Postgres as the shared source of truth.
+  - Invalid regex patterns should fail closed by returning no match instead of
+    aborting ingestion or app correction flows.
+  - No user-facing regex authoring UI is required for this sequence.
+- Mocks created:
+  - None.
+- Mocks used:
+  - None.
+
+## Milestone 75: Backend Regex Matcher Guardrails
+
+### Objective
+
+Make the backend matcher safe and explicit enough to become the source of truth
+for every ingestion path.
+
+### Tasks
+
+- Use the Supabase skill and create the migration with
+  `supabase migration new regex_backend_matcher_guardrails`.
+- Harden `public.merchant_rule_matches(...)` so invalid regex patterns return
+  false, non-regex patterns compare normalized text, regex patterns evaluate
+  against normalized statement merchant text without normalizing away regex
+  syntax, blank values fail closed, and unknown match types return false.
+- Preserve deterministic rule precedence in
+  `public.match_merchant_mapping_rule(...)`: exact, prefix, suffix, contains,
+  regex, priority ascending, created_at descending.
+- Add `public.classify_statement_merchant(p_household_id uuid, p_statement_merchant text)`
+  as a read-only `security invoker` detail helper returning the winning rule's
+  IDs, display names, confidence, notes, and creator for import clients.
+- Add pgTAP coverage for invalid regex handling, regex success, normalized
+  non-regex matching, ordering, priority ties, and detail-helper output.
+- Do not change workbook importer behavior, Flutter UI, Gmail parser templates,
+  hosted Supabase, iOS, web, push notifications, or user-facing rule management.
+
+### Acceptance Criteria
+
+- Invalid regex patterns cannot crash backend matching, Gmail insertion, app
+  metadata correction, or the new detail helper.
+- Backend matching covers exact, contains, prefix, suffix, and regex with
+  deterministic precedence.
+- Existing Gmail and app correction rule behavior remains compatible.
+- Workbook importer migration remains planned for M76 and is not started.
+
+## Milestone 76: Workbook Import Backend Classification
+
+### Objective
+
+Remove JavaScript-side merchant rule matching from the workbook importer and
+make workbook imports use the backend classification contract.
+
+### Tasks
+
+- Update `tools/workbook-import/src/workbook-importer.mjs` so live import
+  classification no longer sorts or evaluates `merchant_mapping_rules` in
+  JavaScript.
+- After the importer has a household, seeded taxonomy, and seeded merchant
+  data, classify each workbook transaction by calling
+  `public.classify_statement_merchant(...)` with the transaction statement
+  merchant.
+- Apply returned rule IDs, merchant/category/subcategory IDs and names,
+  confidence, notes, and creator metadata to the same transaction fields the
+  importer currently populates from JavaScript rule matching.
+- Preserve no-match behavior, deterministic import results for the existing
+  workbook, tombstone suppression, transaction upserts, review-item creation,
+  and validation totals.
+- Update importer tests so they prove backend classification is called, a
+  regex-backed rule result is consumed correctly, no-match behavior is
+  preserved, and production code does not depend on a local JavaScript regex
+  matcher.
+- Do not change backend matcher semantics, Flutter UI, Gmail parser templates,
+  hosted Supabase, iOS, web, push notifications, or user-facing rule management.
+
+### Acceptance Criteria
+
+- Workbook import applies backend rule outcomes through
+  `public.classify_statement_merchant(...)`.
+- Invalid regex handling remains owned by the backend and cannot crash the
+  importer through local regex construction.
+- Existing workbook fixture validation still passes.
+- Tombstoned workbook rows remain suppressed rather than recreated.
+- Gmail ingestion and app correction behavior remain unchanged.
+
+## Milestone 77: Regex Backend Migration Regression, Docs, and Cleanup
+
+### Objective
+
+Verify the complete backend-owned regex matching workflow and fold final
+behavior back into durable docs.
+
+### Tasks
+
+- Run the focused local regression path for Supabase rule matching, Gmail
+  ingestion, transaction metadata correction, category/merchant lifecycle, and
+  workbook import.
+- Confirm Postgres owns exact, contains, prefix, suffix, and regex rule
+  semantics across Gmail and workbook ingestion.
+- Confirm invalid regex patterns fail closed without aborting ingestion,
+  metadata correction, or importer validation.
+- Confirm manual exact rules created from Review or transaction metadata edits
+  still override broader regex rules through deterministic ranking.
+- Update durable docs with final behavior and mark
+  `REGEX_BACKEND_MIGRATION.md` completed-only after M77 completes.
+- Do not perform hosted Supabase migration push, Edge Function deployment, iOS,
+  web, push notifications, or user-facing regex rule editor work unless
+  explicitly requested.
+
+### Acceptance Criteria
+
+- Focused Supabase and workbook importer verification passes locally or
+  documents an environment limitation with compensating evidence.
+- Durable docs describe backend-owned regex and non-regex merchant mapping rule
+  semantics for future ingestion work.
+- `REGEX_BACKEND_MIGRATION.md` is marked completed-only.
+- No unrelated deferred work is started.
+
 ## Cross-Milestone Consistency Rules
 
 - Ask the user before proceeding on any undocumented decision. Codex may recommend a default, but must wait for confirmation.

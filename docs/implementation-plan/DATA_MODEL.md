@@ -535,6 +535,13 @@ Rules:
   imports can apply the same confidence as the historical correction.
 - v1 correction behavior applies to past and future matching transactions.
 - Matching implementation should prefer exact normalized matches before pattern matches.
+- Milestones 74-77 plan to make Postgres the source of truth for rule matching
+  across Gmail and workbook ingestion. The planned backend behavior keeps
+  exact, prefix, suffix, and contains matches on normalized patterns, evaluates
+  regex patterns against normalized statement merchant text without normalizing
+  away regex syntax, treats invalid regex patterns as non-matches, and exposes a
+  read-only `classify_statement_merchant(...)` helper for import clients that
+  need rule IDs plus display names.
 
 ### Transaction Metadata Correction RPC
 

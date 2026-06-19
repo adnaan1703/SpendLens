@@ -75,6 +75,13 @@ any workbook rows suppressed by
 `deleted_transaction_sources` tombstones before comparing database totals. A
 tombstoned source row is intentionally absent, not an import failure.
 
+Milestones 74-77 plan the Regex Backend Migration for workbook classification.
+After that sequence, the workbook importer should call the backend
+`classify_statement_merchant(...)` contract for merchant mapping rules instead
+of evaluating exact, contains, prefix, suffix, or regex patterns in JavaScript.
+Workbook parsing, deterministic fingerprints, tombstone suppression, upserts,
+and validation totals remain importer responsibilities.
+
 ### Expected Initial Workbook Facts
 
 Current workbook facts to use in tests:
@@ -297,6 +304,13 @@ When the user corrects a mapping:
 - Apply it to future transactions.
 - Reclassify matching historical transactions.
 - Resolve related review items.
+
+Milestones 74-77 make backend rule matching authoritative for both Gmail and
+workbook import. Gmail already calls `match_merchant_mapping_rule(...)` during
+transaction insertion. The workbook importer currently has its own JavaScript
+rule matcher; M76 migrates it to a backend detail helper so regex behavior,
+invalid-pattern handling, and rule precedence stay consistent across ingestion
+paths.
 
 ## Privacy Rules
 

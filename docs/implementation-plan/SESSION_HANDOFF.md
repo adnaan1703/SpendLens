@@ -4,11 +4,12 @@ Use this file to coordinate work across multiple implementation sessions. Update
 
 ## Current Status
 
-- Current milestone: None. Milestone 73 was completed on 2026-06-16 as the
-  Parse Failure Review Regression, Docs, and Cleanup closeout.
-  Milestones 18-21 remain deferred by user request.
-- Last completed milestone: Milestone 73, Parse Failure Review Regression,
-  Docs, and Cleanup.
+- Current milestone: Milestone 75 is the next recommended implementation
+  milestone for Regex Backend Migration. Milestone 74 was completed on
+  2026-06-19 as the Regex Backend Migration Planning and Reference Readiness
+  docs-only closeout. Milestones 18-21 remain deferred by user request.
+- Last completed milestone: Milestone 74, Regex Backend Migration Planning and
+  Reference Readiness.
 - Current implementation state: Flutter Android app scaffold exists in
   `apps/mobile` with redesigned SpendLens Google sign-in, route protection,
   authenticated shell, RLS-safe profile/default-household bootstrap,
@@ -245,9 +246,15 @@ Use this file to coordinate work across multiple implementation sessions. Update
   `other` parse failures, verified paginated Review/body/ignore behavior
   together, documented historical backfill/resync expectations, and marked
   `GMAIL_PARSE_FAILURE_REVIEW.md` completed-only.
-  Milestones 18-21 remain planned and deferred by user request.
+  Milestone 74 added `REGEX_BACKEND_MIGRATION.md` as the companion plan for
+  backend-owned merchant mapping rule evaluation, including regex matching.
+  M75-M77 are planned for backend regex guardrails, workbook importer backend
+  classification, and final regression/docs cleanup. Runtime implementation was
+  not started during M74. Milestones 18-21 remain planned and deferred by user
+  request.
 - Remote deployment state: On 2026-06-08, user confirmed Supabase project `bslsitzdvrdosubbdxpd` as the intended dev/staging target. All local migrations through `20260607174515_ai_ready_layer_llm_features.sql` were pushed there, hosted expense Q&A and the now-retired legacy AI lookup function were active with JWT verification, and `GEMINI_API_KEY` was present in hosted Edge Function secrets by name. After the user signed in through the Android emulator, hosted profile/household bootstrap and authenticated Gemini Edge Function smoke passed. On 2026-06-08 for Milestone 13, `gmail-oauth-start` was deployed as version 2 with JWT verification, `gmail-sync` was deployed as version 2 without JWT verification, and new `gmail-backfill-range` was deployed as version 1 without JWT verification. Hosted `gmail-backfill-range` `OPTIONS` smoke returned 200, and an unauthenticated POST returned the expected service-key error. The live May Gmail backfill itself was not run because it requires the user to connect the target Gmail mailbox and invoke the runbook with a Supabase secret key from a local/platform secret store. On 2026-06-09, M16 deleted the hosted legacy AI lookup function from `bslsitzdvrdosubbdxpd` and a follow-up function list verified it absent. The M16 database migration and updated active Suggest function were verified locally but not pushed/deployed to hosted in this implementation session. On 2026-06-16, M71 was verified locally only; no hosted Supabase migration push or Edge Function deployment was run. M72 was Flutter-only; no hosted Supabase migration push or Edge Function deployment was run. M73 was verified locally only as a regression/docs closeout; no hosted Supabase migration push or Edge Function deployment was run.
-- Next recommended milestone: None queued in the active non-deferred plan.
+- Next recommended milestone: Milestone 75, Backend Regex Matcher Guardrails.
+  Read `docs/implementation-plan/REGEX_BACKEND_MIGRATION.md` before editing.
   Milestones 18-21 remain deferred unless the user resumes push notifications;
   iOS and web remain deferred future milestones unless explicitly resumed. If
   continuing hosted rollout separately, push currently local-only migrations and
@@ -504,6 +511,47 @@ Do not ask the user to perform all setup at once. Ask only when the relevant mil
 - Milestone 71, Parse Failure Pagination and Body Fetch Contract: completed.
 - Milestone 72, Review UI Pagination and Email Body Dialog: completed.
 - Milestone 73, Parse Failure Review Regression, Docs, and Cleanup: completed.
+- Milestone 74, Regex Backend Migration Planning and Reference Readiness:
+  completed.
+- Milestone 75, Backend Regex Matcher Guardrails: planned.
+- Milestone 76, Workbook Import Backend Classification: planned.
+- Milestone 77, Regex Backend Migration Regression, Docs, and Cleanup: planned.
+
+## Regex Backend Migration M74 Notes
+
+- Completed on 2026-06-19 as a planning-only documentation update. Milestones
+  18-21 remained deferred and were not started. M75 was not started.
+- Added `docs/implementation-plan/REGEX_BACKEND_MIGRATION.md` as the detailed
+  fresh-thread implementation plan for M75-M77.
+- Updated `docs/implementation-plan/README.md`,
+  `docs/implementation-plan/DATA_MODEL.md`,
+  `docs/implementation-plan/INGESTION.md`,
+  `docs/implementation-plan/WORKBOOK_IMPORT.md`, and
+  `docs/implementation-plan/MILESTONES.md` so backend-owned regex matching is
+  discoverable from standard planning entrypoints.
+- Planned milestone sequence:
+  - Milestone 75: Backend Regex Matcher Guardrails.
+  - Milestone 76: Workbook Import Backend Classification.
+  - Milestone 77: Regex Backend Migration Regression, Docs, and Cleanup.
+- Implementation remains planned. No migrations, Dart code, importer code,
+  SQL tests, Edge Functions, hosted Supabase changes, staging, commits, or
+  branch changes were started by this planning update.
+- Verification run:
+  - Planning docs and current rule-matching implementation context were
+    inspected before editing.
+- Known gaps:
+  - No markdown linter is configured or run for implementation-plan docs.
+- Assumptions made:
+  - "Regex Backend Migration" means migrating merchant mapping rule evaluation,
+    especially regex matching, out of workbook-import JavaScript and into
+    Postgres as the shared source of truth.
+  - Invalid regex patterns should fail closed by returning no match instead of
+    aborting ingestion or app correction flows.
+  - No user-facing regex authoring UI is required for this sequence.
+- Mocks created:
+  - None.
+- Mocks used:
+  - None.
 
 ## Gmail Parse Failure Review M73 Notes
 
