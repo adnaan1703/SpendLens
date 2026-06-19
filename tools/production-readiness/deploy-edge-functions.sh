@@ -16,6 +16,7 @@ supabase functions deploy \
   gmail-oauth-start \
   gmail-connector-status \
   gmail-disconnect \
+  gmail-parse-failure-body \
   expense-qa \
   transaction-metadata-suggest
 
