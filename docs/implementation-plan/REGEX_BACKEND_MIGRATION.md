@@ -144,6 +144,8 @@ Completion summary:
 
 ## M75 - Backend Regex Matcher Guardrails
 
+Status: Completed on 2026-06-19.
+
 Purpose: Make the backend matcher safe and explicit enough to become the
 source of truth for every ingestion path.
 
@@ -211,6 +213,7 @@ Verification:
 
 ```bash
 supabase db reset --local
+supabase test db --local supabase/tests/regex_backend_matcher_guardrails.sql
 supabase test db --local supabase/tests/merchant_review_corrections.sql
 supabase test db --local supabase/tests/transaction_metadata_editing.sql
 supabase test db --local supabase/tests/gmail_ingestion.sql
@@ -223,6 +226,38 @@ Completion summary requirements:
 - Assumptions made
 - Mocks created
 - Mocks used
+
+Completion summary:
+
+- Added migration `20260619074145_regex_backend_matcher_guardrails.sql` to
+  harden `public.merchant_rule_matches(...)` across exact, contains, prefix,
+  suffix, and regex matching.
+- Invalid regex patterns, unknown match types, blank normalized inputs, and
+  blank effective patterns now fail closed by returning no match.
+- Added `public.classify_statement_merchant(...)` as a stable,
+  `security invoker`, household-scoped read helper returning the winning rule's
+  IDs, display names, confidence, notes, and creator.
+- Preserved the existing winning-rule ranking in
+  `public.match_merchant_mapping_rule(...)`: exact, prefix, suffix, contains,
+  regex, priority ascending, created_at descending.
+- Added focused pgTAP coverage in
+  `supabase/tests/regex_backend_matcher_guardrails.sql` and extended Gmail
+  ingestion coverage to prove an invalid regex rule does not block real Gmail
+  rule matching.
+- Workbook importer migration remains planned for M76 and was not started.
+- Flutter UI, Gmail parser templates, hosted Supabase, iOS, web, push
+  notifications, and user-facing rule editor work were not changed.
+- Assumptions made:
+  - Existing non-regex rule patterns may be stored normalized or unnormalized;
+    the backend matcher normalizes them at comparison time.
+  - Regex rule patterns are authored as PostgreSQL regular expressions and must
+    be evaluated as stored against normalized statement merchant text.
+  - The detail helper should expose only rule/category/merchant metadata already
+    reachable through household-scoped RLS-safe tables.
+- Mocks created:
+  - None.
+- Mocks used:
+  - None.
 
 ## M76 - Workbook Import Backend Classification
 

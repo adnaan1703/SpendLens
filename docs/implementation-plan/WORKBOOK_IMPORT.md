@@ -43,13 +43,14 @@ tombstoned by owner transaction deletion is intentionally skipped and must not
 recreate a deleted transaction; validation totals subtract suppressed rows
 before comparing imported database totals.
 
-Milestones 74-77 plan the Regex Backend Migration. Today the importer fetches
+Milestone 75 added backend Regex Backend Migration guardrails and the
+`classify_statement_merchant(...)` helper. Today the importer still fetches
 active `merchant_mapping_rules` and evaluates rule matching in Node. After M76,
-the importer should call the backend `classify_statement_merchant(...)` helper
-for every workbook transaction that needs future-rule classification. The
-importer remains responsible for workbook parsing, deterministic IDs,
-tombstone-aware suppression, upsert orchestration, and validation; Postgres owns
-exact, contains, prefix, suffix, and regex matching semantics.
+the importer should call the backend helper for every workbook transaction that
+needs future-rule classification. The importer remains responsible for workbook
+parsing, deterministic IDs, tombstone-aware suppression, upsert orchestration,
+and validation; Postgres owns exact, contains, prefix, suffix, and regex
+matching semantics.
 
 ## Expected Fixture Totals
 

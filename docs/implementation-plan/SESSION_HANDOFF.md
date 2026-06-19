@@ -4,12 +4,11 @@ Use this file to coordinate work across multiple implementation sessions. Update
 
 ## Current Status
 
-- Current milestone: Milestone 75 is the next recommended implementation
-  milestone for Regex Backend Migration. Milestone 74 was completed on
-  2026-06-19 as the Regex Backend Migration Planning and Reference Readiness
-  docs-only closeout. Milestones 18-21 remain deferred by user request.
-- Last completed milestone: Milestone 74, Regex Backend Migration Planning and
-  Reference Readiness.
+- Current milestone: Milestone 76 is the next recommended implementation
+  milestone for Regex Backend Migration. Milestone 75 was completed on
+  2026-06-19 as Backend Regex Matcher Guardrails. Milestones 18-21 remain
+  deferred by user request.
+- Last completed milestone: Milestone 75, Backend Regex Matcher Guardrails.
 - Current implementation state: Flutter Android app scaffold exists in
   `apps/mobile` with redesigned SpendLens Google sign-in, route protection,
   authenticated shell, RLS-safe profile/default-household bootstrap,
@@ -248,12 +247,15 @@ Use this file to coordinate work across multiple implementation sessions. Update
   `GMAIL_PARSE_FAILURE_REVIEW.md` completed-only.
   Milestone 74 added `REGEX_BACKEND_MIGRATION.md` as the companion plan for
   backend-owned merchant mapping rule evaluation, including regex matching.
-  M75-M77 are planned for backend regex guardrails, workbook importer backend
-  classification, and final regression/docs cleanup. Runtime implementation was
-  not started during M74. Milestones 18-21 remain planned and deferred by user
+  Milestone 75 hardened backend matcher guardrails, made invalid regex rules
+  fail closed, preserved deterministic rule ranking, and added
+  `classify_statement_merchant(...)` for future import clients. M76-M77 remain
+  planned for workbook importer backend classification and final
+  regression/docs cleanup. Milestones 18-21 remain planned and deferred by user
   request.
 - Remote deployment state: On 2026-06-08, user confirmed Supabase project `bslsitzdvrdosubbdxpd` as the intended dev/staging target. All local migrations through `20260607174515_ai_ready_layer_llm_features.sql` were pushed there, hosted expense Q&A and the now-retired legacy AI lookup function were active with JWT verification, and `GEMINI_API_KEY` was present in hosted Edge Function secrets by name. After the user signed in through the Android emulator, hosted profile/household bootstrap and authenticated Gemini Edge Function smoke passed. On 2026-06-08 for Milestone 13, `gmail-oauth-start` was deployed as version 2 with JWT verification, `gmail-sync` was deployed as version 2 without JWT verification, and new `gmail-backfill-range` was deployed as version 1 without JWT verification. Hosted `gmail-backfill-range` `OPTIONS` smoke returned 200, and an unauthenticated POST returned the expected service-key error. The live May Gmail backfill itself was not run because it requires the user to connect the target Gmail mailbox and invoke the runbook with a Supabase secret key from a local/platform secret store. On 2026-06-09, M16 deleted the hosted legacy AI lookup function from `bslsitzdvrdosubbdxpd` and a follow-up function list verified it absent. The M16 database migration and updated active Suggest function were verified locally but not pushed/deployed to hosted in this implementation session. On 2026-06-16, M71 was verified locally only; no hosted Supabase migration push or Edge Function deployment was run. M72 was Flutter-only; no hosted Supabase migration push or Edge Function deployment was run. M73 was verified locally only as a regression/docs closeout; no hosted Supabase migration push or Edge Function deployment was run.
-- Next recommended milestone: Milestone 75, Backend Regex Matcher Guardrails.
+- Next recommended milestone: Milestone 76, Workbook Import Backend
+  Classification.
   Read `docs/implementation-plan/REGEX_BACKEND_MIGRATION.md` before editing.
   Milestones 18-21 remain deferred unless the user resumes push notifications;
   iOS and web remain deferred future milestones unless explicitly resumed. If
@@ -513,7 +515,7 @@ Do not ask the user to perform all setup at once. Ask only when the relevant mil
 - Milestone 73, Parse Failure Review Regression, Docs, and Cleanup: completed.
 - Milestone 74, Regex Backend Migration Planning and Reference Readiness:
   completed.
-- Milestone 75, Backend Regex Matcher Guardrails: planned.
+- Milestone 75, Backend Regex Matcher Guardrails: completed.
 - Milestone 76, Workbook Import Backend Classification: planned.
 - Milestone 77, Regex Backend Migration Regression, Docs, and Cleanup: planned.
 
@@ -548,6 +550,45 @@ Do not ask the user to perform all setup at once. Ask only when the relevant mil
   - Invalid regex patterns should fail closed by returning no match instead of
     aborting ingestion or app correction flows.
   - No user-facing regex authoring UI is required for this sequence.
+- Mocks created:
+  - None.
+- Mocks used:
+  - None.
+
+## Regex Backend Migration M75 Notes
+
+- Completed on 2026-06-19 as a Supabase/Postgres implementation milestone.
+  Milestones 18-21 remained deferred and were not started. M76 was not started.
+- Added migration
+  `supabase/migrations/20260619074145_regex_backend_matcher_guardrails.sql`.
+- Hardened `public.merchant_rule_matches(...)` so exact, contains, prefix, and
+  suffix compare normalized patterns, regex evaluates the stored PostgreSQL
+  regex against normalized statement merchant text, and invalid regex patterns
+  fail closed instead of aborting matching or ingestion.
+- Added `public.classify_statement_merchant(p_household_id uuid, p_statement_merchant text)`
+  as a stable `security invoker` helper granted to `authenticated` and
+  `service_role` only. It returns winning rule IDs, merchant/category display
+  names, confidence, notes, and creator, or no row when no rule matches.
+- Added `supabase/tests/regex_backend_matcher_guardrails.sql` and extended
+  `supabase/tests/gmail_ingestion.sql` with an invalid-regex regression through
+  the real Gmail ingestion RPC.
+- Verification run:
+  - `supabase db reset --local`
+  - `supabase test db --local supabase/tests/regex_backend_matcher_guardrails.sql`
+  - `supabase test db --local supabase/tests/merchant_review_corrections.sql`
+  - `supabase test db --local supabase/tests/transaction_metadata_editing.sql`
+  - `supabase test db --local supabase/tests/gmail_ingestion.sql`
+  - `supabase db lint --local --schema app_private,public --fail-on error`
+  - `git diff --check`
+- Known gaps:
+  - Workbook importer still evaluates rules in JavaScript until M76.
+  - Hosted Supabase migration push was not run.
+- Assumptions made:
+  - Existing non-regex rule patterns may be stored normalized or unnormalized;
+    the backend matcher normalizes them before comparison.
+  - Regex patterns are PostgreSQL regular expressions and should not be
+    normalized before evaluation.
+  - The detail helper should expose only RLS-scoped rule display metadata.
 - Mocks created:
   - None.
 - Mocks used:

@@ -534,14 +534,21 @@ Rules:
   statement merchant. The selected confidence persists on the rule so future
   imports can apply the same confidence as the historical correction.
 - v1 correction behavior applies to past and future matching transactions.
-- Matching implementation should prefer exact normalized matches before pattern matches.
-- Milestones 74-77 plan to make Postgres the source of truth for rule matching
-  across Gmail and workbook ingestion. The planned backend behavior keeps
-  exact, prefix, suffix, and contains matches on normalized patterns, evaluates
-  regex patterns against normalized statement merchant text without normalizing
-  away regex syntax, treats invalid regex patterns as non-matches, and exposes a
-  read-only `classify_statement_merchant(...)` helper for import clients that
-  need rule IDs plus display names.
+- Postgres owns backend rule matching for Gmail ingestion and future import
+  clients through `merchant_rule_matches(...)`,
+  `match_merchant_mapping_rule(...)`, and
+  `classify_statement_merchant(...)`.
+- Matching prefers exact, prefix, suffix, contains, then regex rules before
+  applying priority ascending and newest-rule tie-breaks.
+- Exact, prefix, suffix, and contains rules compare normalized statement
+  merchant text against normalized rule patterns. Regex rules evaluate the
+  stored pattern against normalized statement merchant text without normalizing
+  away regex syntax.
+- Blank inputs, blank effective patterns, unknown match types, and invalid
+  regex patterns fail closed by returning no match.
+- `classify_statement_merchant(...)` is a read-only `security invoker` helper
+  that returns the winning rule IDs, display names, confidence, notes, and
+  creator for callers that need classification details.
 
 ### Transaction Metadata Correction RPC
 

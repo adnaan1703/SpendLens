@@ -3773,6 +3773,10 @@ durable planning docs.
 
 ## Milestone 75: Backend Regex Matcher Guardrails
 
+### Status
+
+Completed on 2026-06-19.
+
 ### Objective
 
 Make the backend matcher safe and explicit enough to become the source of truth
@@ -3805,6 +3809,35 @@ for every ingestion path.
   deterministic precedence.
 - Existing Gmail and app correction rule behavior remains compatible.
 - Workbook importer migration remains planned for M76 and is not started.
+
+### Completion Summary
+
+- Added migration `20260619074145_regex_backend_matcher_guardrails.sql` to
+  harden `merchant_rule_matches(...)` so invalid regex, blank effective values,
+  and unknown match types fail closed.
+- Preserved existing deterministic ordering in
+  `match_merchant_mapping_rule(...)`: exact, prefix, suffix, contains, regex,
+  priority ascending, newest rule.
+- Added `classify_statement_merchant(...)` as a stable `security invoker`
+  helper that returns the winning rule's IDs, display names, confidence, notes,
+  and creator.
+- Added focused pgTAP coverage for regex/non-regex semantics, ordering,
+  function grants, no-match helper behavior, and invalid-regex-safe Gmail
+  ingestion.
+- M76 remains planned; workbook importer JavaScript rule matching was not
+  changed.
+- Milestones 18-21 remain deferred and were not started.
+- Assumptions made:
+  - Non-regex patterns may be stored normalized or unnormalized and are
+    normalized at comparison time.
+  - Regex patterns are PostgreSQL regular expressions and are evaluated as
+    stored against normalized statement merchant text.
+  - The detail helper should expose only RLS-scoped merchant/category/rule
+    metadata.
+- Mocks created:
+  - None.
+- Mocks used:
+  - None.
 
 ## Milestone 76: Workbook Import Backend Classification
 

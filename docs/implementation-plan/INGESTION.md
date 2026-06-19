@@ -75,10 +75,10 @@ any workbook rows suppressed by
 `deleted_transaction_sources` tombstones before comparing database totals. A
 tombstoned source row is intentionally absent, not an import failure.
 
-Milestones 74-77 plan the Regex Backend Migration for workbook classification.
-After that sequence, the workbook importer should call the backend
-`classify_statement_merchant(...)` contract for merchant mapping rules instead
-of evaluating exact, contains, prefix, suffix, or regex patterns in JavaScript.
+Milestone 75 added the backend Regex Backend Migration guardrails and the
+read-only `classify_statement_merchant(...)` contract. After M76, the workbook
+importer should call that backend helper for merchant mapping rules instead of
+evaluating exact, contains, prefix, suffix, or regex patterns in JavaScript.
 Workbook parsing, deterministic fingerprints, tombstone suppression, upserts,
 and validation totals remain importer responsibilities.
 

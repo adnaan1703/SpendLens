@@ -3,7 +3,7 @@ begin;
 create extension if not exists pgtap with schema extensions;
 set search_path = public, extensions;
 
-select plan(35);
+select plan(38);
 
 select isnt(
   (select installed_version from pg_available_extensions where name = 'supabase_vault'),
@@ -84,17 +84,29 @@ insert into public.merchant_mapping_rules (
   confidence,
   apply_to_future
 )
-values (
-  '71000000-0000-0000-0000-000000000001',
-  '31000000-0000-0000-0000-000000000001',
-  public.normalize_merchant_name('NOBROKER'),
-  'exact',
-  '61000000-0000-0000-0000-000000000001',
-  '51000000-0000-0000-0000-000000000001',
-  10,
-  'high',
-  true
-);
+values
+  (
+    '71000000-0000-0000-0000-000000000001',
+    '31000000-0000-0000-0000-000000000001',
+    public.normalize_merchant_name('NOBROKER'),
+    'exact',
+    '61000000-0000-0000-0000-000000000001',
+    '51000000-0000-0000-0000-000000000001',
+    10,
+    'high',
+    true
+  ),
+  (
+    '71000000-0000-0000-0000-000000000002',
+    '31000000-0000-0000-0000-000000000001',
+    '[',
+    'regex',
+    '61000000-0000-0000-0000-000000000001',
+    '51000000-0000-0000-0000-000000000001',
+    0,
+    'high',
+    true
+  );
 
 set local role service_role;
 
@@ -378,6 +390,16 @@ select is(
   (select count(*)::integer from public.review_items where status = 'open'),
   0,
   'known high-confidence merchant mapping avoids review item creation'
+);
+
+select is(
+  (
+    select classification_rule_id::text
+    from public.transactions
+    where source_fingerprint = 'gmail-fingerprint-1'
+  ),
+  '71000000-0000-0000-0000-000000000001',
+  'invalid regex rules do not block Gmail ingestion rule matching'
 );
 
 set local role service_role;
