@@ -1,9 +1,10 @@
 import assert from 'node:assert/strict';
+import { readFile } from 'node:fs/promises';
 import test from 'node:test';
 import {
   DEFAULT_WORKBOOK_PATH,
   EXPECTED_FIXTURE,
-  classifyTransactionsWithRules,
+  classifyTransactionsWithBackend,
   filterWorkbookDataForSuppression,
   formatMoney,
   readWorkbook,
@@ -84,15 +85,9 @@ test('tombstoned workbook fingerprints are skipped and validation totals are adj
   );
 });
 
-test('manual merchant mapping rules classify future parsed transactions', () => {
+test('backend classification helper classifies workbook transactions and preserves no-match rows', async () => {
+  const householdId = '03f00000-0000-5000-8000-000000000003';
   const transactions = [
-    {
-      statementMerchant: 'AMZN MKTP IN',
-      merchantGroup: 'Unknown Amazon',
-      category: 'Unclear',
-      subcategory: 'Needs Review',
-      confidence: 'low',
-    },
     {
       statementMerchant: 'AMAZON PRIME',
       merchantGroup: 'Unknown Amazon',
@@ -100,35 +95,70 @@ test('manual merchant mapping rules classify future parsed transactions', () => 
       subcategory: 'Needs Review',
       confidence: 'low',
     },
-  ];
-
-  const classified = classifyTransactionsWithRules(transactions, [
     {
-      id: 'rule-1',
-      pattern: 'amzn mktp in',
-      matchType: 'exact',
-      priority: 10,
-      confidence: 'manual',
-      createdBy: 'profile-1',
-      notes: 'Prefer marketplace category',
-      merchantId: 'merchant-shopping',
-      merchantGroup: 'Amazon Shopping',
-      categoryId: 'category-shopping',
-      category: 'Shopping',
-      subcategoryId: 'subcategory-marketplace',
-      subcategory: 'Marketplace',
+      statementMerchant: 'AMZN MKTP IN',
+      merchantGroup: 'Unknown Amazon',
+      category: 'Unclear',
+      subcategory: 'Needs Review',
+      confidence: 'low',
     },
-  ]);
+  ];
+  const queries = [];
+  const client = {
+    async query(sql, params) {
+      queries.push({ sql, params });
+      assert.match(sql, /public\.classify_statement_merchant\(\$1, \$2\)/);
+      if (params[1] !== 'AMAZON PRIME') return { rows: [] };
+      return {
+        rows: [
+          {
+            rule_id: '11111111-1111-5111-8111-111111111111',
+            merchant_id: '22222222-2222-5222-8222-222222222222',
+            merchant_name: 'Amazon Shopping',
+            category_id: '33333333-3333-5333-8333-333333333333',
+            category_name: 'Shopping',
+            subcategory_id: '44444444-4444-5444-8444-444444444444',
+            subcategory_name: 'Marketplace',
+            confidence: 'manual',
+            rule_notes: 'Regex-backed backend match',
+            rule_created_by: '55555555-5555-5555-8555-555555555555',
+          },
+        ],
+      };
+    },
+  };
+
+  const classified = await classifyTransactionsWithBackend(client, transactions, { householdId });
 
   assert.equal(classified[0].merchantGroup, 'Amazon Shopping');
   assert.equal(classified[0].category, 'Shopping');
   assert.equal(classified[0].subcategory, 'Marketplace');
   assert.equal(classified[0].confidence, 'manual');
-  assert.equal(classified[0].mappingRuleId, 'rule-1');
-  assert.equal(classified[0].mappingRuleCreatedBy, 'profile-1');
-  assert.equal(classified[0].mappingRuleNotes, 'Prefer marketplace category');
+  assert.equal(classified[0].mappingRuleId, '11111111-1111-5111-8111-111111111111');
+  assert.equal(classified[0].mappingRuleMerchantId, '22222222-2222-5222-8222-222222222222');
+  assert.equal(classified[0].mappingRuleCategoryId, '33333333-3333-5333-8333-333333333333');
+  assert.equal(classified[0].mappingRuleSubcategoryId, '44444444-4444-5444-8444-444444444444');
+  assert.equal(classified[0].mappingRuleCreatedBy, '55555555-5555-5555-8555-555555555555');
+  assert.equal(classified[0].mappingRuleNotes, 'Regex-backed backend match');
 
   assert.equal(classified[1].merchantGroup, 'Unknown Amazon');
   assert.equal(classified[1].category, 'Unclear');
   assert.equal(classified[1].mappingRuleId, null);
+  assert.equal(classified[1].mappingRuleMerchantId, null);
+  assert.equal(classified[1].mappingRuleCategoryId, null);
+  assert.equal(classified[1].mappingRuleSubcategoryId, null);
+  assert.deepEqual(
+    queries.map((query) => query.params),
+    [
+      [householdId, 'AMAZON PRIME'],
+      [householdId, 'AMZN MKTP IN'],
+    ],
+  );
+});
+
+test('workbook importer source does not contain a local merchant rule engine', async () => {
+  const source = await readFile(new URL('../src/workbook-importer.mjs', import.meta.url), 'utf8');
+  assert.equal(source.includes('new RegExp'), false);
+  assert.equal(source.includes('merchant_mapping_rules'), false);
+  assert.equal(source.includes('classify_statement_merchant'), true);
 });

@@ -206,8 +206,7 @@ Acceptance criteria:
 - Backend matching semantics cover exact, contains, prefix, suffix, and regex
   with deterministic precedence.
 - Existing Gmail and app correction rule behavior remains compatible.
-- M76 remains planned and the workbook importer still uses its existing
-  implementation until explicitly migrated.
+- Workbook importer migration is out of scope for M75.
 
 Verification:
 
@@ -244,7 +243,7 @@ Completion summary:
   `supabase/tests/regex_backend_matcher_guardrails.sql` and extended Gmail
   ingestion coverage to prove an invalid regex rule does not block real Gmail
   rule matching.
-- Workbook importer migration remains planned for M76 and was not started.
+- Workbook importer migration was left for M76 and was not started in M75.
 - Flutter UI, Gmail parser templates, hosted Supabase, iOS, web, push
   notifications, and user-facing rule editor work were not changed.
 - Assumptions made:
@@ -260,6 +259,8 @@ Completion summary:
   - None.
 
 ## M76 - Workbook Import Backend Classification
+
+Status: Completed on 2026-06-19.
 
 Purpose: Remove JavaScript-side merchant rule matching from the workbook
 importer and make workbook imports use the backend classification contract.
@@ -328,6 +329,40 @@ Completion summary requirements:
 - Assumptions made
 - Mocks created
 - Mocks used
+
+Completion summary:
+
+- Removed the workbook importer's live JavaScript-side merchant rule sorting,
+  precedence, and regex matching path.
+- Added importer classification through
+  `public.classify_statement_merchant(...)` for every workbook transaction
+  after household, taxonomy, source-account, and merchant seeding.
+- Preserved no-match behavior by keeping workbook-provided merchant, category,
+  subcategory, and confidence when the backend helper returns no row.
+- Added importer tests proving the backend helper is called, a returned
+  regex-backed classification result is consumed, no-match rows stay unchanged,
+  and production importer code no longer contains a local regex rule engine.
+- Verified a live local workbook import against Postgres: the first smoke
+  inserted 475 transactions, and the final idempotent rerun updated the same
+  475 transactions with 0 suppressed rows and 29 open review items.
+- M77 remains planned; final regex migration regression/docs cleanup was not
+  started.
+- Flutter UI, Gmail parser templates, hosted Supabase, iOS, web, push
+  notifications, and user-facing rule management were not changed.
+- Milestones 18-21 remain deferred and were not started.
+- Assumptions made:
+  - Direct local/admin Postgres import can call the stable backend helper after
+    deterministic seed data exists in the target household.
+  - Existing workbook-provided classifications remain the fallback when the
+    backend helper returns no match.
+  - Local mock coverage is enough to prove a regex-backed helper result is
+    consumed because regex parsing and invalid-pattern handling are already
+    owned and tested by the backend from M75.
+- Mocks created:
+  - A narrow Node test client mock for
+    `public.classify_statement_merchant(...)` responses.
+- Mocks used:
+  - The Node test client mock was used only in importer unit tests.
 
 ## M77 - Regex Backend Migration Regression, Docs, and Cleanup
 

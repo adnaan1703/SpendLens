@@ -145,8 +145,9 @@ This is not a "no backend" architecture. It is a backend without a permanently r
   regex rules fail closed, normalized non-regex patterns, preserved
   deterministic rule ranking, and added the read-only
   `classify_statement_merchant(...)` detail helper for future import clients.
-  Milestones 76-77 remain planned to migrate workbook import off
-  JavaScript-side rule matching and complete regression/docs cleanup.
+  Milestone 76 moved workbook importer classification onto that backend helper
+  and removed JavaScript-side rule sorting/regex matching from live imports.
+  Milestone 77 remains planned for final regression/docs cleanup.
 - Multi-target monthly caps: required-name recurring caps can include multiple
   categories, multiple labels, or both. A transaction counts once inside a cap
   when any selected category or label matches; overlapping caps are allowed.

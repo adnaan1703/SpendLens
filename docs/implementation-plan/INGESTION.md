@@ -76,9 +76,9 @@ any workbook rows suppressed by
 tombstoned source row is intentionally absent, not an import failure.
 
 Milestone 75 added the backend Regex Backend Migration guardrails and the
-read-only `classify_statement_merchant(...)` contract. After M76, the workbook
-importer should call that backend helper for merchant mapping rules instead of
-evaluating exact, contains, prefix, suffix, or regex patterns in JavaScript.
+read-only `classify_statement_merchant(...)` contract. Milestone 76 made the
+workbook importer call that backend helper for merchant mapping rules instead
+of evaluating exact, contains, prefix, suffix, or regex patterns in JavaScript.
 Workbook parsing, deterministic fingerprints, tombstone suppression, upserts,
 and validation totals remain importer responsibilities.
 
@@ -307,10 +307,9 @@ When the user corrects a mapping:
 
 Milestones 74-77 make backend rule matching authoritative for both Gmail and
 workbook import. Gmail already calls `match_merchant_mapping_rule(...)` during
-transaction insertion. The workbook importer currently has its own JavaScript
-rule matcher; M76 migrates it to a backend detail helper so regex behavior,
-invalid-pattern handling, and rule precedence stay consistent across ingestion
-paths.
+transaction insertion. Milestone 76 made the workbook importer call the backend
+detail helper so regex behavior, invalid-pattern handling, and rule precedence
+stay consistent across ingestion paths.
 
 ## Privacy Rules
 

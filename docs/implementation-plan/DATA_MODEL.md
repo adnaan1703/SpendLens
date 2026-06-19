@@ -534,8 +534,8 @@ Rules:
   statement merchant. The selected confidence persists on the rule so future
   imports can apply the same confidence as the historical correction.
 - v1 correction behavior applies to past and future matching transactions.
-- Postgres owns backend rule matching for Gmail ingestion and future import
-  clients through `merchant_rule_matches(...)`,
+- Postgres owns backend rule matching for Gmail ingestion and workbook/future
+  import clients through `merchant_rule_matches(...)`,
   `match_merchant_mapping_rule(...)`, and
   `classify_statement_merchant(...)`.
 - Matching prefers exact, prefix, suffix, contains, then regex rules before

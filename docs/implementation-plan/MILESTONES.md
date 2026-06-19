@@ -3808,7 +3808,7 @@ for every ingestion path.
 - Backend matching covers exact, contains, prefix, suffix, and regex with
   deterministic precedence.
 - Existing Gmail and app correction rule behavior remains compatible.
-- Workbook importer migration remains planned for M76 and is not started.
+- Workbook importer migration is out of scope for M75.
 
 ### Completion Summary
 
@@ -3824,8 +3824,8 @@ for every ingestion path.
 - Added focused pgTAP coverage for regex/non-regex semantics, ordering,
   function grants, no-match helper behavior, and invalid-regex-safe Gmail
   ingestion.
-- M76 remains planned; workbook importer JavaScript rule matching was not
-  changed.
+- Workbook importer JavaScript rule matching was intentionally left unchanged
+  in M75 and migrated later in M76.
 - Milestones 18-21 remain deferred and were not started.
 - Assumptions made:
   - Non-regex patterns may be stored normalized or unnormalized and are
@@ -3840,6 +3840,10 @@ for every ingestion path.
   - None.
 
 ## Milestone 76: Workbook Import Backend Classification
+
+### Status
+
+Completed on 2026-06-19.
 
 ### Objective
 
@@ -3877,6 +3881,38 @@ make workbook imports use the backend classification contract.
 - Existing workbook fixture validation still passes.
 - Tombstoned workbook rows remain suppressed rather than recreated.
 - Gmail ingestion and app correction behavior remain unchanged.
+
+### Completion Summary
+
+- Removed the workbook importer's live JavaScript-side merchant rule sorting,
+  precedence, and regex matching path.
+- Added importer classification through
+  `public.classify_statement_merchant(...)` for every workbook transaction
+  after household, taxonomy, source-account, and merchant seeding.
+- Preserved no-match behavior by keeping workbook-provided merchant, category,
+  subcategory, and confidence when the backend helper returns no row.
+- Added importer tests proving the backend helper is called, a returned
+  regex-backed classification result is consumed, no-match rows stay unchanged,
+  and production importer code no longer contains a local regex rule engine.
+- Verified a live local workbook import against Postgres: the first smoke
+  inserted 475 transactions, and the final idempotent rerun updated the same
+  475 transactions with 0 suppressed rows and 29 open review items.
+- M77 remains planned; final regex migration regression/docs cleanup was not
+  started.
+- Milestones 18-21 remain deferred and were not started.
+- Assumptions made:
+  - Direct local/admin Postgres import can call the stable backend helper after
+    deterministic seed data exists in the target household.
+  - Existing workbook-provided classifications remain the fallback when the
+    backend helper returns no match.
+  - Local mock coverage is enough to prove a regex-backed helper result is
+    consumed because regex parsing and invalid-pattern handling are already
+    owned and tested by the backend from M75.
+- Mocks created:
+  - A narrow Node test client mock for
+    `public.classify_statement_merchant(...)` responses.
+- Mocks used:
+  - The Node test client mock was used only in importer unit tests.
 
 ## Milestone 77: Regex Backend Migration Regression, Docs, and Cleanup
 

@@ -4,11 +4,12 @@ Use this file to coordinate work across multiple implementation sessions. Update
 
 ## Current Status
 
-- Current milestone: Milestone 76 is the next recommended implementation
-  milestone for Regex Backend Migration. Milestone 75 was completed on
-  2026-06-19 as Backend Regex Matcher Guardrails. Milestones 18-21 remain
+- Current milestone: Milestone 77 is the next recommended implementation
+  milestone for Regex Backend Migration. Milestone 76 was completed on
+  2026-06-19 as Workbook Import Backend Classification. Milestones 18-21 remain
   deferred by user request.
-- Last completed milestone: Milestone 75, Backend Regex Matcher Guardrails.
+- Last completed milestone: Milestone 76, Workbook Import Backend
+  Classification.
 - Current implementation state: Flutter Android app scaffold exists in
   `apps/mobile` with redesigned SpendLens Google sign-in, route protection,
   authenticated shell, RLS-safe profile/default-household bootstrap,
@@ -249,13 +250,14 @@ Use this file to coordinate work across multiple implementation sessions. Update
   backend-owned merchant mapping rule evaluation, including regex matching.
   Milestone 75 hardened backend matcher guardrails, made invalid regex rules
   fail closed, preserved deterministic rule ranking, and added
-  `classify_statement_merchant(...)` for future import clients. M76-M77 remain
-  planned for workbook importer backend classification and final
-  regression/docs cleanup. Milestones 18-21 remain planned and deferred by user
-  request.
-- Remote deployment state: On 2026-06-08, user confirmed Supabase project `bslsitzdvrdosubbdxpd` as the intended dev/staging target. All local migrations through `20260607174515_ai_ready_layer_llm_features.sql` were pushed there, hosted expense Q&A and the now-retired legacy AI lookup function were active with JWT verification, and `GEMINI_API_KEY` was present in hosted Edge Function secrets by name. After the user signed in through the Android emulator, hosted profile/household bootstrap and authenticated Gemini Edge Function smoke passed. On 2026-06-08 for Milestone 13, `gmail-oauth-start` was deployed as version 2 with JWT verification, `gmail-sync` was deployed as version 2 without JWT verification, and new `gmail-backfill-range` was deployed as version 1 without JWT verification. Hosted `gmail-backfill-range` `OPTIONS` smoke returned 200, and an unauthenticated POST returned the expected service-key error. The live May Gmail backfill itself was not run because it requires the user to connect the target Gmail mailbox and invoke the runbook with a Supabase secret key from a local/platform secret store. On 2026-06-09, M16 deleted the hosted legacy AI lookup function from `bslsitzdvrdosubbdxpd` and a follow-up function list verified it absent. The M16 database migration and updated active Suggest function were verified locally but not pushed/deployed to hosted in this implementation session. On 2026-06-16, M71 was verified locally only; no hosted Supabase migration push or Edge Function deployment was run. M72 was Flutter-only; no hosted Supabase migration push or Edge Function deployment was run. M73 was verified locally only as a regression/docs closeout; no hosted Supabase migration push or Edge Function deployment was run.
-- Next recommended milestone: Milestone 76, Workbook Import Backend
-  Classification.
+  `classify_statement_merchant(...)` for future import clients. Milestone 76
+  moved workbook import classification onto that backend helper and removed the
+  live JavaScript-side rule sorting/regex matching path. M77 remains planned
+  for final regression/docs cleanup. Milestones 18-21 remain planned and
+  deferred by user request.
+- Remote deployment state: On 2026-06-08, user confirmed Supabase project `bslsitzdvrdosubbdxpd` as the intended dev/staging target. All local migrations through `20260607174515_ai_ready_layer_llm_features.sql` were pushed there, hosted expense Q&A and the now-retired legacy AI lookup function were active with JWT verification, and `GEMINI_API_KEY` was present in hosted Edge Function secrets by name. After the user signed in through the Android emulator, hosted profile/household bootstrap and authenticated Gemini Edge Function smoke passed. On 2026-06-08 for Milestone 13, `gmail-oauth-start` was deployed as version 2 with JWT verification, `gmail-sync` was deployed as version 2 without JWT verification, and new `gmail-backfill-range` was deployed as version 1 without JWT verification. Hosted `gmail-backfill-range` `OPTIONS` smoke returned 200, and an unauthenticated POST returned the expected service-key error. The live May Gmail backfill itself was not run because it requires the user to connect the target Gmail mailbox and invoke the runbook with a Supabase secret key from a local/platform secret store. On 2026-06-09, M16 deleted the hosted legacy AI lookup function from `bslsitzdvrdosubbdxpd` and a follow-up function list verified it absent. The M16 database migration and updated active Suggest function were verified locally but not pushed/deployed to hosted in this implementation session. On 2026-06-16, M71 was verified locally only; no hosted Supabase migration push or Edge Function deployment was run. M72 was Flutter-only; no hosted Supabase migration push or Edge Function deployment was run. M73 was verified locally only as a regression/docs closeout; no hosted Supabase migration push or Edge Function deployment was run. On 2026-06-19, M76 was verified locally only; no hosted Supabase migration push, Edge Function deployment, or remote workbook import was run.
+- Next recommended milestone: Milestone 77, Regex Backend Migration Regression,
+  Docs, and Cleanup.
   Read `docs/implementation-plan/REGEX_BACKEND_MIGRATION.md` before editing.
   Milestones 18-21 remain deferred unless the user resumes push notifications;
   iOS and web remain deferred future milestones unless explicitly resumed. If
@@ -516,7 +518,7 @@ Do not ask the user to perform all setup at once. Ask only when the relevant mil
 - Milestone 74, Regex Backend Migration Planning and Reference Readiness:
   completed.
 - Milestone 75, Backend Regex Matcher Guardrails: completed.
-- Milestone 76, Workbook Import Backend Classification: planned.
+- Milestone 76, Workbook Import Backend Classification: completed.
 - Milestone 77, Regex Backend Migration Regression, Docs, and Cleanup: planned.
 
 ## Regex Backend Migration M74 Notes
@@ -593,6 +595,49 @@ Do not ask the user to perform all setup at once. Ask only when the relevant mil
   - None.
 - Mocks used:
   - None.
+
+## Regex Backend Migration M76 Notes
+
+- Completed on 2026-06-19 as a workbook-import implementation milestone.
+  Milestones 18-21 remained deferred and were not started. M77 was not
+  started.
+- Removed the live JavaScript-side merchant rule sorting, precedence, and regex
+  matching path from `tools/workbook-import/src/workbook-importer.mjs`.
+- Added classification through
+  `public.classify_statement_merchant(p_household_id, p_statement_merchant)`
+  for every workbook transaction after household, taxonomy, source-account, and
+  merchant seeding.
+- Preserved no-match behavior by keeping workbook-provided merchant, category,
+  subcategory, confidence, and null mapping-rule metadata when the backend
+  helper returns no row.
+- Added importer tests that prove the backend helper is called, a returned
+  regex-backed helper result is consumed, no-match rows stay unchanged, and
+  production importer code no longer contains a local JavaScript regex rule
+  engine.
+- Verification run:
+  - `pnpm --dir tools/workbook-import test`
+  - `pnpm --dir tools/workbook-import run validate`
+  - `supabase test db --local supabase/tests/merchant_review_corrections.sql`
+  - `supabase test db --local supabase/tests/transaction_metadata_editing.sql`
+  - `pnpm --dir tools/workbook-import run import`
+  - `git diff --check`
+- Known gaps:
+  - Full final regex migration regression/docs cleanup remains planned for M77.
+  - Hosted Supabase migration push, Edge Function deployment, and remote
+    workbook import were not run.
+- Assumptions made:
+  - Direct local/admin Postgres import can call the stable backend helper after
+    deterministic seed data exists in the target household.
+  - Existing workbook-provided classifications remain the fallback when the
+    backend helper returns no match.
+  - Local mock coverage is enough to prove a regex-backed helper result is
+    consumed because regex parsing and invalid-pattern handling are already
+    owned and tested by the backend from M75.
+- Mocks created:
+  - A narrow Node test client mock for
+    `public.classify_statement_merchant(...)` responses.
+- Mocks used:
+  - The Node test client mock was used only in importer unit tests.
 
 ## Gmail Parse Failure Review M73 Notes
 

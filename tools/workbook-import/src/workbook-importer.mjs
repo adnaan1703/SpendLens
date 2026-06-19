@@ -160,90 +160,6 @@ export function createSourceFingerprint(transaction) {
   return `workbook:fy2025-26:${digest}`;
 }
 
-export function merchantRuleMatches(rule, statementMerchant) {
-  const normalizedName = normalizeName(statementMerchant);
-  const pattern = normalizeName(rule.pattern);
-  if (!pattern || !normalizedName) return false;
-
-  switch (rule.matchType) {
-    case 'exact':
-      return normalizedName === pattern;
-    case 'contains':
-      return normalizedName.includes(pattern);
-    case 'prefix':
-      return normalizedName.startsWith(pattern);
-    case 'suffix':
-      return normalizedName.endsWith(pattern);
-    case 'regex':
-      try {
-        return new RegExp(rule.pattern).test(normalizedName);
-      } catch {
-        return false;
-      }
-    default:
-      return false;
-  }
-}
-
-function ruleMatchRank(matchType) {
-  switch (matchType) {
-    case 'exact':
-      return 0;
-    case 'prefix':
-      return 1;
-    case 'suffix':
-      return 2;
-    case 'contains':
-      return 3;
-    default:
-      return 4;
-  }
-}
-
-function sortMerchantRules(rules) {
-  return [...rules].sort((a, b) => {
-    const rankDifference = ruleMatchRank(a.matchType) - ruleMatchRank(b.matchType);
-    if (rankDifference !== 0) return rankDifference;
-
-    const priorityDifference = (a.priority ?? 100) - (b.priority ?? 100);
-    if (priorityDifference !== 0) return priorityDifference;
-
-    return String(b.createdAt ?? '').localeCompare(String(a.createdAt ?? ''));
-  });
-}
-
-export function findMerchantMappingRule(rules, statementMerchant) {
-  return sortMerchantRules(rules).find((rule) => merchantRuleMatches(rule, statementMerchant)) ?? null;
-}
-
-export function classifyTransactionsWithRules(transactions, rules) {
-  return transactions.map((transaction) => {
-    const rule = findMerchantMappingRule(rules, transaction.statementMerchant);
-    if (!rule) {
-      return {
-        ...transaction,
-        mappingRuleId: null,
-        mappingRuleCreatedBy: null,
-        mappingRuleNotes: null,
-      };
-    }
-
-    return {
-      ...transaction,
-      merchantGroup: rule.merchantGroup,
-      category: rule.category,
-      subcategory: rule.subcategory,
-      confidence: rule.confidence ?? 'manual',
-      mappingRuleId: rule.id,
-      mappingRuleCreatedBy: rule.createdBy ?? null,
-      mappingRuleNotes: rule.notes ?? null,
-      mappingRuleMerchantId: rule.merchantId,
-      mappingRuleCategoryId: rule.categoryId,
-      mappingRuleSubcategoryId: rule.subcategoryId,
-    };
-  });
-}
-
 export function deterministicUuid(scope, input) {
   const bytes = createHash('sha1').update(`${scope}:${input}`).digest().subarray(0, 16);
   bytes[6] = (bytes[6] & 0x0f) | 0x50;
@@ -752,58 +668,53 @@ async function upsertSourceAccounts(client, data, options) {
   return accounts;
 }
 
-async function fetchMerchantMappingRules(client, options) {
-  const result = await client.query(
-    `select
-       mmr.id,
-       mmr.pattern,
-       mmr.match_type,
-       mmr.priority,
-       mmr.confidence,
-       mmr.created_by,
-       mmr.created_at,
-       mmr.notes,
-       mmr.merchant_id,
-       m.display_name as merchant_group,
-       mmr.category_id,
-       c.name as category,
-       mmr.subcategory_id,
-       sc.name as subcategory
-     from public.merchant_mapping_rules mmr
-     join public.merchants m on m.id = mmr.merchant_id and m.household_id = mmr.household_id
-     join public.categories c on c.id = mmr.category_id and c.household_id = mmr.household_id
-     join public.subcategories sc on sc.id = mmr.subcategory_id and sc.household_id = mmr.household_id
-     where mmr.household_id = $1
-       and mmr.apply_to_future
-     order by
-       case mmr.match_type
-         when 'exact' then 0
-         when 'prefix' then 1
-         when 'suffix' then 2
-         when 'contains' then 3
-         else 4
-       end,
-       mmr.priority,
-       mmr.created_at desc`,
-    [options.householdId],
-  );
+export async function classifyTransactionsWithBackend(client, transactions, options) {
+  const classifiedTransactions = [];
+  for (const transaction of transactions) {
+    const result = await client.query(
+      `select
+         rule_id,
+         merchant_id,
+         merchant_name,
+         category_id,
+         category_name,
+         subcategory_id,
+         subcategory_name,
+         confidence,
+         rule_notes,
+         rule_created_by
+       from public.classify_statement_merchant($1, $2)`,
+      [options.householdId, transaction.statementMerchant],
+    );
+    const match = result.rows[0] ?? null;
+    if (!match) {
+      classifiedTransactions.push({
+        ...transaction,
+        mappingRuleId: null,
+        mappingRuleCreatedBy: null,
+        mappingRuleNotes: null,
+        mappingRuleMerchantId: null,
+        mappingRuleCategoryId: null,
+        mappingRuleSubcategoryId: null,
+      });
+      continue;
+    }
 
-  return result.rows.map((row) => ({
-    id: row.id,
-    pattern: row.pattern,
-    matchType: row.match_type,
-    priority: integerValue(row.priority),
-    confidence: row.confidence,
-    createdBy: row.created_by,
-    createdAt: row.created_at,
-    notes: row.notes,
-    merchantId: row.merchant_id,
-    merchantGroup: row.merchant_group,
-    categoryId: row.category_id,
-    category: row.category,
-    subcategoryId: row.subcategory_id,
-    subcategory: row.subcategory,
-  }));
+    classifiedTransactions.push({
+      ...transaction,
+      merchantGroup: match.merchant_name,
+      category: match.category_name,
+      subcategory: match.subcategory_name,
+      confidence: match.confidence ?? 'manual',
+      mappingRuleId: match.rule_id,
+      mappingRuleCreatedBy: match.rule_created_by ?? null,
+      mappingRuleNotes: match.rule_notes ?? null,
+      mappingRuleMerchantId: match.merchant_id,
+      mappingRuleCategoryId: match.category_id,
+      mappingRuleSubcategoryId: match.subcategory_id,
+    });
+  }
+  return classifiedTransactions;
 }
 
 async function upsertMerchants(client, data, options, categories, subcategories) {
@@ -1485,10 +1396,9 @@ export async function runImport(options = {}) {
     const subcategories = await upsertSubcategories(client, data, resolvedOptions, categories);
     const sourceAccounts = await upsertSourceAccounts(client, data, resolvedOptions);
     const merchants = await upsertMerchants(client, data, resolvedOptions, categories, subcategories);
-    const merchantMappingRules = await fetchMerchantMappingRules(client, resolvedOptions);
     const classifiedData = {
       ...data,
-      transactions: classifyTransactionsWithRules(data.transactions, merchantMappingRules),
+      transactions: await classifyTransactionsWithBackend(client, data.transactions, resolvedOptions),
     };
     const tombstonedFingerprints = await tombstonedWorkbookFingerprints(client, resolvedOptions);
     const { importData, suppression } = filterWorkbookDataForSuppression(classifiedData, tombstonedFingerprints);

@@ -44,13 +44,12 @@ recreate a deleted transaction; validation totals subtract suppressed rows
 before comparing imported database totals.
 
 Milestone 75 added backend Regex Backend Migration guardrails and the
-`classify_statement_merchant(...)` helper. Today the importer still fetches
-active `merchant_mapping_rules` and evaluates rule matching in Node. After M76,
-the importer should call the backend helper for every workbook transaction that
-needs future-rule classification. The importer remains responsible for workbook
-parsing, deterministic IDs, tombstone-aware suppression, upsert orchestration,
-and validation; Postgres owns exact, contains, prefix, suffix, and regex
-matching semantics.
+`classify_statement_merchant(...)` helper. Milestone 76 made the importer call
+that backend helper for every workbook transaction during live imports instead
+of fetching active `merchant_mapping_rules` or evaluating exact, contains,
+prefix, suffix, or regex rules in Node. The importer remains responsible for
+workbook parsing, deterministic IDs, tombstone-aware suppression, upsert
+orchestration, and validation; Postgres owns merchant rule matching semantics.
 
 ## Expected Fixture Totals
 
