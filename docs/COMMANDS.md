@@ -154,7 +154,7 @@ node --test supabase/functions/tests/gmail_parsers.test.mjs
 - `node --test` runs the Gmail parser tests that use Node ESM fixtures.
 
 ```sh
-SUPABASE_PROJECT_REF=<project-ref> tools/production-readiness/deploy-edge-functions.sh
+SUPABASE_PROJECT_REF=bslsitzdvrdosubbdxpd tools/production-readiness/deploy-edge-functions.sh
 ```
 
 Deploys the current hosted Edge Function set. The script deploys authenticated
@@ -504,4 +504,13 @@ flutter build appbundle --release \
   --dart-define=SUPABASE_URL=https://<production-project-ref>.supabase.co \
   --dart-define=SUPABASE_PUBLISHABLE_KEY=<production-publishable-key> \
   --dart-define=AUTH_REDIRECT_URL=com.olympus.spendlens://login-callback/
+```
+
+Or to run you can use
+```sh
+flutter run -d ZD2225M9KV \
+    --dart-define=APP_ENV=staging \
+    --dart-define=SUPABASE_URL=https://<staging-project-ref>.supabase.co \
+    --dart-define=SUPABASE_PUBLISHABLE_KEY=<staging-publishable-key> \
+    --dart-define=AUTH_REDIRECT_URL=com.olympus.spendlens://login-callback/
 ```

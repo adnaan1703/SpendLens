@@ -83,22 +83,23 @@ Deno.test("Gmail parse-failure body handler returns plain text without diagnosti
       body: JSON.stringify({ failure_id: authorizedFailure.failure_id }),
     }),
     {
-      requireUser: async () => ({
-        userClient,
-        user: { id: "13000000-0000-0000-0000-000000000001" },
-      }),
+      requireUser: () =>
+        Promise.resolve({
+          userClient,
+          user: { id: "13000000-0000-0000-0000-000000000001" },
+        }),
       createServiceClient: () => serviceClient,
-      refreshAccessToken: async (refreshToken) => {
+      refreshAccessToken: (refreshToken) => {
         refreshedToken = refreshToken;
-        return { access_token: "gmail-access-token" };
+        return Promise.resolve({ access_token: "gmail-access-token" });
       },
-      fetchGmailMessage: async (accessToken, messageId) => {
+      fetchGmailMessage: (accessToken, messageId) => {
         assert(
           accessToken === "gmail-access-token",
           "Gmail fetch must use the refreshed access token.",
         );
         fetchedMessageId = messageId;
-        return {
+        return Promise.resolve({
           id: messageId,
           threadId: "gmail-failure-thread-1",
           internalDate: String(new Date("2026-06-08T05:00:00Z").getTime()),
@@ -117,7 +118,7 @@ Deno.test("Gmail parse-failure body handler returns plain text without diagnosti
               data: encodeText("Full plain-text transaction alert body."),
             },
           },
-        };
+        });
       },
       extractPlainText,
       messageMetadata,
@@ -174,18 +175,18 @@ Deno.test("Gmail parse-failure body handler rejects inaccessible rows before Gma
       body: JSON.stringify({ failure_id: "inaccessible-failure" }),
     }),
     {
-      requireUser: async () => ({
-        userClient,
-        user: { id: "13000000-0000-0000-0000-000000000002" },
-      }),
+      requireUser: () =>
+        Promise.resolve({
+          userClient,
+          user: { id: "13000000-0000-0000-0000-000000000002" },
+        }),
       createServiceClient: () => {
         serviceClientCreated = true;
         throw new Error("Service client should not be created.");
       },
-      refreshAccessToken: async () => ({ access_token: "" }),
-      fetchGmailMessage: async () => {
-        throw new Error("Gmail should not be fetched.");
-      },
+      refreshAccessToken: () => Promise.resolve({ access_token: "" }),
+      fetchGmailMessage: () =>
+        Promise.reject(new Error("Gmail should not be fetched.")),
       extractPlainText,
       messageMetadata,
       logOperationalEvent,

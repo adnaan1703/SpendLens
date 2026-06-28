@@ -2,7 +2,10 @@ type LogLevel = "info" | "warn" | "error";
 
 type LogDetails = Record<string, unknown>;
 
-function fieldValue(error: Record<string, unknown>, key: string): string | null {
+function fieldValue(
+  error: Record<string, unknown>,
+  key: string,
+): string | null {
   const value = error[key];
   if (
     typeof value === "string" || typeof value === "number" ||

@@ -55,20 +55,6 @@ Deno.test("fetchGmailThread requests a full Gmail thread", async () => {
   }
 });
 
-function withPubsubTopic<T>(run: () => T): T {
-  const originalTopic = Deno.env.get("GOOGLE_PUBSUB_TOPIC");
-  Deno.env.set("GOOGLE_PUBSUB_TOPIC", "projects/test/topics/gmail");
-  try {
-    return run();
-  } finally {
-    if (originalTopic === undefined) {
-      Deno.env.delete("GOOGLE_PUBSUB_TOPIC");
-    } else {
-      Deno.env.set("GOOGLE_PUBSUB_TOPIC", originalTopic);
-    }
-  }
-}
-
 Deno.test("resolveWatchedGmailLabel finds the nested Gmail label by exact name", async () => {
   const originalFetch = globalThis.fetch;
   let requestedUrl: string | null = null;
@@ -129,8 +115,10 @@ Deno.test("watchGmailMailbox configures the resolved label only", async () => {
   }) as typeof fetch;
 
   try {
-    const watch = await withPubsubTopic(() =>
-      watchGmailMailbox("access-token", "Label_123")
+    const watch = await watchGmailMailbox(
+      "access-token",
+      "Label_123",
+      "projects/test/topics/gmail",
     );
 
     assert(watch.historyId === "123", "Watch history id was not returned.");

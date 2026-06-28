@@ -167,6 +167,7 @@ export async function resolveWatchedGmailLabel(
 export async function watchGmailMailbox(
   accessToken: string,
   labelId: string,
+  topicName: string = requiredEnv("GOOGLE_PUBSUB_TOPIC"),
 ): Promise<{
   historyId: string;
   expiration?: string;
@@ -188,7 +189,7 @@ export async function watchGmailMailbox(
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        topicName: requiredEnv("GOOGLE_PUBSUB_TOPIC"),
+        topicName,
         labelIds: [watchedLabelId],
         labelFilterBehavior: "include",
       }),
