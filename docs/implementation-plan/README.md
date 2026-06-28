@@ -26,14 +26,16 @@ Read these documents in order at the start of every new implementation thread:
 15. [Bill-Payment Category Semantics](BILL_PAYMENT_CATEGORY_SEMANTICS.md) as
     the completed-only reference for Milestones 82-85 and when touching
     `Payments/Credits (not expense)` transaction-type semantics
-16. [UI Redesign](UI_REDESIGN.md) when executing Milestones 37-51
-17. [Transaction Deletion](TRANSACTION_DELETION.md) when executing Milestones
+16. [Activity Charts Trends](ACTIVITY_CHARTS_TRENDS.md) when executing
+    Milestones 86-88 or touching Activity Charts category trend behavior
+17. [UI Redesign](UI_REDESIGN.md) when executing Milestones 37-51
+18. [Transaction Deletion](TRANSACTION_DELETION.md) when executing Milestones
     52-55
-18. [Merchant Autocomplete](MERCHANT_AUTOCOMPLETE.md) as the completed-only
+19. [Merchant Autocomplete](MERCHANT_AUTOCOMPLETE.md) as the completed-only
     reference for Milestones 56-60
-19. [Merchant Group Management](MERCHANT_GROUP_MANAGEMENT.md) as the
+20. [Merchant Group Management](MERCHANT_GROUP_MANAGEMENT.md) as the
     completed-only reference for Milestones 61-64
-20. [Session Handoff](SESSION_HANDOFF.md)
+21. [Session Handoff](SESSION_HANDOFF.md)
 
 Completed-only companion execution plans are removed after their durable
 behavior has been folded into this README, [Data Model](DATA_MODEL.md),
@@ -43,7 +45,7 @@ behavior has been folded into this README, [Data Model](DATA_MODEL.md),
 
 SpendLens is a personal and household expense intelligence app. The current implementation plan is Android-first: build the Flutter Android app first and defer iOS and web until later.
 
-The app imports historical credit-card analysis from `docs/Credit Card Spend Analysis - FY 2025-26.xlsx`, then moves to ongoing ingestion from Gmail transaction emails for credit cards and UPI. It presents spend by category, named monthly caps with category and label targets, recurring cap carry-forward semantics, Dashboard-context cap transaction drilldowns, transaction details, merchant review workflows, Activity list and chart views, manual piggy-bank ledgers surfaced as Vaults, backend-mediated Gemini expense Q&A, household category management, transaction labels, owner-only transaction deletion with source tombstones and workbook/Gmail resurrection suppression, merchant autocomplete with close-match duplicate guarding, Settings merchant group management, backend-owned regex merchant mapping, exact `Payments/Credits (not expense)` bill-payment semantics, a Dashboard bills-paid KPI, and planned Android push notifications for newly processed transactions. Milestones 37-51 completed the UI redesign that consolidated Transactions and Trends into Activity, presented Piggy Banks as Vaults, removed Settings from primary navigation, and added local light/dark/system theme support.
+The app imports historical credit-card analysis from `docs/Credit Card Spend Analysis - FY 2025-26.xlsx`, then moves to ongoing ingestion from Gmail transaction emails for credit cards and UPI. It presents spend by category, named monthly caps with category and label targets, recurring cap carry-forward semantics, Dashboard-context cap transaction drilldowns, transaction details, merchant review workflows, Activity list and chart views, manual piggy-bank ledgers surfaced as Vaults, backend-mediated Gemini expense Q&A, household category management, transaction labels, owner-only transaction deletion with source tombstones and workbook/Gmail resurrection suppression, merchant autocomplete with close-match duplicate guarding, Settings merchant group management, backend-owned regex merchant mapping, exact `Payments/Credits (not expense)` bill-payment semantics, a Dashboard bills-paid KPI, and planned Android push notifications for newly processed transactions. Milestones 37-51 completed the UI redesign that consolidated Transactions and Trends into Activity, presented Piggy Banks as Vaults, removed Settings from primary navigation, and added local light/dark/system theme support. Milestone 86 created the Activity Charts Trends plan for repairing month-by-month category trend visibility and adding a filtered top-10 category monthly comparison chart in Milestones 87-88.
 
 ## Architecture Decision
 
@@ -89,6 +91,12 @@ This is not a "no backend" architecture. It is a backend without a permanently r
   report the cleared amount. Because the rule is name-based, category renames
   to or from the exact name reshape affected transactions. Review state remains
   independent from bill-payment typing.
+- Activity chart trends: Milestone 86 created the companion plan for
+  Milestones 87-88. The planned behavior keeps Activity Charts on the existing
+  client-side `TrendReport.fromTransactions(...)` aggregation path, repairs
+  `Category Trend` so monthly category values stay visible through horizontal
+  scrolling on compact widths, and adds a filtered multi-line
+  `Top 10 Categories by Month` chart using monthly net expense buckets.
 - Category management: category/subcategory creation, rename, add, delete, and
   merge are app-facing and household-scoped; renames preserve IDs; category
   deletion requeues affected transactions for Review; category merge requires
@@ -237,10 +245,12 @@ When starting a new implementation thread:
 12. Read [Bill-Payment Category Semantics](BILL_PAYMENT_CATEGORY_SEMANTICS.md)
     when executing Milestones 82-85 or touching `Payments/Credits (not expense)`
     transaction-type semantics.
-13. Check [Session Handoff](SESSION_HANDOFF.md) for current status.
-14. Do only that milestone unless the user explicitly expands scope.
-15. Preserve documented invariants, especially idempotency, RLS isolation, and no raw email retention.
-16. Update milestone notes when an implementation decision changes the plan.
+13. Read [Activity Charts Trends](ACTIVITY_CHARTS_TRENDS.md) when executing
+    Milestones 86-88 or touching Activity Charts category trend behavior.
+14. Check [Session Handoff](SESSION_HANDOFF.md) for current status.
+15. Do only that milestone unless the user explicitly expands scope.
+16. Preserve documented invariants, especially idempotency, RLS isolation, and no raw email retention.
+17. Update milestone notes when an implementation decision changes the plan.
 
 ## Clarification Rule
 

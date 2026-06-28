@@ -4382,6 +4382,101 @@ behavior back into durable docs.
   - Existing fake finance repository/widget-test data from
     `apps/mobile/test/finance_features_test.dart`.
 
+## Milestone 86: Activity Charts Trend Planning and Reference Readiness
+
+### Status
+
+Completed on 2026-06-28. See
+[Activity Charts Trends](ACTIVITY_CHARTS_TRENDS.md#m86---activity-charts-trend-planning-and-reference-readiness).
+
+### Objective
+
+Create the Activity Charts Trends companion plan and queue the Flutter-only
+implementation and regression milestones.
+
+### Acceptance Criteria
+
+- `ACTIVITY_CHARTS_TRENDS.md` describes M86-M88 as serial standalone
+  milestones.
+- M87 is the next recommended non-deferred implementation milestone.
+- Durable docs state that implementation remains planned only.
+- No runtime Flutter, Supabase, importer, Edge Function, hosted rollout, iOS,
+  web, or push-notification work is started.
+
+### Completion Summary
+
+- Created the Activity Charts Trends companion plan and routed future
+  implementation through M87-M88.
+- Confirmed `Category Trend` should remain a month-by-month category table,
+  horizontally scrollable on compact widths.
+- Confirmed the new top-10 chart should be a horizontally scrollable multi-line
+  chart using the existing `fl_chart` dependency.
+- Confirmed top-10 category ranking uses total filtered net expense, and the
+  chart applies all existing Activity Charts filters.
+- Confirmed the data path remains client-side through existing
+  `TrendReport.fromTransactions(...)` aggregation for this sequence.
+- No Flutter, Supabase, importer, Edge Function, hosted rollout, iOS, web, push
+  notification, or runtime implementation work was started.
+- Verification:
+  - `rg -n "ACTIVITY_CHARTS_TRENDS|Milestone 8[6-8]|Top 10 Categories|Category Trend" docs/implementation-plan`
+  - `rg -n "^(<<<<<<<|=======|>>>>>>>)" docs/implementation-plan`
+  - `git diff --check`
+- Assumptions made:
+  - Existing trend aggregation is adequate for v1 because Activity Charts
+    already fetches filtered transactions and builds `CategoryTrend.months`.
+  - `netExpense` / `netSpend` is the intended expense basis.
+  - The top-10 chart should collapse to the selected category when the category
+    filter is active.
+- Mocks created:
+  - None.
+- Mocks used:
+  - None.
+
+## Milestone 87: Activity Charts Month-by-Month Category Trends
+
+### Status
+
+Planned. See
+[Activity Charts Trends](ACTIVITY_CHARTS_TRENDS.md#m87---activity-charts-month-by-month-category-trends).
+
+### Objective
+
+Repair the visible Activity Charts category trend presentation and add a
+top-category monthly comparison chart.
+
+### Acceptance Criteria
+
+- On compact Activity Charts widths, `Category Trend` shows month-by-month
+  category values through horizontal scrolling.
+- The monthly values are net monthly buckets, not accumulated totals.
+- `Top 10 Categories by Month` shows up to 10 category lines in one chart.
+- Existing Activity chart filters affect both the top-10 chart and the category
+  trend table.
+- Existing metric cards, monthly net chart, gross/refunds/net table, filters,
+  and CSV copy behavior continue to work.
+- No Supabase or repository contract changes are introduced.
+
+## Milestone 88: Activity Charts Regression, Docs, and Cleanup
+
+### Status
+
+Planned. See
+[Activity Charts Trends](ACTIVITY_CHARTS_TRENDS.md#m88---activity-charts-regression-docs-and-cleanup).
+
+### Objective
+
+Verify the complete Activity Charts trend improvement and fold final behavior
+into durable docs.
+
+### Acceptance Criteria
+
+- Focused Activity Charts tests pass.
+- Full Flutter analyze and test pass, or any environment limitation is recorded
+  with compensating evidence.
+- Durable docs describe the final Activity Charts trend behavior.
+- `ACTIVITY_CHARTS_TRENDS.md` is marked completed-only after M88.
+- No unrelated deferred work is started.
+
 ## Cross-Milestone Consistency Rules
 
 - Ask the user before proceeding on any undocumented decision. Codex may recommend a default, but must wait for confirmation.
@@ -4419,6 +4514,8 @@ behavior back into durable docs.
 - Payments/Credits bill-payment semantics must stay exact-name based on
   `Payments/Credits (not expense)` until a later approved milestone changes
   that rule. The bill-payment money shape must not auto-resolve Review rows.
+- Activity Charts category trends must use non-cumulative monthly net-expense
+  buckets unless a later approved milestone changes the chart basis.
 - Prefer deterministic rules before AI.
 - Keep client code free of service credentials.
 - Update these docs when architecture decisions change.

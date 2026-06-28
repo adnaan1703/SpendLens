@@ -4,10 +4,11 @@ Use this file to coordinate work across multiple implementation sessions. Update
 
 ## Current Status
 
-- Current milestone: None. There is no active non-deferred implementation
-  milestone queued. Milestones 18-21 remain deferred by user request.
-- Last completed milestone: Milestone 85, Bill-Payment Semantics Regression,
-  Docs, and Cleanup, completed on 2026-06-28.
+- Current milestone: None. The next recommended non-deferred implementation
+  milestone is Milestone 87, Activity Charts Month-by-Month Category Trends.
+  Milestones 18-21 remain deferred by user request.
+- Last completed milestone: Milestone 86, Activity Charts Trend Planning and
+  Reference Readiness, completed on 2026-06-28.
 - Current implementation state: Flutter Android app scaffold exists in
   `apps/mobile` with redesigned SpendLens Google sign-in, route protection,
   authenticated shell, RLS-safe profile/default-household bootstrap,
@@ -280,14 +281,18 @@ Use this file to coordinate work across multiple implementation sessions. Update
   `MonthlySpend.billPayments`, with focused mobile and desktop widget coverage.
   Milestone 85 verified the complete local bill-payment semantics regression
   path, folded final behavior into durable docs, and marked
-  `BILL_PAYMENT_CATEGORY_SEMANTICS.md` completed-only.
+  `BILL_PAYMENT_CATEGORY_SEMANTICS.md` completed-only. Milestone 86 added
+  `ACTIVITY_CHARTS_TRENDS.md` as the companion plan for repairing Activity
+  Charts category trend month visibility and adding a filtered top-10 category
+  monthly comparison chart; M87-M88 remain planned.
   Milestones 18-21 remain planned and deferred by user request.
-- Remote deployment state: On 2026-06-08, user confirmed Supabase project `bslsitzdvrdosubbdxpd` as the intended dev/staging target. All local migrations through `20260607174515_ai_ready_layer_llm_features.sql` were pushed there, hosted expense Q&A and the now-retired legacy AI lookup function were active with JWT verification, and `GEMINI_API_KEY` was present in hosted Edge Function secrets by name. After the user signed in through the Android emulator, hosted profile/household bootstrap and authenticated Gemini Edge Function smoke passed. On 2026-06-08 for Milestone 13, `gmail-oauth-start` was deployed as version 2 with JWT verification, `gmail-sync` was deployed as version 2 without JWT verification, and new `gmail-backfill-range` was deployed as version 1 without JWT verification. Hosted `gmail-backfill-range` `OPTIONS` smoke returned 200, and an unauthenticated POST returned the expected service-key error. The live May Gmail backfill itself was not run because it requires the user to connect the target Gmail mailbox and invoke the runbook with a Supabase secret key from a local/platform secret store. On 2026-06-09, M16 deleted the hosted legacy AI lookup function from `bslsitzdvrdosubbdxpd` and a follow-up function list verified it absent. The M16 database migration and updated active Suggest function were verified locally but not pushed/deployed to hosted in this implementation session. On 2026-06-16, M71 was verified locally only; no hosted Supabase migration push or Edge Function deployment was run. M72 was Flutter-only; no hosted Supabase migration push or Edge Function deployment was run. M73 was verified locally only as a regression/docs closeout; no hosted Supabase migration push or Edge Function deployment was run. On 2026-06-19, M76 was verified locally only; no hosted Supabase migration push, Edge Function deployment, or remote workbook import was run. On 2026-06-19, M77 was verified locally only; no hosted Supabase migration push, Edge Function deployment, remote workbook import, iOS, web, push notifications, or user-facing regex rule editor work was run. On 2026-06-28, M78 was planning/docs-only; no Supabase migration, Edge Function deployment, Flutter implementation, hosted rollout, iOS, web, or push-notification work was started. On 2026-06-28, M79 was verified locally only; no hosted Supabase migration push, Edge Function deployment, remote workbook import, Dashboard route/screen, iOS, web, or push-notification work was started. On 2026-06-28, M80 was verified locally only; no hosted Supabase migration push, Edge Function deployment, remote workbook import, transaction editing from cap drilldown, iOS, web, or push-notification work was started. On 2026-06-28, M81 was verified locally only; no hosted Supabase migration push, app release, Edge Function deployment, remote workbook import, transaction editing from cap drilldown, Activity export, cap reports, cap notifications, iOS, web, or push-notification work was started. On 2026-06-28, M82 was planning/docs-only; no Supabase migration, Flutter implementation, Edge Function deployment, hosted rollout, remote workbook import, app release, iOS, web, or push-notification work was started. On 2026-06-28, M83 was verified locally only; no hosted Supabase migration push, Edge Function deployment, Flutter implementation, remote workbook import, app release, iOS, web, push notification, or Dashboard KPI work was started. The exact `supabase db reset --local` command was attempted but blocked by local Docker registry credential loading; the full local migration stack was applied through the running Postgres container as compensating compile evidence before focused pgTAP and lint passed. On 2026-06-28, M84 was verified locally as a Flutter-only Dashboard KPI milestone; no hosted Supabase migration push, Edge Function deployment, importer work, remote workbook import, app release, iOS, web, push notification, Activity filter, Review, transaction detail, or bill-payment drilldown work was started. On 2026-06-28, M85 was verified locally as a regression/docs closeout; no hosted Supabase migration push, Edge Function deployment, remote workbook import, app release, iOS, web, push notification, Activity export, bill-payment drilldown, transaction-type editor, category flag migration, or unrelated cleanup was started.
-- Next recommended milestone: None. No active non-deferred implementation
-  milestone is queued. Milestones 18-21 remain deferred unless the user resumes
-  push notifications; iOS and web remain deferred future milestones unless
-  explicitly resumed. Hosted rollout remains separate unless the user asks for
-  it.
+- Remote deployment state: On 2026-06-08, user confirmed Supabase project `bslsitzdvrdosubbdxpd` as the intended dev/staging target. All local migrations through `20260607174515_ai_ready_layer_llm_features.sql` were pushed there, hosted expense Q&A and the now-retired legacy AI lookup function were active with JWT verification, and `GEMINI_API_KEY` was present in hosted Edge Function secrets by name. After the user signed in through the Android emulator, hosted profile/household bootstrap and authenticated Gemini Edge Function smoke passed. On 2026-06-08 for Milestone 13, `gmail-oauth-start` was deployed as version 2 with JWT verification, `gmail-sync` was deployed as version 2 without JWT verification, and new `gmail-backfill-range` was deployed as version 1 without JWT verification. Hosted `gmail-backfill-range` `OPTIONS` smoke returned 200, and an unauthenticated POST returned the expected service-key error. The live May Gmail backfill itself was not run because it requires the user to connect the target Gmail mailbox and invoke the runbook with a Supabase secret key from a local/platform secret store. On 2026-06-09, M16 deleted the hosted legacy AI lookup function from `bslsitzdvrdosubbdxpd` and a follow-up function list verified it absent. The M16 database migration and updated active Suggest function were verified locally but not pushed/deployed to hosted in this implementation session. On 2026-06-16, M71 was verified locally only; no hosted Supabase migration push or Edge Function deployment was run. M72 was Flutter-only; no hosted Supabase migration push or Edge Function deployment was run. M73 was verified locally only as a regression/docs closeout; no hosted Supabase migration push or Edge Function deployment was run. On 2026-06-19, M76 was verified locally only; no hosted Supabase migration push, Edge Function deployment, or remote workbook import was run. On 2026-06-19, M77 was verified locally only; no hosted Supabase migration push, Edge Function deployment, remote workbook import, iOS, web, push notifications, or user-facing regex rule editor work was run. On 2026-06-28, M78 was planning/docs-only; no Supabase migration, Edge Function deployment, Flutter implementation, hosted rollout, iOS, web, or push-notification work was started. On 2026-06-28, M79 was verified locally only; no hosted Supabase migration push, Edge Function deployment, remote workbook import, Dashboard route/screen, iOS, web, or push-notification work was started. On 2026-06-28, M80 was verified locally only; no hosted Supabase migration push, Edge Function deployment, remote workbook import, transaction editing from cap drilldown, iOS, web, or push-notification work was started. On 2026-06-28, M81 was verified locally only; no hosted Supabase migration push, app release, Edge Function deployment, remote workbook import, transaction editing from cap drilldown, Activity export, cap reports, cap notifications, iOS, web, or push-notification work was started. On 2026-06-28, M82 was planning/docs-only; no Supabase migration, Flutter implementation, Edge Function deployment, hosted rollout, remote workbook import, app release, iOS, web, or push-notification work was started. On 2026-06-28, M83 was verified locally only; no hosted Supabase migration push, Edge Function deployment, Flutter implementation, remote workbook import, app release, iOS, web, push notification, or Dashboard KPI work was started. The exact `supabase db reset --local` command was attempted but blocked by local Docker registry credential loading; the full local migration stack was applied through the running Postgres container as compensating compile evidence before focused pgTAP and lint passed. On 2026-06-28, M84 was verified locally as a Flutter-only Dashboard KPI milestone; no hosted Supabase migration push, Edge Function deployment, importer work, remote workbook import, app release, iOS, web, push notification, Activity filter, Review, transaction detail, or bill-payment drilldown work was started. On 2026-06-28, M85 was verified locally as a regression/docs closeout; no hosted Supabase migration push, Edge Function deployment, remote workbook import, app release, iOS, web, push notification, Activity export, bill-payment drilldown, transaction-type editor, category flag migration, or unrelated cleanup was started. On 2026-06-28, M86 was planning/docs-only; no Flutter implementation, Supabase migration, importer, Edge Function, hosted rollout, app release, iOS, web, push notification, Activity export, or runtime code work was started.
+- Next recommended milestone: Milestone 87, Activity Charts Month-by-Month
+  Category Trends. Execute only M87 when asked; do not start M88 until the user
+  explicitly requests it. Milestones 18-21 remain deferred unless the user
+  resumes push notifications; iOS and web remain deferred future milestones
+  unless explicitly resumed. Hosted rollout remains separate unless the user
+  asks for it.
 - Documentation state: completed-only companion execution plans for transaction
   metadata editing and category management were retired from `docs/` on
   2026-06-12. `docs/implementation-plan/MONTHLY_CAPS.md` remains active as the
@@ -315,6 +320,8 @@ Use this file to coordinate work across multiple implementation sessions. Update
   `docs/implementation-plan/BILL_PAYMENT_CATEGORY_SEMANTICS.md` is
   completed-only after completed Milestones 82-85 and can be removed in a later
   cleanup if the repository's completed-plan convention calls for it.
+  `docs/implementation-plan/ACTIVITY_CHARTS_TRENDS.md` is the active companion
+  plan for planned Milestones 87-88.
 
 ## Required Reading for New Threads
 
@@ -336,15 +343,18 @@ At the start of a new implementation thread, read:
 12. `docs/implementation-plan/BILL_PAYMENT_CATEGORY_SEMANTICS.md` when
     executing Milestone 82, 83, 84, or 85, or when touching
     `Payments/Credits (not expense)` transaction-type semantics
-13. `docs/implementation-plan/UI_REDESIGN.md` when executing Milestone 37 through 51
-14. `docs/implementation-plan/TRANSACTION_DELETION.md` when executing Milestone 52 through 55
-15. `docs/implementation-plan/MERCHANT_AUTOCOMPLETE.md` when touching merchant
+13. `docs/implementation-plan/ACTIVITY_CHARTS_TRENDS.md` when executing
+    Milestone 86, 87, or 88, or when touching Activity Charts category trend
+    behavior
+14. `docs/implementation-plan/UI_REDESIGN.md` when executing Milestone 37 through 51
+15. `docs/implementation-plan/TRANSACTION_DELETION.md` when executing Milestone 52 through 55
+16. `docs/implementation-plan/MERCHANT_AUTOCOMPLETE.md` when touching merchant
     search/autocomplete or metadata-editor duplicate guarding
-16. `docs/implementation-plan/MERCHANT_GROUP_MANAGEMENT.md` when touching
+17. `docs/implementation-plan/MERCHANT_GROUP_MANAGEMENT.md` when touching
     merchant group rename/merge behavior
-17. `DESIGN.md` when executing Milestone 37 through 51 or Milestone 80
-18. `docs/design-references/stitch/themed-dashboard-ui-redesign/README.md` when executing Milestone 37 through 51
-19. This handoff file
+18. `DESIGN.md` when executing Milestone 37 through 51 or Milestone 80 or 87
+19. `docs/design-references/stitch/themed-dashboard-ui-redesign/README.md` when executing Milestone 37 through 51
+20. This handoff file
 
 ## Current Assumptions
 
@@ -372,6 +382,11 @@ At the start of a new implementation thread, read:
   ignore-safe pagination behavior. Milestone 73 completed final regression/docs
   cleanup and marked the companion plan completed-only. Historical skipped mail
   requires explicit backfill/resync before it can appear in Review.
+- Activity Charts trend work in Milestones 86-88 is planned as Flutter-only.
+  It should preserve the existing `TrendReport.fromTransactions(...)`
+  client-side aggregation path, use `netExpense` / `netSpend`, avoid
+  accumulated or running totals, and keep all existing Activity Charts filters
+  applied to the new top-10 category chart.
 - `Netbanking :: IMPS` is implemented as Gmail/source candidate type
   `netbanking_imps`; it is not category taxonomy and does not replace ledger
   `transaction_type` values such as `debit_spend`.
@@ -581,6 +596,43 @@ Do not ask the user to perform all setup at once. Ask only when the relevant mil
 - Milestone 84, Dashboard Bills Paid KPI: completed.
 - Milestone 85, Bill-Payment Semantics Regression, Docs, and Cleanup:
   completed.
+- Milestone 86, Activity Charts Trend Planning and Reference Readiness:
+  completed.
+- Milestone 87, Activity Charts Month-by-Month Category Trends: planned.
+- Milestone 88, Activity Charts Regression, Docs, and Cleanup: planned.
+
+## Activity Charts Trends M86 Notes
+
+- Completed on 2026-06-28 as a planning-only documentation update. Milestones
+  18-21 remained deferred and were not started. M87 is the next recommended
+  non-deferred implementation milestone.
+- Added `docs/implementation-plan/ACTIVITY_CHARTS_TRENDS.md` as the companion
+  plan for repairing Activity Charts category trend month visibility and adding
+  a filtered top-10 category monthly comparison chart.
+- Updated `README.md`, `MILESTONES.md`, and this handoff so M87-M88 are
+  discoverable from the repo's standard planning entrypoints.
+- Planned milestone sequence:
+  - Milestone 87: Activity Charts Month-by-Month Category Trends.
+  - Milestone 88: Activity Charts Regression, Docs, and Cleanup.
+- Implementation remains planned. No Flutter, Supabase, importer, Edge
+  Function, hosted rollout, app release, iOS, web, push notification, Activity
+  export, or runtime code work was started by this planning update.
+- Verification run:
+  - `rg -n "ACTIVITY_CHARTS_TRENDS|Milestone 8[6-8]|Top 10 Categories|Category Trend" docs/implementation-plan`
+  - `rg -n "^(<<<<<<<|=======|>>>>>>>)" docs/implementation-plan`
+  - `git diff --check`
+- Known gaps:
+  - No markdown linter is configured or run for implementation-plan docs.
+- Assumptions made:
+  - Existing trend aggregation is adequate for v1 because Activity Charts
+    already fetches filtered transactions and builds `CategoryTrend.months`.
+  - `netExpense` / `netSpend` is the intended expense basis.
+  - The top-10 chart should collapse to the selected category when the category
+    filter is active.
+- Mocks created:
+  - None.
+- Mocks used:
+  - None.
 
 ## Bill-Payment Category Semantics M85 Notes
 
