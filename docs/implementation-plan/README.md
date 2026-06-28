@@ -21,8 +21,8 @@ Read these documents in order at the start of every new implementation thread:
 11. [Push Notifications](PUSH_NOTIFICATIONS.md) when executing Milestones 18-21
 12. [Transaction Labels](TRANSACTION_LABELS.md) when executing Milestones 26-28
 13. [Monthly Caps](MONTHLY_CAPS.md) when executing Milestones 29-35
-14. [Monthly Cap Drilldown](MONTHLY_CAP_DRILLDOWN.md) when executing
-    Milestones 78-81
+14. [Monthly Cap Drilldown](MONTHLY_CAP_DRILLDOWN.md) as the completed-only
+    reference for Milestones 78-81 and when touching cap drilldown behavior
 15. [UI Redesign](UI_REDESIGN.md) when executing Milestones 37-51
 16. [Transaction Deletion](TRANSACTION_DELETION.md) when executing Milestones
     52-55
@@ -40,7 +40,7 @@ behavior has been folded into this README, [Data Model](DATA_MODEL.md),
 
 SpendLens is a personal and household expense intelligence app. The current implementation plan is Android-first: build the Flutter Android app first and defer iOS and web until later.
 
-The app imports historical credit-card analysis from `docs/Credit Card Spend Analysis - FY 2025-26.xlsx`, then moves to ongoing ingestion from Gmail transaction emails for credit cards and UPI. It presents spend by category, named monthly caps with category and label targets, recurring cap carry-forward semantics, transaction details, merchant review workflows, Activity list and chart views, manual piggy-bank ledgers surfaced as Vaults, backend-mediated Gemini expense Q&A, household category management, transaction labels, owner-only transaction deletion with source tombstones and workbook/Gmail resurrection suppression, merchant autocomplete with close-match duplicate guarding, Settings merchant group management, backend-owned regex merchant mapping, and planned Android push notifications for newly processed transactions. Milestones 37-51 completed the UI redesign that consolidated Transactions and Trends into Activity, presented Piggy Banks as Vaults, removed Settings from primary navigation, and added local light/dark/system theme support.
+The app imports historical credit-card analysis from `docs/Credit Card Spend Analysis - FY 2025-26.xlsx`, then moves to ongoing ingestion from Gmail transaction emails for credit cards and UPI. It presents spend by category, named monthly caps with category and label targets, recurring cap carry-forward semantics, Dashboard-context cap transaction drilldowns, transaction details, merchant review workflows, Activity list and chart views, manual piggy-bank ledgers surfaced as Vaults, backend-mediated Gemini expense Q&A, household category management, transaction labels, owner-only transaction deletion with source tombstones and workbook/Gmail resurrection suppression, merchant autocomplete with close-match duplicate guarding, Settings merchant group management, backend-owned regex merchant mapping, and planned Android push notifications for newly processed transactions. Milestones 37-51 completed the UI redesign that consolidated Transactions and Trends into Activity, presented Piggy Banks as Vaults, removed Settings from primary navigation, and added local light/dark/system theme support.
 
 ## Architecture Decision
 
@@ -70,7 +70,10 @@ This is not a "no backend" architecture. It is a backend without a permanently r
   forward while prior months remain readable. Optional positive or negative
   carry-forward is calculated in Postgres and shown on Dashboard as base,
   carried, effective available, spent, remaining/over, percent, matched count,
-  and target details.
+  and target details. Dashboard cap rows open a dedicated view-only
+  cap-transaction screen for the selected month; membership is read from the
+  monthly-cap transaction RPC rather than approximated with Activity filters,
+  and `Under review` means an open Review queue item for that transaction.
 - Piggy banks: manual ledger accounts in v1.
 - Merchant corrections: apply to matching past and future transactions.
 - Transaction metadata edits: apply to the matching normalized statement merchant
@@ -156,10 +159,13 @@ This is not a "no backend" architecture. It is a backend without a permanently r
   `REGEX_BACKEND_MIGRATION.md` as a completed-only reference.
 - Monthly cap drilldown: Milestone 78 created the companion plan for opening a
   view-only Dashboard-context transaction screen from each monthly cap row.
-  Milestones 79-81 are planned to add the cap transaction RPC/repository
-  contract, the DESIGN.md-based Flutter route and screen, and final
-  regression/docs cleanup. The planned screen must not redirect to Activity or
-  approximate cap membership with Activity filters.
+  Milestone 79 added the `get_monthly_cap_transactions(...)` RPC, Flutter
+  repository models, and provider. Milestone 80 added the Dashboard child route,
+  tappable cap rows, paginated view-only screen, open-review highlighting,
+  invalid/stale states, and Back-to-Dashboard behavior. Milestone 81 verified
+  the combined local Supabase and Flutter regression path and left
+  `MONTHLY_CAP_DRILLDOWN.md` as completed-only. The screen must not redirect
+  to Activity or approximate cap membership with Activity filters.
 - Multi-target monthly caps: required-name recurring caps can include multiple
   categories, multiple labels, or both. A transaction counts once inside a cap
   when any selected category or label matches; overlapping caps are allowed.
@@ -215,8 +221,8 @@ When starting a new implementation thread:
    completed reference material when touching Review parse-failure body viewing.
 10. Read [Regex Backend Migration](REGEX_BACKEND_MIGRATION.md) as the
     completed-only reference when touching merchant mapping regex/rule matching.
-11. Read [Monthly Cap Drilldown](MONTHLY_CAP_DRILLDOWN.md) when executing
-    Milestone 78, 79, 80, or 81.
+11. Read [Monthly Cap Drilldown](MONTHLY_CAP_DRILLDOWN.md) as completed
+    reference material when touching cap drilldown behavior.
 12. Check [Session Handoff](SESSION_HANDOFF.md) for current status.
 13. Do only that milestone unless the user explicitly expands scope.
 14. Preserve documented invariants, especially idempotency, RLS isolation, and no raw email retention.

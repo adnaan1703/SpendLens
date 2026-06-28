@@ -4131,7 +4131,7 @@ paginated view-only transaction list.
 
 ### Status
 
-Planned. See
+Completed on 2026-06-28. See
 [Monthly Cap Drilldown](MONTHLY_CAP_DRILLDOWN.md#m81---monthly-cap-drilldown-regression-docs-and-cleanup).
 
 ### Objective
@@ -4149,6 +4149,44 @@ durable docs.
   highlighting behavior.
 - `MONTHLY_CAP_DRILLDOWN.md` is marked completed-only.
 - No unrelated deferred work is started.
+
+### Completion Summary
+
+- Verified the full monthly-cap drilldown path across the M79
+  `get_monthly_cap_transactions(...)` backend/repository contract and the M80
+  Dashboard route/view-only screen.
+- Confirmed focused local regression coverage for monthly cap progress, cap
+  transactions, Activity filters, Review `Under review` semantics, Dashboard
+  cap edit/stop controls, and 390px responsive layout.
+- Folded final behavior into `README.md`, `DATA_MODEL.md`,
+  `MONTHLY_CAPS.md`, this tracker, `SESSION_HANDOFF.md`, and
+  `MONTHLY_CAP_DRILLDOWN.md`.
+- Marked `MONTHLY_CAP_DRILLDOWN.md` completed-only after M81.
+- Confirmed hosted Supabase migration push, app release work, iOS, web, push
+  notifications, Activity export, cap reports, cap notifications, and
+  transaction editing from cap drilldown remain separate explicit operations.
+- Verification passed:
+  - `supabase db reset --local`
+  - `supabase test db --local supabase/tests/monthly_caps.sql`
+  - `supabase test db --local supabase/tests/rls_isolation.sql`
+  - `supabase db lint --local --schema app_private,public --fail-on error`
+  - `cd apps/mobile && flutter analyze`
+  - `cd apps/mobile && flutter test test/finance_features_test.dart`
+  - `cd apps/mobile && flutter test`
+  - `git diff --check`
+- Assumptions made:
+  - Existing M79/M80 tests are the appropriate local regression surface for
+    the complete cap drilldown workflow.
+  - Hosted migration push and app release remain rollout work rather than part
+    of M81 closeout.
+  - With no Milestone 82 in the current tracker and M18-M21 deferred by user
+    request, there is no next active non-deferred SpendLens milestone after
+    M81.
+- Mocks created:
+  - None.
+- Mocks used:
+  - Existing fake finance repository/widget-test data from
+    `apps/mobile/test/finance_features_test.dart`.
 
 ## Cross-Milestone Consistency Rules
 

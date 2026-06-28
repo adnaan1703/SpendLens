@@ -2,11 +2,10 @@
 
 Last updated: 2026-06-28
 
-This document is the implementation plan for showing the transactions inside a
-monthly cap from Dashboard. Each milestone below is a standalone milestone
-intended to be executed in a separate Codex thread. Stop after completing and
-documenting the current milestone; do not automatically continue to the next
-milestone.
+This completed-only document records the implementation plan and final
+closeout for showing the transactions inside a monthly cap from Dashboard.
+Milestones 78-81 were executed as standalone milestones in separate Codex
+threads.
 
 ## Target Behavior
 
@@ -407,7 +406,7 @@ Completion summary:
 
 ## M81 - Monthly Cap Drilldown Regression, Docs, and Cleanup
 
-Status: Planned.
+Status: Completed on 2026-06-28.
 
 Purpose: Verify the complete cap drilldown workflow and fold final behavior
 back into durable docs.
@@ -471,3 +470,42 @@ Completion summary requirements:
 - Assumptions made
 - Mocks created
 - Mocks used
+
+Completion summary:
+
+- Verified the complete Dashboard monthly cap drilldown workflow across the
+  M79 `get_monthly_cap_transactions(...)` backend/repository contract and the
+  M80 Dashboard-context route and view-only screen.
+- Confirmed local regression coverage for monthly cap progress, cap
+  transaction membership and pagination, Activity filter preservation, Review
+  `Under review` highlighting, Dashboard cap edit/stop controls, invalid-month
+  handling, direct Back-to-Dashboard behavior, and the 390px responsive layout.
+- Updated durable docs with final behavior in `README.md`, `DATA_MODEL.md`,
+  `MONTHLY_CAPS.md`, `MILESTONES.md`, `SESSION_HANDOFF.md`, and this plan.
+- Marked this plan completed-only after M81.
+- Confirmed hosted Supabase migration push and app release work remain separate
+  explicit rollout operations.
+- Deferred scope was not started: push notifications, iOS, web, Activity
+  export, cap reports, cap notifications, transaction detail/edit/delete/label
+  edit from cap drilldown, and unrelated cleanup.
+- No Milestone 82 is present in the current tracker; Milestones 18-21 remain
+  deferred by user request.
+- Verification run:
+  - `supabase db reset --local`
+  - `supabase test db --local supabase/tests/monthly_caps.sql`
+  - `supabase test db --local supabase/tests/rls_isolation.sql`
+  - `supabase db lint --local --schema app_private,public --fail-on error`
+  - `cd apps/mobile && flutter analyze`
+  - `cd apps/mobile && flutter test test/finance_features_test.dart`
+  - `cd apps/mobile && flutter test`
+  - `git diff --check`
+- Assumptions made:
+  - M81 should only close the drilldown plan, not add new runtime behavior.
+  - Existing M79/M80 focused tests are the intended cap-drilldown regression
+    surface for local verification.
+  - Hosted rollout and release actions need explicit user resumption.
+- Mocks created:
+  - None.
+- Mocks used:
+  - Existing fake finance repository/widget-test data from
+    `apps/mobile/test/finance_features_test.dart`.

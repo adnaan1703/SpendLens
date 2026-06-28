@@ -441,9 +441,12 @@ matched-count values.
 
 ### Monthly cap transaction drilldown (M79-M81)
 
-Milestone 79 adds the read-only cap transaction drilldown data contract for the
-Dashboard Monthly caps section. Milestones 80-81 add the visible Dashboard
-route/screen and final regression/docs closeout.
+Milestones 79-81 completed the read-only cap transaction drilldown for the
+Dashboard Monthly caps section. Milestone 79 added the app-facing RPC and
+Flutter repository contract. Milestone 80 added the Dashboard-context route and
+view-only paginated screen. Milestone 81 verified the combined local Supabase
+and Flutter regression path and marked the companion drilldown plan
+completed-only.
 
 App-facing read path:
 
@@ -464,8 +467,10 @@ Rules:
 - Returned rows include view-only transaction fields, merchant/category/
   subcategory names, ordered transaction label ids/names, `is_under_review`,
   and the newest open `review_item_id`.
-- The Flutter screen is view-only and must not route to Activity with filters
-  applied.
+- The Flutter screen is view-only and must not expose transaction detail,
+  metadata edit, label edit, delete, export, cap report, or notification
+  actions.
+- Cap drilldown must not route to Activity with filters applied.
 
 ## Merchants and Mapping
 

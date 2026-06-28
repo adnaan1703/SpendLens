@@ -1,6 +1,6 @@
 # Monthly Caps Plan
 
-Last updated: 2026-06-13
+Last updated: 2026-06-28
 
 This document is the implementation plan for named monthly caps, including the
 completed multi-target category/label work, recurring cap foundation, and
@@ -9,9 +9,9 @@ intended to be executed in a separate Codex thread. Stop after completing and
 documenting the current milestone; do not automatically continue to the next
 milestone.
 
-For the planned post-M35 Dashboard cap transaction drilldown, see
-[Monthly Cap Drilldown](MONTHLY_CAP_DRILLDOWN.md). That follow-up is tracked as
-Milestones 78-81 and must not be implemented by routing cap taps to Activity
+For the completed post-M35 Dashboard cap transaction drilldown, see
+[Monthly Cap Drilldown](MONTHLY_CAP_DRILLDOWN.md). That follow-up was completed
+as Milestones 78-81 and must not be changed by routing cap taps to Activity
 filters.
 
 ## Target Behavior
@@ -52,6 +52,14 @@ The completed M29-M35 implementation supports:
 - Toggling carry-forward from the Dashboard cap form and showing base, carried,
   effective available, spent, remaining/over, percent, matched count, and target
   values in cap rows.
+
+The completed M78-M81 drilldown follow-up additionally supports opening a
+dedicated Dashboard-context, view-only transaction list from a cap row for the
+selected month. The drilldown uses the backend cap-membership RPC, keeps
+category OR label matching and one-count-per-cap semantics, highlights rows
+with open Review queue items as `Under review`, paginates results, and leaves
+transaction editing, label editing, deletion, export, reports, notifications,
+and Activity filters out of scope.
 
 Each recurring cap can optionally carry forward the previous month's remaining
 amount into the next month:
@@ -980,7 +988,8 @@ Completion notes:
 
 - Subcategory caps.
 - Merchant, source-account, amount-range, pattern, or AI-suggested cap targets.
-- Cap-row drilldown to Transactions.
+- Transaction detail/edit/delete/label-edit actions from cap drilldown.
+- Activity-filter, export, report, or analytics expansion from cap drilldown.
 - Cap notifications, alerts, or push delivery.
 - Shared household templates or annual budget planning.
 - Label auto-assignment from cap creation.
