@@ -4331,7 +4331,7 @@ Surface the selected month's bills-paid amount on Dashboard using the existing
 
 ### Status
 
-Planned. See
+Completed on 2026-06-28. See
 [Bill-Payment Category Semantics](BILL_PAYMENT_CATEGORY_SEMANTICS.md#m85---bill-payment-semantics-regression-docs-and-cleanup).
 
 ### Objective
@@ -4349,6 +4349,38 @@ behavior back into durable docs.
 - Review queue behavior remains independent from bill-payment typing.
 - `BILL_PAYMENT_CATEGORY_SEMANTICS.md` is marked completed-only.
 - No unrelated deferred work is started.
+
+### Completion Summary
+
+- Verified the complete bill-payment semantics workflow across focused
+  Supabase pgTAP tests, importer tests/dry-run validation, Dashboard and Review
+  Flutter coverage, and the full Flutter test suite.
+- Folded final behavior into durable docs and marked
+  `BILL_PAYMENT_CATEGORY_SEMANTICS.md` completed-only.
+- Confirmed exact-category bill-payment rows no longer inflate gross spend, net
+  expense, or monthly caps, and the Dashboard `Bills paid` KPI uses
+  `MonthlySpend.billPayments`.
+- Confirmed Review behavior remains independent from bill-payment typing.
+- No hosted Supabase rollout, app release, push notifications, iOS, web,
+  Activity export, bill-payment drilldown, transaction-type editor, category
+  flag migration, or unrelated cleanup was started.
+- Verification:
+  - `supabase db reset --local` was attempted but blocked after database
+    initialization by `docker-credential-desktop get`; the full migration stack
+    was applied directly through the healthy local Postgres container as
+    compensating compile evidence.
+  - The required focused Supabase tests, schema lint, workbook importer tests
+    and validation, Flutter analyze, focused Flutter tests, full Flutter tests,
+    and `git diff --check` passed.
+- Assumptions made:
+  - Exact category-name matching remains the final M82-M85 rule until a later
+    approved milestone changes it.
+  - Hosted rollout and app release remain explicit follow-up operations.
+- Mocks created:
+  - None.
+- Mocks used:
+  - Existing fake finance repository/widget-test data from
+    `apps/mobile/test/finance_features_test.dart`.
 
 ## Cross-Milestone Consistency Rules
 

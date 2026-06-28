@@ -2,11 +2,10 @@
 
 Last updated: 2026-06-28
 
-This document is the implementation plan for treating the household category
-named `Payments/Credits (not expense)` as bill-payment semantics. Each
-milestone below is a standalone milestone intended to be executed in a separate
-Codex thread. Stop after completing and documenting the current milestone; do
-not automatically continue to the next milestone.
+This completed-only reference records the implemented behavior for treating the
+household category named `Payments/Credits (not expense)` as bill-payment
+semantics. Milestones 82-85 are complete; future changes to this exact-name
+rule need a new explicit plan.
 
 ## Target Behavior
 
@@ -36,8 +35,8 @@ of subcategory.
   `bill_payment_credit` to zero gross/refund/net values.
 - `public.v_monthly_spend` already exposes `bill_payments` as the sum of
   `abs(amount)` for `bill_payment_credit` transactions.
-- Flutter already parses `MonthlySpend.billPayments` from
-  `v_monthly_spend`, but Dashboard does not display it.
+- Flutter parses `MonthlySpend.billPayments` from `v_monthly_spend`, and
+  Dashboard displays it as the `Bills paid` KPI.
 - Dashboard spending UI lives in
   `apps/mobile/lib/src/features/dashboard/dashboard_screen.dart`.
 - The category rule is exact-name based by user decision. Do not add a new
@@ -390,7 +389,7 @@ Completion summary:
 
 ## M85 - Bill-Payment Semantics Regression, Docs, and Cleanup
 
-Status: Planned.
+Status: Completed on 2026-06-28.
 
 Purpose: Verify the complete category-driven bill-payment workflow and fold
 final behavior into durable docs.
@@ -458,3 +457,58 @@ Completion summary requirements:
 - Assumptions made
 - Mocks created
 - Mocks used
+
+Completion summary:
+
+- Verified the complete category-driven bill-payment workflow across the
+  focused Supabase pgTAP path, importer tests/dry-run validation, Dashboard and
+  Review Flutter coverage, and full Flutter tests.
+- Folded final exact-name behavior into durable docs: `README.md`,
+  `ARCHITECTURE.md`, `DATA_MODEL.md`, `INGESTION.md`, `MONTHLY_CAPS.md`,
+  `MILESTONES.md`, `SESSION_HANDOFF.md`, and this completed-only reference.
+- Confirmed existing and future `Payments/Credits (not expense)` transactions
+  are normalized by Postgres to `bill_payment_credit` with preserved `amount`
+  and zero gross/refund/net expense, so they move into
+  `v_monthly_spend.bill_payments`, stay out of monthly cap spend, and feed the
+  Dashboard `Bills paid` KPI.
+- Confirmed Review queue behavior remains independent from bill-payment typing.
+- No push notifications, iOS, web, Activity export, bill-payment drilldown,
+  transaction-type editor, category flag migration, hosted Supabase rollout,
+  app release, or unrelated cleanup was started.
+- Verification run:
+  - `supabase db reset --local` was attempted with the local stack stopped, then
+    after `supabase db start` made `supabase_db_SpendLens` healthy. The reset
+    recreated and initialized the database but blocked in
+    `docker-credential-desktop get` while loading registry credentials, then was
+    interrupted.
+  - As compensating local compile evidence, all `supabase/migrations/*.sql`
+    files were applied in order through `docker exec -i supabase_db_SpendLens
+    psql -v ON_ERROR_STOP=1 -U postgres -d postgres`.
+  - `supabase test db --local supabase/tests/bill_payment_category_semantics.sql`
+    passed.
+  - `supabase test db --local supabase/tests/summary_views.sql` passed.
+  - `supabase test db --local supabase/tests/monthly_caps.sql` passed when run
+    serially; an initial parallel run hit pgTAP enable contention.
+  - `supabase test db --local supabase/tests/gmail_ingestion.sql` passed when
+    run serially; an initial parallel run hit pgTAP enable contention.
+  - `supabase db lint --local --schema app_private,public --fail-on error`
+    passed.
+  - `pnpm --dir tools/workbook-import test` passed.
+  - `pnpm --dir tools/workbook-import run validate` passed.
+  - `cd apps/mobile && flutter analyze` passed.
+  - `cd apps/mobile && flutter test test/finance_features_test.dart` passed.
+  - `cd apps/mobile && flutter test` passed.
+  - `git diff --check` passed.
+- Assumptions made:
+  - The existing exact-name rule remains the final M82-M85 behavior until a
+    later approved milestone changes it.
+  - The local reset blocker is a Docker credential-helper issue, not a schema
+    failure, because direct migration application, focused pgTAP, schema lint,
+    importer validation, and Flutter tests passed against the healthy local DB.
+  - Hosted Supabase migration push and app release remain separate explicit
+    rollout operations.
+- Mocks created:
+  - None.
+- Mocks used:
+  - Existing fake finance repository/widget-test data from
+    `apps/mobile/test/finance_features_test.dart`.

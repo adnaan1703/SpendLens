@@ -82,12 +82,11 @@ of evaluating exact, contains, prefix, suffix, or regex patterns in JavaScript.
 Workbook parsing, deterministic fingerprints, tombstone suppression, upserts,
 and validation totals remain importer responsibilities.
 
-Milestones 82-85 plan the `Payments/Credits (not expense)` category semantics
-as a database-owned invariant rather than workbook-only importer logic. After
-M83 completes, any transaction stored with that exact household category name
-should be forced to `bill_payment_credit` money shape by Postgres regardless of
-whether it came from workbook, Gmail, manual metadata correction, or future
-import paths. Until M83-M85 complete, this behavior remains planned only.
+Milestones 82-85 completed the `Payments/Credits (not expense)` category
+semantics as a database-owned invariant rather than workbook-only importer
+logic. Any transaction stored with that exact household category name is forced
+to `bill_payment_credit` money shape by Postgres regardless of whether it came
+from workbook, Gmail, manual metadata correction, or future import paths.
 
 ### Expected Initial Workbook Facts
 
@@ -321,10 +320,10 @@ stored-pattern regex evaluation, and invalid-regex fail-closed behavior now live
 in Postgres for both ingestion paths. Milestone 77 verified the focused local
 regression path; hosted rollout remains a separate explicit operation.
 
-The planned M82-M85 bill-payment category semantics sit after merchant/category
-classification. They should not change rule matching confidence, create or
-resolve Review rows, or alter Gmail parse-failure handling; they only normalize
-the persisted transaction type and money columns for the exact
+The M82-M85 bill-payment category semantics sit after merchant/category
+classification. They do not change rule matching confidence, create or resolve
+Review rows, or alter Gmail parse-failure handling; they only normalize the
+persisted transaction type and money columns for the exact
 `Payments/Credits (not expense)` category.
 
 ## Privacy Rules

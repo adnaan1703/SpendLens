@@ -24,7 +24,7 @@ Read these documents in order at the start of every new implementation thread:
 14. [Monthly Cap Drilldown](MONTHLY_CAP_DRILLDOWN.md) as the completed-only
     reference for Milestones 78-81 and when touching cap drilldown behavior
 15. [Bill-Payment Category Semantics](BILL_PAYMENT_CATEGORY_SEMANTICS.md) as
-    the active plan for Milestones 82-85 and when touching
+    the completed-only reference for Milestones 82-85 and when touching
     `Payments/Credits (not expense)` transaction-type semantics
 16. [UI Redesign](UI_REDESIGN.md) when executing Milestones 37-51
 17. [Transaction Deletion](TRANSACTION_DELETION.md) when executing Milestones
@@ -43,7 +43,7 @@ behavior has been folded into this README, [Data Model](DATA_MODEL.md),
 
 SpendLens is a personal and household expense intelligence app. The current implementation plan is Android-first: build the Flutter Android app first and defer iOS and web until later.
 
-The app imports historical credit-card analysis from `docs/Credit Card Spend Analysis - FY 2025-26.xlsx`, then moves to ongoing ingestion from Gmail transaction emails for credit cards and UPI. It presents spend by category, named monthly caps with category and label targets, recurring cap carry-forward semantics, Dashboard-context cap transaction drilldowns, transaction details, merchant review workflows, Activity list and chart views, manual piggy-bank ledgers surfaced as Vaults, backend-mediated Gemini expense Q&A, household category management, transaction labels, owner-only transaction deletion with source tombstones and workbook/Gmail resurrection suppression, merchant autocomplete with close-match duplicate guarding, Settings merchant group management, backend-owned regex merchant mapping, planned `Payments/Credits (not expense)` bill-payment semantics, and planned Android push notifications for newly processed transactions. Milestones 37-51 completed the UI redesign that consolidated Transactions and Trends into Activity, presented Piggy Banks as Vaults, removed Settings from primary navigation, and added local light/dark/system theme support.
+The app imports historical credit-card analysis from `docs/Credit Card Spend Analysis - FY 2025-26.xlsx`, then moves to ongoing ingestion from Gmail transaction emails for credit cards and UPI. It presents spend by category, named monthly caps with category and label targets, recurring cap carry-forward semantics, Dashboard-context cap transaction drilldowns, transaction details, merchant review workflows, Activity list and chart views, manual piggy-bank ledgers surfaced as Vaults, backend-mediated Gemini expense Q&A, household category management, transaction labels, owner-only transaction deletion with source tombstones and workbook/Gmail resurrection suppression, merchant autocomplete with close-match duplicate guarding, Settings merchant group management, backend-owned regex merchant mapping, exact `Payments/Credits (not expense)` bill-payment semantics, a Dashboard bills-paid KPI, and planned Android push notifications for newly processed transactions. Milestones 37-51 completed the UI redesign that consolidated Transactions and Trends into Activity, presented Piggy Banks as Vaults, removed Settings from primary navigation, and added local light/dark/system theme support.
 
 ## Architecture Decision
 
@@ -81,15 +81,14 @@ This is not a "no backend" architecture. It is a backend without a permanently r
 - Merchant corrections: apply to matching past and future transactions.
 - Transaction metadata edits: apply to the matching normalized statement merchant
   and future imports unless a milestone explicitly narrows scope.
-- Bill-payment category semantics: Milestone 82 created the active companion
-  plan for making the exact household category name
-  `Payments/Credits (not expense)` force `bill_payment_credit` transaction
-  shape with zero gross/net expense, plus a Dashboard bills-paid KPI.
-  Because the planned rule is name-based, category renames to or from the exact
-  name should reshape affected transactions when M83 implements the database
-  invariant.
-  Milestones 83-85 remain planned; do not treat this behavior as implemented
-  until those milestones complete.
+- Bill-payment category semantics: Milestones 82-85 completed the exact-name
+  rule for the household category `Payments/Credits (not expense)`. Any
+  transaction in that category is forced by Postgres to
+  `bill_payment_credit` with preserved `amount` and zero gross/refund/net
+  expense; `v_monthly_spend.bill_payments` and the Dashboard `Bills paid` KPI
+  report the cleared amount. Because the rule is name-based, category renames
+  to or from the exact name reshape affected transactions. Review state remains
+  independent from bill-payment typing.
 - Category management: category/subcategory creation, rename, add, delete, and
   merge are app-facing and household-scoped; renames preserve IDs; category
   deletion requeues affected transactions for Review; category merge requires

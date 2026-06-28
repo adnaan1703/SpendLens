@@ -100,10 +100,10 @@ amount into the next month:
   assignments in `public.transaction_labels`.
 - Financial summaries and caps use `net_expense`; card bill payments have
   `net_expense = 0`; refunds reduce spend through `refund_amount`.
-- Milestones 82-85 plan to enforce the exact category name
+- Milestones 82-85 enforce the exact category name
   `Payments/Credits (not expense)` as `bill_payment_credit` with zero
   gross/refund/net expense, so those rows are excluded from cap spend and
-  included in monthly bills paid after M83-M85 complete.
+  included in monthly bills paid.
 - The repo standard for app-facing Supabase writes is authenticated,
   household-scoped, RLS-safe `security invoker` RPCs.
 - The repo standard verification path is local Supabase reset/tests/lint,
@@ -498,8 +498,7 @@ Completion summary requirements:
 - Cap progress continues to use `net_expense`. Refunds reduce spend through
   existing transaction semantics, and card bill payments remain zero net
   expense.
-- After the planned M82-M85 bill-payment category semantics complete, rows in
-  the exact `Payments/Credits (not expense)` category should be excluded from
+- Rows in the exact `Payments/Credits (not expense)` category are excluded from
   cap progress through their corrected zero `net_expense` transaction shape.
 - Cap matching remains OR across selected categories and labels, with
   one-count-per-cap transaction semantics and allowed overlap across separate

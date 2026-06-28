@@ -154,8 +154,9 @@ The worker should consume jobs from Supabase and write results back to Postgres.
 1. User sets monthly cap per category.
 2. Dashboard reads budget progress from a SQL view.
 3. Refunds reduce net spend.
-4. Card bill payments are excluded from spend. Milestones 82-85 plan to
-   enforce this for the exact category name `Payments/Credits (not expense)`.
+4. Card bill payments are excluded from spend. Milestones 82-85 enforce this
+   for the exact category name `Payments/Credits (not expense)` through
+   bill-payment transaction typing and zero net expense.
 5. Over-budget state is derived from net spend greater than cap.
 
 ### Piggy Banks
@@ -240,9 +241,9 @@ For heavier work, the Edge Function creates an `ai_jobs` row and returns job sta
 - `refund_amount` is positive refund/reversal amount.
 - `net_expense = gross_spend - refund_amount`.
 - Card bill payments and account credits are not expenses and have `net_expense = 0`.
-- Milestones 82-85 plan to make the exact category name
-  `Payments/Credits (not expense)` force `bill_payment_credit` transaction
-  shape so those rows contribute to bills paid instead of gross or net spend.
+- The exact category name `Payments/Credits (not expense)` forces
+  `bill_payment_credit` transaction shape so those rows contribute to bills
+  paid instead of gross or net spend.
 - Category summaries, budgets, and trends use `net_expense`.
 
 ## Mobile Deployment

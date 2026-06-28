@@ -4,12 +4,10 @@ Use this file to coordinate work across multiple implementation sessions. Update
 
 ## Current Status
 
-- Current milestone: Milestone 85, Bill-Payment Semantics Regression, Docs,
-  and Cleanup, is the next recommended non-deferred implementation milestone
-  and has not started.
-  Milestones 18-21 remain deferred by user request.
-- Last completed milestone: Milestone 84, Dashboard Bills Paid KPI, completed
-  on 2026-06-28.
+- Current milestone: None. There is no active non-deferred implementation
+  milestone queued. Milestones 18-21 remain deferred by user request.
+- Last completed milestone: Milestone 85, Bill-Payment Semantics Regression,
+  Docs, and Cleanup, completed on 2026-06-28.
 - Current implementation state: Flutter Android app scaffold exists in
   `apps/mobile` with redesigned SpendLens Google sign-in, route protection,
   authenticated shell, RLS-safe profile/default-household bootstrap,
@@ -280,14 +278,16 @@ Use this file to coordinate work across multiple implementation sessions. Update
   exclusion, and Review independence. Milestone 84 added a third Dashboard
   Spending KPI card labeled `Bills paid`, sourced from existing
   `MonthlySpend.billPayments`, with focused mobile and desktop widget coverage.
+  Milestone 85 verified the complete local bill-payment semantics regression
+  path, folded final behavior into durable docs, and marked
+  `BILL_PAYMENT_CATEGORY_SEMANTICS.md` completed-only.
   Milestones 18-21 remain planned and deferred by user request.
-- Remote deployment state: On 2026-06-08, user confirmed Supabase project `bslsitzdvrdosubbdxpd` as the intended dev/staging target. All local migrations through `20260607174515_ai_ready_layer_llm_features.sql` were pushed there, hosted expense Q&A and the now-retired legacy AI lookup function were active with JWT verification, and `GEMINI_API_KEY` was present in hosted Edge Function secrets by name. After the user signed in through the Android emulator, hosted profile/household bootstrap and authenticated Gemini Edge Function smoke passed. On 2026-06-08 for Milestone 13, `gmail-oauth-start` was deployed as version 2 with JWT verification, `gmail-sync` was deployed as version 2 without JWT verification, and new `gmail-backfill-range` was deployed as version 1 without JWT verification. Hosted `gmail-backfill-range` `OPTIONS` smoke returned 200, and an unauthenticated POST returned the expected service-key error. The live May Gmail backfill itself was not run because it requires the user to connect the target Gmail mailbox and invoke the runbook with a Supabase secret key from a local/platform secret store. On 2026-06-09, M16 deleted the hosted legacy AI lookup function from `bslsitzdvrdosubbdxpd` and a follow-up function list verified it absent. The M16 database migration and updated active Suggest function were verified locally but not pushed/deployed to hosted in this implementation session. On 2026-06-16, M71 was verified locally only; no hosted Supabase migration push or Edge Function deployment was run. M72 was Flutter-only; no hosted Supabase migration push or Edge Function deployment was run. M73 was verified locally only as a regression/docs closeout; no hosted Supabase migration push or Edge Function deployment was run. On 2026-06-19, M76 was verified locally only; no hosted Supabase migration push, Edge Function deployment, or remote workbook import was run. On 2026-06-19, M77 was verified locally only; no hosted Supabase migration push, Edge Function deployment, remote workbook import, iOS, web, push notifications, or user-facing regex rule editor work was run. On 2026-06-28, M78 was planning/docs-only; no Supabase migration, Edge Function deployment, Flutter implementation, hosted rollout, iOS, web, or push-notification work was started. On 2026-06-28, M79 was verified locally only; no hosted Supabase migration push, Edge Function deployment, remote workbook import, Dashboard route/screen, iOS, web, or push-notification work was started. On 2026-06-28, M80 was verified locally only; no hosted Supabase migration push, Edge Function deployment, remote workbook import, transaction editing from cap drilldown, iOS, web, or push-notification work was started. On 2026-06-28, M81 was verified locally only; no hosted Supabase migration push, app release, Edge Function deployment, remote workbook import, transaction editing from cap drilldown, Activity export, cap reports, cap notifications, iOS, web, or push-notification work was started. On 2026-06-28, M82 was planning/docs-only; no Supabase migration, Flutter implementation, Edge Function deployment, hosted rollout, remote workbook import, app release, iOS, web, or push-notification work was started. On 2026-06-28, M83 was verified locally only; no hosted Supabase migration push, Edge Function deployment, Flutter implementation, remote workbook import, app release, iOS, web, push notification, or Dashboard KPI work was started. The exact `supabase db reset --local` command was attempted but blocked by local Docker registry credential loading; the full local migration stack was applied through the running Postgres container as compensating compile evidence before focused pgTAP and lint passed. On 2026-06-28, M84 was verified locally as a Flutter-only Dashboard KPI milestone; no hosted Supabase migration push, Edge Function deployment, importer work, remote workbook import, app release, iOS, web, push notification, Activity filter, Review, transaction detail, or bill-payment drilldown work was started.
-- Next recommended milestone: Milestone 85, Bill-Payment Semantics Regression,
-  Docs, and Cleanup.
-  Milestones 18-21 remain deferred unless the user
-  resumes push notifications; iOS and web remain deferred future milestones
-  unless explicitly resumed. Hosted rollout remains separate from the local
-  M83-M85 implementation sequence unless the user asks for it.
+- Remote deployment state: On 2026-06-08, user confirmed Supabase project `bslsitzdvrdosubbdxpd` as the intended dev/staging target. All local migrations through `20260607174515_ai_ready_layer_llm_features.sql` were pushed there, hosted expense Q&A and the now-retired legacy AI lookup function were active with JWT verification, and `GEMINI_API_KEY` was present in hosted Edge Function secrets by name. After the user signed in through the Android emulator, hosted profile/household bootstrap and authenticated Gemini Edge Function smoke passed. On 2026-06-08 for Milestone 13, `gmail-oauth-start` was deployed as version 2 with JWT verification, `gmail-sync` was deployed as version 2 without JWT verification, and new `gmail-backfill-range` was deployed as version 1 without JWT verification. Hosted `gmail-backfill-range` `OPTIONS` smoke returned 200, and an unauthenticated POST returned the expected service-key error. The live May Gmail backfill itself was not run because it requires the user to connect the target Gmail mailbox and invoke the runbook with a Supabase secret key from a local/platform secret store. On 2026-06-09, M16 deleted the hosted legacy AI lookup function from `bslsitzdvrdosubbdxpd` and a follow-up function list verified it absent. The M16 database migration and updated active Suggest function were verified locally but not pushed/deployed to hosted in this implementation session. On 2026-06-16, M71 was verified locally only; no hosted Supabase migration push or Edge Function deployment was run. M72 was Flutter-only; no hosted Supabase migration push or Edge Function deployment was run. M73 was verified locally only as a regression/docs closeout; no hosted Supabase migration push or Edge Function deployment was run. On 2026-06-19, M76 was verified locally only; no hosted Supabase migration push, Edge Function deployment, or remote workbook import was run. On 2026-06-19, M77 was verified locally only; no hosted Supabase migration push, Edge Function deployment, remote workbook import, iOS, web, push notifications, or user-facing regex rule editor work was run. On 2026-06-28, M78 was planning/docs-only; no Supabase migration, Edge Function deployment, Flutter implementation, hosted rollout, iOS, web, or push-notification work was started. On 2026-06-28, M79 was verified locally only; no hosted Supabase migration push, Edge Function deployment, remote workbook import, Dashboard route/screen, iOS, web, or push-notification work was started. On 2026-06-28, M80 was verified locally only; no hosted Supabase migration push, Edge Function deployment, remote workbook import, transaction editing from cap drilldown, iOS, web, or push-notification work was started. On 2026-06-28, M81 was verified locally only; no hosted Supabase migration push, app release, Edge Function deployment, remote workbook import, transaction editing from cap drilldown, Activity export, cap reports, cap notifications, iOS, web, or push-notification work was started. On 2026-06-28, M82 was planning/docs-only; no Supabase migration, Flutter implementation, Edge Function deployment, hosted rollout, remote workbook import, app release, iOS, web, or push-notification work was started. On 2026-06-28, M83 was verified locally only; no hosted Supabase migration push, Edge Function deployment, Flutter implementation, remote workbook import, app release, iOS, web, push notification, or Dashboard KPI work was started. The exact `supabase db reset --local` command was attempted but blocked by local Docker registry credential loading; the full local migration stack was applied through the running Postgres container as compensating compile evidence before focused pgTAP and lint passed. On 2026-06-28, M84 was verified locally as a Flutter-only Dashboard KPI milestone; no hosted Supabase migration push, Edge Function deployment, importer work, remote workbook import, app release, iOS, web, push notification, Activity filter, Review, transaction detail, or bill-payment drilldown work was started. On 2026-06-28, M85 was verified locally as a regression/docs closeout; no hosted Supabase migration push, Edge Function deployment, remote workbook import, app release, iOS, web, push notification, Activity export, bill-payment drilldown, transaction-type editor, category flag migration, or unrelated cleanup was started.
+- Next recommended milestone: None. No active non-deferred implementation
+  milestone is queued. Milestones 18-21 remain deferred unless the user resumes
+  push notifications; iOS and web remain deferred future milestones unless
+  explicitly resumed. Hosted rollout remains separate unless the user asks for
+  it.
 - Documentation state: completed-only companion execution plans for transaction
   metadata editing and category management were retired from `docs/` on
   2026-06-12. `docs/implementation-plan/MONTHLY_CAPS.md` remains active as the
@@ -312,8 +312,9 @@ Use this file to coordinate work across multiple implementation sessions. Update
   `docs/implementation-plan/GMAIL_PARSE_FAILURE_REVIEW.md` is completed-only
   after completed Milestones 70-73 and can be removed in a later cleanup if the
   repository's completed-plan convention calls for it.
-  `docs/implementation-plan/BILL_PAYMENT_CATEGORY_SEMANTICS.md` is the active
-  companion plan for Milestones 82-85.
+  `docs/implementation-plan/BILL_PAYMENT_CATEGORY_SEMANTICS.md` is
+  completed-only after completed Milestones 82-85 and can be removed in a later
+  cleanup if the repository's completed-plan convention calls for it.
 
 ## Required Reading for New Threads
 
@@ -427,17 +428,16 @@ At the start of a new implementation thread, read:
   cap-membership RPC, not Activity filters. The drilldown is view-only,
   paginated, Dashboard-context, and `Under review` means an open Review queue
   item for that transaction.
-- Bill-payment category semantics are planned through M82-M85. M82-M84 are
-  complete and M85 remains the next local regression/docs closeout milestone.
-  The exact household category name `Payments/Credits (not expense)`,
-  regardless of subcategory, should force `bill_payment_credit` with preserved
-  `amount` and zero gross/refund/net values through the M83 database invariant
-  and backfill. Moving a transaction out of that exact category should convert
-  it to `debit_spend` shape, and category renames to or from the exact name
-  should reshape affected transactions because the rule is name-based. Review
-  behavior remains separate and should not be auto-resolved or suppressed by
-  bill-payment typing. Dashboard now shows a `Bills paid` KPI sourced from
-  existing `MonthlySpend.billPayments`.
+- Bill-payment category semantics are complete through M85. The exact household
+  category name `Payments/Credits (not expense)`, regardless of subcategory,
+  forces `bill_payment_credit` with preserved `amount` and zero
+  gross/refund/net values through the M83 database invariant and backfill.
+  Moving a transaction out of that exact category converts it to
+  `debit_spend` shape, and category renames to or from the exact name reshape
+  affected transactions because the rule is name-based. Review behavior remains
+  separate and should not be auto-resolved or suppressed by bill-payment
+  typing. Dashboard shows a `Bills paid` KPI sourced from existing
+  `MonthlySpend.billPayments`.
 - Android push notifications use Firebase Cloud Messaging for delivery and
   Supabase for device registration, preferences, outbox state, delivery state,
   and service-key protected dispatch.
@@ -579,7 +579,64 @@ Do not ask the user to perform all setup at once. Ask only when the relevant mil
   Readiness: completed.
 - Milestone 83, Payments/Credits Database Classification Contract: completed.
 - Milestone 84, Dashboard Bills Paid KPI: completed.
-- Milestone 85, Bill-Payment Semantics Regression, Docs, and Cleanup: planned.
+- Milestone 85, Bill-Payment Semantics Regression, Docs, and Cleanup:
+  completed.
+
+## Bill-Payment Category Semantics M85 Notes
+
+- Completed on 2026-06-28 as a regression/docs closeout milestone. Milestones
+  18-21 remained deferred and were not started. No next active non-deferred
+  implementation milestone is queued.
+- Verified exact `Payments/Credits (not expense)` bill-payment semantics across
+  the focused Supabase pgTAP path, summary views, monthly caps, Gmail
+  ingestion, workbook importer tests/dry-run validation, Dashboard/Review
+  Flutter coverage, and the full Flutter test suite.
+- Updated `README.md`, `ARCHITECTURE.md`, `DATA_MODEL.md`, `INGESTION.md`,
+  `MONTHLY_CAPS.md`, `MILESTONES.md`, this handoff, and
+  `BILL_PAYMENT_CATEGORY_SEMANTICS.md` with final behavior.
+- Marked `BILL_PAYMENT_CATEGORY_SEMANTICS.md` completed-only.
+- No hosted Supabase migration push, Edge Function deployment, remote workbook
+  import, app release, push notifications, iOS, web, Activity export,
+  bill-payment drilldown, transaction-type editor, category flag migration, or
+  unrelated cleanup was started.
+- Verification run:
+  - `supabase db reset --local` first reported that the local stack was not
+    running. After `supabase db start` made `supabase_db_SpendLens` healthy, the
+    exact reset command recreated and initialized the database but blocked in
+    `docker-credential-desktop get` while loading registry credentials, then was
+    interrupted.
+  - Applied all `supabase/migrations/*.sql` files in order through
+    `docker exec -i supabase_db_SpendLens psql -v ON_ERROR_STOP=1 -U postgres
+    -d postgres` as compensating local compile evidence.
+  - `supabase test db --local supabase/tests/bill_payment_category_semantics.sql`
+    passed.
+  - `supabase test db --local supabase/tests/summary_views.sql` passed.
+  - `supabase test db --local supabase/tests/monthly_caps.sql` passed when run
+    serially; an initial parallel run hit pgTAP enable contention.
+  - `supabase test db --local supabase/tests/gmail_ingestion.sql` passed when
+    run serially; an initial parallel run hit pgTAP enable contention.
+  - `supabase db lint --local --schema app_private,public --fail-on error`
+    passed.
+  - `pnpm --dir tools/workbook-import test` passed.
+  - `pnpm --dir tools/workbook-import run validate` passed.
+  - `cd apps/mobile && flutter analyze` passed.
+  - `cd apps/mobile && flutter test test/finance_features_test.dart` passed.
+  - `cd apps/mobile && flutter test` passed.
+  - `git diff --check` passed.
+- Known gaps:
+  - Hosted Supabase migration push and app release remain separate explicit
+    rollout operations.
+- Assumptions made:
+  - Exact category-name matching remains the final M82-M85 rule until a later
+    approved milestone changes it.
+  - The local reset blocker is a Docker credential-helper issue, not a schema
+    failure, because direct migration application, focused pgTAP, schema lint,
+    importer validation, and Flutter tests passed against the healthy local DB.
+- Mocks created:
+  - None.
+- Mocks used:
+  - Existing fake finance repository/widget-test data from
+    `apps/mobile/test/finance_features_test.dart`.
 
 ## Bill-Payment Category Semantics M84 Notes
 
