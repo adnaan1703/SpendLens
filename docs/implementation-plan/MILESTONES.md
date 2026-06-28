@@ -4086,7 +4086,7 @@ that belong to one cap for one month.
 
 ### Status
 
-Planned. See
+Completed. See
 [Monthly Cap Drilldown](MONTHLY_CAP_DRILLDOWN.md#m80---dashboard-cap-drilldown-route-and-view-only-screen).
 
 ### Objective
@@ -4103,6 +4103,29 @@ paginated view-only transaction list.
 - Edit/Stop cap controls still work and do not navigate to the drilldown.
 - Back returns to Dashboard.
 - Narrow 390px layout has no overflow and keeps action text/buttons readable.
+
+### Completion Summary
+
+- Added the Dashboard child route and view-only monthly cap transaction screen
+  backed by the M79 `monthlyCapTransactionsProvider` contract.
+- Dashboard monthly cap rows now open the cap transaction route with a clear
+  chevron affordance, while Edit and Stop stay separate controls and do not
+  navigate.
+- The screen shows the selected cap summary, target chips, paginated matching
+  transaction cards, open-review warning highlights, invalid/stale route states,
+  and Back-to-Dashboard behavior without exposing transaction edit, label edit,
+  detail, or delete actions.
+- Verified `flutter analyze`, focused M80 widget tests, and `git diff --check`.
+- Assumptions made:
+  - The route query should require a first-day `month=YYYY-MM-DD` value.
+  - The UI should use a 10-row page size for readable mobile pagination while
+    the backend contract remains authoritative.
+  - Stale direct links should stay in Dashboard context with an empty/error
+    state rather than redirecting to Activity.
+- Mocks created:
+  - None.
+- Mocks used:
+  - Existing fake finance repository test double.
 
 ## Milestone 81: Monthly Cap Drilldown Regression, Docs, and Cleanup
 

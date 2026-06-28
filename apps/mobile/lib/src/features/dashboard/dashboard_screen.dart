@@ -8,6 +8,7 @@ import '../../data/repositories/household_repository.dart';
 import '../../shared/widgets/app_primitives.dart';
 import '../activity/activity_screen.dart';
 import '../settings/settings_screen.dart';
+import 'monthly_cap_transactions_screen.dart';
 
 class DashboardScreen extends ConsumerStatefulWidget {
   const DashboardScreen({super.key});
@@ -97,6 +98,12 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                         cap: cap,
                       );
                     },
+              onOpenCap: (cap) {
+                _openMonthlyCapTransactions(
+                  month: value.selectedMonth,
+                  cap: cap,
+                );
+              },
               onOpenCategory: (category) {
                 _openTransactionsDrilldown(
                   month: value.selectedMonth,
@@ -261,6 +268,21 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
       ).toString(),
     );
   }
+
+  void _openMonthlyCapTransactions({
+    required DateTime month,
+    required MonthlyCapProgress cap,
+  }) {
+    final router = GoRouter.maybeOf(context);
+    if (router == null) return;
+
+    router.go(
+      MonthlyCapTransactionsScreen.location(
+        monthlyCapId: cap.monthlyCapId,
+        periodMonth: month,
+      ),
+    );
+  }
 }
 
 class _DashboardContent extends StatelessWidget {
@@ -269,6 +291,7 @@ class _DashboardContent extends StatelessWidget {
     required this.onAddCap,
     required this.onEditCap,
     required this.onDeleteCap,
+    required this.onOpenCap,
     required this.onOpenCategory,
     required this.onOpenMerchant,
   });
@@ -277,6 +300,7 @@ class _DashboardContent extends StatelessWidget {
   final VoidCallback? onAddCap;
   final ValueChanged<MonthlyCapProgress>? onEditCap;
   final ValueChanged<MonthlyCapProgress>? onDeleteCap;
+  final ValueChanged<MonthlyCapProgress> onOpenCap;
   final ValueChanged<CategorySpend> onOpenCategory;
   final ValueChanged<MerchantSpend> onOpenMerchant;
 
@@ -303,6 +327,7 @@ class _DashboardContent extends StatelessWidget {
               onAddCap: onAddCap,
               onEditCap: onEditCap,
               onDeleteCap: onDeleteCap,
+              onOpenCap: onOpenCap,
             ),
             SizedBox(height: sectionGap),
             _SummaryGrid(
@@ -615,12 +640,14 @@ class _MonthlyCapsSection extends StatelessWidget {
     required this.onAddCap,
     required this.onEditCap,
     required this.onDeleteCap,
+    required this.onOpenCap,
   });
 
   final DashboardSnapshot snapshot;
   final VoidCallback? onAddCap;
   final ValueChanged<MonthlyCapProgress>? onEditCap;
   final ValueChanged<MonthlyCapProgress>? onDeleteCap;
+  final ValueChanged<MonthlyCapProgress> onOpenCap;
 
   @override
   Widget build(BuildContext context) {
@@ -659,6 +686,7 @@ class _MonthlyCapsSection extends StatelessWidget {
                     padding: const EdgeInsets.only(bottom: 22),
                     child: _MonthlyCapProgressRow(
                       cap: cap,
+                      onOpen: () => onOpenCap(cap),
                       onEdit: onEditCap == null ? null : () => onEditCap!(cap),
                       onDelete: onDeleteCap == null
                           ? null
@@ -674,11 +702,13 @@ class _MonthlyCapsSection extends StatelessWidget {
 class _MonthlyCapProgressRow extends StatelessWidget {
   const _MonthlyCapProgressRow({
     required this.cap,
+    required this.onOpen,
     required this.onEdit,
     required this.onDelete,
   });
 
   final MonthlyCapProgress cap;
+  final VoidCallback onOpen;
   final VoidCallback? onEdit;
   final VoidCallback? onDelete;
 
@@ -696,90 +726,103 @@ class _MonthlyCapProgressRow extends StatelessWidget {
         ? '0%'
         : formatPercent(cap.percentUsed!);
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Expanded(
-              child: Text(
-                cap.name,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                style: theme.textTheme.titleMedium,
-              ),
-            ),
-            const SizedBox(width: 8),
-            IconButton(
-              tooltip: 'Edit cap',
-              onPressed: onEdit,
-              icon: const Icon(Icons.edit_outlined),
-            ),
-            IconButton(
-              tooltip: 'Stop cap',
-              onPressed: onDelete,
-              icon: const Icon(Icons.delete_outline),
-            ),
-          ],
-        ),
-        const SizedBox(height: 8),
-        ClipRRect(
-          borderRadius: BorderRadius.circular(999),
-          child: LinearProgressIndicator(
-            minHeight: 5,
-            value: progress,
-            color: color,
-            backgroundColor: theme.colorScheme.surfaceContainerHigh,
-          ),
-        ),
-        const SizedBox(height: 10),
-        Wrap(
-          spacing: 12,
-          runSpacing: 8,
-          children: [
-            _CapDetailText('Spent ${formatMoney(cap.spentAmount)}'),
-            _CapDetailText('Base ${formatMoney(cap.baseCapAmount)}'),
-            if (cap.carryForwardAmount != 0)
-              _CapDetailText(
-                'Carried ${formatSignedMoney(cap.carryForwardAmount)}',
-                color: cap.carryForwardAmount < 0
-                    ? theme.colorScheme.error
-                    : theme.colorScheme.primary,
-              ),
-            _CapDetailText(
-              'Available ${formatMoney(cap.effectiveCapAmount)}',
-              color: cap.effectiveCapAmount <= 0
-                  ? theme.colorScheme.error
-                  : null,
-            ),
-            _CapDetailText(
-              cap.isOverBudget
-                  ? 'Over ${formatMoney(cap.remainingAmount.abs())}'
-                  : 'Left ${formatMoney(cap.remainingAmount)}',
-              color: cap.isOverBudget ? theme.colorScheme.error : null,
-            ),
-            _CapDetailText(percentText),
-            _CapDetailText('${cap.matchedTransactionCount} matched'),
-          ],
-        ),
-        if (cap.categoryTargets.isNotEmpty || cap.labelTargets.isNotEmpty) ...[
-          const SizedBox(height: 12),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
+    return AppContentCard(
+      key: ValueKey('monthly-cap-row-${cap.monthlyCapId}'),
+      padding: const EdgeInsets.all(18),
+      borderSide: BorderSide(color: theme.colorScheme.outlineVariant),
+      onTap: onOpen,
+      semanticLabel: 'View ${cap.name} cap transactions',
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              for (final category in cap.categoryTargets)
-                _TargetChip(
-                  icon: Icons.category_outlined,
-                  label: category.name,
+              Expanded(
+                child: Text(
+                  cap.name,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: theme.textTheme.titleMedium,
                 ),
-              for (final label in cap.labelTargets)
-                _TargetChip(icon: Icons.label_outline, label: label.name),
+              ),
+              const SizedBox(width: 8),
+              IconButton(
+                tooltip: 'View cap transactions',
+                onPressed: onOpen,
+                icon: const Icon(Icons.chevron_right),
+              ),
+              IconButton(
+                tooltip: 'Edit cap',
+                onPressed: onEdit,
+                icon: const Icon(Icons.edit_outlined),
+              ),
+              IconButton(
+                tooltip: 'Stop cap',
+                onPressed: onDelete,
+                icon: const Icon(Icons.delete_outline),
+              ),
             ],
           ),
+          const SizedBox(height: 8),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(999),
+            child: LinearProgressIndicator(
+              minHeight: 5,
+              value: progress,
+              color: color,
+              backgroundColor: theme.colorScheme.surfaceContainerHigh,
+            ),
+          ),
+          const SizedBox(height: 10),
+          Wrap(
+            spacing: 12,
+            runSpacing: 8,
+            children: [
+              _CapDetailText('Spent ${formatMoney(cap.spentAmount)}'),
+              _CapDetailText('Base ${formatMoney(cap.baseCapAmount)}'),
+              if (cap.carryForwardAmount != 0)
+                _CapDetailText(
+                  'Carried ${formatSignedMoney(cap.carryForwardAmount)}',
+                  color: cap.carryForwardAmount < 0
+                      ? theme.colorScheme.error
+                      : theme.colorScheme.primary,
+                ),
+              _CapDetailText(
+                'Available ${formatMoney(cap.effectiveCapAmount)}',
+                color: cap.effectiveCapAmount <= 0
+                    ? theme.colorScheme.error
+                    : null,
+              ),
+              _CapDetailText(
+                cap.isOverBudget
+                    ? 'Over ${formatMoney(cap.remainingAmount.abs())}'
+                    : 'Left ${formatMoney(cap.remainingAmount)}',
+                color: cap.isOverBudget ? theme.colorScheme.error : null,
+              ),
+              _CapDetailText(percentText),
+              _CapDetailText('${cap.matchedTransactionCount} matched'),
+            ],
+          ),
+          if (cap.categoryTargets.isNotEmpty ||
+              cap.labelTargets.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                for (final category in cap.categoryTargets)
+                  _TargetChip(
+                    icon: Icons.category_outlined,
+                    label: category.name,
+                  ),
+                for (final label in cap.labelTargets)
+                  _TargetChip(icon: Icons.label_outline, label: label.name),
+              ],
+            ),
+          ],
         ],
-      ],
+      ),
     );
   }
 }

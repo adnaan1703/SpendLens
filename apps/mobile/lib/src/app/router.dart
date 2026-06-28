@@ -10,6 +10,7 @@ import '../features/activity/activity_screen.dart';
 import '../features/auth/data/auth_repository.dart';
 import '../features/auth/sign_in_screen.dart';
 import '../features/dashboard/dashboard_screen.dart';
+import '../features/dashboard/monthly_cap_transactions_screen.dart';
 import '../features/merchant_review/merchant_review_screen.dart';
 import '../features/piggy_banks/piggy_banks_screen.dart';
 import '../features/settings/settings_screen.dart';
@@ -71,8 +72,24 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         routes: [
           GoRoute(
             path: DashboardScreen.routePath,
-            pageBuilder: (context, state) =>
-                _scaffoldBackgroundPage(context, state, const DashboardScreen()),
+            pageBuilder: (context, state) => _scaffoldBackgroundPage(
+              context,
+              state,
+              const DashboardScreen(),
+            ),
+          ),
+          GoRoute(
+            path: MonthlyCapTransactionsScreen.routePath,
+            pageBuilder: (context, state) => _scaffoldBackgroundPage(
+              context,
+              state,
+              MonthlyCapTransactionsScreen(
+                monthlyCapId: state.pathParameters['capId'] ?? '',
+                periodMonth: MonthlyCapTransactionsScreen.periodMonthFromUri(
+                  state.uri,
+                ),
+              ),
+            ),
           ),
           GoRoute(
             path: ActivityScreen.routePath,
@@ -80,7 +97,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
               context,
               state,
               ActivityScreen(
-              initialFilters: ActivityScreen.initialFiltersFromUri(state.uri),
+                initialFilters: ActivityScreen.initialFiltersFromUri(state.uri),
               ),
             ),
           ),
@@ -125,10 +142,7 @@ Page<void> _scaffoldBackgroundPage(
 
   return MaterialPage(
     key: state.pageKey,
-    child: ColoredBox(
-      color: theme.scaffoldBackgroundColor,
-      child: child,
-    ),
+    child: ColoredBox(color: theme.scaffoldBackgroundColor, child: child),
   );
 }
 

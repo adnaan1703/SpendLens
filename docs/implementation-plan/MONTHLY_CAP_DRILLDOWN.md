@@ -290,7 +290,7 @@ Completion summary:
 
 ## M80 - Dashboard Cap Drilldown Route and View-Only Screen
 
-Status: Planned.
+Status: Completed on 2026-06-28.
 
 Purpose: Make Dashboard cap rows open the new cap transaction screen and render
 the paginated view-only transaction list.
@@ -365,6 +365,45 @@ Completion summary requirements:
 - Assumptions made
 - Mocks created
 - Mocks used
+
+Completion summary:
+
+- Added the Dashboard-context route
+  `/dashboard/monthly-caps/:capId/transactions?month=YYYY-MM-DD` and parse
+  handling for first-day reporting months.
+- Made Dashboard monthly cap rows tappable cards with a chevron view
+  affordance, semantic labels, and separate Edit/Stop icon buttons that keep
+  their existing cap-management behavior.
+- Added a view-only cap transaction screen that fetches household context, the
+  selected Dashboard month snapshot, the matching `MonthlyCapProgress` summary,
+  and paginated rows from `monthlyCapTransactionsProvider`.
+- Rendered the cap summary with existing design primitives, target chips,
+  spent/base/available/remaining/matched metrics, and paginated transaction
+  cards with no transaction detail, metadata edit, label edit, or delete
+  actions.
+- Highlighted open-review transactions with an `Under review` warning chip and
+  warning border while keeping low confidence alone out of the UI marker.
+- Added loading, empty, invalid-month, stale-cap, error, previous page, next
+  page, and Back-to-Dashboard states, including 390px widget coverage.
+- Milestone 81 was not started.
+- Verification run:
+  - `cd apps/mobile && flutter analyze`
+  - `cd apps/mobile && flutter test test/finance_features_test.dart --name "monthly cap drilldown|Dashboard cap"`
+  - `git diff --check`
+- Assumptions made:
+  - The Dashboard route should keep using `month=YYYY-MM-DD` with a first-day
+    date and show a Dashboard-context error for missing or invalid values.
+  - A 10-row UI page size keeps the drilldown readable on narrow phones while
+    the M79 backend/repository contract remains the source of truth for cap
+    membership and pagination normalization.
+  - Direct stale links to inactive caps should show an empty state with a
+    Dashboard fallback rather than redirecting to Activity.
+- Mocks created:
+  - None.
+- Mocks used:
+  - Existing `_FakeFinanceRepository` test double for Dashboard route,
+    pagination, open-review highlighting, invalid-month, and 390px widget
+    coverage.
 
 ## M81 - Monthly Cap Drilldown Regression, Docs, and Cleanup
 

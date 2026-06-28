@@ -13,6 +13,7 @@ import 'package:spendlens/src/data/repositories/household_repository.dart';
 import 'package:spendlens/src/features/ai/ai_screen.dart';
 import 'package:spendlens/src/features/activity/activity_screen.dart';
 import 'package:spendlens/src/features/dashboard/dashboard_screen.dart';
+import 'package:spendlens/src/features/dashboard/monthly_cap_transactions_screen.dart';
 import 'package:spendlens/src/features/merchant_review/merchant_review_screen.dart';
 import 'package:spendlens/src/features/piggy_banks/piggy_banks_screen.dart';
 import 'package:spendlens/src/features/settings/settings_screen.dart';
@@ -750,6 +751,174 @@ void main() {
     expect(find.text('Monthly caps'), findsWidgets);
     expect(find.text('3 targets without caps'), findsOneWidget);
   });
+
+  testWidgets('Dashboard cap row opens monthly cap drilldown route', (
+    tester,
+  ) async {
+    final repository = _FakeFinanceRepository();
+    repository.reviewItems.add(
+      MerchantReviewItem(
+        id: 'review-txn-1',
+        householdId: 'household-1',
+        transactionId: 'txn-1',
+        reason: 'Needs review',
+        createdAt: DateTime(2026, 3, 12, 9),
+        transactionDate: DateTime(2026, 3, 12),
+        statementMerchant: 'SWIGGY INSTAMART BANGALORE',
+        amount: 1200,
+        netExpense: 1200,
+        confidence: 'low',
+      ),
+    );
+    final router = _financeTestRouter();
+    addTearDown(router.dispose);
+
+    await tester.pumpWidget(
+      _financeRouterTestApp(repository: repository, router: router),
+    );
+    await tester.pumpAndSettle();
+
+    final foodCap = find.byKey(const ValueKey('monthly-cap-row-cap-food'));
+    await tester.ensureVisible(foodCap);
+    await tester.tapAt(tester.getTopLeft(foodCap) + const Offset(24, 24));
+    await tester.pumpAndSettle();
+
+    final uri = router.routeInformationProvider.value.uri;
+    expect(uri.path, '/dashboard/monthly-caps/cap-food/transactions');
+    expect(uri.queryParameters['month'], '2026-03-01');
+    expect(uri.path, isNot(ActivityScreen.routePath));
+    expect(
+      repository.monthlyCapTransactionRequests.last.monthlyCapId,
+      'cap-food',
+    );
+    expect(
+      repository.monthlyCapTransactionRequests.last.periodMonth,
+      DateTime(2026, 3),
+    );
+
+    expect(find.text('Food transactions'), findsOneWidget);
+    expect(find.text('Mar 2026 monthly cap drilldown'), findsOneWidget);
+    expect(find.text('Spent'), findsOneWidget);
+    expect(find.text('Available'), findsOneWidget);
+    expect(find.text('Swiggy Instamart'), findsOneWidget);
+    expect(find.text('Under review'), findsOneWidget);
+    expect(find.text('Groceries'), findsWidgets);
+    expect(find.text('Edit labels'), findsNothing);
+    expect(find.widgetWithText(FilledButton, 'Delete'), findsNothing);
+  });
+
+  testWidgets('Dashboard cap edit and stop controls do not open drilldown', (
+    tester,
+  ) async {
+    final repository = _FakeFinanceRepository();
+    final router = _financeTestRouter();
+    addTearDown(router.dispose);
+
+    await tester.pumpWidget(
+      _financeRouterTestApp(repository: repository, router: router),
+    );
+    await tester.pumpAndSettle();
+
+    final editButton = find.byTooltip('Edit cap').first;
+    await tester.ensureVisible(editButton);
+    await tester.tap(editButton);
+    await tester.pumpAndSettle();
+
+    expect(
+      router.routeInformationProvider.value.uri.path,
+      DashboardScreen.routePath,
+    );
+    expect(repository.monthlyCapTransactionRequests, isEmpty);
+    expect(find.text('Edit cap'), findsOneWidget);
+
+    await tester.tap(find.widgetWithText(FilledButton, 'Cancel'));
+    await tester.pumpAndSettle();
+
+    final stopButton = find.byTooltip('Stop cap').first;
+    await tester.ensureVisible(stopButton);
+    await tester.tap(stopButton);
+    await tester.pumpAndSettle();
+
+    expect(
+      router.routeInformationProvider.value.uri.path,
+      DashboardScreen.routePath,
+    );
+    expect(repository.monthlyCapTransactionRequests, isEmpty);
+    expect(find.text('Stop Food?'), findsOneWidget);
+  });
+
+  testWidgets(
+    'monthly cap drilldown paginates and direct Back falls to Dashboard at 390px',
+    (tester) async {
+      tester.view.physicalSize = const Size(390, 900);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(() {
+        tester.view.resetPhysicalSize();
+        tester.view.resetDevicePixelRatio();
+      });
+      final repository = _FakeFinanceRepository()..addSwiggyTransactions(12);
+      final router = _financeTestRouter(
+        initialLocation: MonthlyCapTransactionsScreen.location(
+          monthlyCapId: 'cap-food',
+          periodMonth: DateTime(2026, 3),
+        ),
+      );
+      addTearDown(router.dispose);
+
+      await tester.pumpWidget(
+        _financeRouterTestApp(repository: repository, router: router),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('Food transactions'), findsOneWidget);
+      expect(find.text('Page 1'), findsOneWidget);
+      expect(repository.monthlyCapTransactionRequests.last.offset, 0);
+      expect(tester.takeException(), isNull);
+
+      final nextPageButton = find.widgetWithText(FilledButton, 'Next page');
+      await tester.ensureVisible(nextPageButton);
+      await tester.tap(nextPageButton);
+      await tester.pumpAndSettle();
+
+      expect(find.text('Page 2'), findsOneWidget);
+      expect(repository.monthlyCapTransactionRequests.last.offset, 10);
+      expect(tester.takeException(), isNull);
+
+      final backButton = find.widgetWithText(TextButton, 'Back');
+      await tester.ensureVisible(backButton);
+      await tester.tap(backButton);
+      await tester.pumpAndSettle();
+
+      expect(
+        router.routeInformationProvider.value.uri.path,
+        DashboardScreen.routePath,
+      );
+    },
+  );
+
+  testWidgets(
+    'monthly cap drilldown shows invalid month error in Dashboard context',
+    (tester) async {
+      final repository = _FakeFinanceRepository();
+      final router = _financeTestRouter(
+        initialLocation:
+            '/dashboard/monthly-caps/cap-food/transactions?month=2026-03-12',
+      );
+      addTearDown(router.dispose);
+
+      await tester.pumpWidget(
+        _financeRouterTestApp(repository: repository, router: router),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('Monthly cap link unavailable'), findsOneWidget);
+      expect(
+        router.routeInformationProvider.value.uri.path,
+        isNot(ActivityScreen.routePath),
+      );
+      expect(repository.monthlyCapTransactionRequests, isEmpty);
+    },
+  );
 
   testWidgets('dashboard redesign renders hierarchy at 390px width', (
     tester,
@@ -4276,6 +4445,17 @@ GoRouter _financeTestRouter({
       GoRoute(
         path: DashboardScreen.routePath,
         builder: (_, _) => const Scaffold(body: DashboardScreen()),
+      ),
+      GoRoute(
+        path: MonthlyCapTransactionsScreen.routePath,
+        builder: (_, state) => Scaffold(
+          body: MonthlyCapTransactionsScreen(
+            monthlyCapId: state.pathParameters['capId'] ?? '',
+            periodMonth: MonthlyCapTransactionsScreen.periodMonthFromUri(
+              state.uri,
+            ),
+          ),
+        ),
       ),
       GoRoute(
         path: ActivityScreen.routePath,

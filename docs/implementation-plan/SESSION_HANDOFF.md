@@ -4,12 +4,12 @@ Use this file to coordinate work across multiple implementation sessions. Update
 
 ## Current Status
 
-- Current milestone: Milestone 80, Dashboard Cap Drilldown Route and
-  View-Only Screen, is the next recommended non-deferred implementation
-  milestone. Milestone 79 completed the Monthly Cap Transaction Data Contract
+- Current milestone: Milestone 81, Monthly Cap Drilldown Regression, Docs, and
+  Cleanup, is the next recommended non-deferred implementation milestone.
+  Milestone 80 completed the Dashboard Cap Drilldown Route and View-Only Screen
   on 2026-06-28. Milestones 18-21 remain deferred by user request.
-- Last completed milestone: Milestone 79, Monthly Cap Transaction Data
-  Contract.
+- Last completed milestone: Milestone 80, Dashboard Cap Drilldown Route and
+  View-Only Screen.
 - Current implementation state: Flutter Android app scaffold exists in
   `apps/mobile` with redesigned SpendLens Google sign-in, route protection,
   authenticated shell, RLS-safe profile/default-household bootstrap,
@@ -262,12 +262,16 @@ Use this file to coordinate work across multiple implementation sessions. Update
   added the backend and Flutter repository data contract through
   `public.get_monthly_cap_transactions(...)` and
   `monthlyCapTransactionsProvider`, without building the visible Dashboard
-  route or screen. Milestones 18-21 remain planned and deferred by user
-  request.
-- Remote deployment state: On 2026-06-08, user confirmed Supabase project `bslsitzdvrdosubbdxpd` as the intended dev/staging target. All local migrations through `20260607174515_ai_ready_layer_llm_features.sql` were pushed there, hosted expense Q&A and the now-retired legacy AI lookup function were active with JWT verification, and `GEMINI_API_KEY` was present in hosted Edge Function secrets by name. After the user signed in through the Android emulator, hosted profile/household bootstrap and authenticated Gemini Edge Function smoke passed. On 2026-06-08 for Milestone 13, `gmail-oauth-start` was deployed as version 2 with JWT verification, `gmail-sync` was deployed as version 2 without JWT verification, and new `gmail-backfill-range` was deployed as version 1 without JWT verification. Hosted `gmail-backfill-range` `OPTIONS` smoke returned 200, and an unauthenticated POST returned the expected service-key error. The live May Gmail backfill itself was not run because it requires the user to connect the target Gmail mailbox and invoke the runbook with a Supabase secret key from a local/platform secret store. On 2026-06-09, M16 deleted the hosted legacy AI lookup function from `bslsitzdvrdosubbdxpd` and a follow-up function list verified it absent. The M16 database migration and updated active Suggest function were verified locally but not pushed/deployed to hosted in this implementation session. On 2026-06-16, M71 was verified locally only; no hosted Supabase migration push or Edge Function deployment was run. M72 was Flutter-only; no hosted Supabase migration push or Edge Function deployment was run. M73 was verified locally only as a regression/docs closeout; no hosted Supabase migration push or Edge Function deployment was run. On 2026-06-19, M76 was verified locally only; no hosted Supabase migration push, Edge Function deployment, or remote workbook import was run. On 2026-06-19, M77 was verified locally only; no hosted Supabase migration push, Edge Function deployment, remote workbook import, iOS, web, push notifications, or user-facing regex rule editor work was run. On 2026-06-28, M78 was planning/docs-only; no Supabase migration, Edge Function deployment, Flutter implementation, hosted rollout, iOS, web, or push-notification work was started. On 2026-06-28, M79 was verified locally only; no hosted Supabase migration push, Edge Function deployment, remote workbook import, Dashboard route/screen, iOS, web, or push-notification work was started.
-- Next recommended milestone: Milestone 80, Dashboard Cap Drilldown Route and
-  View-Only Screen. Read `docs/implementation-plan/MONTHLY_CAP_DRILLDOWN.md`
-  first, then implement only M80. Milestones 18-21 remain deferred unless the
+  route or screen. Milestone 80 added the Dashboard child route
+  `/dashboard/monthly-caps/:capId/transactions?month=YYYY-MM-DD`, tappable
+  monthly cap rows with separate Edit/Stop controls, a view-only paginated cap
+  transaction screen, selected-cap summaries, target chips, open-review warning
+  highlights, invalid/stale route states, and Back-to-Dashboard behavior.
+  Milestones 18-21 remain planned and deferred by user request.
+- Remote deployment state: On 2026-06-08, user confirmed Supabase project `bslsitzdvrdosubbdxpd` as the intended dev/staging target. All local migrations through `20260607174515_ai_ready_layer_llm_features.sql` were pushed there, hosted expense Q&A and the now-retired legacy AI lookup function were active with JWT verification, and `GEMINI_API_KEY` was present in hosted Edge Function secrets by name. After the user signed in through the Android emulator, hosted profile/household bootstrap and authenticated Gemini Edge Function smoke passed. On 2026-06-08 for Milestone 13, `gmail-oauth-start` was deployed as version 2 with JWT verification, `gmail-sync` was deployed as version 2 without JWT verification, and new `gmail-backfill-range` was deployed as version 1 without JWT verification. Hosted `gmail-backfill-range` `OPTIONS` smoke returned 200, and an unauthenticated POST returned the expected service-key error. The live May Gmail backfill itself was not run because it requires the user to connect the target Gmail mailbox and invoke the runbook with a Supabase secret key from a local/platform secret store. On 2026-06-09, M16 deleted the hosted legacy AI lookup function from `bslsitzdvrdosubbdxpd` and a follow-up function list verified it absent. The M16 database migration and updated active Suggest function were verified locally but not pushed/deployed to hosted in this implementation session. On 2026-06-16, M71 was verified locally only; no hosted Supabase migration push or Edge Function deployment was run. M72 was Flutter-only; no hosted Supabase migration push or Edge Function deployment was run. M73 was verified locally only as a regression/docs closeout; no hosted Supabase migration push or Edge Function deployment was run. On 2026-06-19, M76 was verified locally only; no hosted Supabase migration push, Edge Function deployment, or remote workbook import was run. On 2026-06-19, M77 was verified locally only; no hosted Supabase migration push, Edge Function deployment, remote workbook import, iOS, web, push notifications, or user-facing regex rule editor work was run. On 2026-06-28, M78 was planning/docs-only; no Supabase migration, Edge Function deployment, Flutter implementation, hosted rollout, iOS, web, or push-notification work was started. On 2026-06-28, M79 was verified locally only; no hosted Supabase migration push, Edge Function deployment, remote workbook import, Dashboard route/screen, iOS, web, or push-notification work was started. On 2026-06-28, M80 was verified locally only; no hosted Supabase migration push, Edge Function deployment, remote workbook import, transaction editing from cap drilldown, iOS, web, or push-notification work was started.
+- Next recommended milestone: Milestone 81, Monthly Cap Drilldown Regression,
+  Docs, and Cleanup. Read `docs/implementation-plan/MONTHLY_CAP_DRILLDOWN.md`
+  first, then implement only M81. Milestones 18-21 remain deferred unless the
   user resumes push notifications; iOS and web remain deferred future
   milestones unless explicitly resumed. If continuing hosted rollout
   separately, push currently local-only migrations and deploy the relevant
@@ -276,8 +280,9 @@ Use this file to coordinate work across multiple implementation sessions. Update
   metadata editing and category management were retired from `docs/` on
   2026-06-12. `docs/implementation-plan/MONTHLY_CAPS.md` remains active as the
   companion plan for completed Milestones 29-35.
-  `docs/implementation-plan/MONTHLY_CAP_DRILLDOWN.md` is active after M79 as
-  the companion plan for planned Milestones 80-81.
+  `docs/implementation-plan/MONTHLY_CAP_DRILLDOWN.md` is active after M80 as
+  the companion plan for planned Milestone 81 and final drilldown regression
+  closeout.
   `docs/implementation-plan/UI_REDESIGN.md` is the active companion plan for
   completed Milestones 37-51.
   `docs/implementation-plan/TRANSACTION_DELETION.md` is completed-only after
@@ -401,11 +406,11 @@ At the start of a new implementation thread, read:
   allowed. Recurring cap series are implemented: edits and deletes apply from
   the selected month forward, and optional carry-forward can move a
   positive or negative prior-month remainder into the next month.
-- Monthly cap drilldown has its M79 backend/repository data contract in place;
-  M80-M81 remain planned for the Dashboard-context route, view-only screen, and
-  final regression/docs closeout. It should use the backend cap-membership RPC,
-  not Activity filters. The drilldown is view-only, and `Under review` means an
-  open Review queue item for that transaction.
+- Monthly cap drilldown has its M79 backend/repository data contract and M80
+  Dashboard-context route/view-only screen in place. M81 remains planned for
+  final regression/docs closeout. The screen uses the backend cap-membership
+  RPC, not Activity filters. The drilldown is view-only, and `Under review`
+  means an open Review queue item for that transaction.
 - Android push notifications use Firebase Cloud Messaging for delivery and
   Supabase for device registration, preferences, outbox state, delivery state,
   and service-key protected dispatch.
@@ -541,7 +546,7 @@ Do not ask the user to perform all setup at once. Ask only when the relevant mil
 - Milestone 78, Monthly Cap Drilldown Planning and Reference Readiness:
   completed.
 - Milestone 79, Monthly Cap Transaction Data Contract: completed.
-- Milestone 80, Dashboard Cap Drilldown Route and View-Only Screen: planned.
+- Milestone 80, Dashboard Cap Drilldown Route and View-Only Screen: completed.
 - Milestone 81, Monthly Cap Drilldown Regression, Docs, and Cleanup: planned.
 
 ## Monthly Cap Drilldown M78 Notes
@@ -624,6 +629,46 @@ Do not ask the user to perform all setup at once. Ask only when the relevant mil
 - Mocks used:
   - Existing fake finance repository test double, extended for M79
     repository/provider coverage.
+
+## Monthly Cap Drilldown M80 Notes
+
+- Completed on 2026-06-28 as a Flutter route/screen milestone. Milestones
+  18-21 remained deferred and were not started. M81 was not started.
+- Added `apps/mobile/lib/src/features/dashboard/monthly_cap_transactions_screen.dart`
+  as the Dashboard-context cap transaction drilldown route target.
+- Added the app route
+  `/dashboard/monthly-caps/:capId/transactions?month=YYYY-MM-DD`; the route
+  parses only first-day reporting months and shows a Dashboard-context error
+  state for missing or invalid month values.
+- Dashboard monthly cap rows are tappable `AppContentCard` rows with semantic
+  labels and an explicit chevron view button. Edit and Stop remain separate
+  icon buttons and do not trigger drilldown navigation.
+- The drilldown screen loads the selected Dashboard snapshot, finds the
+  matching `MonthlyCapProgress` summary, and fetches paginated transaction rows
+  through `monthlyCapTransactionsProvider`.
+- The screen renders selected-cap summary metrics, target chips, view-only
+  transaction cards, open-review warning chips/borders, empty/error/loading
+  states, previous/next pagination, direct-open Back-to-Dashboard fallback, and
+  390px widget coverage.
+- The drilldown deliberately exposes no transaction detail, metadata edit,
+  label edit, delete, Activity filter, export, cap report, notification, hosted
+  rollout, iOS, or web behavior.
+- Verification run:
+  - `cd apps/mobile && flutter analyze`
+  - `cd apps/mobile && flutter test test/finance_features_test.dart --name "monthly cap drilldown|Dashboard cap"`
+  - `git diff --check`
+- Assumptions made:
+  - The route should require a first-day `month=YYYY-MM-DD` query value.
+  - A 10-row UI page size keeps the screen readable on narrow phones while the
+    M79 contract remains authoritative for membership and pagination bounds.
+  - Stale direct links should stay in Dashboard context with empty/error
+    states rather than redirecting to Activity.
+- Mocks created:
+  - None.
+- Mocks used:
+  - Existing fake finance repository test double for Dashboard navigation,
+    pagination, open-review highlighting, invalid-month, and 390px widget
+    coverage.
 
 ## Regex Backend Migration M74 Notes
 
