@@ -9,6 +9,11 @@ intended to be executed in a separate Codex thread. Stop after completing and
 documenting the current milestone; do not automatically continue to the next
 milestone.
 
+For the planned post-M35 Dashboard cap transaction drilldown, see
+[Monthly Cap Drilldown](MONTHLY_CAP_DRILLDOWN.md). That follow-up is tracked as
+Milestones 78-81 and must not be implemented by routing cap taps to Activity
+filters.
+
 ## Target Behavior
 
 SpendLens users can create named monthly caps from the Dashboard. A cap has a

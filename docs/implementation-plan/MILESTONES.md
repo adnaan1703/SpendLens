@@ -3987,6 +3987,127 @@ behavior back into durable docs.
   - Existing workbook importer unit-test mocks for
     `public.classify_statement_merchant(...)` responses.
 
+## Milestone 78: Monthly Cap Drilldown Planning and Reference Readiness
+
+### Status
+
+Completed on 2026-06-28.
+
+### Objective
+
+Create the companion plan for opening a view-only monthly cap transaction
+drilldown from Dashboard, then wire M79-M81 into durable planning docs.
+
+### Tasks
+
+- Create [Monthly Cap Drilldown](MONTHLY_CAP_DRILLDOWN.md) with target
+  behavior, existing foundation, global rules, implementation milestones,
+  acceptance criteria, and verification expectations.
+- Update this milestone tracker, [README](README.md), [Data Model](DATA_MODEL.md),
+  [Monthly Caps](MONTHLY_CAPS.md), and
+  [Session Handoff](SESSION_HANDOFF.md) so a fresh session can start M79 from
+  docs alone.
+- Preserve M18-M21 push-notification deferral and leave implementation planned
+  only.
+
+### Acceptance Criteria
+
+- `MONTHLY_CAP_DRILLDOWN.md` describes M78-M81 as serial, standalone
+  milestones.
+- M79 is the next recommended implementation milestone.
+- No Flutter, Supabase, importer, Edge Function, hosted rollout, iOS, or web
+  implementation work is started.
+
+### Completion Summary
+
+- Created the Monthly Cap Drilldown companion plan and routed future
+  implementation through M79-M81.
+- Confirmed the new cap transaction view must be Dashboard-context navigation,
+  not Activity with filters applied.
+- Confirmed the screen is view-only; transaction edit, label edit, and delete
+  actions remain in Activity and Review.
+- Confirmed `Under review` means an open Review queue item for the
+  transaction, not low confidence alone.
+- M79 was not started.
+- Assumptions made:
+  - Cap drilldown should show the dashboard's currently selected month.
+  - The first implementation should use paginated backend reads rather than a
+    large unbounded list.
+  - Cap progress and carry-forward summary values remain sourced from existing
+    monthly cap progress contracts.
+- Mocks created:
+  - None.
+- Mocks used:
+  - None.
+
+## Milestone 79: Monthly Cap Transaction Data Contract
+
+### Status
+
+Planned. See
+[Monthly Cap Drilldown](MONTHLY_CAP_DRILLDOWN.md#m79---monthly-cap-transaction-data-contract).
+
+### Objective
+
+Add the backend and Flutter repository contract needed to read the transactions
+that belong to one cap for one month.
+
+### Acceptance Criteria
+
+- A household member can fetch the transactions inside one visible active cap
+  for one month.
+- The RPC returns no duplicates when one transaction matches both category and
+  label targets.
+- `is_under_review` is true only for transactions with open review rows.
+- Non-members and invalid households cannot read cap transactions.
+- Existing monthly cap progress, Activity filters, label filters, and
+  transaction pagination remain unchanged.
+
+## Milestone 80: Dashboard Cap Drilldown Route and View-Only Screen
+
+### Status
+
+Planned. See
+[Monthly Cap Drilldown](MONTHLY_CAP_DRILLDOWN.md#m80---dashboard-cap-drilldown-route-and-view-only-screen).
+
+### Objective
+
+Make Dashboard cap rows open the new cap transaction screen and render the
+paginated view-only transaction list.
+
+### Acceptance Criteria
+
+- Tapping a monthly cap row opens the cap transaction route, not `/activity`.
+- The page shows the selected cap's summary, targets, and paginated matching
+  transactions for the selected month.
+- Under-review transactions are visibly highlighted and marked.
+- Edit/Stop cap controls still work and do not navigate to the drilldown.
+- Back returns to Dashboard.
+- Narrow 390px layout has no overflow and keeps action text/buttons readable.
+
+## Milestone 81: Monthly Cap Drilldown Regression, Docs, and Cleanup
+
+### Status
+
+Planned. See
+[Monthly Cap Drilldown](MONTHLY_CAP_DRILLDOWN.md#m81---monthly-cap-drilldown-regression-docs-and-cleanup).
+
+### Objective
+
+Verify the complete cap drilldown workflow and fold final behavior back into
+durable docs.
+
+### Acceptance Criteria
+
+- Focused Supabase and Flutter verification passes locally or documents an
+  environment limitation with compensating evidence.
+- Dashboard cap drilldown, existing cap edit/delete, Activity filters, and
+  Review semantics work together without route or provider regressions.
+- Durable docs describe the cap transaction drilldown and under-review
+  highlighting behavior.
+- `MONTHLY_CAP_DRILLDOWN.md` is marked completed-only.
+- No unrelated deferred work is started.
+
 ## Cross-Milestone Consistency Rules
 
 - Ask the user before proceeding on any undocumented decision. Codex may recommend a default, but must wait for confirmation.
@@ -4018,6 +4139,9 @@ behavior back into durable docs.
 - Recurring monthly caps use explicit cap-series identity. Edits and deletes
   apply from the selected month forward, and optional carry-forward can be
   positive or negative.
+- Monthly cap transaction drilldown must use a dedicated Dashboard-context
+  screen and backend cap-membership contract; do not approximate mixed cap
+  membership with Activity filters.
 - Prefer deterministic rules before AI.
 - Keep client code free of service credentials.
 - Update these docs when architecture decisions change.

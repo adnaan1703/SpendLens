@@ -439,6 +439,31 @@ matched-count values.
   remaining amount, percent used, over-budget state, matched transaction count,
   and target names/IDs.
 
+### Monthly cap transaction drilldown (planned M79-M81)
+
+Milestones 79-81 plan a read-only cap transaction drilldown contract for the
+Dashboard Monthly caps section. Until M79 is implemented, this section is a
+planned contract rather than an available database API.
+
+Planned app-facing read path:
+
+- `get_monthly_cap_transactions(p_household_id, p_monthly_cap_id,
+  p_period_month, p_limit, p_offset)`.
+
+Planned rules:
+
+- The RPC returns the transactions that match one active recurring cap series
+  for one first-day reporting month.
+- Matching uses the same category OR label semantics as monthly cap progress.
+- A transaction is returned once even when it matches both category and label
+  targets inside the cap.
+- Pagination is bounded, ordered by newest transaction date, then deterministic
+  creation/id tiebreakers.
+- `is_under_review` means an open `review_items` row exists for the
+  transaction. Low confidence alone is not an under-review marker.
+- The Flutter screen is view-only and must not route to Activity with filters
+  applied.
+
 ## Merchants and Mapping
 
 ### `merchants`

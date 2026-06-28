@@ -21,14 +21,16 @@ Read these documents in order at the start of every new implementation thread:
 11. [Push Notifications](PUSH_NOTIFICATIONS.md) when executing Milestones 18-21
 12. [Transaction Labels](TRANSACTION_LABELS.md) when executing Milestones 26-28
 13. [Monthly Caps](MONTHLY_CAPS.md) when executing Milestones 29-35
-14. [UI Redesign](UI_REDESIGN.md) when executing Milestones 37-51
-15. [Transaction Deletion](TRANSACTION_DELETION.md) when executing Milestones
+14. [Monthly Cap Drilldown](MONTHLY_CAP_DRILLDOWN.md) when executing
+    Milestones 78-81
+15. [UI Redesign](UI_REDESIGN.md) when executing Milestones 37-51
+16. [Transaction Deletion](TRANSACTION_DELETION.md) when executing Milestones
     52-55
-16. [Merchant Autocomplete](MERCHANT_AUTOCOMPLETE.md) as the completed-only
+17. [Merchant Autocomplete](MERCHANT_AUTOCOMPLETE.md) as the completed-only
     reference for Milestones 56-60
-17. [Merchant Group Management](MERCHANT_GROUP_MANAGEMENT.md) as the
+18. [Merchant Group Management](MERCHANT_GROUP_MANAGEMENT.md) as the
     completed-only reference for Milestones 61-64
-18. [Session Handoff](SESSION_HANDOFF.md)
+19. [Session Handoff](SESSION_HANDOFF.md)
 
 Completed-only companion execution plans are removed after their durable
 behavior has been folded into this README, [Data Model](DATA_MODEL.md),
@@ -152,6 +154,12 @@ This is not a "no backend" architecture. It is a backend without a permanently r
   regression path, confirmed backend-owned exact/contains/prefix/suffix/regex
   rule behavior across Gmail and workbook ingestion, and left
   `REGEX_BACKEND_MIGRATION.md` as a completed-only reference.
+- Monthly cap drilldown: Milestone 78 created the companion plan for opening a
+  view-only Dashboard-context transaction screen from each monthly cap row.
+  Milestones 79-81 are planned to add the cap transaction RPC/repository
+  contract, the DESIGN.md-based Flutter route and screen, and final
+  regression/docs cleanup. The planned screen must not redirect to Activity or
+  approximate cap membership with Activity filters.
 - Multi-target monthly caps: required-name recurring caps can include multiple
   categories, multiple labels, or both. A transaction counts once inside a cap
   when any selected category or label matches; overlapping caps are allowed.
@@ -206,11 +214,13 @@ When starting a new implementation thread:
 9. Read [Gmail Parse Failure Review](GMAIL_PARSE_FAILURE_REVIEW.md) as
    completed reference material when touching Review parse-failure body viewing.
 10. Read [Regex Backend Migration](REGEX_BACKEND_MIGRATION.md) as the
-   completed-only reference when touching merchant mapping regex/rule matching.
-11. Check [Session Handoff](SESSION_HANDOFF.md) for current status.
-12. Do only that milestone unless the user explicitly expands scope.
-13. Preserve documented invariants, especially idempotency, RLS isolation, and no raw email retention.
-14. Update milestone notes when an implementation decision changes the plan.
+    completed-only reference when touching merchant mapping regex/rule matching.
+11. Read [Monthly Cap Drilldown](MONTHLY_CAP_DRILLDOWN.md) when executing
+    Milestone 78, 79, 80, or 81.
+12. Check [Session Handoff](SESSION_HANDOFF.md) for current status.
+13. Do only that milestone unless the user explicitly expands scope.
+14. Preserve documented invariants, especially idempotency, RLS isolation, and no raw email retention.
+15. Update milestone notes when an implementation decision changes the plan.
 
 ## Clarification Rule
 
