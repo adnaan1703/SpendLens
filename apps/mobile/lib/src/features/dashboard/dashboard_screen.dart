@@ -441,10 +441,17 @@ class _SpendingSection extends StatelessWidget {
           final isWide = width >= AppResponsiveBreakpoints.tabletMinWidth;
           final netCard = _NetSpendCard(snapshot: snapshot);
           final changeCard = _MonthChangeCard(snapshot: snapshot);
+          final billsPaidCard = _BillsPaidCard(snapshot: snapshot);
 
           if (!isWide) {
             return Column(
-              children: [netCard, const SizedBox(height: 16), changeCard],
+              children: [
+                netCard,
+                const SizedBox(height: 16),
+                changeCard,
+                const SizedBox(height: 16),
+                billsPaidCard,
+              ],
             );
           }
 
@@ -455,6 +462,8 @@ class _SpendingSection extends StatelessWidget {
                 Expanded(flex: 3, child: netCard),
                 const SizedBox(width: 16),
                 Expanded(flex: 2, child: changeCard),
+                const SizedBox(width: 16),
+                Expanded(flex: 2, child: billsPaidCard),
               ],
             ),
           );
@@ -503,6 +512,70 @@ class _NetSpendCard extends StatelessWidget {
           Text(
             '${snapshot.monthlySpend.transactionCount} transactions',
             style: theme.textTheme.bodyMedium,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _BillsPaidCard extends StatelessWidget {
+  const _BillsPaidCard({required this.snapshot});
+
+  final DashboardSnapshot snapshot;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final iconForeground = theme.brightness == Brightness.dark
+        ? AppThemeTokens.primaryActive
+        : AppThemeTokens.inkDeep;
+
+    return AppContentCard(
+      padding: const EdgeInsets.all(24),
+      borderSide: BorderSide(color: theme.colorScheme.surfaceContainer),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(
+                Icons.credit_score_outlined,
+                color: iconForeground,
+                size: 22,
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  'Bills paid',
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: theme.textTheme.labelLarge?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                    letterSpacing: 0,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          LargeAmountText(
+            formatMoney(snapshot.monthlySpend.billPayments),
+            style: theme.textTheme.headlineSmall?.copyWith(
+              color: iconForeground,
+              fontWeight: FontWeight.w900,
+              letterSpacing: 0,
+              height: 1,
+            ),
+          ),
+          const SizedBox(height: 12),
+          Text(
+            'Card payments cleared',
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: theme.textTheme.bodyMedium?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
           ),
         ],
       ),

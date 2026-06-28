@@ -4290,7 +4290,7 @@ Enforce bill-payment transaction shape for the exact
 
 ### Status
 
-Planned. See
+Completed on 2026-06-28. See
 [Bill-Payment Category Semantics](BILL_PAYMENT_CATEGORY_SEMANTICS.md#m84---dashboard-bills-paid-kpi).
 
 ### Objective
@@ -4306,6 +4306,26 @@ Surface the selected month's bills-paid amount on Dashboard using the existing
 - Layout remains readable at 390px and desktop widths.
 - Existing Dashboard actions, Review, Monthly caps, Activity filters, cap
   drilldown, and transaction detail behavior remain unchanged.
+
+### Completion Summary
+
+- Added a third Dashboard Spending KPI card labeled `Bills paid`, using the
+  existing `MonthlySpend.billPayments` value from the Dashboard snapshot.
+- Verified the KPI at 390px and desktop widths with focused widget coverage,
+  while preserving existing Dashboard cap drilldown behavior.
+- No repository query, Supabase schema, importer, Edge Function, hosted
+  rollout, Activity filter, Review, transaction detail, iOS, web, or push
+  notification work was started.
+- Assumptions made:
+  - Existing `v_monthly_spend.bill_payments` and `MonthlySpend.billPayments`
+    remain the source of truth for the Dashboard KPI.
+  - The existing fake Dashboard `billPayments: 12000` fixture is sufficient for
+    M84 coverage.
+- Mocks created:
+  - None.
+- Mocks used:
+  - Existing fake finance repository/widget-test data from
+    `apps/mobile/test/finance_features_test.dart`.
 
 ## Milestone 85: Bill-Payment Semantics Regression, Docs, and Cleanup
 

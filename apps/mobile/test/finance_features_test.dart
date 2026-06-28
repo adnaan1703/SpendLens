@@ -711,6 +711,35 @@ void main() {
     );
   });
 
+  testWidgets(
+    'Dashboard Bills paid KPI renders monthly bill payments at mobile and desktop widths',
+    (tester) async {
+      addTearDown(() {
+        tester.view.resetPhysicalSize();
+        tester.view.resetDevicePixelRatio();
+      });
+
+      for (final size in [const Size(390, 900), const Size(1024, 900)]) {
+        tester.view.devicePixelRatio = 1;
+        tester.view.physicalSize = size;
+
+        await tester.pumpWidget(
+          _financeTestApp(
+            repository: _FakeFinanceRepository(),
+            child: const DashboardScreen(),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        expect(find.text('Spending'), findsOneWidget);
+        expect(find.text('Bills paid'), findsOneWidget);
+        expect(find.text('INR 12,000'), findsOneWidget);
+        expect(find.text('Card payments cleared'), findsOneWidget);
+        expect(tester.takeException(), isNull);
+      }
+    },
+  );
+
   testWidgets('dashboard can create a monthly cap with carry-forward', (
     tester,
   ) async {

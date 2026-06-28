@@ -302,7 +302,7 @@ Completion summary:
 
 ## M84 - Dashboard Bills Paid KPI
 
-Status: Planned.
+Status: Completed on 2026-06-28.
 
 Purpose: Surface the existing monthly bills-paid total on Dashboard after the
 backend semantics make it reliable.
@@ -357,6 +357,36 @@ Completion summary requirements:
 - Assumptions made
 - Mocks created
 - Mocks used
+
+Completion summary:
+
+- Added a third Dashboard Spending KPI card labeled `Bills paid`, sourced from
+  the existing `DashboardSnapshot.monthlySpend.billPayments` value and rendered
+  with the existing Dashboard card, amount-text, icon, and theme-token
+  patterns.
+- Preserved the existing `v_monthly_spend`/`MonthlySpend` repository read path;
+  no new backend query, schema, importer, Edge Function, hosted rollout,
+  Activity filter, cap drilldown, transaction detail, Review, iOS, web, or push
+  notification work was started.
+- Added focused widget coverage proving the KPI displays `MonthlySpend`
+  bill-payment data at 390px mobile and desktop widths without Flutter
+  exceptions.
+- Verification run:
+  - `cd apps/mobile && flutter analyze` passed.
+  - `cd apps/mobile && flutter test test/finance_features_test.dart --name
+    "Dashboard|Bills paid"` passed.
+  - `git diff --check` passed.
+- Assumptions made:
+  - The existing Dashboard fake snapshot value `billPayments: 12000` is the
+    correct fixture for M84 widget coverage because the repository contract
+    already parses `v_monthly_spend.bill_payments`.
+  - `Card payments cleared` is acceptable concise supporting copy for the new
+    KPI.
+- Mocks created:
+  - None.
+- Mocks used:
+  - Existing fake finance repository/widget-test data from
+    `apps/mobile/test/finance_features_test.dart`.
 
 ## M85 - Bill-Payment Semantics Regression, Docs, and Cleanup
 
