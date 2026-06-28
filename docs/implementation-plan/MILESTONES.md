@@ -4205,7 +4205,8 @@ into durable planning docs.
 
 - `BILL_PAYMENT_CATEGORY_SEMANTICS.md` describes M82-M85 as standalone serial
   milestones.
-- M83 is the next recommended non-deferred implementation milestone.
+- M83 became the next recommended non-deferred implementation milestone at M82
+  closeout.
 - Durable docs state that implementation remains planned only until M83-M85
   complete.
 - No runtime implementation work is started.
@@ -4239,7 +4240,7 @@ into durable planning docs.
 
 ### Status
 
-Planned. See
+Completed on 2026-06-28. See
 [Bill-Payment Category Semantics](BILL_PAYMENT_CATEGORY_SEMANTICS.md#m83---paymentscredits-database-classification-contract).
 
 ### Objective
@@ -4260,6 +4261,30 @@ Enforce bill-payment transaction shape for the exact
 - Review queue state is unchanged by the backfill.
 - Current monthly spend and monthly cap calculations exclude these rows through
   existing `net_expense` semantics.
+
+### Completion Summary
+
+- Added the database-owned exact-name invariant for
+  `Payments/Credits (not expense)` with transaction and category-rename
+  triggers plus a migration backfill.
+- Added focused pgTAP coverage for bill-payment normalization, moves away,
+  category renames, monthly summaries, monthly cap exclusion, and Review
+  independence.
+- Verified the SQL stack locally with direct container migration application,
+  focused pgTAP, adjacent summary/monthly-cap tests, schema lint, and
+  `git diff --check`. The exact `supabase db reset --local` command was
+  attempted but blocked by local Docker registry credential loading.
+- No Dashboard KPI, Flutter UI, hosted rollout, Edge Function, iOS, web, or
+  push-notification work was started.
+- Assumptions made:
+  - Moving out of the exact category preserves `amount` and derives debit
+    gross/net from `abs(amount)`.
+  - Existing bill-payment rows outside the exact category are not rewritten by
+    unrelated edits.
+- Mocks created:
+  - None.
+- Mocks used:
+  - None.
 
 ## Milestone 84: Dashboard Bills Paid KPI
 

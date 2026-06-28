@@ -110,7 +110,8 @@ Acceptance criteria:
 
 - `BILL_PAYMENT_CATEGORY_SEMANTICS.md` describes M82-M85 as serial standalone
   milestones.
-- M83 is the next recommended non-deferred implementation milestone.
+- M83 became the next recommended non-deferred implementation milestone at M82
+  closeout.
 - Durable docs state that implementation remains planned only.
 
 Verification:
@@ -157,7 +158,7 @@ Completion summary:
 
 ## M83 - Payments/Credits Database Classification Contract
 
-Status: Planned.
+Status: Completed on 2026-06-28.
 
 Purpose: Enforce bill-payment transaction shape for the exact
 `Payments/Credits (not expense)` category and backfill existing rows.
@@ -253,6 +254,51 @@ Completion summary requirements:
 - Assumptions made
 - Mocks created
 - Mocks used
+
+Completion summary:
+
+- Added `app_private.is_bill_payment_category(...)` plus a
+  `public.transactions` before-trigger that forces insert/update rows in the
+  exact `Payments/Credits (not expense)` category to
+  `bill_payment_credit` shape while preserving `amount`.
+- Added a `public.categories` rename trigger so category renames to or from the
+  exact name reshape existing transactions consistently with the name-based
+  rule.
+- Backfilled existing exact-category transactions to zero gross/refund/net
+  `bill_payment_credit` rows.
+- Added focused pgTAP coverage for insert/update normalization, moves away,
+  zero-amount move-away rejection, category renames to/from the exact name,
+  monthly spend, monthly cap progress, and Review independence.
+- No Flutter UI, importer, Edge Function, hosted rollout, iOS, web, push
+  notification, or Dashboard KPI work was started.
+- Verification run:
+  - `supabase db reset --local` was attempted with the local stack stopped,
+    then with reduced local stacks, but the CLI repeatedly hung while loading
+    Docker registry credentials after local schema initialization. As
+    compensating compile evidence, all `supabase/migrations/*.sql` files were
+    applied in order through `docker exec -i supabase_db_SpendLens psql
+    -v ON_ERROR_STOP=1 -U postgres -d postgres`.
+  - `supabase test db --local supabase/tests/bill_payment_category_semantics.sql`
+    passed.
+  - `supabase test db --local supabase/tests/summary_views.sql` passed.
+  - `supabase test db --local supabase/tests/monthly_caps.sql` passed when run
+    serially; an initial parallel run contended while enabling pgTAP.
+  - `supabase db lint --local --schema app_private,public --fail-on error`
+    passed.
+  - `git diff --check` passed.
+- Assumptions made:
+  - Direct moves out of the exact bill-payment category should preserve
+    `amount` and use `abs(amount)` for debit gross/net values.
+  - Existing `bill_payment_credit` rows outside the exact category should not
+    be rewritten merely because unrelated fields are edited; M83 only owns the
+    exact-name category invariant and moves/renames across that boundary.
+  - The local `supabase db reset --local` registry-credential hang is an
+    environment/CLI issue, not an M83 migration failure, because the full
+    migration stack applied cleanly through the same local Postgres container.
+- Mocks created:
+  - None.
+- Mocks used:
+  - None.
 
 ## M84 - Dashboard Bills Paid KPI
 
