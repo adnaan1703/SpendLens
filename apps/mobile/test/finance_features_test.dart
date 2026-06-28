@@ -805,6 +805,16 @@ void main() {
     expect(find.text('Groceries'), findsWidgets);
     expect(find.text('Edit labels'), findsNothing);
     expect(find.widgetWithText(FilledButton, 'Delete'), findsNothing);
+
+    expect(router.canPop(), isTrue);
+    final handled = await tester.binding.handlePopRoute();
+    await tester.pumpAndSettle();
+
+    expect(handled, isTrue);
+    expect(
+      router.routeInformationProvider.value.uri.path,
+      DashboardScreen.routePath,
+    );
   });
 
   testWidgets('Dashboard cap edit and stop controls do not open drilldown', (
@@ -848,7 +858,7 @@ void main() {
   });
 
   testWidgets(
-    'monthly cap drilldown paginates and direct Back falls to Dashboard at 390px',
+    'monthly cap drilldown paginates and direct system Back falls to Dashboard at 390px',
     (tester) async {
       tester.view.physicalSize = const Size(390, 900);
       tester.view.devicePixelRatio = 1;
@@ -884,11 +894,10 @@ void main() {
       expect(repository.monthlyCapTransactionRequests.last.offset, 10);
       expect(tester.takeException(), isNull);
 
-      final backButton = find.widgetWithText(TextButton, 'Back');
-      await tester.ensureVisible(backButton);
-      await tester.tap(backButton);
+      final handled = await tester.binding.handlePopRoute();
       await tester.pumpAndSettle();
 
+      expect(handled, isTrue);
       expect(
         router.routeInformationProvider.value.uri.path,
         DashboardScreen.routePath,
@@ -4445,17 +4454,19 @@ GoRouter _financeTestRouter({
       GoRoute(
         path: DashboardScreen.routePath,
         builder: (_, _) => const Scaffold(body: DashboardScreen()),
-      ),
-      GoRoute(
-        path: MonthlyCapTransactionsScreen.routePath,
-        builder: (_, state) => Scaffold(
-          body: MonthlyCapTransactionsScreen(
-            monthlyCapId: state.pathParameters['capId'] ?? '',
-            periodMonth: MonthlyCapTransactionsScreen.periodMonthFromUri(
-              state.uri,
+        routes: [
+          GoRoute(
+            path: MonthlyCapTransactionsScreen.routeSegment,
+            builder: (_, state) => Scaffold(
+              body: MonthlyCapTransactionsScreen(
+                monthlyCapId: state.pathParameters['capId'] ?? '',
+                periodMonth: MonthlyCapTransactionsScreen.periodMonthFromUri(
+                  state.uri,
+                ),
+              ),
             ),
           ),
-        ),
+        ],
       ),
       GoRoute(
         path: ActivityScreen.routePath,

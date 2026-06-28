@@ -14,8 +14,9 @@ class MonthlyCapTransactionsScreen extends ConsumerStatefulWidget {
     required this.periodMonth,
   });
 
-  static const routePath = '/dashboard/monthly-caps/:capId/transactions';
   static const _dashboardRoutePath = '/dashboard';
+  static const routeSegment = 'monthly-caps/:capId/transactions';
+  static const routePath = '$_dashboardRoutePath/$routeSegment';
 
   final String monthlyCapId;
   final DateTime? periodMonth;
@@ -227,14 +228,38 @@ class _MonthlyCapTransactionsScreenState
     String? subtitle,
     required Widget child,
   }) {
-    return AppPage(
-      title: title,
-      subtitle: subtitle,
-      stackActions: false,
-      actions: const [_MonthlyCapBackButton()],
-      child: child,
+    final canPop = GoRouter.maybeOf(context)?.canPop() ?? false;
+
+    return PopScope(
+      canPop: canPop,
+      onPopInvokedWithResult: (didPop, _) {
+        if (didPop) return;
+
+        _returnFromMonthlyCapTransactions(context);
+      },
+      child: AppPage(
+        title: title,
+        subtitle: subtitle,
+        stackActions: false,
+        actions: const [_MonthlyCapBackButton()],
+        child: child,
+      ),
     );
   }
+}
+
+void _returnFromMonthlyCapTransactions(BuildContext context) {
+  if (!context.mounted) return;
+
+  final router = GoRouter.maybeOf(context);
+  if (router == null) return;
+
+  if (router.canPop()) {
+    router.pop();
+    return;
+  }
+
+  router.go(MonthlyCapTransactionsScreen._dashboardRoutePath);
 }
 
 class _MonthlyCapBackButton extends StatelessWidget {
@@ -247,14 +272,7 @@ class _MonthlyCapBackButton extends StatelessWidget {
     return TextButton.icon(
       onPressed: router == null
           ? null
-          : () {
-              if (router.canPop()) {
-                router.pop();
-                return;
-              }
-
-              router.go(MonthlyCapTransactionsScreen._dashboardRoutePath);
-            },
+          : () => _returnFromMonthlyCapTransactions(context),
       icon: const Icon(Icons.arrow_back),
       label: const Text('Back'),
     );

@@ -77,19 +77,22 @@ final appRouterProvider = Provider<GoRouter>((ref) {
               state,
               const DashboardScreen(),
             ),
-          ),
-          GoRoute(
-            path: MonthlyCapTransactionsScreen.routePath,
-            pageBuilder: (context, state) => _scaffoldBackgroundPage(
-              context,
-              state,
-              MonthlyCapTransactionsScreen(
-                monthlyCapId: state.pathParameters['capId'] ?? '',
-                periodMonth: MonthlyCapTransactionsScreen.periodMonthFromUri(
-                  state.uri,
+            routes: [
+              GoRoute(
+                path: MonthlyCapTransactionsScreen.routeSegment,
+                pageBuilder: (context, state) => _scaffoldBackgroundPage(
+                  context,
+                  state,
+                  MonthlyCapTransactionsScreen(
+                    monthlyCapId: state.pathParameters['capId'] ?? '',
+                    periodMonth:
+                        MonthlyCapTransactionsScreen.periodMonthFromUri(
+                          state.uri,
+                        ),
+                  ),
                 ),
               ),
-            ),
+            ],
           ),
           GoRoute(
             path: ActivityScreen.routePath,
