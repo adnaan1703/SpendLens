@@ -668,6 +668,16 @@ Financial rules:
 - Card bill payments and account credits have `net_expense = 0`.
 - Refunds are represented as positive `refund_amount`.
 - Dashboard summaries and monthly caps use `net_expense`.
+- Milestones 82-85 plan to make the exact household category name
+  `Payments/Credits (not expense)` force `transaction_type =
+  'bill_payment_credit'` with preserved `amount` and zero gross/refund/net
+  values. Until M83-M85 complete, this is a planned invariant, not guaranteed
+  by the current database.
+- Moving a transaction out of that exact category in the planned M83 contract
+  converts it back to `debit_spend` shape with `abs(amount)` in gross and net
+  expense, while Review queue state remains independent. Category renames to or
+  from the exact name should reshape affected transactions the same way because
+  the rule is name-based, not category-ID based.
 
 Final transaction deletion rules from Milestones 52-55:
 
@@ -1093,6 +1103,9 @@ Rules:
 Create these views for app reads:
 
 - `v_monthly_spend`: monthly gross, refunds, net spend, bill payments.
+  After M83-M85, transactions in the exact `Payments/Credits (not expense)`
+  category should contribute to `bill_payments` through `bill_payment_credit`
+  rows rather than to gross spend or net expense.
 - `v_category_monthly_spend`: category spend per month.
 - `v_budget_progress`: legacy category-only compatibility cap progress over
   monthly caps.

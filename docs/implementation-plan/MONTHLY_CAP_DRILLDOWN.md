@@ -488,7 +488,8 @@ Completion summary:
 - Deferred scope was not started: push notifications, iOS, web, Activity
   export, cap reports, cap notifications, transaction detail/edit/delete/label
   edit from cap drilldown, and unrelated cleanup.
-- No Milestone 82 is present in the current tracker; Milestones 18-21 remain
+- At M81 closeout, no Milestone 82 was present in the tracker. Milestone 82 was
+  added later for bill-payment category semantics; Milestones 18-21 remain
   deferred by user request.
 - Verification run:
   - `supabase db reset --local`

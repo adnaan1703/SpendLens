@@ -4,12 +4,11 @@ Use this file to coordinate work across multiple implementation sessions. Update
 
 ## Current Status
 
-- Current milestone: None. Milestone 81, Monthly Cap Drilldown Regression,
-  Docs, and Cleanup, completed on 2026-06-28. No active non-deferred
-  implementation milestone is queued. Milestones 18-21 remain deferred by user
-  request.
-- Last completed milestone: Milestone 81, Monthly Cap Drilldown Regression,
-  Docs, and Cleanup.
+- Current milestone: Milestone 83, Payments/Credits Database Classification
+  Contract, is the next recommended non-deferred implementation milestone and
+  has not started. Milestones 18-21 remain deferred by user request.
+- Last completed milestone: Milestone 82, Bill-Payment Category Semantics
+  Planning and Reference Readiness, completed on 2026-06-28.
 - Current implementation state: Flutter Android app scaffold exists in
   `apps/mobile` with redesigned SpendLens Google sign-in, route protection,
   authenticated shell, RLS-safe profile/default-household bootstrap,
@@ -269,15 +268,18 @@ Use this file to coordinate work across multiple implementation sessions. Update
   highlights, invalid/stale route states, and Back-to-Dashboard behavior.
   Milestone 81 verified the full local Supabase and Flutter regression path,
   folded final cap drilldown behavior into durable docs, and marked
-  `MONTHLY_CAP_DRILLDOWN.md` completed-only.
+  `MONTHLY_CAP_DRILLDOWN.md` completed-only. Milestone 82 added
+  `BILL_PAYMENT_CATEGORY_SEMANTICS.md` as the companion plan for exact
+  `Payments/Credits (not expense)` category semantics and queued M83-M85 for
+  the database invariant/backfill, Dashboard bills-paid KPI, and final
+  regression/docs closeout.
   Milestones 18-21 remain planned and deferred by user request.
-- Remote deployment state: On 2026-06-08, user confirmed Supabase project `bslsitzdvrdosubbdxpd` as the intended dev/staging target. All local migrations through `20260607174515_ai_ready_layer_llm_features.sql` were pushed there, hosted expense Q&A and the now-retired legacy AI lookup function were active with JWT verification, and `GEMINI_API_KEY` was present in hosted Edge Function secrets by name. After the user signed in through the Android emulator, hosted profile/household bootstrap and authenticated Gemini Edge Function smoke passed. On 2026-06-08 for Milestone 13, `gmail-oauth-start` was deployed as version 2 with JWT verification, `gmail-sync` was deployed as version 2 without JWT verification, and new `gmail-backfill-range` was deployed as version 1 without JWT verification. Hosted `gmail-backfill-range` `OPTIONS` smoke returned 200, and an unauthenticated POST returned the expected service-key error. The live May Gmail backfill itself was not run because it requires the user to connect the target Gmail mailbox and invoke the runbook with a Supabase secret key from a local/platform secret store. On 2026-06-09, M16 deleted the hosted legacy AI lookup function from `bslsitzdvrdosubbdxpd` and a follow-up function list verified it absent. The M16 database migration and updated active Suggest function were verified locally but not pushed/deployed to hosted in this implementation session. On 2026-06-16, M71 was verified locally only; no hosted Supabase migration push or Edge Function deployment was run. M72 was Flutter-only; no hosted Supabase migration push or Edge Function deployment was run. M73 was verified locally only as a regression/docs closeout; no hosted Supabase migration push or Edge Function deployment was run. On 2026-06-19, M76 was verified locally only; no hosted Supabase migration push, Edge Function deployment, or remote workbook import was run. On 2026-06-19, M77 was verified locally only; no hosted Supabase migration push, Edge Function deployment, remote workbook import, iOS, web, push notifications, or user-facing regex rule editor work was run. On 2026-06-28, M78 was planning/docs-only; no Supabase migration, Edge Function deployment, Flutter implementation, hosted rollout, iOS, web, or push-notification work was started. On 2026-06-28, M79 was verified locally only; no hosted Supabase migration push, Edge Function deployment, remote workbook import, Dashboard route/screen, iOS, web, or push-notification work was started. On 2026-06-28, M80 was verified locally only; no hosted Supabase migration push, Edge Function deployment, remote workbook import, transaction editing from cap drilldown, iOS, web, or push-notification work was started. On 2026-06-28, M81 was verified locally only; no hosted Supabase migration push, app release, Edge Function deployment, remote workbook import, transaction editing from cap drilldown, Activity export, cap reports, cap notifications, iOS, web, or push-notification work was started.
-- Next recommended milestone: None. There is no active non-deferred SpendLens
-  milestone after M81 in the current tracker. Milestones 18-21 remain deferred
-  unless the user resumes push notifications; iOS and web remain deferred
-  future milestones unless explicitly resumed. If continuing hosted rollout
-  separately, push currently local-only migrations and deploy the relevant
-  updated Edge Functions in a separate hosted rollout.
+- Remote deployment state: On 2026-06-08, user confirmed Supabase project `bslsitzdvrdosubbdxpd` as the intended dev/staging target. All local migrations through `20260607174515_ai_ready_layer_llm_features.sql` were pushed there, hosted expense Q&A and the now-retired legacy AI lookup function were active with JWT verification, and `GEMINI_API_KEY` was present in hosted Edge Function secrets by name. After the user signed in through the Android emulator, hosted profile/household bootstrap and authenticated Gemini Edge Function smoke passed. On 2026-06-08 for Milestone 13, `gmail-oauth-start` was deployed as version 2 with JWT verification, `gmail-sync` was deployed as version 2 without JWT verification, and new `gmail-backfill-range` was deployed as version 1 without JWT verification. Hosted `gmail-backfill-range` `OPTIONS` smoke returned 200, and an unauthenticated POST returned the expected service-key error. The live May Gmail backfill itself was not run because it requires the user to connect the target Gmail mailbox and invoke the runbook with a Supabase secret key from a local/platform secret store. On 2026-06-09, M16 deleted the hosted legacy AI lookup function from `bslsitzdvrdosubbdxpd` and a follow-up function list verified it absent. The M16 database migration and updated active Suggest function were verified locally but not pushed/deployed to hosted in this implementation session. On 2026-06-16, M71 was verified locally only; no hosted Supabase migration push or Edge Function deployment was run. M72 was Flutter-only; no hosted Supabase migration push or Edge Function deployment was run. M73 was verified locally only as a regression/docs closeout; no hosted Supabase migration push or Edge Function deployment was run. On 2026-06-19, M76 was verified locally only; no hosted Supabase migration push, Edge Function deployment, or remote workbook import was run. On 2026-06-19, M77 was verified locally only; no hosted Supabase migration push, Edge Function deployment, remote workbook import, iOS, web, push notifications, or user-facing regex rule editor work was run. On 2026-06-28, M78 was planning/docs-only; no Supabase migration, Edge Function deployment, Flutter implementation, hosted rollout, iOS, web, or push-notification work was started. On 2026-06-28, M79 was verified locally only; no hosted Supabase migration push, Edge Function deployment, remote workbook import, Dashboard route/screen, iOS, web, or push-notification work was started. On 2026-06-28, M80 was verified locally only; no hosted Supabase migration push, Edge Function deployment, remote workbook import, transaction editing from cap drilldown, iOS, web, or push-notification work was started. On 2026-06-28, M81 was verified locally only; no hosted Supabase migration push, app release, Edge Function deployment, remote workbook import, transaction editing from cap drilldown, Activity export, cap reports, cap notifications, iOS, web, or push-notification work was started. On 2026-06-28, M82 was planning/docs-only; no Supabase migration, Flutter implementation, Edge Function deployment, hosted rollout, remote workbook import, app release, iOS, web, or push-notification work was started.
+- Next recommended milestone: Milestone 83, Payments/Credits Database
+  Classification Contract. Milestones 18-21 remain deferred unless the user
+  resumes push notifications; iOS and web remain deferred future milestones
+  unless explicitly resumed. Hosted rollout remains separate from the local
+  M83-M85 implementation sequence unless the user asks for it.
 - Documentation state: completed-only companion execution plans for transaction
   metadata editing and category management were retired from `docs/` on
   2026-06-12. `docs/implementation-plan/MONTHLY_CAPS.md` remains active as the
@@ -302,6 +304,8 @@ Use this file to coordinate work across multiple implementation sessions. Update
   `docs/implementation-plan/GMAIL_PARSE_FAILURE_REVIEW.md` is completed-only
   after completed Milestones 70-73 and can be removed in a later cleanup if the
   repository's completed-plan convention calls for it.
+  `docs/implementation-plan/BILL_PAYMENT_CATEGORY_SEMANTICS.md` is the active
+  companion plan for Milestones 82-85.
 
 ## Required Reading for New Threads
 
@@ -320,15 +324,18 @@ At the start of a new implementation thread, read:
 9. `docs/implementation-plan/TRANSACTION_LABELS.md` when executing Milestone 26, 27, or 28
 10. `docs/implementation-plan/MONTHLY_CAPS.md` when executing Milestone 29, 30, 31, 32, 33, 34, or 35
 11. `docs/implementation-plan/MONTHLY_CAP_DRILLDOWN.md` when executing Milestone 78, 79, 80, or 81
-12. `docs/implementation-plan/UI_REDESIGN.md` when executing Milestone 37 through 51
-13. `docs/implementation-plan/TRANSACTION_DELETION.md` when executing Milestone 52 through 55
-14. `docs/implementation-plan/MERCHANT_AUTOCOMPLETE.md` when touching merchant
+12. `docs/implementation-plan/BILL_PAYMENT_CATEGORY_SEMANTICS.md` when
+    executing Milestone 82, 83, 84, or 85, or when touching
+    `Payments/Credits (not expense)` transaction-type semantics
+13. `docs/implementation-plan/UI_REDESIGN.md` when executing Milestone 37 through 51
+14. `docs/implementation-plan/TRANSACTION_DELETION.md` when executing Milestone 52 through 55
+15. `docs/implementation-plan/MERCHANT_AUTOCOMPLETE.md` when touching merchant
     search/autocomplete or metadata-editor duplicate guarding
-15. `docs/implementation-plan/MERCHANT_GROUP_MANAGEMENT.md` when touching
+16. `docs/implementation-plan/MERCHANT_GROUP_MANAGEMENT.md` when touching
     merchant group rename/merge behavior
-16. `DESIGN.md` when executing Milestone 37 through 51 or Milestone 80
-17. `docs/design-references/stitch/themed-dashboard-ui-redesign/README.md` when executing Milestone 37 through 51
-18. This handoff file
+17. `DESIGN.md` when executing Milestone 37 through 51 or Milestone 80
+18. `docs/design-references/stitch/themed-dashboard-ui-redesign/README.md` when executing Milestone 37 through 51
+19. This handoff file
 
 ## Current Assumptions
 
@@ -412,6 +419,16 @@ At the start of a new implementation thread, read:
   cap-membership RPC, not Activity filters. The drilldown is view-only,
   paginated, Dashboard-context, and `Under review` means an open Review queue
   item for that transaction.
+- Bill-payment category semantics are planned through M82-M85. The exact
+  household category name `Payments/Credits (not expense)`, regardless of
+  subcategory, should force `bill_payment_credit` with preserved `amount` and
+  zero gross/refund/net values after M83 implements the database invariant and
+  backfill. Moving a transaction out of that exact category should convert it
+  to `debit_spend` shape, and category renames to or from the exact name should
+  reshape affected transactions because the rule is name-based. Review behavior
+  remains separate and should not be auto-resolved or suppressed by
+  bill-payment typing. Dashboard should show a `Bills paid` KPI sourced from
+  existing `MonthlySpend.billPayments` after M84.
 - Android push notifications use Firebase Cloud Messaging for delivery and
   Supabase for device registration, preferences, outbox state, delivery state,
   and service-key protected dispatch.
@@ -549,6 +566,51 @@ Do not ask the user to perform all setup at once. Ask only when the relevant mil
 - Milestone 79, Monthly Cap Transaction Data Contract: completed.
 - Milestone 80, Dashboard Cap Drilldown Route and View-Only Screen: completed.
 - Milestone 81, Monthly Cap Drilldown Regression, Docs, and Cleanup: completed.
+- Milestone 82, Bill-Payment Category Semantics Planning and Reference
+  Readiness: completed.
+- Milestone 83, Payments/Credits Database Classification Contract: planned.
+- Milestone 84, Dashboard Bills Paid KPI: planned.
+- Milestone 85, Bill-Payment Semantics Regression, Docs, and Cleanup: planned.
+
+## Bill-Payment Category Semantics M82 Notes
+
+- Completed on 2026-06-28 as a planning-only documentation update. Milestones
+  18-21 remained deferred and were not started. M83 was not started.
+- Added `docs/implementation-plan/BILL_PAYMENT_CATEGORY_SEMANTICS.md` as the
+  detailed fresh-thread implementation plan for M83-M85.
+- Updated `docs/implementation-plan/README.md`,
+  `docs/implementation-plan/ARCHITECTURE.md`,
+  `docs/implementation-plan/DATA_MODEL.md`,
+  `docs/implementation-plan/INGESTION.md`,
+  `docs/implementation-plan/MONTHLY_CAPS.md`,
+  `docs/implementation-plan/MILESTONES.md`, and this handoff so
+  bill-payment category semantics are discoverable from standard planning
+  entrypoints.
+- Planned milestone sequence:
+  - Milestone 83: Payments/Credits Database Classification Contract.
+  - Milestone 84: Dashboard Bills Paid KPI.
+  - Milestone 85: Bill-Payment Semantics Regression, Docs, and Cleanup.
+- Implementation remains planned. No migrations, Dart code, Flutter UI, tests,
+  Edge Functions, hosted Supabase changes, remote workbook import, staging,
+  iOS, web, push notifications, or runtime code changes were started by this
+  planning update.
+- Verification run:
+  - Planning docs and current transaction, ingestion, monthly summary, and
+    Dashboard context were inspected before editing.
+- Known gaps:
+  - No markdown linter is configured or run for implementation-plan docs.
+- Assumptions made:
+  - Exact category-name matching on `Payments/Credits (not expense)` is the
+    intended rule boundary for this sequence.
+  - Existing `v_monthly_spend.bill_payments` is the correct backend source for
+    the Dashboard KPI once transaction rows are correctly typed.
+  - A zero-amount transaction moved out of the bill-payment category should
+    fail clearly rather than create an invalid `debit_spend` row.
+  - Review rows remain independent from bill-payment transaction typing.
+- Mocks created:
+  - None.
+- Mocks used:
+  - None.
 
 ## Monthly Cap Drilldown M78 Notes
 
@@ -674,8 +736,9 @@ Do not ask the user to perform all setup at once. Ask only when the relevant mil
 ## Monthly Cap Drilldown M81 Notes
 
 - Completed on 2026-06-28 as a regression/docs closeout milestone. Milestones
-  18-21 remained deferred and were not started. No Milestone 82 exists in the
-  current tracker.
+  18-21 remained deferred and were not started. At M81 closeout, no Milestone
+  82 existed in the tracker; M82 was added later for bill-payment category
+  semantics.
 - Verified the complete Dashboard monthly cap drilldown path across the M79
   `get_monthly_cap_transactions(...)` backend/repository contract and the M80
   Dashboard-context route/view-only screen.

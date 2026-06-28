@@ -4179,14 +4179,131 @@ durable docs.
     the complete cap drilldown workflow.
   - Hosted migration push and app release remain rollout work rather than part
     of M81 closeout.
-  - With no Milestone 82 in the current tracker and M18-M21 deferred by user
-    request, there is no next active non-deferred SpendLens milestone after
-    M81.
+  - At M81 closeout, there was no Milestone 82 in the tracker and M18-M21 were
+    deferred by user request. Milestone 82 was added later for bill-payment
+    category semantics.
 - Mocks created:
   - None.
 - Mocks used:
   - Existing fake finance repository/widget-test data from
     `apps/mobile/test/finance_features_test.dart`.
+
+## Milestone 82: Bill-Payment Category Semantics Planning and Reference Readiness
+
+### Status
+
+Completed on 2026-06-28. See
+[Bill-Payment Category Semantics](BILL_PAYMENT_CATEGORY_SEMANTICS.md#m82---bill-payment-category-semantics-planning-and-reference-readiness).
+
+### Objective
+
+Create the companion plan for treating the exact household category
+`Payments/Credits (not expense)` as bill-payment semantics and wire M83-M85
+into durable planning docs.
+
+### Acceptance Criteria
+
+- `BILL_PAYMENT_CATEGORY_SEMANTICS.md` describes M82-M85 as standalone serial
+  milestones.
+- M83 is the next recommended non-deferred implementation milestone.
+- Durable docs state that implementation remains planned only until M83-M85
+  complete.
+- No runtime implementation work is started.
+
+### Completion Summary
+
+- Created the Bill-Payment Category Semantics companion plan and routed
+  implementation through M83-M85.
+- Recorded the user-confirmed rule: any transaction in the exact category
+  `Payments/Credits (not expense)`, regardless of subcategory, should be stored
+  as `bill_payment_credit` with zero gross/refund/net expense and should count
+  toward monthly bills paid.
+- Planned the implementation as a database invariant plus backfill, followed by
+  a Dashboard bills-paid KPI and final regression/docs closeout.
+- Preserved Review independence: this sequence must not auto-resolve, suppress,
+  or otherwise alter Review rows because of bill-payment typing.
+- M83 was not started; M18-M21 remain deferred.
+- Assumptions made:
+  - Exact category-name matching is the intended rule boundary for this
+    sequence.
+  - Existing `v_monthly_spend.bill_payments` is the correct source for the
+    Dashboard KPI after M83 corrects transaction rows.
+  - A zero-amount transaction moved out of the bill-payment category should
+    fail clearly rather than create an invalid `debit_spend` row.
+- Mocks created:
+  - None.
+- Mocks used:
+  - None.
+
+## Milestone 83: Payments/Credits Database Classification Contract
+
+### Status
+
+Planned. See
+[Bill-Payment Category Semantics](BILL_PAYMENT_CATEGORY_SEMANTICS.md#m83---paymentscredits-database-classification-contract).
+
+### Objective
+
+Enforce bill-payment transaction shape for the exact
+`Payments/Credits (not expense)` category and backfill existing rows.
+
+### Acceptance Criteria
+
+- Any transaction categorized as `Payments/Credits (not expense)` is stored as
+  `bill_payment_credit` with preserved `amount` and zero gross/refund/net
+  values.
+- Existing matching rows move out of gross/net spend and into monthly bills
+  paid through backfill.
+- Moving a row out of the category converts it to valid `debit_spend` shape.
+- Renaming a category to or from the exact category name reshapes affected
+  transactions consistently with exact-name semantics.
+- Review queue state is unchanged by the backfill.
+- Current monthly spend and monthly cap calculations exclude these rows through
+  existing `net_expense` semantics.
+
+## Milestone 84: Dashboard Bills Paid KPI
+
+### Status
+
+Planned. See
+[Bill-Payment Category Semantics](BILL_PAYMENT_CATEGORY_SEMANTICS.md#m84---dashboard-bills-paid-kpi).
+
+### Objective
+
+Surface the selected month's bills-paid amount on Dashboard using the existing
+`MonthlySpend.billPayments` data.
+
+### Acceptance Criteria
+
+- Dashboard shows a `Bills paid` KPI in the Spending section.
+- The amount comes from `MonthlySpend.billPayments`, backed by
+  `v_monthly_spend.bill_payments`.
+- Layout remains readable at 390px and desktop widths.
+- Existing Dashboard actions, Review, Monthly caps, Activity filters, cap
+  drilldown, and transaction detail behavior remain unchanged.
+
+## Milestone 85: Bill-Payment Semantics Regression, Docs, and Cleanup
+
+### Status
+
+Planned. See
+[Bill-Payment Category Semantics](BILL_PAYMENT_CATEGORY_SEMANTICS.md#m85---bill-payment-semantics-regression-docs-and-cleanup).
+
+### Objective
+
+Verify the complete category-driven bill-payment workflow and fold final
+behavior back into durable docs.
+
+### Acceptance Criteria
+
+- Focused Supabase, importer, and Flutter verification passes locally or
+  documents an environment limitation with compensating evidence.
+- Existing and future `Payments/Credits (not expense)` transactions no longer
+  inflate gross spend, net expense, or monthly caps.
+- Dashboard bills-paid KPI reflects corrected `bill_payment_credit` rows.
+- Review queue behavior remains independent from bill-payment typing.
+- `BILL_PAYMENT_CATEGORY_SEMANTICS.md` is marked completed-only.
+- No unrelated deferred work is started.
 
 ## Cross-Milestone Consistency Rules
 
@@ -4222,6 +4339,9 @@ durable docs.
 - Monthly cap transaction drilldown must use a dedicated Dashboard-context
   screen and backend cap-membership contract; do not approximate mixed cap
   membership with Activity filters.
+- Payments/Credits bill-payment semantics must stay exact-name based on
+  `Payments/Credits (not expense)` until a later approved milestone changes
+  that rule. The bill-payment money shape must not auto-resolve Review rows.
 - Prefer deterministic rules before AI.
 - Keep client code free of service credentials.
 - Update these docs when architecture decisions change.
