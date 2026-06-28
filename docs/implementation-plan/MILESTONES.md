@@ -4044,7 +4044,7 @@ drilldown from Dashboard, then wire M79-M81 into durable planning docs.
 
 ### Status
 
-Planned. See
+Completed. See
 [Monthly Cap Drilldown](MONTHLY_CAP_DRILLDOWN.md#m79---monthly-cap-transaction-data-contract).
 
 ### Objective
@@ -4062,6 +4062,25 @@ that belong to one cap for one month.
 - Non-members and invalid households cannot read cap transactions.
 - Existing monthly cap progress, Activity filters, label filters, and
   transaction pagination remain unchanged.
+
+### Completion Summary
+
+- Added the `public.get_monthly_cap_transactions(...)` read RPC and focused
+  pgTAP coverage for category, label, mixed, duplicate, overlap, pagination,
+  open-review, viewer, and non-member behavior.
+- Added Flutter repository request/page/row models plus
+  `monthlyCapTransactionsProvider` without changing Activity route filters or
+  building the Dashboard screen.
+- M80 was not started; M18-M21 remain deferred.
+- Assumptions made:
+  - The cap id passed to the RPC is the recurring cap-series id.
+  - Pagination is normalized to a maximum limit of 100.
+  - Legacy compatibility cap rows stay outside the new drilldown contract.
+- Mocks created:
+  - None.
+- Mocks used:
+  - Existing fake finance repository test double, extended for M79 provider
+    coverage.
 
 ## Milestone 80: Dashboard Cap Drilldown Route and View-Only Screen
 

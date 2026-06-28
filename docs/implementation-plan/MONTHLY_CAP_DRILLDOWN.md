@@ -156,7 +156,7 @@ Completion summary:
 
 ## M79 - Monthly Cap Transaction Data Contract
 
-Status: Planned.
+Status: Completed on 2026-06-28.
 
 Purpose: Add the backend and Flutter repository contract needed to read the
 transactions that belong to one cap for one month.
@@ -247,6 +247,46 @@ Completion summary requirements:
 - Assumptions made
 - Mocks created
 - Mocks used
+
+Completion summary:
+
+- Added `public.get_monthly_cap_transactions(...)` as a read-only
+  `security invoker` RPC for one active recurring cap series and first-day
+  reporting month.
+- The RPC validates signed-in profile access, active household membership,
+  first-day month input, required cap id, and bounded pagination with a maximum
+  limit of 100.
+- Cap membership stays backend-owned and matches the active selected-month
+  version's category OR label targets; rows are returned once per transaction
+  even when both target types match.
+- Returned row fields include merchant/category/subcategory names, ordered
+  label ids/names, and open-review state with the newest open review item id.
+- Added pgTAP coverage for category-only, label-only, mixed, duplicate,
+  overlapping cap, month-filtered, paginated, open-review, viewer, and
+  non-member behavior.
+- Added Flutter repository request/page/row models,
+  `monthlyCapTransactionsProvider`, a Supabase RPC implementation, disabled
+  repository handling, and focused Dart tests without changing Activity filters
+  or adding the Dashboard route/screen.
+- Milestone 80 was not started.
+- Verification run:
+  - `supabase db reset --local`
+  - `supabase test db --local supabase/tests/monthly_caps.sql`
+  - `supabase test db --local supabase/tests/rls_isolation.sql`
+  - `supabase db lint --local --schema app_private,public --fail-on error`
+  - `cd apps/mobile && flutter test test/finance_features_test.dart --name "monthly cap transaction|MonthlyCapTransaction"`
+- Assumptions made:
+  - `p_monthly_cap_id` is the recurring cap-series id from Dashboard monthly
+    cap progress.
+  - The M79 backend contract should normalize pagination bounds rather than
+    fail requests with out-of-range limit/offset values.
+  - M79 should support active recurring cap series only; legacy compatibility
+    cap rows remain outside the new drilldown contract.
+- Mocks created:
+  - None.
+- Mocks used:
+  - Extended the existing `_FakeFinanceRepository` test double for focused
+    Flutter repository/provider tests.
 
 ## M80 - Dashboard Cap Drilldown Route and View-Only Screen
 

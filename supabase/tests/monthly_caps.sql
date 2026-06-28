@@ -3,7 +3,7 @@ begin;
 create extension if not exists pgtap with schema extensions;
 set search_path = public, extensions;
 
-select plan(60);
+select plan(74);
 
 insert into auth.users (id)
 values
@@ -82,13 +82,36 @@ insert into public.categories (id, household_id, name, sort_order)
 values
   ('59000000-0000-0000-0000-000000000001', '39000000-0000-0000-0000-000000000001', 'Food', 1),
   ('59000000-0000-0000-0000-000000000002', '39000000-0000-0000-0000-000000000001', 'Travel', 2),
-  ('59000000-0000-0000-0000-000000000003', '39000000-0000-0000-0000-000000000002', 'Other Food', 1);
+  ('59000000-0000-0000-0000-000000000003', '39000000-0000-0000-0000-000000000002', 'Other Food', 1),
+  ('59000000-0000-0000-0000-000000000101', '39000000-0000-0000-0000-000000000001', 'Drilldown', 3),
+  ('59000000-0000-0000-0000-000000000102', '39000000-0000-0000-0000-000000000001', 'Bills', 4);
+
+insert into public.subcategories (id, household_id, category_id, name, sort_order)
+values
+  (
+    '69000000-0000-0000-0000-000000000101',
+    '39000000-0000-0000-0000-000000000001',
+    '59000000-0000-0000-0000-000000000101',
+    'Shared target',
+    1
+  );
+
+insert into public.merchants (id, household_id, display_name, category_id, subcategory_id)
+values
+  (
+    '71000000-0000-0000-0000-000000000101',
+    '39000000-0000-0000-0000-000000000001',
+    'Drilldown Merchant',
+    '59000000-0000-0000-0000-000000000101',
+    '69000000-0000-0000-0000-000000000101'
+  );
 
 insert into public.labels (id, household_id, name, created_by)
 values
   ('89000000-0000-0000-0000-000000000001', '39000000-0000-0000-0000-000000000001', 'Groceries', '29000000-0000-0000-0000-000000000001'),
   ('89000000-0000-0000-0000-000000000002', '39000000-0000-0000-0000-000000000001', 'Reimburse', '29000000-0000-0000-0000-000000000001'),
-  ('89000000-0000-0000-0000-000000000003', '39000000-0000-0000-0000-000000000002', 'Other Label', '29000000-0000-0000-0000-000000000003');
+  ('89000000-0000-0000-0000-000000000003', '39000000-0000-0000-0000-000000000002', 'Other Label', '29000000-0000-0000-0000-000000000003'),
+  ('89000000-0000-0000-0000-000000000101', '39000000-0000-0000-0000-000000000001', 'Office', '29000000-0000-0000-0000-000000000001');
 
 insert into public.transactions (
   id,
@@ -168,6 +191,180 @@ values
     '79000000-0000-0000-0000-000000000001',
     '89000000-0000-0000-0000-000000000001',
     '29000000-0000-0000-0000-000000000001'
+  );
+
+insert into public.transactions (
+  id,
+  household_id,
+  source_type,
+  transaction_date,
+  statement_merchant,
+  normalized_statement_merchant,
+  merchant_id,
+  category_id,
+  subcategory_id,
+  transaction_type,
+  amount,
+  gross_spend,
+  refund_amount,
+  net_expense,
+  currency_code,
+  confidence,
+  cardholder_name,
+  notes,
+  source_fingerprint,
+  created_at
+)
+values
+  (
+    '79000000-0000-0000-0000-000000000101',
+    '39000000-0000-0000-0000-000000000001',
+    'workbook',
+    '2026-05-15',
+    'DRILLDOWN SHARED',
+    'drilldown shared',
+    '71000000-0000-0000-0000-000000000101',
+    '59000000-0000-0000-0000-000000000101',
+    '69000000-0000-0000-0000-000000000101',
+    'debit_spend',
+    300.00,
+    300.00,
+    0.00,
+    300.00,
+    'INR',
+    'high',
+    'Ada',
+    'Cap row note',
+    'monthly-cap-drilldown-shared',
+    '2026-05-15 10:00:00+00'
+  ),
+  (
+    '79000000-0000-0000-0000-000000000102',
+    '39000000-0000-0000-0000-000000000001',
+    'workbook',
+    '2026-05-20',
+    'DRILLDOWN LABEL ONLY',
+    'drilldown label only',
+    null,
+    '59000000-0000-0000-0000-000000000102',
+    null,
+    'debit_spend',
+    250.00,
+    250.00,
+    0.00,
+    250.00,
+    'INR',
+    'low',
+    'Ada',
+    null,
+    'monthly-cap-drilldown-label-only',
+    '2026-05-20 13:00:00+00'
+  ),
+  (
+    '79000000-0000-0000-0000-000000000103',
+    '39000000-0000-0000-0000-000000000001',
+    'workbook',
+    '2026-05-20',
+    'DRILLDOWN CATEGORY ONLY',
+    'drilldown category only',
+    null,
+    '59000000-0000-0000-0000-000000000101',
+    null,
+    'debit_spend',
+    125.00,
+    125.00,
+    0.00,
+    125.00,
+    'INR',
+    'medium',
+    null,
+    null,
+    'monthly-cap-drilldown-category-only',
+    '2026-05-20 12:00:00+00'
+  ),
+  (
+    '79000000-0000-0000-0000-000000000104',
+    '39000000-0000-0000-0000-000000000001',
+    'workbook',
+    '2026-06-03',
+    'DRILLDOWN NEXT MONTH',
+    'drilldown next month',
+    null,
+    '59000000-0000-0000-0000-000000000101',
+    null,
+    'debit_spend',
+    90.00,
+    90.00,
+    0.00,
+    90.00,
+    'INR',
+    'high',
+    null,
+    null,
+    'monthly-cap-drilldown-next-month',
+    '2026-06-03 09:00:00+00'
+  );
+
+insert into public.transaction_labels (
+  household_id,
+  transaction_id,
+  label_id,
+  created_by
+)
+values
+  (
+    '39000000-0000-0000-0000-000000000001',
+    '79000000-0000-0000-0000-000000000101',
+    '89000000-0000-0000-0000-000000000101',
+    '29000000-0000-0000-0000-000000000001'
+  ),
+  (
+    '39000000-0000-0000-0000-000000000001',
+    '79000000-0000-0000-0000-000000000102',
+    '89000000-0000-0000-0000-000000000101',
+    '29000000-0000-0000-0000-000000000001'
+  );
+
+insert into public.review_items (
+  id,
+  household_id,
+  transaction_id,
+  reason,
+  status,
+  resolved_by,
+  resolved_at,
+  created_at
+)
+values
+  (
+    '99000000-0000-0000-0000-000000000101',
+    '39000000-0000-0000-0000-000000000001',
+    '79000000-0000-0000-0000-000000000101',
+    'Needs cap drilldown review',
+    'open',
+    null,
+    null,
+    '2026-05-15 10:00:00+00'
+  ),
+  (
+    '99000000-0000-0000-0000-000000000102',
+    '39000000-0000-0000-0000-000000000001',
+    '79000000-0000-0000-0000-000000000101',
+    'Newer cap drilldown review',
+    'open',
+    null,
+    null,
+    '2026-05-15 11:00:00+00'
+  ),
+  (
+    '99000000-0000-0000-0000-000000000103',
+    '39000000-0000-0000-0000-000000000001',
+    '79000000-0000-0000-0000-000000000102',
+    'Resolved low-confidence row',
+    'resolved',
+    '29000000-0000-0000-0000-000000000001',
+    '2026-05-21 09:00:00+00',
+    '2026-05-20 13:30:00+00'
   );
 
 set local role authenticated;
@@ -272,6 +469,234 @@ select is(
   ),
   1000.00::numeric(14,2),
   'category-only cap progress excludes other categories and months'
+);
+
+create temporary table drilldown_category_cap as
+select *
+from public.upsert_monthly_cap(
+  p_household_id => '39000000-0000-0000-0000-000000000001',
+  p_name => 'Drilldown category',
+  p_period_month => '2026-05-01',
+  p_cap_amount => 1000.00,
+  p_category_ids => array['59000000-0000-0000-0000-000000000101'::uuid]
+);
+
+create temporary table drilldown_label_cap as
+select *
+from public.upsert_monthly_cap(
+  p_household_id => '39000000-0000-0000-0000-000000000001',
+  p_name => 'Drilldown label',
+  p_period_month => '2026-05-01',
+  p_cap_amount => 1000.00,
+  p_label_ids => array['89000000-0000-0000-0000-000000000101'::uuid]
+);
+
+create temporary table drilldown_mixed_cap as
+select *
+from public.upsert_monthly_cap(
+  p_household_id => '39000000-0000-0000-0000-000000000001',
+  p_name => 'Drilldown mixed',
+  p_period_month => '2026-05-01',
+  p_cap_amount => 1000.00,
+  p_category_ids => array['59000000-0000-0000-0000-000000000101'::uuid],
+  p_label_ids => array['89000000-0000-0000-0000-000000000101'::uuid]
+);
+
+create temporary table drilldown_overlap_cap as
+select *
+from public.upsert_monthly_cap(
+  p_household_id => '39000000-0000-0000-0000-000000000001',
+  p_name => 'Drilldown overlap',
+  p_period_month => '2026-05-01',
+  p_cap_amount => 1000.00,
+  p_category_ids => array['59000000-0000-0000-0000-000000000101'::uuid]
+);
+
+select is(
+  (
+    select count(*)::integer
+    from public.get_monthly_cap_transactions(
+      '39000000-0000-0000-0000-000000000001',
+      (select monthly_cap_id from drilldown_category_cap),
+      '2026-05-01'
+    )
+  ),
+  2,
+  'monthly cap transaction drilldown returns category-only matches'
+);
+
+select is(
+  (
+    select count(*)::integer
+    from public.get_monthly_cap_transactions(
+      '39000000-0000-0000-0000-000000000001',
+      (select monthly_cap_id from drilldown_label_cap),
+      '2026-05-01'
+    )
+  ),
+  2,
+  'monthly cap transaction drilldown returns label-only matches'
+);
+
+select is(
+  (
+    select count(*)::integer
+    from public.get_monthly_cap_transactions(
+      '39000000-0000-0000-0000-000000000001',
+      (select monthly_cap_id from drilldown_mixed_cap),
+      '2026-05-01'
+    )
+  ),
+  3,
+  'monthly cap transaction drilldown returns mixed matches once'
+);
+
+select is(
+  (
+    select array(
+      select match_count
+      from (
+        select count(*)::integer as match_count
+        from public.get_monthly_cap_transactions(
+          '39000000-0000-0000-0000-000000000001',
+          (select monthly_cap_id from drilldown_category_cap),
+          '2026-05-01'
+        )
+        union all
+        select count(*)::integer as match_count
+        from public.get_monthly_cap_transactions(
+          '39000000-0000-0000-0000-000000000001',
+          (select monthly_cap_id from drilldown_overlap_cap),
+          '2026-05-01'
+        )
+      ) cap_counts
+      order by match_count
+    )
+  ),
+  array[2, 2],
+  'monthly cap transaction drilldown allows overlapping caps independently'
+);
+
+select is(
+  (
+    select array(
+      select transaction_id
+      from public.get_monthly_cap_transactions(
+        '39000000-0000-0000-0000-000000000001',
+        (select monthly_cap_id from drilldown_category_cap),
+        '2026-06-01'
+      )
+    )
+  ),
+  array['79000000-0000-0000-0000-000000000104'::uuid],
+  'monthly cap transaction drilldown filters to the requested month'
+);
+
+select is(
+  (
+    select array(
+      select transaction_id
+      from public.get_monthly_cap_transactions(
+        '39000000-0000-0000-0000-000000000001',
+        (select monthly_cap_id from drilldown_mixed_cap),
+        '2026-05-01',
+        2,
+        0
+      )
+    )
+  ),
+  array[
+    '79000000-0000-0000-0000-000000000102'::uuid,
+    '79000000-0000-0000-0000-000000000103'::uuid
+  ],
+  'monthly cap transaction drilldown page order is deterministic'
+);
+
+select is(
+  (
+    select array(
+      select transaction_id
+      from public.get_monthly_cap_transactions(
+        '39000000-0000-0000-0000-000000000001',
+        (select monthly_cap_id from drilldown_mixed_cap),
+        '2026-05-01',
+        25,
+        2
+      )
+    )
+  ),
+  array['79000000-0000-0000-0000-000000000101'::uuid],
+  'monthly cap transaction drilldown applies offset pagination'
+);
+
+select is(
+  (
+    select is_under_review
+    from public.get_monthly_cap_transactions(
+      '39000000-0000-0000-0000-000000000001',
+      (select monthly_cap_id from drilldown_mixed_cap),
+      '2026-05-01'
+    )
+    where transaction_id = '79000000-0000-0000-0000-000000000101'
+  ),
+  true,
+  'monthly cap transaction drilldown highlights open review rows'
+);
+
+select is(
+  (
+    select review_item_id
+    from public.get_monthly_cap_transactions(
+      '39000000-0000-0000-0000-000000000001',
+      (select monthly_cap_id from drilldown_mixed_cap),
+      '2026-05-01'
+    )
+    where transaction_id = '79000000-0000-0000-0000-000000000101'
+  ),
+  '99000000-0000-0000-0000-000000000102'::uuid,
+  'monthly cap transaction drilldown returns the newest open review item'
+);
+
+select is(
+  (
+    select is_under_review
+    from public.get_monthly_cap_transactions(
+      '39000000-0000-0000-0000-000000000001',
+      (select monthly_cap_id from drilldown_mixed_cap),
+      '2026-05-01'
+    )
+    where transaction_id = '79000000-0000-0000-0000-000000000102'
+  ),
+  false,
+  'monthly cap transaction drilldown ignores low confidence without an open review row'
+);
+
+select is(
+  (
+    select label_names
+    from public.get_monthly_cap_transactions(
+      '39000000-0000-0000-0000-000000000001',
+      (select monthly_cap_id from drilldown_mixed_cap),
+      '2026-05-01'
+    )
+    where transaction_id = '79000000-0000-0000-0000-000000000101'
+  ),
+  array['Office'::text],
+  'monthly cap transaction drilldown returns ordered labels'
+);
+
+select throws_ok(
+  $$
+    select *
+    from public.get_monthly_cap_transactions(
+      '39000000-0000-0000-0000-000000000001',
+      (select monthly_cap_id from drilldown_mixed_cap),
+      '2026-05-15'
+    )
+  $$,
+  'P0001',
+  'Monthly cap transaction period must be the first day of the month.',
+  'monthly cap transaction drilldown rejects non-month periods'
 );
 
 create temporary table recurring_edit_cap as
@@ -753,7 +1178,7 @@ select is(
     from public.v_monthly_cap_progress
     where household_id = '39000000-0000-0000-0000-000000000001'
   ),
-  6,
+  10,
   'household viewers can select monthly cap progress'
 );
 
@@ -767,6 +1192,19 @@ select ok(
     where monthly_cap_id = (select monthly_cap_id from label_cap)
   ),
   'household viewers can select exact-month recurring cap progress'
+);
+
+select ok(
+  exists (
+    select 1
+    from public.get_monthly_cap_transactions(
+      '39000000-0000-0000-0000-000000000001',
+      (select monthly_cap_id from drilldown_mixed_cap),
+      '2026-05-01'
+    )
+    where transaction_id = '79000000-0000-0000-0000-000000000101'
+  ),
+  'household viewers can select monthly cap transaction drilldown rows'
 );
 
 set local request.jwt.claim.sub = '19000000-0000-0000-0000-000000000003';
@@ -805,6 +1243,20 @@ select throws_ok(
   'P0001',
   'You do not have permission to read monthly caps for this household.',
   'exact-month recurring progress rejects non-members'
+);
+
+select throws_ok(
+  $$
+    select *
+    from public.get_monthly_cap_transactions(
+      '39000000-0000-0000-0000-000000000001',
+      (select monthly_cap_id from drilldown_mixed_cap),
+      '2026-05-01'
+    )
+  $$,
+  'P0001',
+  'You do not have permission to read monthly cap transactions for this household.',
+  'monthly cap transaction drilldown rejects non-members'
 );
 
 set local request.jwt.claim.sub = '19000000-0000-0000-0000-000000000001';
@@ -1084,7 +1536,7 @@ insert into public.transactions (
 )
 values
   (
-    '79000000-0000-0000-0000-000000000101',
+    '79000000-0000-0000-0000-000000000004',
     '39000000-0000-0000-0000-000000000001',
     'workbook',
     '2026-08-05',
@@ -1100,7 +1552,7 @@ values
     'monthly-cap-utility-debit'
   ),
   (
-    '79000000-0000-0000-0000-000000000102',
+    '79000000-0000-0000-0000-000000000005',
     '39000000-0000-0000-0000-000000000001',
     'workbook',
     '2026-08-08',
@@ -1116,7 +1568,7 @@ values
     'monthly-cap-utility-refund'
   ),
   (
-    '79000000-0000-0000-0000-000000000103',
+    '79000000-0000-0000-0000-000000000006',
     '39000000-0000-0000-0000-000000000001',
     'workbook',
     '2026-08-12',

@@ -182,6 +182,16 @@ final transactionsProvider =
       return ref.watch(financeRepositoryProvider).fetchTransactions(query);
     });
 
+final monthlyCapTransactionsProvider =
+    FutureProvider.family<
+      MonthlyCapTransactionPage,
+      MonthlyCapTransactionRequest
+    >((ref, request) {
+      return ref
+          .watch(financeRepositoryProvider)
+          .fetchMonthlyCapTransactions(request);
+    });
+
 final class FinanceMonthRequest {
   const FinanceMonthRequest({required this.householdId, this.month});
 
@@ -325,6 +335,54 @@ final class CategoryUsagePreviewRequest {
 
   @override
   int get hashCode => Object.hash(householdId, categoryId, subcategoryId);
+}
+
+final class MonthlyCapTransactionRequest {
+  const MonthlyCapTransactionRequest({
+    required this.householdId,
+    required this.monthlyCapId,
+    required this.periodMonth,
+    this.limit = defaultLimit,
+    this.offset = 0,
+  });
+
+  static const defaultLimit = 25;
+  static const maxLimit = 100;
+
+  final String householdId;
+  final String monthlyCapId;
+  final DateTime periodMonth;
+  final int limit;
+  final int offset;
+
+  DateTime get normalizedPeriodMonth => firstDayOfMonth(periodMonth);
+
+  int get normalizedLimit {
+    if (limit < 1) return 1;
+    if (limit > maxLimit) return maxLimit;
+    return limit;
+  }
+
+  int get normalizedOffset => offset < 0 ? 0 : offset;
+
+  @override
+  bool operator ==(Object other) {
+    return other is MonthlyCapTransactionRequest &&
+        other.householdId == householdId &&
+        other.monthlyCapId == monthlyCapId &&
+        _monthKey(other.periodMonth) == _monthKey(periodMonth) &&
+        other.normalizedLimit == normalizedLimit &&
+        other.normalizedOffset == normalizedOffset;
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    householdId,
+    monthlyCapId,
+    _monthKey(periodMonth),
+    normalizedLimit,
+    normalizedOffset,
+  );
 }
 
 final class TrendQuery {
@@ -2095,6 +2153,143 @@ final class PagedTransactions {
   bool get hasNextPage => items.length == pageSize;
 }
 
+final class MonthlyCapTransactionPage {
+  const MonthlyCapTransactionPage({
+    required this.items,
+    required this.limit,
+    required this.offset,
+  });
+
+  final List<MonthlyCapTransaction> items;
+  final int limit;
+  final int offset;
+
+  int get nextOffset => offset + items.length;
+
+  bool get hasMore => items.length >= limit;
+}
+
+final class MonthlyCapTransaction {
+  const MonthlyCapTransaction({
+    required this.id,
+    required this.transactionDate,
+    required this.statementMerchant,
+    this.merchantId,
+    this.merchantName,
+    this.categoryId,
+    this.categoryName,
+    this.subcategoryId,
+    this.subcategoryName,
+    this.sourceAccountId,
+    required this.transactionType,
+    required this.amount,
+    required this.grossSpend,
+    required this.refundAmount,
+    required this.netExpense,
+    required this.currencyCode,
+    required this.confidence,
+    this.cardholderName,
+    this.notes,
+    this.labels = const [],
+    required this.isUnderReview,
+    this.reviewItemId,
+  });
+
+  final String id;
+  final DateTime transactionDate;
+  final String statementMerchant;
+  final String? merchantId;
+  final String? merchantName;
+  final String? categoryId;
+  final String? categoryName;
+  final String? subcategoryId;
+  final String? subcategoryName;
+  final String? sourceAccountId;
+  final String transactionType;
+  final double amount;
+  final double grossSpend;
+  final double refundAmount;
+  final double netExpense;
+  final String currencyCode;
+  final String confidence;
+  final String? cardholderName;
+  final String? notes;
+  final List<LabelOption> labels;
+  final bool isUnderReview;
+  final String? reviewItemId;
+
+  bool get isRefund => transactionType == 'refund_reversal';
+
+  bool get isBillPayment => transactionType == 'bill_payment_credit';
+
+  factory MonthlyCapTransaction.fromJson(Map<String, dynamic> json) {
+    final labelIds = _asStringList(json['label_ids']);
+    final labelNames = _asStringList(json['label_names']);
+
+    return MonthlyCapTransaction(
+      id: json['transaction_id'] as String,
+      transactionDate: _parseDate(json['transaction_date'] as String),
+      statementMerchant: json['statement_merchant'] as String,
+      merchantId: json['merchant_id'] as String?,
+      merchantName: json['merchant_name'] as String?,
+      categoryId: json['category_id'] as String?,
+      categoryName: json['category_name'] as String?,
+      subcategoryId: json['subcategory_id'] as String?,
+      subcategoryName: json['subcategory_name'] as String?,
+      sourceAccountId: json['source_account_id'] as String?,
+      transactionType: json['transaction_type'] as String,
+      amount: _asDouble(json['amount']),
+      grossSpend: _asDouble(json['gross_spend']),
+      refundAmount: _asDouble(json['refund_amount']),
+      netExpense: _asDouble(json['net_expense']),
+      currencyCode: json['currency_code'] as String? ?? 'INR',
+      confidence: json['confidence'] as String? ?? 'medium',
+      cardholderName: json['cardholder_name'] as String?,
+      notes: json['notes'] as String?,
+      labels: [
+        for (var index = 0; index < labelIds.length; index += 1)
+          LabelOption(
+            id: labelIds[index],
+            name: index < labelNames.length ? labelNames[index] : '',
+          ),
+      ],
+      isUnderReview: json['is_under_review'] as bool? ?? false,
+      reviewItemId: json['review_item_id'] as String?,
+    );
+  }
+
+  factory MonthlyCapTransaction.fromTransaction(
+    FinanceTransaction transaction, {
+    required bool isUnderReview,
+    String? reviewItemId,
+  }) {
+    return MonthlyCapTransaction(
+      id: transaction.id,
+      transactionDate: transaction.transactionDate,
+      statementMerchant: transaction.statementMerchant,
+      merchantId: transaction.merchantId,
+      merchantName: transaction.merchantName,
+      categoryId: transaction.categoryId,
+      categoryName: transaction.categoryName,
+      subcategoryId: transaction.subcategoryId,
+      subcategoryName: transaction.subcategoryName,
+      sourceAccountId: transaction.sourceAccountId,
+      transactionType: transaction.transactionType,
+      amount: transaction.amount,
+      grossSpend: transaction.grossSpend,
+      refundAmount: transaction.refundAmount,
+      netExpense: transaction.netExpense,
+      currencyCode: transaction.currencyCode,
+      confidence: transaction.confidence,
+      cardholderName: transaction.cardholderName,
+      notes: transaction.notes,
+      labels: transaction.labels,
+      isUnderReview: isUnderReview,
+      reviewItemId: reviewItemId,
+    );
+  }
+}
+
 final class FinanceTransaction {
   const FinanceTransaction({
     required this.id,
@@ -2797,6 +2992,10 @@ abstract interface class FinanceRepository {
   Future<PiggyBankEntry> createPiggyBankEntry(PiggyBankEntryRequest request);
 
   Future<PagedTransactions> fetchTransactions(TransactionQuery query);
+
+  Future<MonthlyCapTransactionPage> fetchMonthlyCapTransactions(
+    MonthlyCapTransactionRequest request,
+  );
 
   Future<TransactionLabelsSetResult> setTransactionLabels(
     TransactionLabelsSetRequest request,
@@ -3620,6 +3819,33 @@ final class SupabaseFinanceRepository implements FinanceRepository {
   }
 
   @override
+  Future<MonthlyCapTransactionPage> fetchMonthlyCapTransactions(
+    MonthlyCapTransactionRequest request,
+  ) async {
+    final limit = request.normalizedLimit;
+    final offset = request.normalizedOffset;
+    final rows = await _client.rpc<List<dynamic>>(
+      'get_monthly_cap_transactions',
+      params: {
+        'p_household_id': request.householdId,
+        'p_monthly_cap_id': request.monthlyCapId,
+        'p_period_month': dateString(request.normalizedPeriodMonth),
+        'p_limit': limit,
+        'p_offset': offset,
+      },
+    );
+
+    return MonthlyCapTransactionPage(
+      items: rows
+          .cast<Map<String, dynamic>>()
+          .map(MonthlyCapTransaction.fromJson)
+          .toList(growable: false),
+      limit: limit,
+      offset: offset,
+    );
+  }
+
+  @override
   Future<TransactionLabelsSetResult> setTransactionLabels(
     TransactionLabelsSetRequest request,
   ) async {
@@ -4288,6 +4514,13 @@ final class DisabledFinanceRepository implements FinanceRepository {
 
   @override
   Future<PagedTransactions> fetchTransactions(TransactionQuery query) {
+    throw const SupabaseNotConfiguredException();
+  }
+
+  @override
+  Future<MonthlyCapTransactionPage> fetchMonthlyCapTransactions(
+    MonthlyCapTransactionRequest request,
+  ) {
     throw const SupabaseNotConfiguredException();
   }
 

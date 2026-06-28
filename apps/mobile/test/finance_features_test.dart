@@ -326,6 +326,106 @@ void main() {
     expect(progress.labelTargets.single.name, 'Groceries');
   });
 
+  test('monthly cap transaction request normalizes equality keys', () {
+    final first = MonthlyCapTransactionRequest(
+      householdId: 'household-1',
+      monthlyCapId: 'cap-food',
+      periodMonth: DateTime(2026, 3, 12),
+      limit: 500,
+      offset: -8,
+    );
+    final second = MonthlyCapTransactionRequest(
+      householdId: 'household-1',
+      monthlyCapId: 'cap-food',
+      periodMonth: DateTime(2026, 3),
+      limit: MonthlyCapTransactionRequest.maxLimit,
+      offset: 0,
+    );
+
+    expect(first, second);
+    expect(first.normalizedPeriodMonth, DateTime(2026, 3));
+    expect(first.normalizedLimit, MonthlyCapTransactionRequest.maxLimit);
+    expect(first.normalizedOffset, 0);
+  });
+
+  test('monthly cap transaction row parses labels and review state', () {
+    final row = MonthlyCapTransaction.fromJson({
+      'transaction_id': 'txn-cap-1',
+      'transaction_date': '2026-03-12',
+      'statement_merchant': 'SWIGGY INSTAMART',
+      'merchant_id': 'merchant-swiggy',
+      'merchant_name': 'Swiggy Instamart',
+      'category_id': 'cat-food',
+      'category_name': 'Food',
+      'subcategory_id': 'sub-food-delivery',
+      'subcategory_name': 'Delivery',
+      'source_account_id': 'source-1',
+      'transaction_type': 'debit_spend',
+      'amount': '1200.00',
+      'gross_spend': 1200,
+      'refund_amount': 0,
+      'net_expense': 1200,
+      'currency_code': 'INR',
+      'confidence': 'high',
+      'cardholder_name': 'Ada',
+      'notes': 'Cap row note',
+      'label_ids': ['label-grocery', 'label-office'],
+      'label_names': ['Groceries', 'Office'],
+      'is_under_review': true,
+      'review_item_id': 'review-1',
+    });
+
+    expect(row.id, 'txn-cap-1');
+    expect(row.transactionDate, DateTime(2026, 3, 12));
+    expect(row.merchantName, 'Swiggy Instamart');
+    expect(row.subcategoryName, 'Delivery');
+    expect(row.labels.map((label) => label.name), ['Groceries', 'Office']);
+    expect(row.isUnderReview, isTrue);
+    expect(row.reviewItemId, 'review-1');
+  });
+
+  test('monthly cap transaction provider returns paged review rows', () async {
+    final repository = _FakeFinanceRepository()..addSwiggyTransactions(2);
+    repository.reviewItems.add(
+      MerchantReviewItem(
+        id: 'review-txn-1',
+        householdId: 'household-1',
+        transactionId: 'txn-1',
+        reason: 'Needs review',
+        createdAt: DateTime(2026, 3, 12, 9),
+        transactionDate: DateTime(2026, 3, 12),
+        statementMerchant: 'SWIGGY INSTAMART BANGALORE',
+        amount: 1200,
+        netExpense: 1200,
+        confidence: 'low',
+      ),
+    );
+    final request = MonthlyCapTransactionRequest(
+      householdId: 'household-1',
+      monthlyCapId: 'cap-food',
+      periodMonth: DateTime(2026, 3, 22),
+      limit: 1,
+    );
+    final container = ProviderContainer(
+      overrides: [financeRepositoryProvider.overrideWithValue(repository)],
+    );
+    addTearDown(container.dispose);
+
+    final page = await container.read(
+      monthlyCapTransactionsProvider(request).future,
+    );
+
+    expect(repository.monthlyCapTransactionRequests.single, request);
+    expect(page.limit, 1);
+    expect(page.offset, 0);
+    expect(page.nextOffset, 1);
+    expect(page.hasMore, isTrue);
+    expect(page.items.single.id, 'txn-1');
+    expect(page.items.single.labels.single.name, 'Groceries');
+    expect(page.items.single.isUnderReview, isTrue);
+    expect(page.items.single.reviewItemId, 'review-txn-1');
+  });
+
   test('primary app destinations match the redesigned IA', () {
     expect(appDestinations.map((destination) => destination.label), [
       'Dashboard',
@@ -2371,45 +2471,46 @@ void main() {
     );
   });
 
-  testWidgets('merchant review retries Gmail parse failures body dialog error', (
-    tester,
-  ) async {
-    final repository = _FakeFinanceRepository()
-      ..reviewItems.clear()
-      ..gmailParseFailures.add(_gmailParseFailure())
-      ..gmailParseFailureBodyError = StateError('body fetch failed');
+  testWidgets(
+    'merchant review retries Gmail parse failures body dialog error',
+    (tester) async {
+      final repository = _FakeFinanceRepository()
+        ..reviewItems.clear()
+        ..gmailParseFailures.add(_gmailParseFailure())
+        ..gmailParseFailureBodyError = StateError('body fetch failed');
 
-    await tester.pumpWidget(
-      _financeTestApp(
-        repository: repository,
-        child: const MerchantReviewScreen(),
-      ),
-    );
-    await tester.pumpAndSettle();
-
-    await tester.drag(find.byType(CustomScrollView), const Offset(0, -260));
-    await tester.pumpAndSettle();
-    await tester.tap(find.widgetWithText(FilledButton, 'View email'));
-    await tester.pumpAndSettle();
-
-    expect(find.text('Email body unavailable'), findsOneWidget);
-    expect(find.text('Bad state: body fetch failed'), findsOneWidget);
-
-    repository
-      ..gmailParseFailureBodyError = null
-      ..gmailParseFailureBodies['gmail-failure-1'] = _gmailParseFailureBody(
-        plainTextBody: 'Recovered body text.',
+      await tester.pumpWidget(
+        _financeTestApp(
+          repository: repository,
+          child: const MerchantReviewScreen(),
+        ),
       );
+      await tester.pumpAndSettle();
 
-    await tester.tap(find.text('Retry'));
-    await tester.pumpAndSettle();
+      await tester.drag(find.byType(CustomScrollView), const Offset(0, -260));
+      await tester.pumpAndSettle();
+      await tester.tap(find.widgetWithText(FilledButton, 'View email'));
+      await tester.pumpAndSettle();
 
-    expect(repository.gmailParseFailureBodyRequests, [
-      'gmail-failure-1',
-      'gmail-failure-1',
-    ]);
-    expect(find.text('Recovered body text.'), findsOneWidget);
-  });
+      expect(find.text('Email body unavailable'), findsOneWidget);
+      expect(find.text('Bad state: body fetch failed'), findsOneWidget);
+
+      repository
+        ..gmailParseFailureBodyError = null
+        ..gmailParseFailureBodies['gmail-failure-1'] = _gmailParseFailureBody(
+          plainTextBody: 'Recovered body text.',
+        );
+
+      await tester.tap(find.text('Retry'));
+      await tester.pumpAndSettle();
+
+      expect(repository.gmailParseFailureBodyRequests, [
+        'gmail-failure-1',
+        'gmail-failure-1',
+      ]);
+      expect(find.text('Recovered body text.'), findsOneWidget);
+    },
+  );
 
   test('Gmail parse failures label IMPS and unsupported candidates', () {
     final impsFailure = _gmailParseFailure(
@@ -4322,6 +4423,7 @@ final class _FakeThemeModeStore implements AppThemeModeStore {
 final class _FakeFinanceRepository implements FinanceRepository {
   final monthlyCapUpsertRequests = <MonthlyCapUpsertRequest>[];
   final monthlyCapDeleteRequests = <MonthlyCapDeleteRequest>[];
+  final monthlyCapTransactionRequests = <MonthlyCapTransactionRequest>[];
   final corrections = <TransactionMetadataCorrectionRequest>[];
   final createdCategoryRequests = <CategoryCreationRequest>[];
   final taxonomyUpdates = <CategoryTaxonomyUpdateRequest>[];
@@ -5693,6 +5795,68 @@ final class _FakeFinanceRepository implements FinanceRepository {
       items: filtered,
       page: query.page,
       pageSize: query.pageSize,
+    );
+  }
+
+  @override
+  Future<MonthlyCapTransactionPage> fetchMonthlyCapTransactions(
+    MonthlyCapTransactionRequest request,
+  ) async {
+    monthlyCapTransactionRequests.add(request);
+    final cap = monthlyCapProgress
+        .where((candidate) => candidate.monthlyCapId == request.monthlyCapId)
+        .firstOrNull;
+    if (cap == null) {
+      throw StateError('Monthly cap not found.');
+    }
+
+    final categoryIds = {for (final target in cap.categoryTargets) target.id};
+    final labelIds = {for (final target in cap.labelTargets) target.id};
+    final filtered =
+        transactions.where((transaction) {
+          final matchesMonth = isSameMonth(
+            transaction.transactionDate,
+            request.normalizedPeriodMonth,
+          );
+          final matchesCategory =
+              transaction.categoryId != null &&
+              categoryIds.contains(transaction.categoryId);
+          final matchesLabel = transaction.labels.any(
+            (label) => labelIds.contains(label.id),
+          );
+
+          return matchesMonth && (matchesCategory || matchesLabel);
+        }).toList()..sort((a, b) {
+          final dateComparison = b.transactionDate.compareTo(a.transactionDate);
+          if (dateComparison != 0) return dateComparison;
+
+          return b.id.compareTo(a.id);
+        });
+
+    final start = request.normalizedOffset;
+    final end = (start + request.normalizedLimit) > filtered.length
+        ? filtered.length
+        : start + request.normalizedLimit;
+    final pageItems = start >= filtered.length
+        ? const <FinanceTransaction>[]
+        : filtered.sublist(start, end);
+
+    return MonthlyCapTransactionPage(
+      items: [
+        for (final transaction in pageItems)
+          MonthlyCapTransaction.fromTransaction(
+            transaction,
+            isUnderReview: reviewItems.any(
+              (item) => item.transactionId == transaction.id,
+            ),
+            reviewItemId: reviewItems
+                .where((item) => item.transactionId == transaction.id)
+                .map((item) => item.id)
+                .firstOrNull,
+          ),
+      ],
+      limit: request.normalizedLimit,
+      offset: request.normalizedOffset,
     );
   }
 
